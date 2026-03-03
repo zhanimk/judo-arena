@@ -2,8 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { auth } from '../../lib/firebase'; // Importing auth from firebase config
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Importing auth functions
 
-// Отдельный компонент для элемента сайдбара, чтобы управлять его активным состоянием
+// SidebarItem component remains the same
 function SidebarItem({ href, icon, children }) {
   const pathname = usePathname();
   const isActive = pathname.startsWith(href);
@@ -25,15 +28,43 @@ function SidebarItem({ href, icon, children }) {
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/'); // Redirect to homepage if not logged in
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleLogout = () => {
-    // Простой выход - перенаправление на главную страницу
-    router.push('/');
+    signOut(auth).then(() => {
+      router.push('/');
+    });
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Or a login page component
+  }
   
   return (
     <div className="flex h-full">
-      {/* Боковая панель (Сайдбар) */}
+      {/* Sidebar */}
       <aside className="w-64 bg-navy-800 border-r border-navy-600 flex flex-col shrink-0">
         <div className="p-4 border-b border-navy-600">
           <div className="flex items-center gap-3">
@@ -45,9 +76,11 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
-          {/* Жаңартылған навигация */}
           <SidebarItem href="/admin/dashboard" icon="🏠">
             Басты бет
+          </SidebarItem>
+          <SidebarItem href="/admin/tournaments" icon="🏆">
+            Турнирлер
           </SidebarItem>
           <SidebarItem href="/admin/create-tournament" icon="✨">
             Жаңа турнир құру
@@ -63,7 +96,7 @@ export default function AdminLayout({ children }) {
         </div>
       </aside>
       
-      {/* Основной контент */}
+      {/* Main content */}
       <main className="flex-1 overflow-auto">
         {children}
       </main>

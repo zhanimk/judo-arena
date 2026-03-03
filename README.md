@@ -1,11 +1,11 @@
-# Digital Judo System
 
-This project is a digital judo competition management system.
+## 🚀 План действий
 
-## Frontend
+1.  **Настроить окружение:** Создать структуру папок, скопировать и адаптировать файлы `package.json`, `Dockerfile`, `docker-compose.yml`.
+2.  **Спроектировать БД:** Определить финальную схему таблиц в PostgreSQL.
+3.  **Разработать API бэкенда:** Начать с базовых CRUD-операций для турниров и пользователей.
+4.  **Разработать UI фронтенда:** Создать основные страницы и UI-кит.
+5.  **Реализовать ключевую логику:** Генерация сеток на бэкенде и их отображение на фронтенде.
+6.  **Интегрировать WebSocket:** Добавить real-time обновления результатов.
 
-The frontend is built with Next.js and is located in the `frontend` directory.
-
-## Backend
-
-The backend is built with Firebase Functions and is located in the `backend` directory.
+Эта архитектура является надежным фундаментом для создания профессиональной и масштабируемой платформы.
