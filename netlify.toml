@@ -1,0 +1,12 @@
+# Global build settings
+[build]
+  # This is the directory where Netlify will run the build command.
+  base = "frontend"
+  # This is the command to build the Next.js site.
+  command = "npm run build"
+  # This is the directory that contains the deploy-ready assets.
+  publish = ".next"
+
+# The Netlify plugin for Next.js is essential for handling SSR, ISR, API routes, etc.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
