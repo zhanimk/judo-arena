@@ -1,0 +1,7 @@
+module.exports = {
+    PENDING: 'PENDING',
+    READY: 'READY',
+    IN_PROGRESS: 'IN_PROGRESS',
+    COMPLETED: 'COMPLETED',
+    REPLAY_REQUIRED: 'REPLAY_REQUIRED',
+  };

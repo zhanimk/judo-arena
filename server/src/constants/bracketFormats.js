@@ -1,0 +1,4 @@
+module.exports = {
+    SINGLE_ELIMINATION: 'SINGLE_ELIMINATION',
+    IJF_REPECHAGE: 'IJF_REPECHAGE',
+  };

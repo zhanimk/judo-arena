@@ -1,522 +1,233 @@
+🥋 Judo Arena
 
-Digital Judo Tournament System
-Веб-система автоматизации соревнований по дзюдо
-1. Общее описание проекта
+Judo Arena is a backend platform for managing judo tournaments, clubs, athletes, and competition brackets.
 
-Digital Judo Tournament System — это облачная веб-платформа для автоматизации организации и проведения соревнований по дзюдо.
+The system allows organizers to run tournaments, coaches to register clubs and athletes, and athletes to participate in competitions. It also supports bracket generation, tournament applications, notifications, and real-time updates.
 
-Система предназначена для:
+⸻
 
-организаторов турниров
+🚀 Features
 
-судей на татами
+Authentication
+ • JWT authentication
+ • Role-based access control
 
-зрителей и тренеров
+Roles supported:
+ • ADMIN
+ • COACH
+ • ATHLETE
 
-Платформа обеспечивает централизованное управление турниром, автоматическую генерацию сеток, управление поединками в реальном времени и онлайн-отображение результатов.
+⸻
 
-Главная цель системы — исключить ручную работу секретариата, ускорить проведение турнира и обеспечить прозрачность результатов.
+Clubs
+ • Coaches can create clubs
+ • Athletes can request to join clubs
+ • Coaches can approve or reject join requests
+ • Clubs manage athletes participating in tournaments
 
-2. Архитектура системы
+⸻
 
-Система построена по трёхуровневой архитектуре (3-Tier Architecture).
+Tournaments
 
-Frontend (Client)
-React + JavaScript
+Admins can:
+ • Create tournaments
+ • Manage tournament status
+ • Control registration periods
 
-↓
+Tournament statuses:
+ • DRAFT
+ • REGISTRATION_OPEN
+ • REGISTRATION_CLOSED
+ • IN_PROGRESS
+ • COMPLETED
 
-Backend API
-Java Spring Boot REST API
+⸻
 
-↓
+Applications
 
-Database
-PostgreSQL
+Clubs submit applications to participate in tournaments.
 
-Дополнительно используется:
+Application workflow:
 
-WebSocket — для обновлений результатов в реальном времени
+DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED / REJECTED
 
-JWT Authentication — для авторизации пользователей
+Features:
+ • Application creation
+ • Athlete validation
+ • Admin review
+ • Notifications
 
-Docker — для контейнеризации
+⸻
 
-Vercel / Render / Railway — для деплоя
+Bracket Generation
 
-3. Технологический стек
-Frontend
+Automatic generation of competition brackets.
 
-React
+Features:
+ • Category grouping
+ • Match creation
+ • Winner progression
+ • Bracket match structure
 
-JavaScript / TypeScript
+⸻
 
-HTML5 / CSS3
+Real-time Notifications
 
-Axios (HTTP запросы)
+Implemented using Socket.io.
 
-WebSocket Client
+Examples:
+ • Application approved
+ • Tournament updates
+ • Live notifications
 
-React Router
+Rooms used:
 
-UI библиотека (Material UI или Tailwind)
+user:{userId}
+tournament:{tournamentId}
+tatami:{tatamiNumber}
 
-Функции фронтенда:
+⸻
 
-интерфейс администратора
+Audit Logging
 
-интерфейс судьи
+Tracks important system actions.
 
-публичная страница турнира
+Examples:
+ • application approval
+ • application rejection
+ • administrative actions
+ • tournament changes
 
-отображение сеток
+Stored fields include:
+ • actorId
+ • actorRole
+ • action
+ • entityType
+ • entityId
+ • before
+ • after
+ • reason
+ • meta
 
-live-табло поединков
+⸻
+
+🏗 Architecture
+
+The project follows a Service Layer Architecture.
+
+Flow:
+
+Routes → Controllers → Services → Models → Database
+
+This structure separates business logic from controllers and improves maintainability.
+
+⸻
+
+📂 Project Structure
+
+server
+│
+├─ src
+│   ├─ config
+│   ├─ controllers
+│   ├─ middlewares
+│   ├─ models
+│   ├─ routes
+│   ├─ services
+│   ├─ sockets
+│   ├─ utils
+│   ├─ app.js
+│   └─ server.js
+│
+├─ tests
+│
+└─ package.json
+
+⸻
+
+⚙️ Tech Stack
 
 Backend
+ • Node.js
+ • Express.js
+ • MongoDB
+ • Mongoose
+ • JWT
+ • Socket.io
 
-Java
+Security & Middleware
+ • Helmet
+ • CORS
+ • Morgan
+ • Joi validation
 
-Spring Boot
+Testing
+ • Jest
+ • Supertest
 
-Spring Security
+⸻
 
-REST API
+🔑 Environment Variables
 
-WebSocket (Spring WebSocket)
+Create a .env file inside the server folder.
 
-JWT Authentication
+Example:
 
-Функции backend:
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_secret_key
+JWT_EXPIRES_IN=7d
+CLIENT_URL=http://localhost:3000
+UPLOAD_DIR=uploads
 
-бизнес-логика турнира
+⸻
 
-генерация турнирных сеток
+▶️ Running the Server
 
-управление поединками
+Install dependencies:
 
-авторизация пользователей
+npm install
 
-обработка результатов
+Run development server:
 
-API для frontend
+npm run dev
 
-Database
+Run production server:
 
-СУБД:
+npm start
 
-PostgreSQL
+⸻
 
-Тип базы данных:
+🧪 Running Tests
 
-Relational Database
+Run all tests:
 
-Хранит:
+npm test
 
-турниры
+Run a specific test:
 
-участников
+npm test – tests/application.test.js
 
-категории
+Tests cover:
+ • authentication
+ • clubs
+ • tournaments
+ • applications
+ • bracket generation
 
-поединки
+⸻
 
-результаты
+📡 API Base URL
 
-пользователей системы
+http://localhost:5000/api
 
-4. Архитектурный принцип системы
+Health check endpoint:
 
-Основной принцип:
+GET /api/health
 
-Single Source of Truth
+⸻
 
-Все данные турнира хранятся в единой централизованной базе данных, которая является единственным источником истины.
+👩‍💻 Author
 
-Все клиенты системы получают обновления данных в реальном времени через WebSocket.
-
-5. Модель взаимодействия системы
-Администратор
-      ↓
-создает турнир и участников
-      ↓
-Система генерирует сетки
-      ↓
-Судья управляет поединком
-      ↓
-результат отправляется на сервер
-      ↓
-WebSocket рассылает обновления
-      ↓
-Зрители видят обновления онлайн
-6. Роли пользователей
-
-В системе реализована Role-Based Access Control (RBAC).
-
-Роли:
-
-Администратор
-
-Судья
-
-Зритель
-
-7. Роль №1 — Администратор
-Уровень доступа
-
-Полный доступ к системе.
-
-Маршрут:
-
-/admin
-
-Авторизация:
-
-Email
-
-Пароль
-
-JWT токен
-
-Функции администратора
-7.1 Настройка турнира
-
-Администратор может:
-
-создать турнир
-
-указать дату и место проведения
-
-назначить главного судью
-
-указать количество татами
-
-Также настраиваются:
-
-возрастные категории
-
-весовые категории
-
-длительность поединка
-
-правила Golden Score
-
-7.2 Управление участниками
-
-Администратор вводит данные спортсменов.
-
-Поля:
-
-ФИО
-
-год рождения
-
-вес
-
-клуб
-
-Система автоматически определяет категорию.
-
-Пример:
-
-2014 год
-37 кг
-
-→ категория U12 -38 кг
-
-Также доступны функции:
-
-импорт участников из Excel
-
-автоматическая сортировка
-
-объединение категорий
-
-7.3 Жеребьевка турнира
-
-Система автоматически генерирует турнирные сетки.
-
-Алгоритмы:
-
-Round Robin
-
-если участников:
-
-3–5
-
-Single Elimination + Repechage
-
-если участников:
-
-6+
-
-Дополнительно:
-
-разведение спортсменов одного клуба
-
-распределение по татами
-
-генерация очереди поединков
-
-7.4 Контроль турнира
-
-Администратор может:
-
-мониторить все татами
-
-изменять результаты
-
-управлять очередью поединков
-
-7.5 Генерация документов
-
-Система позволяет экспортировать:
-
-PDF:
-
-турнирные сетки
-
-протоколы
-
-Excel:
-
-итоговые результаты
-
-список победителей
-
-8. Роль №2 — Судья
-
-Маршрут:
-
-/judge/tatami/{id}
-
-Авторизация:
-
-PIN код
-
-специальная ссылка
-
-Функции судьи
-8.1 Очередь поединков
-
-Судья видит:
-
-текущую схватку
-
-следующую схватку
-
-Информация:
-
-имя спортсмена
-
-клуб
-
-цвет (white / blue)
-
-8.2 Электронное табло
-
-Функции:
-
-запуск таймера
-
-пауза
-
-сброс
-
-8.3 Управление оценками
-
-Судья может выставлять:
-
-Оценки:
-
-Ippon
-
-Waza-ari
-
-Наказания:
-
-Shido 1
-
-Shido 2
-
-Shido 3
-
-Hansoku-make
-
-8.4 Таймер удержания
-
-Система автоматически фиксирует:
-
-10 секунд → Waza-ari
-20 секунд → Ippon
-8.5 Golden Score
-
-Если время закончилось и счет равный:
-
-система автоматически активирует режим:
-
-Golden Score
-
-Поединок заканчивается при первом техническом действии.
-
-8.6 Завершение поединка
-
-Судья нажимает кнопку:
-
-Finish Match
-
-Система:
-
-фиксирует победителя
-
-обновляет сетку
-
-загружает следующую схватку
-
-9. Роль №3 — Зритель
-
-Публичный доступ:
-
-/
-
-Без регистрации.
-
-Функции зрителя
-9.1 Live мониторинг
-
-Зрители видят:
-
-все татами
-
-текущие поединки
-
-счет
-
-таймер
-
-9.2 Очередь схваток
-
-Показываются:
-
-Next 5 matches
-
-Это помогает спортсменам подготовиться.
-
-9.3 Турнирные сетки
-
-Интерактивные сетки:
-
-обновляются автоматически
-
-показывают путь победителя
-
-9.4 Итоги турнира
-
-После завершения категории отображается:
-
-1 место
-2 место
-3 место
-10. Real-Time система
-
-Для обновлений используется:
-
-WebSocket
-
-Когда судья завершает схватку:
-
-Backend
-↓
-WebSocket event
-↓
-Frontend обновляет сетки
-
-Без перезагрузки страницы.
-
-11. Основные модули системы
-
-Authentication Module
-
-Tournament Management Module
-
-Participant Management Module
-
-Draw Engine
-
-Match Management System
-
-Live Scoreboard
-
-Bracket Visualization
-
-Real-Time Notification System
-
-Reporting System
-
-12. Структура проекта
-project-root
-
-apps
- ├ frontend
- │   ├ components
- │   ├ pages
- │   ├ services
- │   ├ hooks
- │   └ utils
- │
- └ backend
-     ├ controller
-     ├ service
-     ├ repository
-     ├ model
-     └ security
-
-database
- └ schema.sql
-13. Возможности расширения системы
-
-Система может быть расширена:
-
-системой рейтинга спортсменов
-
-статистикой побед
-
-историей турниров
-
-системой регистрации клубов
-
-мобильным приложением
-
-14. Ценность проекта
-
-Проект решает реальные проблемы:
-
-ручное ведение протоколов
-
-ошибки судей
-
-отсутствие онлайн трансляции результатов
-
-Система делает турнир:
-
-быстрее
-
-прозрачнее
-
-удобнее для зрителей и тренеров
-
-15. Результат разработки
-
-В результате будет создана:
-
-полноценная веб-платформа для управления турнирами по дзюдо, которая включает:
-
-административную панель
-
-судейское табло
-
-публичный интерфейс зрителя
-
-автоматическую генерацию сеток
-
-обновления в реальном времени
+Zhanim K.
+GitHub: https://github.com/zhanimk
