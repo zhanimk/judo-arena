@@ -12,6 +12,33 @@ const {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Brackets
+ *   description: Tournament bracket management
+ */
+
+/**
+ * @swagger
+ * /brackets/generate/{tournamentId}:
+ *   post:
+ *     summary: Generate brackets for tournament
+ *     tags: [Brackets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tournamentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: Brackets generated
+ *       400:
+ *         description: Bracket generation failed
+ */
 router.post(
   '/generate/:tournamentId',
   authMiddleware,
@@ -20,6 +47,24 @@ router.post(
   bracketController.generateBrackets
 );
 
+/**
+ * @swagger
+ * /brackets/tournament/{tournamentId}:
+ *   get:
+ *     summary: Get brackets for tournament
+ *     tags: [Brackets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tournamentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tournament brackets
+ */
 router.get(
   '/tournament/:tournamentId',
   authMiddleware,
@@ -27,12 +72,51 @@ router.get(
   bracketController.getBracketsByTournament
 );
 
+/**
+ * @swagger
+ * /brackets/{id}:
+ *   get:
+ *     summary: Get bracket by id
+ *     tags: [Brackets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bracket details
+ *       404:
+ *         description: Bracket not found
+ */
 router.get(
   '/:id',
   authMiddleware,
   validate(bracketIdParamSchema),
   bracketController.getBracketById
 );
+
+/**
+ * @swagger
+ * /brackets/{id}/matches:
+ *   get:
+ *     summary: Get matches for bracket
+ *     tags: [Brackets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bracket matches
+ */
 
 router.get(
   '/:id/matches',

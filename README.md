@@ -223,6 +223,17 @@ Health check endpoint:
 GET /api/health
 
 ⸻
+## Docker Setup
+
+Run project with Docker:
+
+docker-compose up --build
+
+API will be available at:
+
+http://localhost:5000
+
+
 
 👩‍💻 Author
 

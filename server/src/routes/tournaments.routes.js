@@ -16,8 +16,47 @@ const {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Tournaments
+ *   description: Tournament management API
+ */
+
+/**
+ * @swagger
+ * /tournaments:
+ *   get:
+ *     summary: Get list of tournaments
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of tournaments
+ */
 router.get('/', authMiddleware, tournamentController.getTournaments);
 
+/**
+ * @swagger
+ * /tournaments/{id}:
+ *   get:
+ *     summary: Get tournament by id
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tournament details
+ *       404:
+ *         description: Tournament not found
+ */
 router.get(
   '/:id',
   authMiddleware,
@@ -25,6 +64,18 @@ router.get(
   tournamentController.getTournamentById
 );
 
+/**
+ * @swagger
+ * /tournaments:
+ *   post:
+ *     summary: Create tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Tournament created
+ */
 router.post(
   '/',
   authMiddleware,
@@ -33,6 +84,24 @@ router.post(
   tournamentController.createTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}:
+ *   put:
+ *     summary: Update tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tournament updated
+ */
 router.put(
   '/:id',
   authMiddleware,
@@ -41,6 +110,18 @@ router.put(
   tournamentController.updateTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}:
+ *   delete:
+ *     summary: Delete tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament deleted
+ */
 router.delete(
   '/:id',
   authMiddleware,
@@ -49,6 +130,18 @@ router.delete(
   tournamentController.deleteTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/status:
+ *   patch:
+ *     summary: Update tournament status
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament status updated
+ */
 router.patch(
   '/:id/status',
   authMiddleware,
@@ -57,6 +150,18 @@ router.patch(
   tournamentController.updateTournamentStatus
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/visibility:
+ *   patch:
+ *     summary: Update tournament visibility
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament visibility updated
+ */
 router.patch(
   '/:id/visibility',
   authMiddleware,
@@ -65,6 +170,18 @@ router.patch(
   tournamentController.updateTournamentVisibility
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/publish:
+ *   patch:
+ *     summary: Publish tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament published
+ */
 router.patch(
   '/:id/publish',
   authMiddleware,
@@ -73,6 +190,18 @@ router.patch(
   tournamentController.publishTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/unpublish:
+ *   patch:
+ *     summary: Unpublish tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament unpublished
+ */
 router.patch(
   '/:id/unpublish',
   authMiddleware,
@@ -81,6 +210,18 @@ router.patch(
   tournamentController.unpublishTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/archive:
+ *   patch:
+ *     summary: Archive tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament archived
+ */
 router.patch(
   '/:id/archive',
   authMiddleware,
@@ -89,6 +230,18 @@ router.patch(
   tournamentController.archiveTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/restore:
+ *   patch:
+ *     summary: Restore archived tournament
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tournament restored
+ */
 router.patch(
   '/:id/restore',
   authMiddleware,
@@ -97,6 +250,18 @@ router.patch(
   tournamentController.restoreTournament
 );
 
+/**
+ * @swagger
+ * /tournaments/{id}/categories:
+ *   patch:
+ *     summary: Update tournament categories
+ *     tags: [Tournaments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Categories updated
+ */
 router.patch(
   '/:id/categories',
   authMiddleware,
