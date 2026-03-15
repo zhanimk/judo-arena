@@ -1,4 +1,5 @@
 {
+  "name": "judo-arena",
   "dependencies": {
     "dayjs": "^1.11.20",
     "express-validator": "^7.3.1",
