@@ -41,10 +41,3 @@ curl -X POST http://localhost:5000/api/auth/login \
     "password": "123456"
   }'
 
-  curl -X POST http://localhost:5000/api/clubs \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Astana Judo Club",
-    "city": "Astana"
-  }'
