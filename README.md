@@ -3,7 +3,6 @@
 Judo Arena is a backend platform for managing judo tournaments, clubs, athletes, and competition brackets.
 
 The system allows organizers to run tournaments, coaches to register clubs and athletes, and athletes to participate in competitions. It also supports bracket generation, tournament applications, notifications, and real-time updates.
-
 ⸻
 
 🚀 Features
@@ -16,7 +15,6 @@ Roles supported:
  • ADMIN
  • COACH
  • ATHLETE
-
 ⸻
 
 Clubs
@@ -24,7 +22,6 @@ Clubs
  • Athletes can request to join clubs
  • Coaches can approve or reject join requests
  • Clubs manage athletes participating in tournaments
-
 ⸻
 
 Tournaments
