@@ -8,6 +8,9 @@
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "mongodb-memory-server": "^10.4.3"
+    "autoprefixer": "^10.4.27",
+    "mongodb-memory-server": "^10.4.3",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1"
   }
 }
