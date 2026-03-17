@@ -4,10 +4,13 @@
     "dayjs": "^1.11.20",
     "express-validator": "^7.3.1",
     "joi": "^18.0.2",
+    "lucide-react": "^0.577.0",
     "mongodb": "4.1",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
     "autoprefixer": "^10.4.27",
     "mongodb-memory-server": "^10.4.3",
     "postcss": "^8.5.8",
