@@ -1,32 +1,19 @@
 :root {
-    --font-family-main: consolas, "Times New Roman", serif;
-
-    --font-size-s: 14px;
-    --font-line-s: 22px;
-    --font-s: var(--font-size-s) / var(--font-line-s) var(--font-family-main);
-
-    --font-size-m: 16px;
-    --font-line-m: 24px;
-    --font-m: var(--font-size-m) / var(--font-line-m) var(--font-family-main);
-
-    --font-size-l: 20px;
-    --font-line-l: 28px;
-    --font-l: var(--font-size-l) / var(--font-line-l) var(--font-family-main);
-
-    --font-size-xl: 24px;
-    --font-line-xl: 32px;
-    --font-xl: var(--font-size-xl) / var(--font-line-xl) var(--font-family-main);
-
-    /* Размеры */
-    --navbar-height: 50px;
-    --sidebar-width: 300px;
-    --sidebar-width-collapsed: 80px;
-
-    /* z-индексы */
-    --modal-z-index: 10;
-
-    /* Цвета */
-    --overlay-color: rgba(0 0 0 / 60%);
-    --red-light: #f00;
-    --red-dark: #d00;
-}
+    --font-family-base: "Inter", sans-serif;
+  
+    --color-primary: #00afca;
+    --color-accent: #f8c414;
+  
+    --color-bg-light: #f8fafc;
+    --color-bg-dark: #0a111a;
+  
+    --color-text-light: #0f172a;
+    --color-text-dark: #f8fafc;
+  
+    --color-border-light: #e2e8f0;
+    --color-border-dark: #1e293b;
+  
+    --shadow-primary-20: 0 10px 30px rgba(0, 175, 202, 0.2);
+    --shadow-primary-30: 0 18px 40px rgba(0, 175, 202, 0.3);
+    --shadow-primary-40: 0 24px 50px rgba(0, 175, 202, 0.4);
+  }
