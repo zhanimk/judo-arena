@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 44% 9%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 44% 9%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 43 90% 55%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 220 40% 14%;
+    --secondary-foreground: 210 30% 80%;
+
+    --muted: 220 30% 12%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 220 35% 18%;
+    --accent-foreground: 210 40% 90%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 60% 45%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 6%;
+
+    --info: 200 80% 55%;
+    --info-foreground: 222 47% 6%;
+
+    --border: 220 30% 16%;
+    --input: 220 30% 16%;
+    --ring: 43 90% 55%;
+
+    --radius: 0.5rem;
+
+    --navy-deep: 222 47% 4%;
+    --navy-base: 222 47% 6%;
+    --navy-light: 222 44% 9%;
+    --navy-lighter: 220 40% 14%;
+    --navy-surface: 220 35% 18%;
+    --gold: 43 90% 55%;
+    --gold-dim: 43 60% 40%;
+    --gold-glow: 43 100% 65%;
+
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 210 30% 80%;
+    --sidebar-primary: 43 90% 55%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 220 35% 12%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 220 30% 14%;
+    --sidebar-ring: 43 90% 55%;
+
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  .bg-navy-deep {
+    background-color: hsl(var(--navy-deep));
+  }
+  .bg-navy-base {
+    background-color: hsl(var(--navy-base));
+  }
+  .bg-navy-light {
+    background-color: hsl(var(--navy-light));
+  }
+  .bg-navy-surface {
+    background-color: hsl(var(--navy-surface));
+  }
+  .border-navy {
+    border-color: hsl(var(--border));
+  }
+  .gold-glow {
+    box-shadow: 0 0 20px hsl(var(--gold) / 0.15), 0 0 40px hsl(var(--gold) / 0.05);
+  }
+  .card-premium {
+    @apply bg-card border border-border rounded-lg;
+    background: linear-gradient(135deg, hsl(222 44% 9%) 0%, hsl(220 40% 11%) 100%);
+  }
+  .gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-glow)) 100%);
+  }
+  .gradient-navy {
+    background: linear-gradient(180deg, hsl(var(--navy-deep)) 0%, hsl(var(--navy-base)) 100%);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--navy-deep));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--navy-surface));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--gold-dim));
+}
