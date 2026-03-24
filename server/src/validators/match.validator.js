@@ -10,6 +10,15 @@ const matchIdParamSchema = Joi.object({
   query: Joi.object({}).optional(),
 });
 
+
+const tournamentIdParamSchema = Joi.object({
+  params: Joi.object({
+    tournamentId: Joi.string().pattern(objectIdPattern).required(),
+  }),
+  body: Joi.object({}).optional(),
+  query: Joi.object({}).optional(),
+});
+
 const updateScoreSchema = Joi.object({
   params: Joi.object({
     id: Joi.string().pattern(objectIdPattern).required(),
@@ -58,6 +67,7 @@ const reopenMatchSchema = Joi.object({
 
 module.exports = {
   matchIdParamSchema,
+  tournamentIdParamSchema,
   updateScoreSchema,
   updatePenaltiesSchema,
   finishMatchSchema,

@@ -1,25 +1,59 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/AppLayout';
 import { StatCard, SectionTitle, StatusBadge } from '@/components/ui-premium';
 import { kz } from '@/lib/kz';
-import { demoMatches } from '@/lib/demo-data';
+import { getMyDashboard } from '@/api/dashboard';
 import { Timer, Swords, CheckCircle, ClipboardList } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
+function mapMatchStatus(status: string): string {
+  switch (status) {
+    case 'IN_PROGRESS':
+      return 'active';
+    case 'COMPLETED':
+      return 'completed';
+    case 'READY':
+    case 'PENDING':
+    default:
+      return 'scheduled';
+  }
+}
+
 const JudgeDashboard: React.FC = () => {
-  const active = demoMatches.filter(m => m.status === 'active').length;
-  const completed = demoMatches.filter(m => m.status === 'completed').length;
-  const scheduled = demoMatches.filter(m => m.status === 'scheduled').length;
+  const dashboardQuery = useQuery({
+    queryKey: ['my-dashboard'],
+    queryFn: getMyDashboard,
+  });
+
+  if (dashboardQuery.isLoading) {
+    return (
+      <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.judge}`}>
+        <div className="text-sm text-muted-foreground">Loading dashboard...</div>
+      </AppLayout>
+    );
+  }
+
+  if (dashboardQuery.isError || !dashboardQuery.data || dashboardQuery.data.role !== 'JUDGE') {
+    return (
+      <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.judge}`}>
+        <div className="text-sm text-destructive">Failed to load judge dashboard.</div>
+      </AppLayout>
+    );
+  }
+
+  const stats = dashboardQuery.data.stats || {};
+  const queue = dashboardQuery.data.queue || [];
 
   return (
     <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.judge}`}>
       <div className="space-y-6 animate-slide-in">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title={kz.dashboard.activeMatches} value={active} icon={<Swords size={20} />} />
-          <StatCard title={kz.status.completed} value={completed} icon={<CheckCircle size={20} />} />
-          <StatCard title={kz.status.scheduled} value={scheduled} icon={<ClipboardList size={20} />} />
-          <StatCard title={kz.dashboard.todayMatches} value={active + scheduled} icon={<Timer size={20} />} />
+          <StatCard title={kz.dashboard.activeMatches} value={stats.activeMatches || 0} icon={<Swords size={20} />} />
+          <StatCard title={kz.status.completed} value={stats.completedMatches || 0} icon={<CheckCircle size={20} />} />
+          <StatCard title={kz.status.scheduled} value={stats.scheduledMatches || 0} icon={<ClipboardList size={20} />} />
+          <StatCard title={kz.dashboard.todayMatches} value={stats.todayMatches || 0} icon={<Timer size={20} />} />
         </div>
 
         <div className="flex gap-4">
@@ -29,18 +63,19 @@ const JudgeDashboard: React.FC = () => {
 
         <SectionTitle>{kz.judge.queue}</SectionTitle>
         <div className="space-y-2">
-          {demoMatches.filter(m => m.status !== 'completed').map(m => (
-            <div key={m.id} className="card-premium p-4 flex items-center justify-between">
+          {queue.map((m) => (
+            <div key={m._id} className="card-premium p-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-xs text-muted-foreground">{kz.tournament.tatami} №{m.tatami}</span>
+                <span className="text-xs text-muted-foreground">{kz.tournament.tatami} №{m.tatamiNumber || '-'}</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{m.athlete1 || '—'} vs {m.athlete2 || '—'}</p>
-                  <p className="text-xs text-muted-foreground">{m.category} · {kz.bracket.round} {m.round}</p>
+                  <p className="text-sm font-medium text-foreground">{m.slotA?.displayNameSnapshot || '—'} vs {m.slotB?.displayNameSnapshot || '—'}</p>
+                  <p className="text-xs text-muted-foreground">{m.categoryKey} · {kz.bracket.round} {m.roundNumber}</p>
                 </div>
               </div>
-              <StatusBadge status={m.status} />
+              <StatusBadge status={mapMatchStatus(m.status)} />
             </div>
           ))}
+          {queue.length === 0 && <div className="text-xs text-muted-foreground">Queue is empty.</div>}
         </div>
       </div>
     </AppLayout>

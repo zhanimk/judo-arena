@@ -26,6 +26,20 @@ router.put(
   userController.updateProfile
 );
 
+
+router.get(
+  '/me/profile',
+  authMiddleware,
+  userController.getProfile
+);
+
+router.put(
+  '/me/profile',
+  authMiddleware,
+  validate(updateMyProfileSchema),
+  userController.updateProfile
+);
+
 router.get(
   '/:id',
   authMiddleware,

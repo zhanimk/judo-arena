@@ -12,12 +12,22 @@ const routes = require('./routes');
 
 const app = express();
 
-app.use(
-  cors({
-    origin: env.clientUrl,
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (env.clientUrls.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('CORS policy: origin is not allowed'));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(helmet());
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));

@@ -1,15 +1,35 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/AppLayout';
-import { StatCard, SectionTitle, StatusBadge, DataTable } from '@/components/ui-premium';
+import { StatCard } from '@/components/ui-premium';
 import { kz } from '@/lib/kz';
-import { demoAthletes, demoApplications, demoTournaments, demoClubs } from '@/lib/demo-data';
+import { getMyDashboard } from '@/api/dashboard';
 import { Users, Trophy, FileCheck, Building2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const CoachDashboard: React.FC = () => {
-  const club = demoClubs[0];
-  const clubAthletes = demoAthletes.filter(a => a.club === club.name);
-  const clubApps = demoApplications.filter(a => a.coachName === club.coach);
+  const dashboardQuery = useQuery({
+    queryKey: ['my-dashboard'],
+    queryFn: getMyDashboard,
+  });
+
+  if (dashboardQuery.isLoading) {
+    return (
+      <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.coach}`}>
+        <div className="text-sm text-muted-foreground">Loading dashboard...</div>
+      </AppLayout>
+    );
+  }
+
+  if (dashboardQuery.isError || !dashboardQuery.data || dashboardQuery.data.role !== 'COACH') {
+    return (
+      <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.coach}`}>
+        <div className="text-sm text-destructive">Failed to load coach dashboard.</div>
+      </AppLayout>
+    );
+  }
+
+  const club = (dashboardQuery.data.summary?.club as { name?: string; city?: string } | null) || null;
+  const stats = dashboardQuery.data.stats || {};
 
   return (
     <AppLayout title={`${kz.nav.dashboard} — ${kz.roles.coach}`}>
@@ -19,31 +39,17 @@ const CoachDashboard: React.FC = () => {
             <Building2 size={24} />
           </div>
           <div>
-            <h2 className="font-display font-bold text-foreground">{club.name}</h2>
-            <p className="text-sm text-muted-foreground">{club.coach} · {club.city}</p>
+            <h2 className="font-display font-bold text-foreground">{club?.name || 'My Club'}</h2>
+            <p className="text-sm text-muted-foreground">{club?.city || '—'}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title={kz.dashboard.myAthletes} value={clubAthletes.length} icon={<Users size={20} />} />
-          <StatCard title={kz.dashboard.myApplications} value={clubApps.length} icon={<FileCheck size={20} />} />
-          <StatCard title={kz.dashboard.totalTournaments} value={demoTournaments.length} icon={<Trophy size={20} />} />
-          <StatCard title={kz.dashboard.totalClubs} value="1" icon={<Building2 size={20} />} />
+          <StatCard title={kz.dashboard.myAthletes} value={stats.clubAthletes || 0} icon={<Users size={20} />} />
+          <StatCard title={kz.dashboard.myApplications} value={stats.myApplications || 0} icon={<FileCheck size={20} />} />
+          <StatCard title={kz.dashboard.totalTournaments} value={stats.tournamentsTotal || 0} icon={<Trophy size={20} />} />
+          <StatCard title={kz.dashboard.totalClubs} value={stats.clubsTotal || 0} icon={<Building2 size={20} />} />
         </div>
-
-        <SectionTitle>{kz.dashboard.myAthletes}</SectionTitle>
-        <DataTable headers={[kz.table.name, kz.table.category, kz.table.weight, kz.table.rank, kz.table.wins, kz.table.losses]}>
-          {clubAthletes.map(a => (
-            <tr key={a.id} className="hover:bg-navy-light/50">
-              <td className="px-4 py-3 text-sm font-medium text-foreground">{a.name}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{a.category}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{a.weight} кг</td>
-              <td className="px-4 py-3 text-sm text-primary">{a.rank}</td>
-              <td className="px-4 py-3 text-sm text-success">{a.wins}</td>
-              <td className="px-4 py-3 text-sm text-destructive">{a.losses}</td>
-            </tr>
-          ))}
-        </DataTable>
       </div>
     </AppLayout>
   );
