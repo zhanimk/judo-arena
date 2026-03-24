@@ -30,6 +30,23 @@ async function getMatchById(matchId) {
   return match;
 }
 
+
+async function getMatchesByTournament(authUser, tournamentId) {
+  const filter = { tournamentId };
+
+  if (authUser.role === 'JUDGE') {
+    filter.judgeId = authUser._id;
+  }
+
+  if (!['ADMIN', 'JUDGE'].includes(authUser.role)) {
+    throw new ApiError(403, 'Only admin or judge can view matches list', 'FORBIDDEN');
+  }
+
+  return Match.find(filter)
+    .sort({ tatamiNumber: 1, orderNumber: 1, roundNumber: 1, matchNumber: 1 })
+    .select('roundNumber status tatamiNumber categoryKey slotA.displayNameSnapshot slotB.displayNameSnapshot');
+}
+
 function isMatchReady(match) {
   const slotAReady = Boolean(match.slotA?.athleteId) || Boolean(match.slotA?.isBye);
   const slotBReady = Boolean(match.slotB?.athleteId) || Boolean(match.slotB?.isBye);
@@ -120,6 +137,7 @@ async function reopenMatch(authUser, matchId, reason = null) {
 
 module.exports = {
   getMatchById,
+  getMatchesByTournament,
   startMatch,
   reopenMatch,
 };

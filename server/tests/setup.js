@@ -8,9 +8,18 @@ let mongoServer;
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
+  const shouldUseExternalMongo = Boolean(process.env.MONGO_URI);
 
-  mongoServer = await MongoMemoryServer.create();
-  process.env.MONGO_URI = mongoServer.getUri();
+  if (!shouldUseExternalMongo) {
+    process.env.MONGOMS_DISTRO = process.env.MONGOMS_DISTRO || 'ubuntu-20.04';
+
+    mongoServer = await MongoMemoryServer.create({
+      binary: {
+        version: process.env.MONGOMS_VERSION || '7.0.9',
+      },
+    });
+    process.env.MONGO_URI = mongoServer.getUri();
+  }
 
   await connectDB();
 }, 60000);

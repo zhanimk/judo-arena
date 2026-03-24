@@ -1,7 +1,8 @@
 import { ApiResponse, http } from './http';
 
 export interface TournamentCategory {
-  id: string;
+  id?: string;
+  _id?: string;
   label: string;
   gender: 'male' | 'female';
   ageCategory: string;
@@ -10,7 +11,8 @@ export interface TournamentCategory {
 }
 
 export interface TournamentEntity {
-  _id: string;
+  _id?: string;
+  id?: string;
   title: string;
   location: string;
   startDate: string;
@@ -19,6 +21,25 @@ export interface TournamentEntity {
   tatamiCount: number;
   categories: TournamentCategory[];
   registrationDeadline: string;
+}
+
+function normalizeCategory(category: TournamentCategory): TournamentCategory {
+  const normalizedId = category._id || category.id;
+  return {
+    ...category,
+    _id: normalizedId,
+    id: normalizedId,
+  };
+}
+
+function normalizeTournament(tournament: TournamentEntity): TournamentEntity {
+  const normalizedId = tournament._id || tournament.id;
+  return {
+    ...tournament,
+    _id: normalizedId,
+    id: normalizedId,
+    categories: (tournament.categories || []).map(normalizeCategory),
+  };
 }
 
 export interface CreateTournamentPayload {
@@ -34,10 +55,15 @@ export interface CreateTournamentPayload {
 
 export async function getTournaments(): Promise<TournamentEntity[]> {
   const response = await http.get<ApiResponse<TournamentEntity[]>>('/tournaments');
-  return response.data.data;
+  return response.data.data.map(normalizeTournament);
 }
 
 export async function createTournament(payload: CreateTournamentPayload): Promise<TournamentEntity> {
   const response = await http.post<ApiResponse<TournamentEntity>>('/tournaments', payload);
-  return response.data.data;
+  return normalizeTournament(response.data.data);
+}
+
+export async function getTournamentById(id: string): Promise<TournamentEntity> {
+  const response = await http.get<ApiResponse<TournamentEntity>>(`/tournaments/${id}`);
+  return normalizeTournament(response.data.data);
 }
