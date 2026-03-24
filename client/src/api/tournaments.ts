@@ -1,7 +1,8 @@
 import { ApiResponse, http } from './http';
 
 export interface TournamentCategory {
-  id: string;
+  id?: string;
+  _id?: string;
   label: string;
   gender: 'male' | 'female';
   ageCategory: string;
@@ -10,7 +11,8 @@ export interface TournamentCategory {
 }
 
 export interface TournamentEntity {
-  _id: string;
+  _id?: string;
+  id?: string;
   title: string;
   location: string;
   startDate: string;

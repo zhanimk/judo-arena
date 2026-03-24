@@ -3,26 +3,30 @@ import { ApiResponse, http } from './http';
 export type ApplicationStatus = 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export interface ApplicationEntity {
-  _id: string;
+  _id?: string;
+  id?: string;
   status: ApplicationStatus;
   reviewComment?: string | null;
   submittedAt?: string | null;
   reviewedAt?: string | null;
   tournamentId: {
-    _id: string;
+    _id?: string;
+    id?: string;
     title: string;
   };
   clubId: {
-    _id: string;
+    _id?: string;
+    id?: string;
     name: string;
     city?: string;
   };
   coachId: {
-    _id: string;
+    _id?: string;
+    id?: string;
     fullName: string;
     email: string;
   };
-  athletes?: Array<{ _id: string; fullName: string }>;
+  athletes?: Array<{ _id?: string; id?: string; fullName: string }>;
 }
 
 export async function getMyApplications(): Promise<ApplicationEntity[]> {
