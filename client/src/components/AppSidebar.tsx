@@ -1,12 +1,25 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useRole } from '@/lib/role-context';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { kz } from '@/lib/kz';
 import { UserRole } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
 import {
-  LayoutDashboard, Trophy, Users, FileCheck, GitBranch, Building2,
-  User, Medal, ClipboardList, Gavel, Monitor, Timer, Radio,
-  ChevronDown, Shield, Dumbbell, GraduationCap, Scale
+  LayoutDashboard,
+  Trophy,
+  Users,
+  FileCheck,
+  GitBranch,
+  Building2,
+  User,
+  Medal,
+  ClipboardList,
+  Monitor,
+  Timer,
+  Shield,
+  Dumbbell,
+  GraduationCap,
+  Scale,
+  LogOut,
 } from 'lucide-react';
 
 const roleNavItems: Record<UserRole, { label: string; path: string; icon: React.ReactNode }[]> = {
@@ -55,59 +68,41 @@ const roleColors: Record<UserRole, string> = {
 };
 
 export const AppSidebar: React.FC = () => {
-  const { role, setRole } = useRole();
+  const { role, user, logout } = useAuth();
   const location = useLocation();
-  const [roleMenuOpen, setRoleMenuOpen] = React.useState(false);
-  const navItems = roleNavItems[role];
-  const allRoles: UserRole[] = ['admin', 'athlete', 'coach', 'judge'];
+  const navigate = useNavigate();
+
+  const uiRole: UserRole = role || 'athlete';
+  const navItems = roleNavItems[uiRole];
+
+  const onLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside className="w-64 min-h-screen bg-navy-deep border-r border-border flex flex-col">
-      {/* Logo */}
       <Link to="/" className="flex items-center gap-3 px-5 py-5 border-b border-border">
         <div className="w-9 h-9 rounded-lg gradient-gold flex items-center justify-center">
           <Trophy size={20} className="text-primary-foreground" />
         </div>
         <div>
           <h1 className="font-display text-lg font-bold text-foreground tracking-tight">Judo-Arena</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{kz.roles[role]}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{kz.roles[uiRole]}</p>
         </div>
       </Link>
 
-      {/* Role Switcher */}
       <div className="px-3 py-3 border-b border-border">
-        <button
-          onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-navy-light hover:bg-navy-surface transition-colors text-sm"
-        >
+        <div className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-navy-light text-sm">
           <span className="flex items-center gap-2">
-            <span className={roleColors[role]}>{roleIcons[role]}</span>
-            <span className="text-muted-foreground">{kz.roles.switchRole}</span>
+            <span className={roleColors[uiRole]}>{roleIcons[uiRole]}</span>
+            <span className="text-muted-foreground">{kz.roles[uiRole]}</span>
           </span>
-          <ChevronDown size={14} className={`text-muted-foreground transition-transform ${roleMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {roleMenuOpen && (
-          <div className="mt-1 bg-navy-light rounded-md border border-border overflow-hidden">
-            {allRoles.map(r => (
-              <button
-                key={r}
-                onClick={() => { setRole(r); setRoleMenuOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-navy-surface ${
-                  r === role ? 'bg-navy-surface text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <span className={roleColors[r]}>{roleIcons[r]}</span>
-                {kz.roles[r]}
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="text-[10px] text-muted-foreground mt-1 px-3">{kz.roles.demoMode}</p>
+        </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(item => {
+        {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link
@@ -126,17 +121,23 @@ export const AppSidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-border">
+      <div className="px-5 py-4 border-t border-border space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-navy-surface flex items-center justify-center text-sm font-medium text-primary">
-            ДМ
+            {(user?.fullName || 'UA').slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">Демо қолданушы</p>
-            <p className="text-xs text-muted-foreground truncate">{kz.roles.demoMode}</p>
+            <p className="text-sm font-medium text-foreground truncate">{user?.fullName || 'User'}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
           </div>
         </div>
+
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-navy-light hover:bg-navy-surface text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <LogOut size={14} /> {kz.nav.logout}
+        </button>
       </div>
     </aside>
   );

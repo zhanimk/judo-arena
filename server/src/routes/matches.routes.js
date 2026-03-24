@@ -11,9 +11,19 @@ const {
   updatePenaltiesSchema,
   finishMatchSchema,
   reopenMatchSchema,
+  tournamentIdParamSchema,
 } = require('../validators/match.validator');
 
 const router = express.Router();
+
+
+router.get(
+  '/tournament/:tournamentId',
+  authMiddleware,
+  allowRoles('ADMIN', 'JUDGE'),
+  validate(tournamentIdParamSchema),
+  matchController.getMatchesByTournament
+);
 
 router.get(
   '/:id',
