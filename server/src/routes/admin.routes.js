@@ -9,6 +9,14 @@ const { overrideMatchSchema } = require('../validators/admin.validator');
 
 const router = express.Router();
 
+
+router.get(
+  '/dashboard',
+  authMiddleware,
+  allowRoles('ADMIN'),
+  adminController.getDashboardOverview
+);
+
 router.patch(
   "/matches/:id/override",
   authMiddleware,

@@ -10,6 +10,8 @@ const matchesRoutes = require('./matches.routes');
 const judgesRoutes = require('./judges.routes');
 const adminRoutes = require('./admin.routes');
 const notificationRoutes = require('./notifications.routes');
+const tournamentLiveRoutes = require('./tournament-live.routes');
+const uploadRoutes = require('./uploads.routes');
 
 const router = express.Router();
 
@@ -21,12 +23,9 @@ router.use('/applications', applicationsRoutes);
 router.use('/brackets', bracketsRoutes);
 router.use('/matches', matchesRoutes);
 router.use('/judges', judgesRoutes);
-router.use("/admin", adminRoutes);
+router.use('/admin', adminRoutes);
 router.use('/notifications', notificationRoutes);
-
-// TODO:
-// router.use('/admin', require('./admin.routes'));
-// router.use('/uploads', require('./uploads.routes'));
-// router.use('/notifications', require('./notifications.routes'));
+router.use('/tournament-live', tournamentLiveRoutes);
+router.use('/uploads', uploadRoutes);
 
 module.exports = router;
