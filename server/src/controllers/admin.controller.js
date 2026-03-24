@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const overrideService = require('../services/match/match-admin-override.service');
 const rollbackService = require('../services/match/match-rollback.service');
+const adminService = require('../services/admin.service');
 
 const overrideMatchResult = asyncHandler(async (req,res)=>{
 
@@ -44,8 +45,21 @@ const requireReplay = asyncHandler(async (req,res)=>{
 
 });
 
+
+const getDashboardOverview = asyncHandler(async (req,res)=>{
+
+  const data = await adminService.getDashboardOverview();
+
+  res.status(200).json({
+    success:true,
+    data
+  });
+
+});
+
 module.exports = {
   overrideMatchResult,
   rollbackBracket,
-  requireReplay
+  requireReplay,
+  getDashboardOverview
 };
