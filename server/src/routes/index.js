@@ -12,6 +12,7 @@ const adminRoutes = require('./admin.routes');
 const notificationRoutes = require('./notifications.routes');
 const tournamentLiveRoutes = require('./tournament-live.routes');
 const uploadRoutes = require('./uploads.routes');
+const dashboardRoutes = require('./dashboard.routes');
 
 const router = express.Router();
 
@@ -27,5 +28,6 @@ router.use('/admin', adminRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/tournament-live', tournamentLiveRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;
