@@ -32,8 +32,7 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
-          MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_EXPIRES_IN: 7d
-          CLIENT_URL: http://localhost:3000
+          CLIENT_URLS: http://localhost:3000
           UPLOAD_DIR: uploads
