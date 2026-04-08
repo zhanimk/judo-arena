@@ -19,6 +19,18 @@ const tournamentIdParamSchema = Joi.object({
   query: Joi.object({}).optional(),
 });
 
+
+const myMatchesQuerySchema = Joi.object({
+  params: Joi.object({}).optional(),
+  body: Joi.object({}).optional(),
+  query: Joi.object({
+    status: Joi.string()
+      .valid('PENDING', 'READY', 'IN_PROGRESS', 'COMPLETED', 'UNDER_REVIEW', 'REPLAY_REQUIRED', 'CANCELLED')
+      .optional(),
+    limit: Joi.number().integer().min(1).max(200).optional(),
+  }).optional(),
+});
+
 const updateScoreSchema = Joi.object({
   params: Joi.object({
     id: Joi.string().pattern(objectIdPattern).required(),
@@ -67,6 +79,7 @@ const reopenMatchSchema = Joi.object({
 
 module.exports = {
   matchIdParamSchema,
+  myMatchesQuerySchema,
   tournamentIdParamSchema,
   updateScoreSchema,
   updatePenaltiesSchema,

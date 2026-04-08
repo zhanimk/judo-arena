@@ -1,6 +1,54 @@
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
+async function listUsers(filters = {}) {
+  const {
+    role,
+    status,
+    search,
+    page = 1,
+    limit = 20,
+  } = filters;
+
+  const query = {};
+
+  if (role) {
+    query.role = role;
+  }
+
+  if (status) {
+    query.status = status;
+  }
+
+  if (search) {
+    query.$or = [
+      { fullName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { city: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    User.find(query)
+      .select('-passwordHash')
+      .populate('clubId', 'name city')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    User.countDocuments(query),
+  ]);
+
+  return {
+    items,
+    page: Number(page),
+    limit: Number(limit),
+    total,
+    pages: Math.ceil(total / Number(limit)) || 1,
+  };
+}
+
 async function getMyProfile(userId) {
   const user = await User.findById(userId).select('-passwordHash');
 
@@ -73,6 +121,7 @@ async function updateUserStatus(targetUserId, status) {
 }
 
 module.exports = {
+  listUsers,
   getMyProfile,
   updateMyProfile,
   getUserById,

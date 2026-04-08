@@ -6,18 +6,28 @@ const connectDB = require('../src/config/db');
 
 let mongoServer;
 
+function shouldUseExternalMongo() {
+  return process.env.USE_EXTERNAL_TEST_DB === 'true' && Boolean(process.env.MONGO_URI);
+}
+
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
-  const shouldUseExternalMongo = Boolean(process.env.MONGO_URI);
 
-  if (!shouldUseExternalMongo) {
-    process.env.MONGOMS_DISTRO = process.env.MONGOMS_DISTRO || 'ubuntu-20.04';
+  if (!shouldUseExternalMongo()) {
+    const binary = {};
+
+    if (process.env.MONGOMS_VERSION) {
+      binary.version = process.env.MONGOMS_VERSION;
+    }
+
+    if (process.env.MONGOMS_DISTRO) {
+      binary.distro = process.env.MONGOMS_DISTRO;
+    }
 
     mongoServer = await MongoMemoryServer.create({
-      binary: {
-        version: process.env.MONGOMS_VERSION || '7.0.9',
-      },
+      binary: Object.keys(binary).length ? binary : undefined,
     });
+
     process.env.MONGO_URI = mongoServer.getUri();
   }
 

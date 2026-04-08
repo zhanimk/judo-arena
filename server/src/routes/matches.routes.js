@@ -7,6 +7,7 @@ const validate = require('../middlewares/validate.middleware');
 
 const {
   matchIdParamSchema,
+  myMatchesQuerySchema,
   updateScoreSchema,
   updatePenaltiesSchema,
   finishMatchSchema,
@@ -16,6 +17,13 @@ const {
 
 const router = express.Router();
 
+router.get(
+  '/my',
+  authMiddleware,
+  allowRoles('ATHLETE'),
+  validate(myMatchesQuerySchema),
+  matchController.getMyMatches
+);
 
 router.get(
   '/tournament/:tournamentId',

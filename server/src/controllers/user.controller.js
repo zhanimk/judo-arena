@@ -1,6 +1,15 @@
 const asyncHandler = require('../utils/asyncHandler');
 const userService = require('../services/user.service');
 
+const listUsers = asyncHandler(async (req, res) => {
+  const data = await userService.listUsers(req.query);
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
 const getProfile = asyncHandler(async (req, res) => {
   const user = await userService.getMyProfile(req.user._id);
 
@@ -40,6 +49,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  listUsers,
   getProfile,
   updateProfile,
   getUserById,
