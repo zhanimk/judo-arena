@@ -93,6 +93,13 @@ router.get(
   applicationController.getMyApplications
 );
 
+router.get(
+  '/my-athlete',
+  authMiddleware,
+  allowRoles('ATHLETE'),
+  applicationController.getMyAthleteApplications
+);
+
 /**
  * @swagger
  * /applications/{id}:

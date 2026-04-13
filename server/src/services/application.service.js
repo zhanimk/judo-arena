@@ -159,6 +159,19 @@ async function getMyApplications(authUser) {
   throw new ApiError(403, 'Only coach or admin can view applications list', 'FORBIDDEN');
 }
 
+
+async function getMyAthleteApplications(authUser) {
+  if (authUser.role !== 'ATHLETE') {
+    throw new ApiError(403, 'Only athlete can view personal applications', 'FORBIDDEN');
+  }
+
+  return Application.find({ athletes: authUser._id })
+    .populate('tournamentId', 'title status startDate endDate')
+    .populate('clubId', 'name city')
+    .populate('coachId', 'fullName email')
+    .sort({ createdAt: -1 });
+}
+
 async function getApplicationById(authUser, applicationId) {
   const application = await Application.findById(applicationId)
     .populate('tournamentId', 'title status startDate endDate registrationDeadline')
@@ -436,6 +449,7 @@ module.exports = {
   createApplication,
   updateApplication,
   getMyApplications,
+  getMyAthleteApplications,
   getApplicationById,
   getApplicationsByTournament,
   submitApplication,

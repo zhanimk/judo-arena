@@ -53,6 +53,12 @@ export async function getMyApplications(): Promise<ApplicationEntity[]> {
   return response.data.data.map(normalizeApplication);
 }
 
+
+export async function getMyAthleteApplications(): Promise<ApplicationEntity[]> {
+  const response = await http.get<ApiResponse<ApplicationEntity[]>>('/applications/my-athlete');
+  return response.data.data.map(normalizeApplication);
+}
+
 export async function approveApplication(id: string): Promise<ApplicationEntity> {
   const response = await http.patch<ApiResponse<ApplicationEntity>>(`/applications/${id}/approve`);
   return normalizeApplication(response.data.data);
