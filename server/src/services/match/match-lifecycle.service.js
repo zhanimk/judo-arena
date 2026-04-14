@@ -31,6 +31,37 @@ async function getMatchById(matchId) {
 }
 
 
+
+async function getMyMatches(authUser, options = {}) {
+  if (authUser.role !== 'ATHLETE') {
+    throw new ApiError(403, 'Only athlete can view personal match history', 'FORBIDDEN');
+  }
+
+  const { status, limit = 50 } = options;
+
+  const query = {
+    $or: [
+      { 'slotA.athleteId': authUser._id },
+      { 'slotB.athleteId': authUser._id },
+    ],
+  };
+
+  if (status) {
+    query.status = status;
+  }
+
+  return Match.find(query)
+    .sort({ endedAt: -1, createdAt: -1 })
+    .limit(Number(limit))
+    .populate('slotA.athleteId', 'fullName')
+    .populate('slotB.athleteId', 'fullName')
+    .populate('winnerId', 'fullName')
+    .populate('tournamentId', 'title startDate')
+    .select(
+      'tournamentId roundNumber matchNumber categoryKey status scoreA scoreB penaltiesA penaltiesB winnerId slotA slotB startedAt endedAt'
+    );
+}
+
 async function getMatchesByTournament(authUser, tournamentId) {
   const filter = { tournamentId };
 
@@ -137,6 +168,7 @@ async function reopenMatch(authUser, matchId, reason = null) {
 
 module.exports = {
   getMatchById,
+  getMyMatches,
   getMatchesByTournament,
   startMatch,
   reopenMatch,

@@ -34,6 +34,16 @@ const getMyApplications = asyncHandler(async (req, res) => {
   });
 });
 
+
+const getMyAthleteApplications = asyncHandler(async (req, res) => {
+  const applications = await applicationService.getMyAthleteApplications(req.user);
+
+  res.status(200).json({
+    success: true,
+    data: applications,
+  });
+});
+
 const getApplicationById = asyncHandler(async (req, res) => {
   const application = await applicationService.getApplicationById(req.user, req.params.id);
 
@@ -106,6 +116,7 @@ module.exports = {
   createApplication,
   updateApplication,
   getMyApplications,
+  getMyAthleteApplications,
   getApplicationById,
   getApplicationsByTournament,
   submitApplication,

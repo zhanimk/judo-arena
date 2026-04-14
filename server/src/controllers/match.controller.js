@@ -2,6 +2,16 @@ const asyncHandler = require('../utils/asyncHandler');
 const matchService = require('../services/match.service');
 
 
+
+const getMyMatches = asyncHandler(async (req, res) => {
+  const matches = await matchService.getMyMatches(req.user, req.query);
+
+  res.status(200).json({
+    success: true,
+    data: matches,
+  });
+});
+
 const getMatchesByTournament = asyncHandler(async (req, res) => {
   const matches = await matchService.getMatchesByTournament(req.user, req.params.tournamentId);
 
@@ -75,6 +85,7 @@ const reopenMatch = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getMyMatches,
   getMatchesByTournament,
   getMatchById,
   startMatch,

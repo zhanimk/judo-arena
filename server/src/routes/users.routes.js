@@ -6,12 +6,21 @@ const allowRoles = require('../middlewares/role.middleware');
 const validate = require('../middlewares/validate.middleware');
 
 const {
+  listUsersSchema,
   getUserByIdSchema,
   updateMyProfileSchema,
   updateUserStatusSchema,
 } = require('../validators/user.validator');
 
 const router = express.Router();
+
+router.get(
+  '/',
+  authMiddleware,
+  allowRoles('ADMIN'),
+  validate(listUsersSchema),
+  userController.listUsers
+);
 
 router.get(
   '/profile',

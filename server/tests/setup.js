@@ -6,18 +6,42 @@ const connectDB = require('../src/config/db');
 
 let mongoServer;
 
+const DEFAULT_MONGOMS_VERSIONS = ['7.0.14', '7.0.9', '7.0.5'];
+
+function shouldUseExternalMongo() {
+  return process.env.USE_EXTERNAL_TEST_DB === 'true' && Boolean(process.env.MONGO_URI);
+}
+
+async function createInMemoryMongoServer() {
+  const configuredVersion = process.env.MONGOMS_VERSION;
+  const versionsToTry = configuredVersion
+    ? [configuredVersion]
+    : DEFAULT_MONGOMS_VERSIONS;
+
+  const distro = process.env.MONGOMS_DISTRO;
+  let lastError;
+
+  for (const version of versionsToTry) {
+    try {
+      const binary = {
+        version,
+        ...(distro ? { distro } : {}),
+      };
+
+      return await MongoMemoryServer.create({ binary });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
-  const shouldUseExternalMongo = Boolean(process.env.MONGO_URI);
 
-  if (!shouldUseExternalMongo) {
-    process.env.MONGOMS_DISTRO = process.env.MONGOMS_DISTRO || 'ubuntu-20.04';
-
-    mongoServer = await MongoMemoryServer.create({
-      binary: {
-        version: process.env.MONGOMS_VERSION || '7.0.9',
-      },
-    });
+  if (!shouldUseExternalMongo()) {
+    mongoServer = await createInMemoryMongoServer();
     process.env.MONGO_URI = mongoServer.getUri();
   }
 
