@@ -1,0 +1,55 @@
+# Зависимости
+node_modules/
+.pnp.*
+
+# Сборка
+dist/
+build/
+.output/
+.tanstack/
+.cache/
+
+# Окружение (никогда не коммитим!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Логи
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Тесты
+coverage/
+.nyc_output/
+
+# Загруженные пользователями файлы (dev)
+uploads/
+
+# Бэкапы БД (если будут)
+*.sql
+*.dump
+
+# Prisma — не коммитим SQLite
+*.db
+*.db-journal
+
+# Docker volumes (никогда не должны попасть в репо)
+postgres-data/
+redis-data/

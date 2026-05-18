@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: judo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: judo_arena
+      POSTGRES_USER: judo
+      POSTGRES_PASSWORD: judo_dev_password
+    # Используем 5433 на хосте — порт 5432 занят локальным Postgres на Mac
+    ports:
+      - "5433:5432"
+    volumes:
+      - judo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judo -d judo_arena"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: judo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - judo_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: judo-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP — сюда шлёт бэкенд
+      - "8025:8025"   # Web UI — http://localhost:8025
+
+volumes:
+  judo_pgdata:
+  judo_redisdata:

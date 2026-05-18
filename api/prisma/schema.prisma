@@ -1,0 +1,413 @@
+// Judo-Arena — Prisma schema (15 таблиц, ТЗ v2.1)
+// Документация: https://www.prisma.io/docs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  ATHLETE
+  COACH
+  ADMIN
+  // JUDGE не хранится здесь — у судьи временная сессия без аккаунта
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Locale {
+  ru
+  kk
+  en
+}
+
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BracketFormat {
+  SE_IJF        // Single Elimination с IJF Repechage
+  ROUND_ROBIN   // Круговая
+  MIXED         // Группы + плей-офф (опционально)
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum MatchStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MatchEventType {
+  HAJIME           // Начало
+  MATE             // Пауза
+  SORE_MADE        // Конец матча
+  IPPON
+  WAZA_ARI
+  YUKO             // Опционально (старые правила)
+  SHIDO
+  HANSOKU_MAKE
+  GOLDEN_SCORE     // Переход в Golden Score
+  REPLAY           // Видеоповтор/пересмотр
+  END
+}
+
+enum MatchSide {
+  RED              // Красный (или синий — в дзюдо обычно синий)
+  BLUE
+  WHITE            // Белый
+  SYSTEM
+}
+
+// ============================================================
+// USERS / CLUBS
+// ============================================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  role            UserRole
+  name            String    // Имя (кириллица или родной)
+  surname         String    // Фамилия
+  nameLatin       String?   // Имя латиницей (для международных протоколов)
+  surnameLatin    String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+  weightKg        Float?
+  beltRank        String?   // 6 kyu ... 10 dan
+  preferredLocale Locale    @default(kk)
+  avatarUrl       String?
+  phone           String?
+  isActive        Boolean   @default(true)
+
+  clubId          String?
+  club            Club?     @relation(fields: [clubId], references: [id])
+
+  // Связи
+  createdClubs       Club[]            @relation("ClubCreator")
+  createdTournaments Tournament[]      @relation("TournamentCreator")
+  applicationEntries ApplicationEntry[]
+  bluematches        Match[]           @relation("BlueAthlete")
+  redmatches         Match[]           @relation("RedAthlete")
+  wonMatches         Match[]           @relation("WinnerAthlete")
+  ratingEntries      RatingEntry[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clubId])
+  @@index([role])
+}
+
+model Club {
+  id          String  @id @default(cuid())
+  name        Json    // { ru, kk, en }
+  shortName   String?
+  city        String
+  country     String  @default("KZ")
+  logoUrl     String?
+  description Json?   // { ru, kk, en }
+
+  createdById String
+  createdBy   User    @relation("ClubCreator", fields: [createdById], references: [id])
+
+  members     User[]
+  groups      ClubGroup[]
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city])
+}
+
+model ClubGroup {
+  id        String @id @default(cuid())
+  clubId    String
+  club      Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String        // "Дети", "Юниоры", "Взрослые"
+  ageMin    Int
+  ageMax    Int
+
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+}
+
+// ============================================================
+// TOURNAMENTS / CATEGORIES
+// ============================================================
+
+model Tournament {
+  id           String           @id @default(cuid())
+  name         Json             // { ru, kk, en }
+  description  Json?
+  location     String
+  city         String
+  startDate    DateTime
+  endDate      DateTime
+  status       TournamentStatus @default(DRAFT)
+  tatamiCount  Int              @default(1)
+  primaryLocale Locale          @default(kk)
+  posterUrl    String?
+
+  createdById String
+  createdBy   User @relation("TournamentCreator", fields: [createdById], references: [id])
+
+  categories   Category[]
+  applications Application[]
+  brackets     Bracket[]
+  matches      Match[]
+  ratingEntries RatingEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startDate])
+}
+
+model Category {
+  id               String        @id @default(cuid())
+  tournamentId     String
+  tournament       Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  name             Json?         // Опциональное название категории
+  gender           Gender
+  ageMin           Int
+  ageMax           Int
+  weightMin        Float
+  weightMax        Float
+  matchDurationSec Int           @default(240)   // 4 минуты по умолчанию
+  goldenScoreSec   Int           @default(0)     // 0 = без лимита
+  format           BracketFormat @default(SE_IJF)
+  allowYuko        Boolean       @default(false) // Включить старое правило Yuko
+
+  applicationEntries ApplicationEntry[]
+  brackets         Bracket[]
+  ratingEntries    RatingEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId])
+}
+
+// ============================================================
+// APPLICATIONS
+// ============================================================
+
+model Application {
+  id           String            @id @default(cuid())
+  tournamentId String
+  tournament   Tournament        @relation(fields: [tournamentId], references: [id])
+  clubId       String
+  club         Club              @relation(fields: [clubId], references: [id])
+  status       ApplicationStatus @default(DRAFT)
+  notes        String?
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
+  reviewerNotes String?
+
+  entries ApplicationEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tournamentId, clubId])
+  @@index([status])
+}
+
+model ApplicationEntry {
+  id            String @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  athleteId     String
+  athlete       User   @relation(fields: [athleteId], references: [id])
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([applicationId, athleteId, categoryId])
+  @@index([categoryId])
+}
+
+// ============================================================
+// BRACKETS / MATCHES
+// ============================================================
+
+model Bracket {
+  id           String        @id @default(cuid())
+  tournamentId String
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id])
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id])
+  format       BracketFormat
+  size         Int           // Размер сетки (4/8/16/32/64) или N для round-robin
+
+  generatedAt DateTime @default(now())
+
+  matches Match[]
+
+  @@unique([tournamentId, categoryId])
+}
+
+model Match {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id])
+  bracketId       String
+  bracket         Bracket     @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+
+  round           Int         // Номер раунда: 1, 2, 3... для SE; для RR — "тур"
+  position        Int         // Позиция матча в раунде (от 0)
+  bracketSection  String?     // "main" | "repechage" | "bronze1" | "bronze2" | "final"
+
+  redAthleteId    String?
+  redAthlete      User?       @relation("RedAthlete", fields: [redAthleteId], references: [id])
+  blueAthleteId   String?
+  blueAthlete     User?       @relation("BlueAthlete", fields: [blueAthleteId], references: [id])
+
+  tatamiNumber    Int?
+  status          MatchStatus @default(PENDING)
+
+  winnerId        String?
+  winner          User?       @relation("WinnerAthlete", fields: [winnerId], references: [id])
+  scoreSnapshot   Json?       // { red:{ippon,wazaari,yuko,shido}, blue:{...}, totalTimeSec }
+
+  isGoldenScore   Boolean     @default(false)
+  isReplay        Boolean     @default(false)
+  replayReason    String?
+
+  startedAt       DateTime?
+  finishedAt      DateTime?
+
+  judgeSessions   JudgeSession[]
+  events          MatchEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bracketId, round, position])
+  @@index([status])
+  @@index([tatamiNumber])
+}
+
+model MatchEvent {
+  id        String         @id @default(cuid())
+  matchId   String
+  match     Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  type      MatchEventType
+  side      MatchSide?     // Кому начислили (если применимо)
+  actorJudgeSessionId String?  // Какая судейская сессия зафиксировала
+  scoreSnapshot Json?      // Состояние счёта после события
+  meta      Json?
+
+  occurredAt DateTime @default(now())
+
+  @@index([matchId, occurredAt])
+}
+
+model JudgeSession {
+  id        String   @id @default(cuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  judgeName String?  // Имя судьи (опционально, без аккаунта)
+  expiresAt DateTime
+  usedAt    DateTime?
+  isRevoked Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+}
+
+// ============================================================
+// RATING / NOTIFICATIONS / AUDIT
+// ============================================================
+
+model RatingEntry {
+  id           String     @id @default(cuid())
+  athleteId    String
+  athlete      User       @relation(fields: [athleteId], references: [id])
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  place        Int        // 1, 2, 3, 3, 5, 5, 7, 7
+  points       Float      // Поддерживает бонусы (десятичные)
+
+  awardedAt DateTime @default(now())
+
+  @@unique([athleteId, tournamentId, categoryId])
+  @@index([athleteId])
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    String  // "application_approved", "match_scheduled", и т.д.
+  titleKey  String  // i18n-ключ
+  bodyKey   String
+  payload Json?
+  read    Boolean @default(false)
+  locale  Locale  @default(kk)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  actor        User?    @relation(fields: [actorUserId], references: [id])
+  action       String   // "match.override", "bracket.regenerate", и т.д.
+  targetEntity String   // "Match" | "Bracket" | ...
+  targetId     String
+  before       Json?
+  after        Json?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([targetEntity, targetId])
+  @@index([actorUserId, createdAt])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
