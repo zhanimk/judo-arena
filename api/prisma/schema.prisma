@@ -177,6 +177,10 @@ model Tournament {
   startDate    DateTime
   endDate      DateTime
   applicationDeadline DateTime?
+  mapUrl       String?
+  weighInLocation String?
+  weighInStart DateTime?
+  weighInEnd   DateTime?
   status       TournamentStatus @default(DRAFT)
   tatamiCount  Int              @default(1)
   primaryLocale Locale          @default(kk)

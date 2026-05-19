@@ -44,6 +44,7 @@ uploads/
 
 # Бэкапы БД (если будут)
 *.sql
+!api/prisma/migrations/**/*.sql
 *.dump
 
 # Prisma — не коммитим SQLite

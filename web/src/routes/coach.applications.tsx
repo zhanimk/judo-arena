@@ -1,0 +1,230 @@
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import { AlertTriangle, Building2, CheckCircle2, Clock3, LayoutDashboard, Users, ClipboardList, Trophy, Bell } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { ProtectedRoute } from "@/lib/protected-route";
+
+export const Route = createFileRoute("/coach/applications")({
+  head: () => ({ meta: [{ title: "Өтінімдер — Judo-Arena" }] }),
+  component: () => (
+    <ProtectedRoute allowedRoles={["COACH"]}>
+      <CoachApplicationsRoute />
+    </ProtectedRoute>
+  ),
+});
+
+const nav = [
+  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
+  { to: "/coach/club", label: "Клуб", icon: Building2 },
+  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
+  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
+  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
+  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
+];
+
+function CoachApplicationsRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const normalizedPath = pathname.replace(/\/+$/, "");
+
+  if (normalizedPath !== "/coach/applications") {
+    return <Outlet />;
+  }
+
+  return <CoachApplications />;
+}
+
+function CoachApplications() {
+  const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const tQuery = useQuery({
+    queryKey: ["all-tournaments-for-apps"],
+    queryFn: () => api.tournaments.list(),
+  });
+  const notificationsQuery = useQuery({
+    queryKey: ["my-application-notifications"],
+    queryFn: () => api.notifications.list(),
+  });
+  const markRead = useMutation({
+    mutationFn: (id: string) => api.notifications.markRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-application-notifications"] });
+      qc.invalidateQueries({ queryKey: ["my-notifications"] });
+    },
+  });
+
+  // Получаем заявки по каждому турниру (только свои благодаря COACH-фильтру на бэке)
+  const appsQuery = useQuery({
+    queryKey: ["my-applications", (tQuery.data?.items ?? []).map((t: any) => t.id).join(",")],
+    queryFn: async () => {
+      const all: any[] = [];
+      for (const t of tQuery.data?.items ?? []) {
+        try {
+          const apps = await api.tournaments.applications(t.id);
+          for (const a of apps) all.push({ ...a, tournamentName: localizeName(t.name) });
+        } catch { /* ignore */ }
+      }
+      return all;
+    },
+    enabled: (tQuery.data?.items ?? []).length > 0,
+  });
+
+  const apps = appsQuery.data ?? [];
+  const filteredApps = useMemo(() => {
+    if (statusFilter === "ALL") return apps;
+    return apps.filter((a: any) => a.status === statusFilter);
+  }, [apps, statusFilter]);
+  const applicationNotifications = useMemo(
+    () => (notificationsQuery.data ?? []).filter((n: any) => String(n.type).startsWith("application_")),
+    [notificationsQuery.data],
+  );
+  const rejected = apps.filter((a: any) => a.status === "REJECTED").length;
+  const pending = apps.filter((a: any) => a.status === "SUBMITTED").length;
+  const approved = apps.filter((a: any) => a.status === "APPROVED").length;
+
+  return (
+    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Менің өтінімдерім">
+      {applicationNotifications.length > 0 && (
+        <div className="mb-6 grid gap-3">
+          {applicationNotifications.slice(0, 3).map((n: any) => (
+            <div
+              key={n.id}
+              className={`rounded-md border p-4 text-sm ${
+                n.type === "application_rejected"
+                  ? "border-destructive/40 bg-destructive/10"
+                  : "border-emerald-500/30 bg-emerald-500/10"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-medium">
+                    {n.type === "application_rejected" ? <AlertTriangle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+                    {n.titleKey}
+                  </div>
+                  <div className="mt-1 text-muted-foreground">{n.bodyKey}</div>
+                  <div className="mt-2 text-[11px] text-muted-foreground">{new Date(n.createdAt).toLocaleString("kk-KZ")}</div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {n.payload?.applicationId && (
+                    <Link
+                      to="/coach/applications/$id"
+                      params={{ id: n.payload.applicationId }}
+                      className="rounded-md bg-gold/15 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
+                    >
+                      Өтінімді ашу
+                    </Link>
+                  )}
+                  {!n.read && (
+                    <button
+                      onClick={() => markRead.mutate(n.id)}
+                      className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Оқылды
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <MiniStat icon={Clock3} label="Қарауда" value={pending} />
+        <MiniStat icon={CheckCircle2} label="Бекітілді" value={approved} ok />
+        <MiniStat icon={AlertTriangle} label="Түзету керек" value={rejected} danger />
+      </div>
+
+      <Panel
+        title={`Барлығы ${apps.length} өтінім`}
+        action={
+          <div className="flex flex-wrap gap-2">
+            {["ALL", "DRAFT", "SUBMITTED", "APPROVED", "REJECTED"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                  statusFilter === status ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {status === "ALL" ? "Бәрі" : statusLabel(status)}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {appsQuery.isLoading ? <LoadingState /> :
+          filteredApps.length === 0 ? (
+            <EmptyState title="Өтінімдер жоқ" hint="«Жарыстар» бөлімінен өтінім бере аласыз" />
+          ) : (
+            <ul className="space-y-3 text-sm">
+              {filteredApps.map((a: any) => (
+                <li key={a.id}>
+                  <Link
+                    to="/coach/applications/$id"
+                    params={{ id: a.id }}
+                    className="block glass rounded-md p-4 hover:border-gold/40 transition-colors"
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <div className="font-medium">{a.tournamentName}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {a._count?.entries ?? 0} спортшы
+                          {a.submittedAt ? ` · жіберілген ${new Date(a.submittedAt).toLocaleDateString("kk-KZ")}` : ""}
+                        </div>
+                      </div>
+                      <StatusBadge status={a.status} />
+                    </div>
+                    {a.reviewerNotes && (
+                      <div className={`mt-3 text-xs border-l-2 pl-3 ${a.status === "REJECTED" ? "border-destructive text-destructive" : "border-gold/40 text-muted-foreground"}`}>
+                        «{a.reviewerNotes}»
+                      </div>
+                    )}
+                    <div className="mt-2 text-xs text-gold">Ашу →</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+      </Panel>
+    </DashboardShell>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, ok, danger }: { icon: any; label: string; value: number; ok?: boolean; danger?: boolean }) {
+  return (
+    <div className="glass rounded-xl p-4">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
+        <Icon className={`h-4 w-4 ${danger ? "text-destructive" : ok ? "text-emerald-300" : "text-gold"}`} />
+        {label}
+      </div>
+      <div className={`mt-2 font-display text-3xl font-bold ${danger ? "text-destructive" : ok ? "text-emerald-300" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const m: Record<string, { c: string; l: string }> = {
+    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
+    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
+    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
+    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/40", l: "Қайтарылды" },
+    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Алынды" },
+  };
+  const x = m[status] ?? { c: "bg-muted", l: status };
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${x.c} shrink-0`}>{x.l}</span>;
+}
+
+function statusLabel(status: string): string {
+  const m: Record<string, string> = {
+    DRAFT: "Жоба",
+    SUBMITTED: "Қарауда",
+    APPROVED: "Бекітілді",
+    REJECTED: "Қайтарылды",
+    WITHDRAWN: "Алынды",
+  };
+  return m[status] ?? status;
+}
+
+function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }

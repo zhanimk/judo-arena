@@ -107,7 +107,7 @@ export async function listMatches(query: {
     include: {
       redAthlete: { select: { id: true, name: true, surname: true } },
       blueAthlete: { select: { id: true, name: true, surname: true } },
-      bracket: { select: { id: true, format: true, categoryId: true } },
+      bracket: { select: { id: true, format: true, categoryId: true, category: true } },
     },
   });
 }
@@ -319,12 +319,14 @@ export async function startOsaekomi(
 
   score.osaekomi = { side, startedAt: new Date().toISOString() };
 
-  const [updated, event] = await prisma.$transaction([
-    prisma.match.update({
-      where: { id: matchId },
-      data: { scoreSnapshot: score as any },
-    }),
-    prisma.matchEvent.create({
+  const updated = await prisma.match.update({
+    where: { id: matchId },
+    data: { scoreSnapshot: score as any },
+  });
+
+  let event;
+  try {
+    event = await prisma.matchEvent.create({
       data: {
         matchId,
         type: "OSAEKOMI" as MatchEventType,  // см. ниже про enum
@@ -332,20 +334,20 @@ export async function startOsaekomi(
         actorJudgeSessionId: judgeSessionId,
         scoreSnapshot: score as any,
       },
-    }).catch(async () => {
-      // Если enum OSAEKOMI отсутствует в Prisma (старая миграция) — используем MATE как fallback с meta
-      return prisma.matchEvent.create({
-        data: {
-          matchId,
-          type: MatchEventType.MATE,
-          side: side === "RED" ? MatchSide.RED : MatchSide.BLUE,
-          actorJudgeSessionId: judgeSessionId,
-          scoreSnapshot: score as any,
-          meta: { osaekomiStart: true },
-        },
-      });
-    }),
-  ]);
+    });
+  } catch {
+    // Если enum OSAEKOMI отсутствует в Prisma (старая миграция) — используем MATE как fallback с meta.
+    event = await prisma.matchEvent.create({
+      data: {
+        matchId,
+        type: MatchEventType.MATE,
+        side: side === "RED" ? MatchSide.RED : MatchSide.BLUE,
+        actorJudgeSessionId: judgeSessionId,
+        scoreSnapshot: score as any,
+        meta: { osaekomiStart: true },
+      },
+    });
+  }
 
   return { match: updated, event };
 }

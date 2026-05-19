@@ -222,6 +222,140 @@ export async function listBracketsForTournament(tournamentId: string) {
   });
 }
 
+export async function prepareTournamentDraw(actorUserId: string, tournamentId: string) {
+  await assertAdmin(actorUserId);
+
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    include: {
+      categories: {
+        orderBy: [{ gender: "asc" }, { weightMin: "asc" }],
+      },
+    },
+  });
+  if (!tournament) throw new BracketError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (
+    tournament.status !== TournamentStatus.REGISTRATION_CLOSED &&
+    tournament.status !== TournamentStatus.IN_PROGRESS
+  ) {
+    throw new BracketError(
+      "INVALID_STATUS",
+      "Полную подготовку можно запускать после закрытия регистрации",
+      409,
+    );
+  }
+
+  const categoryReports: Array<{
+    categoryId: string;
+    status: "created" | "exists" | "skipped";
+    participants: number;
+    matches: number;
+    message?: string;
+  }> = [];
+
+  for (const category of tournament.categories) {
+    const participants = await prisma.applicationEntry.count({
+      where: {
+        categoryId: category.id,
+        application: { tournamentId, status: "APPROVED" },
+      },
+    });
+    const existing = await prisma.bracket.findUnique({
+      where: { tournamentId_categoryId: { tournamentId, categoryId: category.id } },
+      include: { _count: { select: { matches: true } } },
+    });
+
+    if (existing) {
+      categoryReports.push({
+        categoryId: category.id,
+        status: "exists",
+        participants,
+        matches: existing._count.matches,
+      });
+      continue;
+    }
+
+    if (participants < 2) {
+      categoryReports.push({
+        categoryId: category.id,
+        status: "skipped",
+        participants,
+        matches: 0,
+        message: "Минимум 2 утверждённых участника",
+      });
+      continue;
+    }
+
+    const bracket = await generateBracket(actorUserId, tournamentId, category.id);
+    categoryReports.push({
+      categoryId: category.id,
+      status: "created",
+      participants,
+      matches: bracket.matches?.length ?? 0,
+    });
+  }
+
+  const tatami = await distributeTournamentTatami(tournamentId, tournament.tatamiCount);
+  const totals = {
+    categories: tournament.categories.length,
+    bracketsCreated: categoryReports.filter((c) => c.status === "created").length,
+    bracketsExisting: categoryReports.filter((c) => c.status === "exists").length,
+    skipped: categoryReports.filter((c) => c.status === "skipped").length,
+    playableMatches: tatami.assigned,
+  };
+
+  return { totals, categories: categoryReports, tatami };
+}
+
+async function distributeTournamentTatami(tournamentId: string, tatamiCount: number) {
+  const safeTatamiCount = Math.max(1, tatamiCount || 1);
+  const matches = await prisma.match.findMany({
+    where: {
+      tournamentId,
+      status: MatchStatus.PENDING,
+      redAthleteId: { not: null },
+      blueAthleteId: { not: null },
+    },
+    include: {
+      bracket: {
+        include: {
+          category: { select: { gender: true, weightMin: true, weightMax: true } },
+        },
+      },
+    },
+  });
+
+  const ordered = matches.sort((a, b) => {
+    const aCat = a.bracket.category;
+    const bCat = b.bracket.category;
+    return (
+      aCat.gender.localeCompare(bCat.gender) ||
+      aCat.weightMin - bCat.weightMin ||
+      aCat.weightMax - bCat.weightMax ||
+      a.round - b.round ||
+      a.position - b.position
+    );
+  });
+
+  const loads = Array.from({ length: safeTatamiCount }, (_, idx) => ({
+    tatamiNumber: idx + 1,
+    matches: 0,
+  }));
+
+  await prisma.$transaction(
+    ordered.map((match, index) => {
+      const tatamiNumber = (index % safeTatamiCount) + 1;
+      loads[tatamiNumber - 1]!.matches += 1;
+      return prisma.match.update({
+        where: { id: match.id },
+        data: { tatamiNumber },
+      });
+    }),
+  );
+
+  return { assigned: ordered.length, loads };
+}
+
 // ============================================================
 // DELETE
 // ============================================================

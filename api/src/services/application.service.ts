@@ -94,6 +94,14 @@ export async function listApplicationsForTournament(actorUserId: string, tournam
     orderBy: { createdAt: "desc" },
     include: {
       club: { select: { id: true, name: true, shortName: true, city: true } },
+      entries: {
+        select: {
+          id: true,
+          athleteId: true,
+          categoryId: true,
+          athlete: { select: { id: true, name: true, surname: true, gender: true, weightKg: true } },
+        },
+      },
       _count: { select: { entries: true } },
     },
   });

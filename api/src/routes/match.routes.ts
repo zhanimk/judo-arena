@@ -25,7 +25,6 @@ import { ZodError } from "zod";
 import {
   createJudgeSessionSchema,
   scoreEventSchema,
-  matchControlSchema,
   finishMatchSchema,
   assignTatamiSchema,
   listMatchesQuerySchema,
@@ -126,12 +125,12 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     return listMatches(q);
   });
 
-  app.get("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
+  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     return getMatch(request.params.id);
   });
 
   // ---- Контрол матча ----
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/start",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const judgeSessionId = await authorizeForMatch(request, reply);
@@ -142,7 +141,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/pause",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const judgeSessionId = await authorizeForMatch(request, reply);
@@ -153,7 +152,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/golden-score",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const judgeSessionId = await authorizeForMatch(request, reply);
@@ -165,7 +164,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- Очки ----
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/score",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { type, side } = scoreEventSchema.parse(request.body);
@@ -192,7 +191,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/finish",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { winnerSide, reason } = finishMatchSchema.parse(request.body);
@@ -213,7 +212,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- OSAEKOMI (удержание) ----
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/osaekomi",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { side } = startOsaekomiSchema.parse(request.body);
@@ -234,7 +233,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/toketa",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { reason } = endOsaekomiSchema.parse(request.body ?? {});
@@ -263,7 +262,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- Татами (только ADMIN) ----
-  app.patch(
+  app.patch<{ Params: { id: string } }>(
     "/:id/tatami",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -273,7 +272,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- Судейские сессии для конкретного матча ----
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/judge-session",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -295,14 +294,14 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
 export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.get(
+  app.get<{ Params: { token: string } }>(
     "/judge/:token",
     async (request: FastifyRequest<{ Params: { token: string } }>) => {
       return getValidSession(request.params.token);
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/judge-sessions/:id/revoke",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -311,7 +310,7 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
+  app.get<{ Params: { tournamentId: string; n: string } }>(
     "/tatami/:tournamentId/:n/queue",
     async (request: FastifyRequest<{ Params: { tournamentId: string; n: string } }>) => {
       return getTatamiQueue(request.params.tournamentId, parseInt(request.params.n, 10));

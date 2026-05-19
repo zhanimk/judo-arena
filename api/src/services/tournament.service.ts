@@ -88,6 +88,10 @@ export async function createTournament(creatorUserId: string, input: CreateTourn
       startDate: input.startDate,
       endDate: input.endDate,
       applicationDeadline: input.applicationDeadline,
+      mapUrl: input.mapUrl,
+      weighInLocation: input.weighInLocation,
+      weighInStart: input.weighInStart,
+      weighInEnd: input.weighInEnd,
       tatamiCount: input.tatamiCount,
       primaryLocale: input.primaryLocale,
       posterUrl: input.posterUrl,
@@ -120,6 +124,11 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
   if (nextDeadline && nextDeadline > nextStartDate) {
     throw new TournamentError("INVALID_APPLICATION_DEADLINE", "Дедлайн заявок должен быть не позже даты начала турнира", 400);
   }
+  const nextWeighInStart = input.weighInStart === null ? null : (input.weighInStart ?? t.weighInStart);
+  const nextWeighInEnd = input.weighInEnd === null ? null : (input.weighInEnd ?? t.weighInEnd);
+  if (nextWeighInStart && nextWeighInEnd && nextWeighInEnd < nextWeighInStart) {
+    throw new TournamentError("INVALID_WEIGH_IN_RANGE", "Окончание взвешивания должно быть не раньше начала", 400);
+  }
 
   return prisma.tournament.update({
     where: { id: tournamentId },
@@ -131,6 +140,10 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
       ...(input.startDate && { startDate: input.startDate }),
       ...(input.endDate && { endDate: input.endDate }),
       ...(input.applicationDeadline !== undefined && { applicationDeadline: input.applicationDeadline }),
+      ...(input.mapUrl !== undefined && { mapUrl: input.mapUrl }),
+      ...(input.weighInLocation !== undefined && { weighInLocation: input.weighInLocation }),
+      ...(input.weighInStart !== undefined && { weighInStart: input.weighInStart }),
+      ...(input.weighInEnd !== undefined && { weighInEnd: input.weighInEnd }),
       ...(input.tatamiCount !== undefined && { tatamiCount: input.tatamiCount }),
       ...(input.primaryLocale && { primaryLocale: input.primaryLocale }),
       ...(input.posterUrl !== undefined && { posterUrl: input.posterUrl }),
@@ -179,7 +192,37 @@ export async function deleteTournament(tournamentId: string) {
       409,
     );
   }
-  await prisma.tournament.delete({ where: { id: tournamentId } });
+
+  await prisma.$transaction(async (tx) => {
+    const categories = await tx.category.findMany({
+      where: { tournamentId },
+      select: { id: true },
+    });
+    const applications = await tx.application.findMany({
+      where: { tournamentId },
+      select: { id: true },
+    });
+    const categoryIds = categories.map((c) => c.id);
+    const applicationIds = applications.map((a) => a.id);
+
+    await tx.ratingEntry.deleteMany({ where: { tournamentId } });
+    if (applicationIds.length > 0 || categoryIds.length > 0) {
+      await tx.applicationEntry.deleteMany({
+        where: {
+          OR: [
+            ...(applicationIds.length > 0 ? [{ applicationId: { in: applicationIds } }] : []),
+            ...(categoryIds.length > 0 ? [{ categoryId: { in: categoryIds } }] : []),
+          ],
+        },
+      });
+    }
+    await tx.application.deleteMany({ where: { tournamentId } });
+
+    // MatchEvent және JudgeSession Bracket -> Match cascade арқылы өшеді.
+    await tx.bracket.deleteMany({ where: { tournamentId } });
+    await tx.category.deleteMany({ where: { tournamentId } });
+    await tx.tournament.delete({ where: { id: tournamentId } });
+  });
 }
 
 // ============================================================

@@ -15,6 +15,7 @@ import {
   getBracket,
   getBracketByCategory,
   listBracketsForTournament,
+  prepareTournamentDraw,
   deleteBracket,
   BracketError,
 } from "../services/bracket.service.js";
@@ -42,7 +43,7 @@ function attachErrorHandler(app: FastifyInstance) {
 export async function bracketTournamentRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.post(
+  app.post<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (
@@ -58,17 +59,26 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
     },
   );
 
-  app.get(
+  app.get<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
     async (request: FastifyRequest<{ Params: { tournamentId: string; categoryId: string } }>) => {
       return getBracketByCategory(request.params.tournamentId, request.params.categoryId);
     },
   );
 
-  app.get(
+  app.get<{ Params: { tournamentId: string } }>(
     "/:tournamentId/brackets",
     async (request: FastifyRequest<{ Params: { tournamentId: string } }>) => {
       return listBracketsForTournament(request.params.tournamentId);
+    },
+  );
+
+  app.post<{ Params: { tournamentId: string } }>(
+    "/:tournamentId/brackets/prepare",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { tournamentId: string } }>, reply) => {
+      const result = await prepareTournamentDraw(request.user!.sub, request.params.tournamentId);
+      return reply.code(201).send(result);
     },
   );
 }
@@ -77,11 +87,11 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 export async function bracketDirectRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.get("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
+  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     return getBracket(request.params.id);
   });
 
-  app.delete(
+  app.delete<{ Params: { id: string } }>(
     "/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {

@@ -87,7 +87,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(204).send();
   });
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/read",
     { preHandler: [authenticate] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {

@@ -99,7 +99,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     return listTournaments(q);
   });
 
-  app.get("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
+  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     return getTournament(request.params.id);
   });
 
@@ -113,7 +113,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch(
+  app.patch<{ Params: { id: string } }>(
     "/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -122,7 +122,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.delete(
+  app.delete<{ Params: { id: string } }>(
     "/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -131,7 +131,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/status",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -141,11 +141,11 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // Категории (вложенные)
-  app.get("/:id/categories", async (request: FastifyRequest<{ Params: { id: string } }>) => {
+  app.get<{ Params: { id: string } }>("/:id/categories", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     return listCategories(request.params.id);
   });
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/categories",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -156,7 +156,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // Заявки (вложенные)
-  app.get(
+  app.get<{ Params: { id: string } }>(
     "/:id/applications",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -164,7 +164,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/:id/applications",
     { preHandler: [authenticate, authorize("COACH")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -183,7 +183,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
   attachErrorHandler(app);
 
   // Категории
-  app.patch(
+  app.patch<{ Params: { id: string } }>(
     "/categories/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -192,7 +192,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.delete(
+  app.delete<{ Params: { id: string } }>(
     "/categories/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -202,7 +202,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
   );
 
   // Заявки
-  app.get(
+  app.get<{ Params: { id: string } }>(
     "/applications/:id",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -210,7 +210,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/entries",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
@@ -220,7 +220,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.delete(
+  app.delete<{ Params: { id: string; entryId: string } }>(
     "/applications/:id/entries/:entryId",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string; entryId: string } }>, reply) => {
@@ -229,7 +229,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/submit",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -237,7 +237,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/approve",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -246,7 +246,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/reject",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -255,7 +255,7 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/withdraw",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {

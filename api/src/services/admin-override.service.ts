@@ -118,12 +118,12 @@ export async function overrideMatchResult(
 
 /** Рекурсивный откат всех матчей вниз по сетке где играл oldWinner. */
 async function rollbackDownstream(
-  rootMatch: Match,
+  rootMatch: Match & { bracket?: { format: BracketFormat } | null },
   oldWinnerId: string,
   collected: Match[],
   actorUserId: string,
 ): Promise<void> {
-  if (rootMatch.bracket && (rootMatch as any).bracket.format === BracketFormat.ROUND_ROBIN) {
+  if (rootMatch.bracket?.format === BracketFormat.ROUND_ROBIN) {
     return; // В Round-Robin нет downstream
   }
 

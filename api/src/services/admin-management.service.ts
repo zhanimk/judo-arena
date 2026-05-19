@@ -57,6 +57,7 @@ export async function getClubFullDetails(clubId: string) {
         select: {
           id: true, name: true, surname: true, gender: true, dateOfBirth: true,
           weightKg: true, beltRank: true, role: true, isActive: true, email: true,
+          ratingEntries: { select: { points: true } },
         },
       },
       applications: {
@@ -78,7 +79,13 @@ export async function getClubFullDetails(clubId: string) {
   });
   const totalPoints = ratingEntries.reduce((sum, e) => sum + Number(e.points), 0);
 
-  return { ...club, totalPoints, ratingEntriesCount: ratingEntries.length };
+  const members = club.members.map((m) => ({
+    ...m,
+    totalPoints: m.ratingEntries.reduce((sum, e) => sum + Number(e.points), 0),
+    ratingEntries: undefined,
+  }));
+
+  return { ...club, members, totalPoints, ratingEntriesCount: ratingEntries.length };
 }
 
 // ============================================================

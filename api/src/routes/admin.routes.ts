@@ -99,7 +99,7 @@ function attachErrorHandler(app: FastifyInstance) {
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/matches/:id/override",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -108,7 +108,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Params: { id: string } }>(
     "/tournaments/:id/finalize",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -128,7 +128,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   // КЛУБЫ — управление
   // ============================================================
-  app.patch(
+  app.patch<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>(
     "/clubs/:id/block",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>) => {
@@ -136,7 +136,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
+  app.get<{ Params: { id: string } }>(
     "/clubs/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -163,7 +163,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
+  app.get<{ Params: { id: string } }>(
     "/users/:id",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
@@ -171,7 +171,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch(
+  app.patch<{ Params: { id: string }; Body: { active: boolean } }>(
     "/users/:id/active",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string }; Body: { active: boolean } }>) => {
@@ -182,7 +182,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   // ТУРНИРЫ — featured/archive
   // ============================================================
-  app.patch(
+  app.patch<{ Params: { id: string }; Body: { featured: boolean } }>(
     "/tournaments/:id/feature",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string }; Body: { featured: boolean } }>) => {
@@ -190,7 +190,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch(
+  app.patch<{ Params: { id: string }; Body: { archive: boolean } }>(
     "/tournaments/:id/archive",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string }; Body: { archive: boolean } }>) => {
@@ -201,7 +201,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   // SYSTEM CONFIG
   // ============================================================
-  app.get(
+  app.get<{ Params: { key: string } }>(
     "/system-config/:key",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { key: string } }>) => {
@@ -210,7 +210,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch(
+  app.patch<{ Params: { key: string }; Body: { value: unknown } }>(
     "/system-config/:key",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { key: string }; Body: { value: unknown } }>) => {
