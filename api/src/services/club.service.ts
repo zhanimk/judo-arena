@@ -286,6 +286,7 @@ export async function updateAthlete(
       id: true, email: true, name: true, surname: true,
       nameLatin: true, surnameLatin: true, dateOfBirth: true,
       gender: true, weightKg: true, beltRank: true,
+      phone: true, avatarUrl: true, preferredLocale: true,
       role: true, clubId: true, isActive: true, updatedAt: true,
     },
   });

@@ -28,6 +28,19 @@ import {
 } from "../services/rating.service.js";
 import { listAuditLogs } from "../services/audit.service.js";
 import {
+  toggleClubBlock,
+  getClubFullDetails,
+  listAllUsers,
+  getUserDetails,
+  toggleUserBlock,
+  setTournamentFeatured,
+  archiveTournament,
+  getSystemConfig,
+  updateSystemConfig,
+  getStats,
+  AdminManagementError,
+} from "../services/admin-management.service.js";
+import {
   generateBracketPdf,
   generateTournamentProtocolPdf,
   PdfError,
@@ -65,7 +78,7 @@ const pdfProtocolQuerySchema = z.object({
 
 function attachErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError) {
+    if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError || err instanceof AdminManagementError) {
       return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
     }
     if (err instanceof ZodError) {
@@ -110,6 +123,108 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       const q = auditQuerySchema.parse(request.query);
       return listAuditLogs(q);
     },
+  );
+
+  // ============================================================
+  // КЛУБЫ — управление
+  // ============================================================
+  app.patch(
+    "/clubs/:id/block",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>) => {
+      return toggleClubBlock(request.user!.sub, request.params.id, request.body.blocked, request.body.reason);
+    },
+  );
+
+  app.get(
+    "/clubs/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getClubFullDetails(request.params.id);
+    },
+  );
+
+  // ============================================================
+  // ПОЛЬЗОВАТЕЛИ — управление
+  // ============================================================
+  app.get(
+    "/users",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request) => {
+      const q = request.query as any;
+      return listAllUsers({
+        role: q.role,
+        search: q.search,
+        clubId: q.clubId,
+        isActive: q.isActive === "true" ? true : q.isActive === "false" ? false : undefined,
+        limit: q.limit ? parseInt(q.limit, 10) : 50,
+        offset: q.offset ? parseInt(q.offset, 10) : 0,
+      });
+    },
+  );
+
+  app.get(
+    "/users/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getUserDetails(request.params.id);
+    },
+  );
+
+  app.patch(
+    "/users/:id/active",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: { active: boolean } }>) => {
+      return toggleUserBlock(request.user!.sub, request.params.id, request.body.active);
+    },
+  );
+
+  // ============================================================
+  // ТУРНИРЫ — featured/archive
+  // ============================================================
+  app.patch(
+    "/tournaments/:id/feature",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: { featured: boolean } }>) => {
+      return setTournamentFeatured(request.user!.sub, request.params.id, request.body.featured);
+    },
+  );
+
+  app.patch(
+    "/tournaments/:id/archive",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: { archive: boolean } }>) => {
+      return archiveTournament(request.user!.sub, request.params.id, request.body.archive);
+    },
+  );
+
+  // ============================================================
+  // SYSTEM CONFIG
+  // ============================================================
+  app.get(
+    "/system-config/:key",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { key: string } }>) => {
+      const cfg = await getSystemConfig(request.params.key);
+      return cfg ?? { key: request.params.key, value: null };
+    },
+  );
+
+  app.patch(
+    "/system-config/:key",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { key: string }; Body: { value: unknown } }>) => {
+      return updateSystemConfig(request.user!.sub, request.params.key, request.body.value);
+    },
+  );
+
+  // ============================================================
+  // СТАТИСТИКА
+  // ============================================================
+  app.get(
+    "/stats",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async () => getStats(),
   );
 }
 

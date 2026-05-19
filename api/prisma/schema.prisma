@@ -134,6 +134,9 @@ model Club {
   country     String  @default("KZ")
   logoUrl     String?
   description Json?   // { ru, kk, en }
+  isActive    Boolean @default(true)
+  isBlocked   Boolean @default(false)
+  blockedReason String?
 
   createdById String
   createdBy   User    @relation("ClubCreator", fields: [createdById], references: [id])
@@ -173,10 +176,13 @@ model Tournament {
   city         String
   startDate    DateTime
   endDate      DateTime
+  applicationDeadline DateTime?
   status       TournamentStatus @default(DRAFT)
   tatamiCount  Int              @default(1)
   primaryLocale Locale          @default(kk)
   posterUrl    String?
+  isFeatured   Boolean          @default(false)
+  isArchived   Boolean          @default(false)
 
   createdById String
   createdBy   User @relation("TournamentCreator", fields: [createdById], references: [id])

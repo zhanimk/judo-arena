@@ -63,6 +63,8 @@ export async function createOrGetDraftApplication(
   });
   if (existing) return existing;
 
+  assertApplicationDeadlineOpen(tournament.applicationDeadline ?? tournament.startDate);
+
   return prisma.application.create({
     data: {
       tournamentId,
@@ -102,7 +104,19 @@ export async function getApplication(actorUserId: string, applicationId: string)
     where: { id: applicationId },
     include: {
       club: true,
-      tournament: { select: { id: true, name: true, status: true, startDate: true } },
+      tournament: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+      startDate: true,
+      endDate: true,
+      applicationDeadline: true,
+      location: true,
+          city: true,
+          posterUrl: true,
+        },
+      },
       entries: {
         include: {
           athlete: {
@@ -131,11 +145,15 @@ export async function addEntry(
   athleteId: string,
   categoryId: string,
 ) {
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { tournament: { select: { startDate: true, applicationDeadline: true } } },
+  });
   if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
   if (app.status !== ApplicationStatus.DRAFT) {
     throw new ApplicationError("LOCKED", "Изменять можно только заявку в статусе DRAFT", 409);
   }
+  assertApplicationDeadlineOpen(app.tournament.applicationDeadline ?? app.tournament.startDate);
   await assertCanManageApplication(actorUserId, app.clubId);
 
   const [athlete, category] = await Promise.all([
@@ -200,7 +218,10 @@ export async function removeEntry(actorUserId: string, applicationId: string, en
 export async function submit(actorUserId: string, applicationId: string) {
   const app = await prisma.application.findUnique({
     where: { id: applicationId },
-    include: { _count: { select: { entries: true } } },
+    include: {
+      _count: { select: { entries: true } },
+      tournament: { select: { startDate: true, applicationDeadline: true } },
+    },
   });
   if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
   if (app.status !== ApplicationStatus.DRAFT) {
@@ -209,6 +230,7 @@ export async function submit(actorUserId: string, applicationId: string) {
   if (app._count.entries === 0) {
     throw new ApplicationError("EMPTY_APPLICATION", "Нельзя отправить пустую заявку", 409);
   }
+  assertApplicationDeadlineOpen(app.tournament.applicationDeadline ?? app.tournament.startDate);
   await assertCanManageApplication(actorUserId, app.clubId);
 
   return prisma.application.update({
@@ -222,12 +244,15 @@ export async function approve(actorUserId: string, applicationId: string, review
   if (!actor || actor.role !== UserRole.ADMIN) {
     throw new ApplicationError("FORBIDDEN", "Только админ может одобрять заявки", 403);
   }
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { tournament: { select: { id: true, name: true } } },
+  });
   if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
   if (app.status !== ApplicationStatus.SUBMITTED) {
     throw new ApplicationError("INVALID_STATUS", "Одобрять можно только SUBMITTED", 409);
   }
-  return prisma.application.update({
+  const updated = await prisma.application.update({
     where: { id: applicationId },
     data: {
       status: ApplicationStatus.APPROVED,
@@ -235,6 +260,8 @@ export async function approve(actorUserId: string, applicationId: string, review
       reviewerNotes,
     },
   });
+  await notifyCoachesOfApplicationReview(app, ApplicationStatus.APPROVED, reviewerNotes);
+  return updated;
 }
 
 export async function reject(actorUserId: string, applicationId: string, reviewerNotes?: string) {
@@ -242,12 +269,15 @@ export async function reject(actorUserId: string, applicationId: string, reviewe
   if (!actor || actor.role !== UserRole.ADMIN) {
     throw new ApplicationError("FORBIDDEN", "Только админ может отклонять заявки", 403);
   }
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { tournament: { select: { id: true, name: true } } },
+  });
   if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
   if (app.status !== ApplicationStatus.SUBMITTED) {
     throw new ApplicationError("INVALID_STATUS", "Отклонять можно только SUBMITTED", 409);
   }
-  return prisma.application.update({
+  const updated = await prisma.application.update({
     where: { id: applicationId },
     data: {
       status: ApplicationStatus.REJECTED,
@@ -255,6 +285,8 @@ export async function reject(actorUserId: string, applicationId: string, reviewe
       reviewerNotes,
     },
   });
+  await notifyCoachesOfApplicationReview(app, ApplicationStatus.REJECTED, reviewerNotes);
+  return updated;
 }
 
 export async function withdraw(actorUserId: string, applicationId: string) {
@@ -341,4 +373,55 @@ async function assertCanViewApplication(actorUserId: string, clubId: string): Pr
     "Просмотр заявки доступен только тренеру клуба или админу",
     403,
   );
+}
+
+async function notifyCoachesOfApplicationReview(
+  app: { id: string; clubId: string; tournamentId: string; tournament?: { name: any } | null },
+  status: ApplicationStatus,
+  reviewerNotes?: string,
+) {
+  const coaches = await prisma.user.findMany({
+    where: { clubId: app.clubId, role: UserRole.COACH, isActive: true },
+    select: { id: true },
+  });
+  if (coaches.length === 0) return;
+
+  const tournamentName = localizeName(app.tournament?.name) || "турнир";
+  const isApproved = status === ApplicationStatus.APPROVED;
+  const title = isApproved ? "Өтінім бекітілді" : "Өтінім қайтарылды";
+  const body = isApproved
+    ? `${tournamentName}: клуб өтінімі бекітілді.${reviewerNotes ? ` Ескерту: ${reviewerNotes}` : ""}`
+    : `${tournamentName}: өтінімде түзету керек.${reviewerNotes ? ` Себебі: ${reviewerNotes}` : ""}`;
+
+  await prisma.notification.createMany({
+    data: coaches.map((coach) => ({
+      userId: coach.id,
+      type: isApproved ? "application_approved" : "application_rejected",
+      titleKey: title,
+      bodyKey: body,
+      payload: {
+        applicationId: app.id,
+        tournamentId: app.tournamentId,
+        status,
+        reviewerNotes: reviewerNotes ?? null,
+      },
+      locale: "kk",
+    })),
+  });
+}
+
+function localizeName(value: any): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value.kk || value.ru || value.en || "";
+}
+
+function assertApplicationDeadlineOpen(deadline: Date) {
+  if (new Date() > deadline) {
+    throw new ApplicationError(
+      "APPLICATION_DEADLINE_PASSED",
+      "Дедлайн подачи заявки уже прошёл",
+      409,
+    );
+  }
 }

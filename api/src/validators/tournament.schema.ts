@@ -34,6 +34,7 @@ export const createTournamentSchema = z
     city: z.string().min(1).max(100),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
+    applicationDeadline: z.coerce.date().optional(),
     tatamiCount: z.coerce.number().int().min(1).max(20).default(1),
     primaryLocale: z.enum(["ru", "kk", "en"]).default("kk"),
     posterUrl: z.string().url().optional(),
@@ -42,6 +43,10 @@ export const createTournamentSchema = z
   .refine((v) => v.endDate >= v.startDate, {
     message: "endDate должна быть ≥ startDate",
     path: ["endDate"],
+  })
+  .refine((v) => !v.applicationDeadline || v.applicationDeadline <= v.startDate, {
+    message: "applicationDeadline должен быть не позже startDate",
+    path: ["applicationDeadline"],
   });
 
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
@@ -54,6 +59,7 @@ export const updateTournamentSchema = z
     city: z.string().min(1).max(100).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
+    applicationDeadline: z.coerce.date().nullable().optional(),
     tatamiCount: z.coerce.number().int().min(1).max(20).optional(),
     primaryLocale: z.enum(["ru", "kk", "en"]).optional(),
     posterUrl: z.string().url().nullable().optional(),

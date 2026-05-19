@@ -113,6 +113,7 @@ export const updateAthleteSchema = z
     weightKg: z.coerce.number().positive().max(300).optional(),
     beltRank: z.string().max(20).optional(),
     phone: z.string().max(20).optional(),
+    avatarUrl: z.string().url().nullable().optional(),
     isActive: z.boolean().optional(),
     clubId: z.string().nullable().optional(),  // null = отвязать от клуба
   })

@@ -87,6 +87,7 @@ export async function createTournament(creatorUserId: string, input: CreateTourn
       city: input.city,
       startDate: input.startDate,
       endDate: input.endDate,
+      applicationDeadline: input.applicationDeadline,
       tatamiCount: input.tatamiCount,
       primaryLocale: input.primaryLocale,
       posterUrl: input.posterUrl,
@@ -114,6 +115,11 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
   if (input.startDate && input.endDate && input.endDate < input.startDate) {
     throw new TournamentError("INVALID_RANGE", "endDate должна быть ≥ startDate", 400);
   }
+  const nextStartDate = input.startDate ?? t.startDate;
+  const nextDeadline = input.applicationDeadline === null ? null : (input.applicationDeadline ?? t.applicationDeadline);
+  if (nextDeadline && nextDeadline > nextStartDate) {
+    throw new TournamentError("INVALID_APPLICATION_DEADLINE", "Дедлайн заявок должен быть не позже даты начала турнира", 400);
+  }
 
   return prisma.tournament.update({
     where: { id: tournamentId },
@@ -124,6 +130,7 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
       ...(input.city && { city: input.city }),
       ...(input.startDate && { startDate: input.startDate }),
       ...(input.endDate && { endDate: input.endDate }),
+      ...(input.applicationDeadline !== undefined && { applicationDeadline: input.applicationDeadline }),
       ...(input.tatamiCount !== undefined && { tatamiCount: input.tatamiCount }),
       ...(input.primaryLocale && { primaryLocale: input.primaryLocale }),
       ...(input.posterUrl !== undefined && { posterUrl: input.posterUrl }),
