@@ -88,6 +88,7 @@ export async function getMatch(matchId: string) {
 export async function listMatches(query: {
   tournamentId?: string;
   bracketId?: string;
+  athleteId?: string;
   tatamiNumber?: number;
   status?: MatchStatus;
   limit: number;
@@ -96,6 +97,9 @@ export async function listMatches(query: {
   const where: any = {};
   if (query.tournamentId) where.tournamentId = query.tournamentId;
   if (query.bracketId) where.bracketId = query.bracketId;
+  if (query.athleteId) {
+    where.OR = [{ redAthleteId: query.athleteId }, { blueAthleteId: query.athleteId }];
+  }
   if (query.tatamiNumber !== undefined) where.tatamiNumber = query.tatamiNumber;
   if (query.status) where.status = query.status;
 
@@ -108,6 +112,7 @@ export async function listMatches(query: {
       redAthlete: { select: { id: true, name: true, surname: true } },
       blueAthlete: { select: { id: true, name: true, surname: true } },
       bracket: { select: { id: true, format: true, categoryId: true, category: true } },
+      tournament: { select: { id: true, name: true, status: true, startDate: true } },
     },
   });
 }

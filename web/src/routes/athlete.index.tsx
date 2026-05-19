@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, StatCard, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { LayoutDashboard, Trophy, Activity, User, Bell, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -34,10 +34,8 @@ function AthleteOverview() {
   });
   const matchesQuery = useQuery({
     queryKey: ["athlete-matches", athleteId],
-    queryFn: () => api.matches.list(),
+    queryFn: () => api.matches.list({ athleteId, limit: 200 }),
     enabled: !!athleteId,
-    select: (matches: any[]) =>
-      matches.filter((m) => m.redAthlete?.id === athleteId || m.blueAthlete?.id === athleteId),
   });
 
   if (!user) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gold" /></div>;
@@ -93,7 +91,9 @@ function AthleteOverview() {
                   return (
                     <li key={m.id} className="flex items-center justify-between glass rounded-md p-3">
                       <div>
-                        <div className="font-medium">vs {oppName}</div>
+                        <Link to="/athlete/matches/$id" params={{ id: m.id }} className="font-medium hover:text-gold">
+                          vs {oppName}
+                        </Link>
                         <div className="text-xs text-muted-foreground">Раунд {m.round}</div>
                       </div>
                       <span className={`text-xs ${won ? "text-gold" : m.status === "COMPLETED" ? "text-destructive" : "text-muted-foreground"}`}>

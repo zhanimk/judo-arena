@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { LayoutDashboard, User, Trophy, Activity, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,10 +35,8 @@ function Results() {
 
   const matchesQuery = useQuery({
     queryKey: ["my-matches", athleteId],
-    queryFn: () => api.matches.list(),
+    queryFn: () => api.matches.list({ athleteId, limit: 200 }),
     enabled: !!athleteId,
-    select: (matches: any[]) =>
-      matches.filter((m) => m.redAthlete?.id === athleteId || m.blueAthlete?.id === athleteId),
   });
 
   return (
@@ -80,7 +78,9 @@ function Results() {
                 return (
                   <li key={m.id} className="flex justify-between glass rounded-md p-3">
                     <div>
-                      <div className="font-medium">vs {opp?.name ?? "TBD"} {opp?.surname ?? ""}</div>
+                      <Link to="/athlete/matches/$id" params={{ id: m.id }} className="font-medium hover:text-gold">
+                        vs {opp?.name ?? "TBD"} {opp?.surname ?? ""}
+                      </Link>
                       <div className="text-xs text-muted-foreground">Round {m.round}</div>
                     </div>
                     <span className={`text-xs ${won ? "text-gold" : m.status === "COMPLETED" ? "text-destructive" : "text-muted-foreground"}`}>

@@ -74,6 +74,7 @@ export type FinishMatchInput = z.infer<typeof finishMatchSchema>;
 export const listMatchesQuerySchema = z.object({
   tournamentId: z.string().optional(),
   bracketId: z.string().optional(),
+  athleteId: z.string().optional(),
   tatamiNumber: z.coerce.number().int().optional(),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),

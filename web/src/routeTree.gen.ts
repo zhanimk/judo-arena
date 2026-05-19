@@ -46,7 +46,9 @@ import { Route as AdminBracketsRouteImport } from './routes/admin.brackets'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminApplicationsRouteImport } from './routes/admin.applications'
 import { Route as CoachTournamentsIdRouteImport } from './routes/coach.tournaments.$id'
+import { Route as CoachAthletesIdRouteImport } from './routes/coach.athletes.$id'
 import { Route as CoachApplicationsIdRouteImport } from './routes/coach.applications.$id'
+import { Route as AthleteMatchesIdRouteImport } from './routes/athlete.matches.$id'
 import { Route as AdminUsersIdRouteImport } from './routes/admin.users.$id'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 import { Route as AdminClubsIdRouteImport } from './routes/admin.clubs.$id'
@@ -236,10 +238,20 @@ const CoachTournamentsIdRoute = CoachTournamentsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => CoachTournamentsRoute,
 } as any)
+const CoachAthletesIdRoute = CoachAthletesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CoachAthletesRoute,
+} as any)
 const CoachApplicationsIdRoute = CoachApplicationsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => CoachApplicationsRoute,
+} as any)
+const AthleteMatchesIdRoute = AthleteMatchesIdRouteImport.update({
+  id: '/matches/$id',
+  path: '/matches/$id',
+  getParentRoute: () => AthleteRoute,
 } as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/$id',
@@ -284,7 +296,7 @@ export interface FileRoutesByFullPath {
   '/athlete/results': typeof AthleteResultsRoute
   '/athlete/tournaments': typeof AthleteTournamentsRoute
   '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRoute
+  '/coach/athletes': typeof CoachAthletesRouteWithChildren
   '/coach/club': typeof CoachClubRoute
   '/coach/notifications': typeof CoachNotificationsRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
@@ -297,7 +309,9 @@ export interface FileRoutesByFullPath {
   '/admin/clubs/$id': typeof AdminClubsIdRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$id': typeof AdminUsersIdRoute
+  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
   '/coach/applications/$id': typeof CoachApplicationsIdRoute
+  '/coach/athletes/$id': typeof CoachAthletesIdRoute
   '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
 }
 export interface FileRoutesByTo {
@@ -324,7 +338,7 @@ export interface FileRoutesByTo {
   '/athlete/results': typeof AthleteResultsRoute
   '/athlete/tournaments': typeof AthleteTournamentsRoute
   '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRoute
+  '/coach/athletes': typeof CoachAthletesRouteWithChildren
   '/coach/club': typeof CoachClubRoute
   '/coach/notifications': typeof CoachNotificationsRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
@@ -337,7 +351,9 @@ export interface FileRoutesByTo {
   '/admin/clubs/$id': typeof AdminClubsIdRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$id': typeof AdminUsersIdRoute
+  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
   '/coach/applications/$id': typeof CoachApplicationsIdRoute
+  '/coach/athletes/$id': typeof CoachAthletesIdRoute
   '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
 }
 export interface FileRoutesById {
@@ -368,7 +384,7 @@ export interface FileRoutesById {
   '/athlete/results': typeof AthleteResultsRoute
   '/athlete/tournaments': typeof AthleteTournamentsRoute
   '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRoute
+  '/coach/athletes': typeof CoachAthletesRouteWithChildren
   '/coach/club': typeof CoachClubRoute
   '/coach/notifications': typeof CoachNotificationsRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
@@ -381,7 +397,9 @@ export interface FileRoutesById {
   '/admin/clubs/$id': typeof AdminClubsIdRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/admin/users/$id': typeof AdminUsersIdRoute
+  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
   '/coach/applications/$id': typeof CoachApplicationsIdRoute
+  '/coach/athletes/$id': typeof CoachAthletesIdRoute
   '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
 }
 export interface FileRouteTypes {
@@ -426,7 +444,9 @@ export interface FileRouteTypes {
     | '/admin/clubs/$id'
     | '/admin/tournaments/$id'
     | '/admin/users/$id'
+    | '/athlete/matches/$id'
     | '/coach/applications/$id'
+    | '/coach/athletes/$id'
     | '/coach/tournaments/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -466,7 +486,9 @@ export interface FileRouteTypes {
     | '/admin/clubs/$id'
     | '/admin/tournaments/$id'
     | '/admin/users/$id'
+    | '/athlete/matches/$id'
     | '/coach/applications/$id'
+    | '/coach/athletes/$id'
     | '/coach/tournaments/$id'
   id:
     | '__root__'
@@ -509,7 +531,9 @@ export interface FileRouteTypes {
     | '/admin/clubs/$id'
     | '/admin/tournaments/$id'
     | '/admin/users/$id'
+    | '/athlete/matches/$id'
     | '/coach/applications/$id'
+    | '/coach/athletes/$id'
     | '/coach/tournaments/$id'
   fileRoutesById: FileRoutesById
 }
@@ -788,12 +812,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoachTournamentsIdRouteImport
       parentRoute: typeof CoachTournamentsRoute
     }
+    '/coach/athletes/$id': {
+      id: '/coach/athletes/$id'
+      path: '/$id'
+      fullPath: '/coach/athletes/$id'
+      preLoaderRoute: typeof CoachAthletesIdRouteImport
+      parentRoute: typeof CoachAthletesRoute
+    }
     '/coach/applications/$id': {
       id: '/coach/applications/$id'
       path: '/$id'
       fullPath: '/coach/applications/$id'
       preLoaderRoute: typeof CoachApplicationsIdRouteImport
       parentRoute: typeof CoachApplicationsRoute
+    }
+    '/athlete/matches/$id': {
+      id: '/athlete/matches/$id'
+      path: '/matches/$id'
+      fullPath: '/athlete/matches/$id'
+      preLoaderRoute: typeof AthleteMatchesIdRouteImport
+      parentRoute: typeof AthleteRoute
     }
     '/admin/users/$id': {
       id: '/admin/users/$id'
@@ -892,6 +930,7 @@ interface AthleteRouteChildren {
   AthleteResultsRoute: typeof AthleteResultsRoute
   AthleteTournamentsRoute: typeof AthleteTournamentsRoute
   AthleteIndexRoute: typeof AthleteIndexRoute
+  AthleteMatchesIdRoute: typeof AthleteMatchesIdRoute
 }
 
 const AthleteRouteChildren: AthleteRouteChildren = {
@@ -900,6 +939,7 @@ const AthleteRouteChildren: AthleteRouteChildren = {
   AthleteResultsRoute: AthleteResultsRoute,
   AthleteTournamentsRoute: AthleteTournamentsRoute,
   AthleteIndexRoute: AthleteIndexRoute,
+  AthleteMatchesIdRoute: AthleteMatchesIdRoute,
 }
 
 const AthleteRouteWithChildren =
@@ -916,6 +956,18 @@ const CoachApplicationsRouteChildren: CoachApplicationsRouteChildren = {
 const CoachApplicationsRouteWithChildren =
   CoachApplicationsRoute._addFileChildren(CoachApplicationsRouteChildren)
 
+interface CoachAthletesRouteChildren {
+  CoachAthletesIdRoute: typeof CoachAthletesIdRoute
+}
+
+const CoachAthletesRouteChildren: CoachAthletesRouteChildren = {
+  CoachAthletesIdRoute: CoachAthletesIdRoute,
+}
+
+const CoachAthletesRouteWithChildren = CoachAthletesRoute._addFileChildren(
+  CoachAthletesRouteChildren,
+)
+
 interface CoachTournamentsRouteChildren {
   CoachTournamentsIdRoute: typeof CoachTournamentsIdRoute
 }
@@ -929,7 +981,7 @@ const CoachTournamentsRouteWithChildren =
 
 interface CoachRouteChildren {
   CoachApplicationsRoute: typeof CoachApplicationsRouteWithChildren
-  CoachAthletesRoute: typeof CoachAthletesRoute
+  CoachAthletesRoute: typeof CoachAthletesRouteWithChildren
   CoachClubRoute: typeof CoachClubRoute
   CoachNotificationsRoute: typeof CoachNotificationsRoute
   CoachTournamentsRoute: typeof CoachTournamentsRouteWithChildren
@@ -938,7 +990,7 @@ interface CoachRouteChildren {
 
 const CoachRouteChildren: CoachRouteChildren = {
   CoachApplicationsRoute: CoachApplicationsRouteWithChildren,
-  CoachAthletesRoute: CoachAthletesRoute,
+  CoachAthletesRoute: CoachAthletesRouteWithChildren,
   CoachClubRoute: CoachClubRoute,
   CoachNotificationsRoute: CoachNotificationsRoute,
   CoachTournamentsRoute: CoachTournamentsRouteWithChildren,

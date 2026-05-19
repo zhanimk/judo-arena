@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/coach/athletes")({
   head: () => ({ meta: [{ title: "Спортшылар — Judo-Arena" }] }),
@@ -66,7 +67,11 @@ function CoachAthletes() {
                 <tbody className="divide-y divide-border/30">
                   {(membersQuery.data ?? []).map((a: any) => (
                     <tr key={a.id} className="hover:bg-gold/5">
-                      <td className="py-2.5 font-medium">{a.name} {a.surname}</td>
+                      <td className="py-2.5 font-medium">
+                        <Link to="/coach/athletes/$id" params={{ id: a.id }} className="hover:text-gold">
+                          {a.name} {a.surname}
+                        </Link>
+                      </td>
                       <td className="text-xs text-muted-foreground">{a.gender === "MALE" ? "Ер" : "Әйел"}</td>
                       <td className="text-xs text-muted-foreground">{a.dateOfBirth ? getAge(a.dateOfBirth) : "—"}</td>
                       <td className="text-xs">{a.weightKg ? `${a.weightKg} кг` : "—"}</td>

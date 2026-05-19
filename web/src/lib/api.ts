@@ -177,6 +177,8 @@ export const api = {
   athletes: {
     update: (id: string, data: any) =>
       request<any>(`/api/athletes/${id}`, { method: "PATCH", json: data }),
+    detachFromClub: (id: string) =>
+      request<void>(`/api/athletes/${id}/club`, { method: "DELETE" }),
   },
 
   // --- TOURNAMENTS ---
@@ -233,7 +235,7 @@ export const api = {
 
   // --- MATCHES ---
   matches: {
-    list: (params?: { tournamentId?: string; bracketId?: string; status?: string; tatamiNumber?: number; limit?: number; offset?: number }) => {
+    list: (params?: { tournamentId?: string; bracketId?: string; athleteId?: string; status?: string; tatamiNumber?: number; limit?: number; offset?: number }) => {
       const q = new URLSearchParams(params as any).toString();
       return request<any[]>(`/api/matches${q ? "?" + q : ""}`);
     },
