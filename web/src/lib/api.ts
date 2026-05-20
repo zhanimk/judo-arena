@@ -206,6 +206,7 @@ export const api = {
 
   // --- APPLICATIONS ---
   applications: {
+    mineAsAthlete: () => request<any[]>("/api/athlete/applications"),
     get: (id: string) => request<any>(`/api/applications/${id}`),
     addEntry: (id: string, athleteId: string, categoryId: string) =>
       request<any>(`/api/applications/${id}/entries`, { method: "POST", json: { athleteId, categoryId } }),

@@ -18,6 +18,7 @@
  *   Заявки:
  *     GET    /api/tournaments/:id/applications  — список (COACH своего клуба или ADMIN)
  *     POST   /api/tournaments/:id/applications  — создать/получить DRAFT (COACH)
+ *     GET    /api/athlete/applications          — заявки текущего спортсмена
  *     GET    /api/applications/:id              — детали
  *     POST   /api/applications/:id/entries      — добавить спортсмена
  *     DELETE /api/applications/:id/entries/:entryId
@@ -58,6 +59,7 @@ import {
 import {
   createOrGetDraftApplication,
   listApplicationsForTournament,
+  listAthleteApplicationEntries,
   getApplication,
   addEntry,
   removeEntry,
@@ -198,6 +200,14 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteCategory(request.params.id);
       return reply.code(204).send();
+    },
+  );
+
+  app.get(
+    "/athlete/applications",
+    { preHandler: [authenticate, authorize("ATHLETE")] },
+    async (request) => {
+      return listAthleteApplicationEntries(request.user!.sub);
     },
   );
 

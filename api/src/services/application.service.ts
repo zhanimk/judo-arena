@@ -144,6 +144,49 @@ export async function getApplication(actorUserId: string, applicationId: string)
   return app;
 }
 
+export async function listAthleteApplicationEntries(actorUserId: string) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorUserId },
+    select: { id: true, role: true },
+  });
+  if (!actor) throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
+  if (actor.role !== UserRole.ATHLETE) {
+    throw new ApplicationError("FORBIDDEN", "Просмотр доступен только спортсмену", 403);
+  }
+
+  return prisma.applicationEntry.findMany({
+    where: { athleteId: actor.id },
+    orderBy: { id: "desc" },
+    include: {
+      category: true,
+      application: {
+        select: {
+          id: true,
+          status: true,
+          notes: true,
+          reviewerNotes: true,
+          submittedAt: true,
+          reviewedAt: true,
+          club: { select: { id: true, name: true, shortName: true, city: true } },
+          tournament: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              applicationDeadline: true,
+              location: true,
+              city: true,
+              tatamiCount: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
 // ============================================================
 // ENTRIES (спортсмен в заявке)
 // ============================================================
