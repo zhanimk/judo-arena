@@ -372,7 +372,7 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     include: {
       bracket: {
         include: {
-          category: { select: { gender: true, weightMin: true, weightMax: true } },
+          category: { select: { gender: true, ageMin: true, weightMin: true, weightMax: true } },
         },
       },
     },
@@ -383,8 +383,10 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     const bCat = b.bracket.category;
     return (
       aCat.gender.localeCompare(bCat.gender) ||
+      aCat.ageMin - bCat.ageMin ||
       aCat.weightMin - bCat.weightMin ||
       aCat.weightMax - bCat.weightMax ||
+      sectionOrder(a.bracketSection) - sectionOrder(b.bracketSection) ||
       a.round - b.round ||
       a.position - b.position
     );
@@ -407,6 +409,17 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
   );
 
   return { assigned: ordered.length, loads };
+}
+
+function sectionOrder(section: string | null): number {
+  const order: Record<string, number> = {
+    main: 1,
+    repechage: 2,
+    bronze1: 3,
+    bronze2: 3,
+    final: 4,
+  };
+  return section ? order[section] ?? 9 : 9;
 }
 
 // ============================================================

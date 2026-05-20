@@ -553,6 +553,9 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
     const data: any = {};
     if (p.slot === "red") data.redAthleteId = p.athleteId;
     else data.blueAthleteId = p.athleteId;
+    if (!target.tatamiNumber && match.tatamiNumber) {
+      data.tatamiNumber = match.tatamiNumber;
+    }
 
     await prisma.match.update({ where: { id: target.id }, data });
   }
