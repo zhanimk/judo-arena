@@ -43,6 +43,13 @@ interface Props {
   format: "SE_IJF" | "ROUND_ROBIN" | "MIXED";
 }
 
+const CARD_W = 260;
+const CARD_H = 98;
+const ROUND_GAP = 96;
+const HEADER_H = 54;
+const BASE_GAP = 26;
+const PAD = 20;
+
 export function OlympicBracket({ matches, size, format }: Props) {
   if (matches.length === 0) {
     return <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>;
@@ -81,33 +88,102 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
   const roundLabels = [
     "1/32", "1/16", "1/8", "1/4", "Жартылай финал", "Финал"
   ].slice(-mainRounds.length);
+  const layout = getMainBracketLayout(mainRounds);
+  const championX = PAD + mainRounds.length * (CARD_W + ROUND_GAP);
+  const totalWidth = champion ? layout.width + CARD_W + ROUND_GAP : layout.width;
+  const lineColor = "url(#olympicBracketLine)";
 
   return (
     <div className="space-y-8">
       {/* Основная сетка */}
       <div className="overflow-x-auto pb-4">
-        <div className="flex gap-8 min-w-max items-stretch">
-          {mainRounds.map((roundMatches, idx) => (
-            <RoundColumn
-              key={idx}
-              label={roundLabels[idx] ?? `Раунд ${idx + 1}`}
-              matches={roundMatches}
-              isFirst={idx === 0}
-              isLast={idx === mainRounds.length - 1}
-            />
+        <div
+          className="relative min-w-max rounded-2xl bg-gradient-to-br from-gold/5 via-background to-sky-100/10"
+          style={{ width: totalWidth, height: layout.height }}
+        >
+          <svg className="pointer-events-none absolute inset-0 z-0" width={totalWidth} height={layout.height} aria-hidden="true">
+            <defs>
+              <linearGradient id="olympicBracketLine" x1="0" x2="1">
+                <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.58)" />
+                <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.42)" />
+              </linearGradient>
+            </defs>
+            {mainRounds.slice(0, -1).flatMap((roundMatches, roundIndex) =>
+              roundMatches.map((_, matchIndex) => {
+                const from = layout.positions[roundIndex]?.[matchIndex];
+                const to = layout.positions[roundIndex + 1]?.[Math.floor(matchIndex / 2)];
+                if (!from || !to) return null;
+
+                const x1 = from.x + CARD_W;
+                const y1 = from.y + CARD_H / 2;
+                const x2 = to.x;
+                const y2 = to.y + CARD_H / 2;
+                const mid = x1 + ROUND_GAP / 2;
+
+                return (
+                  <path
+                    key={`${roundIndex}-${matchIndex}`}
+                    d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
+                    fill="none"
+                    stroke={lineColor}
+                    strokeWidth="2"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              }),
+            )}
+            {champion && layout.positions.at(-1)?.[0] && (
+              <path
+                d={`M ${layout.positions.at(-1)![0].x + CARD_W} ${layout.positions.at(-1)![0].y + CARD_H / 2} H ${championX}`}
+                fill="none"
+                stroke={lineColor}
+                strokeWidth="2"
+                strokeLinecap="square"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </svg>
+
+          {mainRounds.map((roundMatches, roundIndex) => (
+            <div
+              key={roundLabels[roundIndex] ?? roundIndex}
+              className="absolute z-10"
+              style={{ left: layout.positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}
+            >
+              <div className="mb-3 flex h-10 items-center justify-center">
+                <span className="rounded-full border border-gold/30 bg-background/90 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold shadow-sm backdrop-blur">
+                  {roundLabels[roundIndex] ?? `Раунд ${roundIndex + 1}`}
+                </span>
+              </div>
+              {roundMatches.map((match, matchIndex) => {
+                const position = layout.positions[roundIndex]![matchIndex]!;
+                return (
+                  <div
+                    key={match.id}
+                    className="absolute"
+                    style={{ left: 0, top: position.y - HEADER_H, width: CARD_W, height: CARD_H }}
+                  >
+                    <MatchCard match={match} final={roundIndex === mainRounds.length - 1} />
+                  </div>
+                );
+              })}
+            </div>
           ))}
 
-          {/* Чемпион */}
           {champion && (
-            <div className="flex flex-col justify-center min-w-[240px] pl-4">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-gold/80 text-center mb-3">Чемпион</div>
-              <div className="relative bg-gradient-gold rounded-xl p-5 text-center shadow-gold border-2 border-gold">
-                <Trophy className="h-8 w-8 text-gold-foreground mx-auto mb-2" />
-                <div className="font-display text-xl font-bold text-gold-foreground">
+            <div
+              className="absolute z-10 flex items-center"
+              style={{ left: championX, top: layout.positions.at(-1)?.[0]?.y ?? HEADER_H, width: CARD_W, height: CARD_H }}
+            >
+              <div className="w-full rounded-lg border-2 border-gold/70 bg-gradient-gold p-4 text-center shadow-gold">
+                <Trophy className="mx-auto mb-1.5 h-6 w-6 text-gold-foreground" />
+                <div className="font-display text-lg font-bold text-gold-foreground">
                   {champion.name} {champion.surname}
                 </div>
                 {champion.clubCity && (
-                  <div className="text-xs text-gold-foreground/80 mt-1">{champion.clubCity}</div>
+                  <div className="mt-1 text-xs text-gold-foreground/80">{champion.clubCity}</div>
                 )}
               </div>
             </div>
@@ -143,22 +219,24 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
   );
 }
 
-function RoundColumn({ label, matches, isFirst, isLast }: {
-  label: string; matches: BracketMatch[]; isFirst: boolean; isLast: boolean;
-}) {
-  const matchHeight = 96; // высота карточки матча
-  const gap = isFirst ? 16 : matchHeight * Math.pow(2, 0) * 1.5; // увеличивается экспоненциально
+function getMainBracketLayout(rounds: BracketMatch[][]) {
+  const positions = rounds.map((roundMatches, roundIndex) => {
+    const top = HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
+    const gap = (CARD_H + BASE_GAP) * Math.pow(2, roundIndex) - CARD_H;
 
-  return (
-    <div className="flex flex-col min-w-[240px]" style={{ justifyContent: matches.length === 1 ? "center" : "space-around" }}>
-      <div className="text-[10px] uppercase tracking-[0.3em] text-gold/80 text-center mb-3">
-        {label}
-      </div>
-      <div className="flex flex-col gap-4 flex-1 justify-around">
-        {matches.map((m) => <MatchCard key={m.id} match={m} final={isLast} />)}
-      </div>
-    </div>
+    return roundMatches.map((_, matchIndex) => ({
+      x: PAD + roundIndex * (CARD_W + ROUND_GAP),
+      y: top + matchIndex * (CARD_H + gap),
+    }));
+  });
+
+  const width = PAD * 2 + rounds.length * CARD_W + Math.max(0, rounds.length - 1) * ROUND_GAP;
+  const height = Math.max(
+    360,
+    ...positions.flatMap((round) => round.map((position) => position.y + CARD_H + PAD)),
   );
+
+  return { positions, width, height };
 }
 
 function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: boolean; bronze?: boolean }) {
@@ -168,7 +246,7 @@ function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: bool
   const score = match.scoreSnapshot ?? {};
 
   return (
-    <div className={`relative bg-white/95 dark:bg-card rounded-lg overflow-hidden shadow-md border-2 transition-all
+    <div className={`relative h-full bg-white/95 dark:bg-card rounded-lg overflow-hidden shadow-md border-2 transition-all
       ${liveBorder ? "border-destructive shadow-[0_0_24px_-6px_rgba(220,50,50,0.55)]" :
         final ? "border-gold/60" :
         bronze ? "border-amber-600/60" :
