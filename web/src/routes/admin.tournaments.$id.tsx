@@ -1040,7 +1040,18 @@ function ProtocolTab({ tournament }: { tournament: any }) {
             {prepareError && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{prepareError}</div>}
             {prepareResult && (
               <div className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
-                Дайын: {prepareResult.totals?.bracketsCreated ?? 0} жаңа сетка, {prepareResult.totals?.bracketsExisting ?? 0} дайын болған, {prepareResult.totals?.playableMatches ?? 0} матч татамиге бөлінді.
+                <div>
+                  Дайын: {prepareResult.totals?.bracketsCreated ?? 0} жаңа сетка, {prepareResult.totals?.bracketsExisting ?? 0} дайын болған, {prepareResult.totals?.playableMatches ?? 0} матч татамиге бөлінді.
+                </div>
+                {prepareResult.tatami?.loads?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    {prepareResult.tatami.loads.map((load: any) => (
+                      <span key={load.tatamiNumber} className="rounded-full border border-emerald-500/30 bg-background/30 px-2.5 py-1">
+                        Татами {load.tatamiNumber}: {load.categories ?? 0} санат · {load.matches ?? 0} матч
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

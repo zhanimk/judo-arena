@@ -20,6 +20,7 @@ import {
 import { seedAthletes, nextPowerOfTwo } from "./bracket-engine/seeding.js";
 import { buildSingleElimination } from "./bracket-engine/single-elimination.js";
 import { buildRoundRobin } from "./bracket-engine/round-robin.js";
+import { planTatamiAssignments, type TatamiPlanCategory } from "./bracket-engine/tatami-plan.js";
 
 export class BracketError extends Error {
   constructor(public code: string, message: string, public httpStatus = 400) {
@@ -361,7 +362,6 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
 }
 
 async function distributeTournamentTatami(tournamentId: string, tatamiCount: number) {
-  const safeTatamiCount = Math.max(1, tatamiCount || 1);
   const matches = await prisma.match.findMany({
     where: {
       tournamentId,
@@ -372,54 +372,49 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     include: {
       bracket: {
         include: {
-          category: { select: { gender: true, ageMin: true, weightMin: true, weightMax: true } },
+          category: { select: { id: true, gender: true, ageMin: true, ageMax: true, weightMin: true, weightMax: true } },
         },
       },
     },
   });
 
-  const ordered = matches.sort((a, b) => {
-    const aCat = a.bracket.category;
-    const bCat = b.bracket.category;
-    return (
-      aCat.gender.localeCompare(bCat.gender) ||
-      aCat.ageMin - bCat.ageMin ||
-      aCat.weightMin - bCat.weightMin ||
-      aCat.weightMax - bCat.weightMax ||
-      sectionOrder(a.bracketSection) - sectionOrder(b.bracketSection) ||
-      a.round - b.round ||
-      a.position - b.position
-    );
-  });
+  const categoriesByBracket = new Map<string, TatamiPlanCategory>();
+  for (const match of matches) {
+    const category = match.bracket.category;
+    const current = categoriesByBracket.get(match.bracketId) ?? {
+      bracketId: match.bracketId,
+      categoryId: category.id,
+      gender: category.gender,
+      ageMin: category.ageMin,
+      ageMax: category.ageMax,
+      weightMin: category.weightMin,
+      weightMax: category.weightMax,
+      matches: [],
+    };
+    current.matches.push({
+      id: match.id,
+      bracketSection: match.bracketSection,
+      round: match.round,
+      position: match.position,
+    });
+    categoriesByBracket.set(match.bracketId, current);
+  }
 
-  const loads = Array.from({ length: safeTatamiCount }, (_, idx) => ({
-    tatamiNumber: idx + 1,
-    matches: 0,
-  }));
+  const plan = planTatamiAssignments([...categoriesByBracket.values()], tatamiCount);
 
   await prisma.$transaction(
-    ordered.map((match, index) => {
-      const tatamiNumber = (index % safeTatamiCount) + 1;
-      loads[tatamiNumber - 1]!.matches += 1;
-      return prisma.match.update({
-        where: { id: match.id },
-        data: { tatamiNumber, queuePosition: loads[tatamiNumber - 1]!.matches },
-      });
-    }),
+    plan.assignments.map((assignment) =>
+      prisma.match.update({
+        where: { id: assignment.matchId },
+        data: {
+          tatamiNumber: assignment.tatamiNumber,
+          queuePosition: assignment.queuePosition,
+        },
+      }),
+    ),
   );
 
-  return { assigned: ordered.length, loads };
-}
-
-function sectionOrder(section: string | null): number {
-  const order: Record<string, number> = {
-    main: 1,
-    repechage: 2,
-    bronze1: 3,
-    bronze2: 3,
-    final: 4,
-  };
-  return section ? order[section] ?? 9 : 9;
+  return { assigned: plan.assignments.length, loads: plan.loads, categories: plan.categories };
 }
 
 // ============================================================

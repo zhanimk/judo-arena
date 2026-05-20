@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import { seedAthletes, nextPowerOfTwo } from "../seeding.js";
 import { buildSingleElimination, propagateResult } from "../single-elimination.js";
 import { buildRoundRobin, computeStandings } from "../round-robin.js";
+import { planTatamiAssignments } from "../tatami-plan.js";
 
 describe("nextPowerOfTwo", () => {
   it("возвращает 2 для 0, 1, 2", () => {
@@ -179,5 +180,69 @@ describe("computeStandings", () => {
     const s = computeStandings(ath, matches);
     expect(s[0]!.athleteId).toBe("b"); // выиграл — первый
     expect(s[1]!.athleteId).toBe("a");
+  });
+});
+
+describe("planTatamiAssignments", () => {
+  it("keeps every category on one tatami and balances categories by load", () => {
+    const plan = planTatamiAssignments([
+      {
+        bracketId: "b1",
+        categoryId: "u12-34",
+        gender: "FEMALE",
+        ageMin: 10,
+        ageMax: 11,
+        weightMin: 30,
+        weightMax: 34,
+        matches: [
+          { id: "m1", bracketSection: "main", round: 1, position: 0 },
+          { id: "m2", bracketSection: "final", round: 2, position: 0 },
+        ],
+      },
+      {
+        bracketId: "b2",
+        categoryId: "u12-38",
+        gender: "MALE",
+        ageMin: 10,
+        ageMax: 11,
+        weightMin: 34,
+        weightMax: 38,
+        matches: [
+          { id: "m3", bracketSection: "main", round: 1, position: 0 },
+          { id: "m4", bracketSection: "main", round: 1, position: 1 },
+        ],
+      },
+    ], 2);
+
+    const b1Tatamis = new Set(plan.assignments.filter((a) => ["m1", "m2"].includes(a.matchId)).map((a) => a.tatamiNumber));
+    const b2Tatamis = new Set(plan.assignments.filter((a) => ["m3", "m4"].includes(a.matchId)).map((a) => a.tatamiNumber));
+
+    expect(b1Tatamis.size).toBe(1);
+    expect(b2Tatamis.size).toBe(1);
+    expect(plan.loads.map((load) => load.matches).sort()).toEqual([2, 2]);
+  });
+
+  it("orders matches like a JudoTV queue: main, repechage, bronze, final", () => {
+    const plan = planTatamiAssignments([
+      {
+        bracketId: "b1",
+        categoryId: "u14-50",
+        gender: "MALE",
+        ageMin: 12,
+        ageMax: 13,
+        weightMin: 46,
+        weightMax: 50,
+        matches: [
+          { id: "final", bracketSection: "final", round: 3, position: 0 },
+          { id: "bronze", bracketSection: "bronze1", round: 3, position: 0 },
+          { id: "rep", bracketSection: "repechage", round: 2, position: 0 },
+          { id: "main2", bracketSection: "main", round: 2, position: 0 },
+          { id: "main1", bracketSection: "main", round: 1, position: 0 },
+        ],
+      },
+    ], 1);
+
+    expect(plan.assignments.map((a) => a.matchId)).toEqual(["main1", "main2", "rep", "bronze", "final"]);
+    expect(plan.assignments.map((a) => a.queuePosition)).toEqual([1, 2, 3, 4, 5]);
   });
 });
