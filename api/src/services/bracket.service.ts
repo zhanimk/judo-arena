@@ -403,7 +403,7 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
       loads[tatamiNumber - 1]!.matches += 1;
       return prisma.match.update({
         where: { id: match.id },
-        data: { tatamiNumber },
+        data: { tatamiNumber, queuePosition: loads[tatamiNumber - 1]!.matches },
       });
     }),
   );

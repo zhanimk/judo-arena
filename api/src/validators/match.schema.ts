@@ -22,6 +22,13 @@ export const assignTatamiSchema = z
   .strict();
 export type AssignTatamiInput = z.infer<typeof assignTatamiSchema>;
 
+export const reorderTatamiQueueSchema = z
+  .object({
+    direction: z.enum(["up", "down"]),
+  })
+  .strict();
+export type ReorderTatamiQueueInput = z.infer<typeof reorderTatamiQueueSchema>;
+
 // Действие судьи на матче
 export const scoreEventSchema = z
   .object({

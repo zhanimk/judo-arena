@@ -1299,6 +1299,7 @@ function buildJudoTvTatamiPlan(matches: any[], tatamiCount: number) {
 function judoTvMatchSort(a: any, b: any) {
   return (
     matchStatusOrder(a.status) - matchStatusOrder(b.status) ||
+    (a.queuePosition ?? 999999) - (b.queuePosition ?? 999999) ||
     categoryOrder(a) - categoryOrder(b) ||
     matchSectionOrder(a.bracketSection) - matchSectionOrder(b.bracketSection) ||
     (a.round ?? 0) - (b.round ?? 0) ||

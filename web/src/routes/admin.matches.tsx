@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   ExternalLink,
   Gavel,
@@ -109,6 +111,13 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Татами тағайындау кезінде қате шықты"),
+  });
+  const reorderQueue = useMutation({
+    mutationFn: ({ matchId, direction }: { matchId: string; direction: "up" | "down" }) =>
+      api.matches.reorderQueue(matchId, direction),
+    onMutate: () => setError(""),
+    onSuccess: invalidateBoard,
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Кезекті өзгерту кезінде қате шықты"),
   });
 
   const createSession = useMutation({
@@ -263,6 +272,8 @@ export function TournamentScoreboardPanel({
                       onDragEnd={() => setDraggedMatchId(null)}
                       onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
                       onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
+                      onMoveUp={() => reorderQueue.mutate({ matchId: m.id, direction: "up" })}
+                      onMoveDown={() => reorderQueue.mutate({ matchId: m.id, direction: "down" })}
                     />
                   ))}
                 </div>
@@ -421,6 +432,8 @@ function MatchCard({
   onDragEnd,
   onJudge,
   onUnassign,
+  onMoveUp,
+  onMoveDown,
 }: {
   match: Match;
   live?: boolean;
@@ -430,6 +443,8 @@ function MatchCard({
   onDragEnd: () => void;
   onJudge: () => void;
   onUnassign?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const hasPair = Boolean(match.redAthlete && match.blueAthlete);
   return (
@@ -467,6 +482,28 @@ function MatchCard({
       )}
 
       <div className="mt-3 flex flex-wrap gap-2">
+        {(onMoveUp || onMoveDown) && match.status === "PENDING" && (
+          <div className="inline-flex overflow-hidden rounded-md border border-border">
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={!onMoveUp}
+              className="px-2 py-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+              title="Кезекте жоғары"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!onMoveDown}
+              className="border-l border-border px-2 py-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+              title="Кезекте төмен"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {hasPair && (
           <button
             onClick={onJudge}
@@ -524,7 +561,7 @@ function buildTatamiBoard(matches: Match[], tatamiCount: number) {
 function matchSort(a: Match, b: Match) {
   if (a.status === "IN_PROGRESS" && b.status !== "IN_PROGRESS") return -1;
   if (a.status !== "IN_PROGRESS" && b.status === "IN_PROGRESS") return 1;
-  return (a.round ?? 0) - (b.round ?? 0) || (a.position ?? 0) - (b.position ?? 0);
+  return (a.queuePosition ?? 999999) - (b.queuePosition ?? 999999) || (a.round ?? 0) - (b.round ?? 0) || (a.position ?? 0) - (b.position ?? 0);
 }
 
 function openJudgeModal(

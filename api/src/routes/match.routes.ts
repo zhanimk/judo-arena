@@ -27,6 +27,7 @@ import {
   scoreEventSchema,
   finishMatchSchema,
   assignTatamiSchema,
+  reorderTatamiQueueSchema,
   listMatchesQuerySchema,
   startOsaekomiSchema,
   endOsaekomiSchema,
@@ -40,6 +41,7 @@ import {
   addScoreEvent,
   finishMatchManually,
   assignToTatami,
+  reorderTatamiQueue,
   getTatamiQueue,
   startOsaekomi,
   endOsaekomi,
@@ -266,8 +268,17 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     "/:id/tatami",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { tatamiNumber } = assignTatamiSchema.parse(request.body);
-      return assignToTatami(request.params.id, tatamiNumber);
+      const { tatamiNumber, queuePosition } = assignTatamiSchema.parse(request.body);
+      return assignToTatami(request.params.id, tatamiNumber, queuePosition);
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/:id/queue",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { direction } = reorderTatamiQueueSchema.parse(request.body);
+      return reorderTatamiQueue(request.params.id, direction);
     },
   );
 

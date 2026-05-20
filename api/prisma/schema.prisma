@@ -305,6 +305,7 @@ model Match {
   blueAthlete     User?       @relation("BlueAthlete", fields: [blueAthleteId], references: [id])
 
   tatamiNumber    Int?
+  queuePosition   Int?
   status          MatchStatus @default(PENDING)
 
   winnerId        String?
@@ -327,6 +328,7 @@ model Match {
   @@index([bracketId, round, position])
   @@index([status])
   @@index([tatamiNumber])
+  @@index([tatamiNumber, queuePosition])
 }
 
 model MatchEvent {

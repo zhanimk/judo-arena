@@ -254,6 +254,8 @@ export const api = {
       request<any>(`/api/matches/${id}/finish`, { method: "POST", json: { winnerSide, reason }, judgeToken }),
     assignTatami: (id: string, tatamiNumber: number | null) =>
       request<any>(`/api/matches/${id}/tatami`, { method: "PATCH", json: { tatamiNumber } }),
+    reorderQueue: (id: string, direction: "up" | "down") =>
+      request<any>(`/api/matches/${id}/queue`, { method: "PATCH", json: { direction } }),
     tatamiQueue: (tournamentId: string, tatamiNumber: number) =>
       request<any[]>(`/api/tatami/${tournamentId}/${tatamiNumber}/queue`),
     createJudgeSession: (id: string, judgeName?: string) =>

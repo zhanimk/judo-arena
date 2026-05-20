@@ -107,7 +107,7 @@ export async function listMatches(query: {
     where,
     take: query.limit,
     skip: query.offset,
-    orderBy: [{ tatamiNumber: "asc" }, { round: "asc" }, { position: "asc" }],
+    orderBy: [{ tatamiNumber: "asc" }, { queuePosition: "asc" }, { round: "asc" }, { position: "asc" }],
     include: {
       redAthlete: { select: { id: true, name: true, surname: true } },
       blueAthlete: { select: { id: true, name: true, surname: true } },
@@ -555,6 +555,7 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
     else data.blueAthleteId = p.athleteId;
     if (!target.tatamiNumber && match.tatamiNumber) {
       data.tatamiNumber = match.tatamiNumber;
+      data.queuePosition = await nextQueuePosition(match.tournamentId, match.tatamiNumber);
     }
 
     await prisma.match.update({ where: { id: target.id }, data });
@@ -568,13 +569,77 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
 export async function assignToTatami(
   matchId: string,
   tatamiNumber: number | null,
+  queuePosition?: number,
 ): Promise<Match> {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  const nextPosition = tatamiNumber
+    ? queuePosition ?? (match.tatamiNumber === tatamiNumber ? match.queuePosition : null) ?? await nextQueuePosition(match.tournamentId, tatamiNumber)
+    : null;
   return prisma.match.update({
     where: { id: matchId },
-    data: { tatamiNumber },
+    data: { tatamiNumber, queuePosition: nextPosition },
   });
+}
+
+export async function reorderTatamiQueue(
+  matchId: string,
+  direction: "up" | "down",
+): Promise<Match> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (!match.tatamiNumber) {
+    throw new MatchError("MATCH_NOT_ASSIGNED", "Матч не назначен на татами", 409);
+  }
+  if (match.status !== MatchStatus.PENDING) {
+    throw new MatchError("MATCH_NOT_PENDING", "Двигать можно только матч в ожидании", 409);
+  }
+
+  const queue = await prisma.match.findMany({
+    where: {
+      tournamentId: match.tournamentId,
+      tatamiNumber: match.tatamiNumber,
+      status: MatchStatus.PENDING,
+    },
+    orderBy: [
+      { queuePosition: "asc" },
+      { round: "asc" },
+      { position: "asc" },
+    ],
+  });
+  const index = queue.findIndex((item) => item.id === matchId);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index < 0 || swapIndex < 0 || swapIndex >= queue.length) return match;
+
+  await prisma.$transaction(
+    queue.map((item, idx) =>
+      prisma.match.update({
+        where: { id: item.id },
+        data: { queuePosition: idx + 1 },
+      }),
+    ),
+  );
+
+  const current = queue[index]!;
+  const other = queue[swapIndex]!;
+  const currentPosition = swapIndex + 1;
+  const otherPosition = index + 1;
+
+  await prisma.$transaction([
+    prisma.match.update({ where: { id: current.id }, data: { queuePosition: currentPosition } }),
+    prisma.match.update({ where: { id: other.id }, data: { queuePosition: otherPosition } }),
+  ]);
+
+  return prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+}
+
+async function nextQueuePosition(tournamentId: string, tatamiNumber: number): Promise<number> {
+  const last = await prisma.match.findFirst({
+    where: { tournamentId, tatamiNumber },
+    orderBy: { queuePosition: "desc" },
+    select: { queuePosition: true },
+  });
+  return (last?.queuePosition ?? 0) + 1;
 }
 
 export async function getTatamiQueue(tournamentId: string, tatamiNumber: number) {
@@ -584,7 +649,7 @@ export async function getTatamiQueue(tournamentId: string, tatamiNumber: number)
       tatamiNumber,
       status: { in: [MatchStatus.PENDING, MatchStatus.IN_PROGRESS] },
     },
-    orderBy: [{ status: "desc" }, { round: "asc" }, { position: "asc" }],
+    orderBy: [{ status: "desc" }, { queuePosition: "asc" }, { round: "asc" }, { position: "asc" }],
     include: {
       redAthlete: { select: { id: true, name: true, surname: true } },
       blueAthlete: { select: { id: true, name: true, surname: true } },
