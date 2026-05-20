@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Maximize2, MonitorPlay } from "lucide-react";
+import { Clock, Maximize2, MonitorPlay } from "lucide-react";
 import { useMemo } from "react";
 import { api } from "@/lib/api";
 import { useRealtime } from "@/lib/socket";
@@ -82,8 +82,11 @@ function LiveWall() {
 
 function TatamiWall({ tatami }: { tatami: { number: number; current: Match | null; queue: Match[]; completed: Match[] } }) {
   const current = tatami.current;
+  const next = tatami.queue[0] ?? null;
+  const afterNext = tatami.queue[1] ?? null;
+  const standby = tatami.queue.slice(2, 5);
   return (
-    <section className="flex min-h-[560px] flex-col rounded-lg border border-white/10 bg-[#0a1228]">
+    <section className="flex min-h-[560px] flex-col rounded-lg border border-white/10 bg-[#0a1228] shadow-2xl shadow-black/25">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <div>
           <div className="text-xs uppercase tracking-[0.22em] text-white/45">Tatami</div>
@@ -96,9 +99,9 @@ function TatamiWall({ tatami }: { tatami: { number: number; current: Match | nul
 
       <div className="flex-1 p-5">
         {current ? (
-          <div className="rounded-lg border border-red-400/35 bg-red-500/10 p-5">
+          <div className="rounded-lg border border-red-400/35 bg-red-500/10 p-5 shadow-lg shadow-red-950/25">
             <div className="mb-4 flex items-center justify-between text-sm text-white/55">
-              <span>R{current.round}.{current.position}</span>
+              <span>{matchMeta(current)}</span>
               <span>{current.scoreSnapshot?.isGoldenScore ? "Golden Score" : "Негізгі уақыт"}</span>
             </div>
             <div className="grid gap-4">
@@ -116,21 +119,25 @@ function TatamiWall({ tatami }: { tatami: { number: number; current: Match | nul
         )}
 
         <div className="mt-5">
-          <div className="mb-2 text-xs uppercase tracking-[0.22em] text-white/45">Келесі</div>
-          <div className="space-y-2">
-            {tatami.queue.slice(0, 4).map((m, index) => (
-              <div key={m.id} className="flex items-center gap-3 rounded-md border border-white/10 bg-white/[0.04] p-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gold/20 text-sm font-bold text-gold">
-                  {index + 1}
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{athleteName(m.redAthlete)} vs {athleteName(m.blueAthlete)}</div>
-                  <div className="text-xs text-white/45">R{m.round}.{m.position}</div>
-                </div>
-              </div>
-            ))}
-            {tatami.queue.length === 0 && <div className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-white/45">Кезек бос</div>}
+          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-white/45">
+            <Clock className="h-3.5 w-3.5" />
+            Кезек
           </div>
+          {next ? (
+            <div className="grid gap-3">
+              <QueueFeature label="Келесі" match={next} tone="next" />
+              {afterNext ? <QueueFeature label="Одан кейін" match={afterNext} tone="after" /> : null}
+              {standby.length > 0 && (
+                <div className="space-y-2">
+                  {standby.map((m, index) => (
+                    <QueueCompact key={m.id} match={m} index={index + 3} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-white/45">Кезек бос</div>
+          )}
         </div>
       </div>
 
@@ -145,6 +152,35 @@ function TatamiWall({ tatami }: { tatami: { number: number; current: Match | nul
         )}
       </div>
     </section>
+  );
+}
+
+function QueueFeature({ label, match, tone }: { label: string; match: Match; tone: "next" | "after" }) {
+  const strong = tone === "next";
+  return (
+    <div className={`rounded-lg border p-4 ${
+      strong ? "border-gold/45 bg-gold/15" : "border-white/15 bg-white/[0.05]"
+    }`}>
+      <div className={`text-xs uppercase tracking-[0.22em] ${strong ? "text-gold" : "text-white/45"}`}>{label}</div>
+      <div className="mt-2 truncate font-display text-2xl font-bold">
+        {athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}
+      </div>
+      <div className="mt-1 truncate text-sm text-white/50">{matchMeta(match)}</div>
+    </div>
+  );
+}
+
+function QueueCompact({ match, index }: { match: Match; index: number }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/[0.04] p-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white/10 text-sm font-bold text-white/70">
+        {index}
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold">{athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}</div>
+        <div className="truncate text-xs text-white/45">{matchMeta(match)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -190,7 +226,7 @@ function buildTatamis(matches: Match[], tatamiCount: number) {
 function matchSort(a: Match, b: Match) {
   if (a.status === "IN_PROGRESS" && b.status !== "IN_PROGRESS") return -1;
   if (a.status !== "IN_PROGRESS" && b.status === "IN_PROGRESS") return 1;
-  return (a.round ?? 0) - (b.round ?? 0) || (a.position ?? 0) - (b.position ?? 0);
+  return (a.queuePosition ?? 999999) - (b.queuePosition ?? 999999) || (a.round ?? 0) - (b.round ?? 0) || (a.position ?? 0) - (b.position ?? 0);
 }
 
 function athleteName(athlete: any) {
@@ -202,4 +238,25 @@ function localizeName(value: any) {
   if (!value) return "Жарыс";
   if (typeof value === "string") return value;
   return value.kk ?? value.ru ?? value.en ?? Object.values(value)[0] ?? "Жарыс";
+}
+
+function matchMeta(match: Match): string {
+  return `${categoryTitle(match.bracket?.category)} · ${sectionLabel(match.bracketSection)} · R${match.round}.${match.position}`;
+}
+
+function categoryTitle(category: any): string {
+  if (!category) return "Санат";
+  const gender = category.gender === "MALE" ? "Ер" : "Қыз";
+  return `${gender} ${category.ageMin}-${category.ageMax} · ${category.weightMin}-${category.weightMax} кг`;
+}
+
+function sectionLabel(section?: string | null): string {
+  const labels: Record<string, string> = {
+    main: "Негізгі",
+    repechage: "Жұбату",
+    bronze1: "Қола",
+    bronze2: "Қола",
+    final: "Финал",
+  };
+  return section ? labels[section] ?? section : "Сетка";
 }
