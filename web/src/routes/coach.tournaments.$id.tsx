@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bell,
   Building2,
@@ -131,7 +132,7 @@ function CoachTournamentDetail() {
   });
 
   const ownApplication = appsQuery.data?.[0] ?? null;
-  const entries = ownApplication?.entries ?? [];
+  const entries = useMemo(() => ownApplication?.entries ?? [], [ownApplication]);
   const enteredByCategory = useMemo(() => {
     const map = new Map<string, any[]>();
     for (const entry of entries) {
@@ -141,6 +142,12 @@ function CoachTournamentDetail() {
     }
     return map;
   }, [entries]);
+  const entryIssues = useMemo(() => entries.map((entry: any) => ({
+    entry,
+    issues: validateApplicationEntry(entry),
+  })), [entries]);
+  const invalidEntryCount = entryIssues.filter((item) => item.issues.length > 0).length;
+  const enteredCategoryCount = enteredByCategory.size;
 
   if (tQuery.isLoading) {
     return (
@@ -267,6 +274,43 @@ function CoachTournamentDetail() {
         <MiniStat label="Матчтар" value={clubMatches.length} />
       </div>
 
+      {ownApplication && (
+        <Panel
+          title="Менің өтінімім"
+          action={<ApplicationStatusBadge status={ownApplication.status} />}
+        >
+          <div className="grid gap-3 sm:grid-cols-4">
+            <ApplicationMetric label="Спортшы" value={entries.length} />
+            <ApplicationMetric label="Санат" value={enteredCategoryCount} />
+            <ApplicationMetric label="Тексеру" value={invalidEntryCount ? `${invalidEntryCount} мәселе` : "OK"} tone={invalidEntryCount ? "red" : "green"} />
+            <ApplicationMetric label="Мәртебе" value={applicationStatusLabel(ownApplication.status)} tone={ownApplication.status === "APPROVED" ? "green" : ownApplication.status === "REJECTED" ? "red" : "gold"} />
+          </div>
+          {ownApplication.reviewerNotes && (
+            <div className={`mt-4 rounded-md border p-3 text-sm ${
+              ownApplication.status === "REJECTED"
+                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                : "border-gold/30 bg-gold/10 text-gold"
+            }`}>
+              <div className="mb-1 text-xs uppercase tracking-widest">
+                {ownApplication.status === "REJECTED" ? "Админ қайтару себебі" : "Админ ескертуі"}
+              </div>
+              {ownApplication.reviewerNotes}
+            </div>
+          )}
+          {invalidEntryCount > 0 && (
+            <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="h-4 w-4" />
+                Өтінімде қайта тексеруді қажет ететін спортшылар бар
+              </div>
+              <div className="mt-1 text-xs text-amber-100/80">
+                Салмақ, жас немесе жыныс категория талабына сәйкес келмесе, админ өтінімді қайтаруы мүмкін.
+              </div>
+            </div>
+          )}
+        </Panel>
+      )}
+
       <Panel
         title="Санаттар және подгруппалар"
         action={
@@ -374,9 +418,7 @@ function CoachTournamentDetail() {
                                     <div className="text-xs text-muted-foreground">{getAge(athlete.dateOfBirth)} жас · {athlete.weightKg} кг · {athlete.beltRank ?? "—"}</div>
                                   </div>
                                   {alreadyIn ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
-                                      <CheckCircle2 className="h-3 w-3" /> Заявлен
-                                    </span>
+                                    <EntryCheckBadge issues={validateApplicationEntry(categoryEntries.find((entry: any) => entry.athleteId === athlete.id) ?? { athlete, category })} />
                                   ) : isOpenDraft ? (
                                     <button
                                       onClick={() => addEntry.mutate({ athleteId: athlete.id, categoryId: category.id })}
@@ -434,6 +476,28 @@ function CoachTournamentDetail() {
       {ownApplication?.status === "DRAFT" && (
         <Panel title="Өтінімді аяқтау">
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
+            {entries.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {entryIssues.map(({ entry, issues }) => (
+                  <div key={entry.id} className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-medium">{entry.athlete?.name} {entry.athlete?.surname}</div>
+                        <div className="text-xs text-muted-foreground">{categoryTitle(entry.category)}</div>
+                      </div>
+                      <EntryCheckBadge issues={issues} />
+                    </div>
+                    {issues.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
+                        {issues.map((issue) => (
+                          <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <label className="flex items-start gap-3 text-sm">
               <input
                 type="checkbox"
@@ -448,7 +512,7 @@ function CoachTournamentDetail() {
             </label>
             <button
               onClick={() => submitApplication.mutate()}
-              disabled={submitApplication.isPending || entries.length === 0 || !responsibilityAccepted || deadlinePassed}
+              disabled={submitApplication.isPending || entries.length === 0 || !responsibilityAccepted || deadlinePassed || invalidEntryCount > 0}
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
               {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -456,6 +520,7 @@ function CoachTournamentDetail() {
             </button>
             {entries.length === 0 && <div className="mt-2 text-xs text-muted-foreground">Алдымен кемінде бір спортшы қосыңыз.</div>}
             {deadlinePassed && <div className="mt-2 text-xs text-destructive">Өтінім дедлайны өтті.</div>}
+            {invalidEntryCount > 0 && <div className="mt-2 text-xs text-amber-200">Алдымен категорияға сәйкес емес спортшыларды түзетіңіз.</div>}
             {!responsibilityAccepted && entries.length > 0 && <div className="mt-2 text-xs text-muted-foreground">Жіберу үшін жауапкершілік келісімін белгілеңіз.</div>}
           </div>
         </Panel>
@@ -477,6 +542,23 @@ function MiniStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function ApplicationMetric({ label, value, tone }: { label: string; value: string | number; tone?: "gold" | "green" | "red" }) {
+  const toneClass = tone === "gold"
+    ? "text-gold"
+    : tone === "green"
+      ? "text-emerald-300"
+      : tone === "red"
+        ? "text-destructive"
+        : "text-foreground";
+
+  return (
+    <div className="rounded-md border border-border/60 bg-background/30 p-3">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-display text-2xl font-bold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { c: string; l: string }> = {
     DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
@@ -487,6 +569,40 @@ function StatusBadge({ status }: { status: string }) {
   };
   const item = map[status] ?? { c: "bg-muted text-muted-foreground", l: status };
   return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.l}</span>;
+}
+
+function ApplicationStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { c: string; l: string }> = {
+    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
+    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
+    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
+    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/30", l: "Қайтарылды" },
+    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Қайтарып алынды" },
+  };
+  const item = map[status] ?? { c: "bg-muted text-muted-foreground", l: status };
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.l}</span>;
+}
+
+function applicationStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    DRAFT: "Жоба",
+    SUBMITTED: "Қарауда",
+    APPROVED: "Бекітілді",
+    REJECTED: "Қайтарылды",
+    WITHDRAWN: "Қайтарып алынды",
+  };
+  return map[status] ?? status;
+}
+
+function EntryCheckBadge({ issues }: { issues: string[] }) {
+  if (issues.length === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
+        <CheckCircle2 className="h-3 w-3" /> OK
+      </span>
+    );
+  }
+  return <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} мәселе</span>;
 }
 
 function MatchStatusBadge({ status }: { status: string }) {
@@ -524,6 +640,14 @@ function fitsCategory(athlete: any, category: any): boolean {
     athlete.weightKg <= category.weightMax;
 }
 
+function validateApplicationEntry(entry: any): string[] {
+  const athlete = entry.athlete;
+  const category = entry.category;
+  if (!athlete || !category) return ["дерек толық емес"];
+  const reason = categoryMismatchReason(athlete, category);
+  return reason === "OK" ? [] : [reason];
+}
+
 function categoryMismatchReason(athlete: any, category: any): string {
   if (!athlete.gender) return "жыныс көрсетілмеген";
   if (athlete.gender !== category.gender) return "жынысы сәйкес емес";
@@ -534,7 +658,7 @@ function categoryMismatchReason(athlete: any, category: any): string {
   if (athlete.weightKg <= category.weightMin || athlete.weightKg > category.weightMax) {
     return `салмағы ${athlete.weightKg} кг, керек (${category.weightMin}, ${category.weightMax}]`;
   }
-  return "сәйкес емес";
+  return "OK";
 }
 
 function getAge(dob: string): number {
