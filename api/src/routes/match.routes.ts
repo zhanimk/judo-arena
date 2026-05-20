@@ -269,7 +269,13 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { tatamiNumber, queuePosition } = assignTatamiSchema.parse(request.body);
-      return assignToTatami(request.params.id, tatamiNumber, queuePosition);
+      const match = await assignToTatami(request.params.id, tatamiNumber, queuePosition);
+      emitMatchEvent(match, "tatami:queueUpdate", {
+        matchId: match.id,
+        tatamiNumber: match.tatamiNumber,
+        queuePosition: match.queuePosition,
+      });
+      return match;
     },
   );
 
@@ -278,7 +284,13 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { direction } = reorderTatamiQueueSchema.parse(request.body);
-      return reorderTatamiQueue(request.params.id, direction);
+      const match = await reorderTatamiQueue(request.params.id, direction);
+      emitMatchEvent(match, "tatami:queueUpdate", {
+        matchId: match.id,
+        tatamiNumber: match.tatamiNumber,
+        queuePosition: match.queuePosition,
+      });
+      return match;
     },
   );
 

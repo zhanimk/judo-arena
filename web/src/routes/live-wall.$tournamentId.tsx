@@ -35,6 +35,7 @@ function LiveWall() {
     "match:finished": invalidate,
     "match:osaekomiStart": invalidate,
     "match:osaekomiEnd": invalidate,
+    "tatami:queueUpdate": invalidate,
   });
 
   const tournament = tournamentQuery.data;

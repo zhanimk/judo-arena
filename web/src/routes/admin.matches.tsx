@@ -96,6 +96,7 @@ export function TournamentScoreboardPanel({
     "match:finished": invalidateBoard,
     "match:osaekomiStart": invalidateBoard,
     "match:osaekomiEnd": invalidateBoard,
+    "tatami:queueUpdate": invalidateBoard,
   });
 
   const matchesQuery = useQuery({
