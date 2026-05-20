@@ -83,6 +83,25 @@ export async function finalizeTournament(actorUserId: string, tournamentId: stri
     where: { tournamentId },
     include: { matches: true, category: true },
   });
+  if (allBrackets.length === 0) {
+    throw new RatingError("NO_BRACKETS", "Сначала подготовьте сетки турнира", 409);
+  }
+
+  const unfinishedPlayableMatches = await prisma.match.count({
+    where: {
+      tournamentId,
+      redAthleteId: { not: null },
+      blueAthleteId: { not: null },
+      status: { not: MatchStatus.COMPLETED },
+    },
+  });
+  if (unfinishedPlayableMatches > 0) {
+    throw new RatingError(
+      "MATCHES_NOT_COMPLETED",
+      `Нельзя финализировать турнир: осталось ${unfinishedPlayableMatches} незавершённых матчей`,
+      409,
+    );
+  }
 
   const createdEntries: { athleteId: string; categoryId: string; place: number; points: number }[] = [];
 

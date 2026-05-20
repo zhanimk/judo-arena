@@ -14,6 +14,8 @@ import {
   MatchStatus,
   TournamentStatus,
   UserRole,
+  type Match,
+  type Prisma,
 } from "@prisma/client";
 import { seedAthletes, nextPowerOfTwo } from "./bracket-engine/seeding.js";
 import { buildSingleElimination } from "./bracket-engine/single-elimination.js";
@@ -128,14 +130,65 @@ async function generateSingleEliminationBracket(
         status:
           m.redAthleteId && m.blueAthleteId
             ? MatchStatus.PENDING
-            : MatchStatus.PENDING, // BYE-победы можно обработать отдельным шагом
+            : MatchStatus.PENDING,
       })),
     });
+
+    const createdMatches = await tx.match.findMany({
+      where: { bracketId: created.id },
+    });
+    await advanceFirstRoundByes(tx, created.id, size, createdMatches);
 
     return created;
   });
 
   return getBracket(bracket.id);
+}
+
+async function advanceFirstRoundByes(
+  tx: Prisma.TransactionClient,
+  bracketId: string,
+  bracketSize: number,
+  matches: Match[],
+) {
+  const totalRounds = Math.log2(bracketSize);
+  const byes = matches.filter((match) => {
+    const hasRed = Boolean(match.redAthleteId);
+    const hasBlue = Boolean(match.blueAthleteId);
+    return match.bracketSection === "main" && match.round === 1 && hasRed !== hasBlue;
+  });
+
+  for (const bye of byes) {
+    const winnerId = bye.redAthleteId ?? bye.blueAthleteId;
+    if (!winnerId) continue;
+
+    await tx.match.update({
+      where: { id: bye.id },
+      data: {
+        status: MatchStatus.COMPLETED,
+        winnerId,
+        finishedAt: new Date(),
+        scoreSnapshot: { bye: true },
+      },
+    });
+
+    const nextRound = bye.round + 1;
+    const target = matches.find((match) => {
+      const section = nextRound === totalRounds ? "final" : "main";
+      return (
+        match.bracketId === bracketId &&
+        match.round === nextRound &&
+        match.position === Math.floor(bye.position / 2) &&
+        match.bracketSection === section
+      );
+    });
+    if (!target) continue;
+
+    const data = bye.position % 2 === 0
+      ? { redAthleteId: winnerId }
+      : { blueAthleteId: winnerId };
+    await tx.match.update({ where: { id: target.id }, data });
+  }
 }
 
 // ============================================================
