@@ -606,22 +606,44 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
     },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім қайтарылмады"),
   });
+  const applications = query.data ?? [];
+  const submittedCount = applications.filter((app: any) => app.status === "SUBMITTED").length;
+  const approvedCount = applications.filter((app: any) => app.status === "APPROVED").length;
+  const rejectedCount = applications.filter((app: any) => app.status === "REJECTED").length;
+  const athleteCount = applications.reduce((sum: number, app: any) => sum + (app._count?.entries ?? app.entries?.length ?? 0), 0);
 
   return (
     <Panel title="Клубтардан өтінімдер">
       {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       {query.isLoading ? <LoadingState /> :
-        (query.data ?? []).length === 0 ? (
+        applications.length === 0 ? (
           <EmptyState title="Өтінімдер жоқ" />
         ) : (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <ApplicationMetric label="Клуб өтінімі" value={applications.length} />
+              <ApplicationMetric label="Қарауда" value={submittedCount} tone={submittedCount ? "gold" : undefined} />
+              <ApplicationMetric label="Бекітілді" value={approvedCount} tone="green" />
+              <ApplicationMetric label="Спортшы" value={athleteCount} />
+            </div>
+            {rejectedCount > 0 && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {rejectedCount} өтінім қайтарылған. Себебі тренерге notification арқылы көрінеді, төменде де сақталады.
+              </div>
+            )}
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)]">
             <div className="space-y-2">
-              {query.data!.map((a: any) => (
+              {applications.map((a: any) => {
+                const entriesCount = a._count?.entries ?? a.entries?.length ?? 0;
+                return (
                 <div key={a.id} className={`rounded-md border p-3 text-sm ${selectedId === a.id ? "border-gold/40 bg-gold/5" : "border-border/60 bg-background/30"}`}>
                   <div className="flex items-center justify-between gap-3">
                     <button onClick={() => setSelectedId(a.id)} className="min-w-0 text-left">
                       <div className="truncate font-medium">{localizeName(a.club?.name)}</div>
-                      <div className="text-xs text-muted-foreground">{a._count?.entries ?? 0} спортшы</div>
+                      <div className="text-xs text-muted-foreground">
+                        {entriesCount} спортшы · {a.club?.city ?? "қала көрсетілмеген"}
+                      </div>
                     </button>
                     <div className="flex shrink-0 gap-2 items-center">
                       <StatusBadge status={a.status} />
@@ -635,11 +657,16 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
                       )}
                     </div>
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2 py-0.5">{entriesCount} entry</span>
+                    {a.submittedAt && <span className="rounded-full bg-muted px-2 py-0.5">жіберілді {new Date(a.submittedAt).toLocaleDateString("kk-KZ")}</span>}
+                    {a.reviewedAt && <span className="rounded-full bg-muted px-2 py-0.5">қаралды {new Date(a.reviewedAt).toLocaleDateString("kk-KZ")}</span>}
+                  </div>
                   {a.reviewerNotes && (
                     <div className="mt-2 border-l-2 border-gold/40 pl-3 text-xs text-muted-foreground">{a.reviewerNotes}</div>
                   )}
                 </div>
-              ))}
+              );})}
             </div>
 
             <div className="rounded-md border border-border/60 bg-background/30 p-4">
@@ -650,7 +677,7 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
               ) : !detailQuery.data ? (
                 <EmptyState title="Өтінім табылмады" />
               ) : (
-                <ApplicationReviewDetail app={detailQuery.data} />
+                <ApplicationReviewDetail app={detailQuery.data} onReview={setReview} />
               )}
             </div>
 
@@ -683,13 +710,20 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
     </Panel>
   );
 }
 
-function ApplicationReviewDetail({ app }: { app: any }) {
+function ApplicationReviewDetail({
+  app,
+  onReview,
+}: {
+  app: any;
+  onReview: (review: { id: string; action: "approve" | "reject"; notes: string }) => void;
+}) {
   const grouped = new Map<string, any[]>();
   for (const entry of app.entries ?? []) {
     const key = entry.categoryId;
@@ -697,16 +731,68 @@ function ApplicationReviewDetail({ app }: { app: any }) {
     list.push(entry);
     grouped.set(key, list);
   }
+  const validations = (app.entries ?? []).map((entry: any) => ({
+    entry,
+    issues: validateApplicationEntry(entry),
+  }));
+  const issueCount = validations.reduce((sum: number, item: any) => sum + item.issues.length, 0);
+  const categoryCount = grouped.size;
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-display text-lg font-semibold">{localizeName(app.club?.name)}</div>
-          <div className="text-xs text-muted-foreground">{app.entries?.length ?? 0} спортшы · {app.submittedAt ? new Date(app.submittedAt).toLocaleString("kk-KZ") : "жіберілмеген"}</div>
+          <div className="text-xs text-muted-foreground">
+            {app.entries?.length ?? 0} спортшы · {categoryCount} санат · {app.submittedAt ? new Date(app.submittedAt).toLocaleString("kk-KZ") : "жіберілмеген"}
+          </div>
         </div>
-        <StatusBadge status={app.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={app.status} />
+          {app.status === "SUBMITTED" && (
+            <>
+              <button
+                onClick={() => onReview({ id: app.id, action: "approve", notes: "" })}
+                className="rounded-md border border-gold/30 bg-gold/15 px-2.5 py-1 text-xs text-gold hover:bg-gold/25"
+              >
+                Бекіту
+              </button>
+              <button
+                onClick={() => onReview({ id: app.id, action: "reject", notes: "" })}
+                className="rounded-md border border-destructive/30 bg-destructive/15 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/25"
+              >
+                Қайтару
+              </button>
+            </>
+          )}
+        </div>
       </div>
+      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+        <ApplicationMetric label="Спортшы" value={app.entries?.length ?? 0} />
+        <ApplicationMetric label="Санат" value={categoryCount} />
+        <ApplicationMetric label="Тексеру" value={issueCount ? `${issueCount} мәселе` : "OK"} tone={issueCount ? "red" : "green"} />
+      </div>
+      {app.notes && (
+        <div className="mb-4 rounded-md border border-border/50 bg-card/40 p-3 text-sm">
+          <div className="mb-1 text-xs uppercase tracking-widest text-muted-foreground">Тренер ескертуі</div>
+          {app.notes}
+        </div>
+      )}
+      {app.reviewerNotes && (
+        <div className="mb-4 rounded-md border border-gold/30 bg-gold/10 p-3 text-sm text-gold">
+          <div className="mb-1 text-xs uppercase tracking-widest">Админ шешімі</div>
+          {app.reviewerNotes}
+        </div>
+      )}
+      {issueCount > 0 && (
+        <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="h-4 w-4" />
+            Кейбір спортшылар категория талабына қайта тексеруді қажет етеді
+          </div>
+          <div className="mt-1 text-xs text-amber-100/80">Мысалы салмақ/жас профильде өзгерген болуы мүмкін.</div>
+        </div>
+      )}
       {(app.entries ?? []).length === 0 ? (
         <EmptyState title="Спортшылар жоқ" />
       ) : (
@@ -721,13 +807,23 @@ function ApplicationReviewDetail({ app }: { app: any }) {
                 </div>
                 <div className="space-y-2">
                   {entries.map((entry: any) => (
-                    <div key={entry.id} className="flex items-center justify-between gap-3 rounded border border-border/40 px-3 py-2 text-sm">
+                    <div key={entry.id} className={`rounded border px-3 py-2 text-sm ${validateApplicationEntry(entry).length ? "border-amber-500/40 bg-amber-500/10" : "border-border/40"}`}>
+                      <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="font-medium">{entry.athlete?.name} {entry.athlete?.surname}</div>
                         <div className="text-xs text-muted-foreground">
-                          {entry.athlete?.gender === "MALE" ? "Ер" : "Қыз"} · {entry.athlete?.weightKg ?? "—"} кг · {entry.athlete?.beltRank ?? "—"}
+                          {entry.athlete?.gender === "MALE" ? "Ер" : "Қыз"} · {athleteAge(entry.athlete) ?? "жас жоқ"} жас · {entry.athlete?.weightKg ?? "—"} кг · {entry.athlete?.beltRank ?? "—"}
                         </div>
                       </div>
+                        <EntryCheckBadge issues={validateApplicationEntry(entry)} />
+                      </div>
+                      {validateApplicationEntry(entry).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
+                          {validateApplicationEntry(entry).map((issue) => (
+                            <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1448,6 +1544,30 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   );
 }
 
+function ApplicationMetric({ label, value, tone }: { label: string; value: string | number; tone?: "gold" | "green" | "red" }) {
+  const toneClass = tone === "gold"
+    ? "text-gold"
+    : tone === "green"
+      ? "text-emerald-300"
+      : tone === "red"
+        ? "text-destructive"
+        : "text-foreground";
+
+  return (
+    <div className="rounded-md border border-border/60 bg-background/30 p-3">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-display text-2xl font-bold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function EntryCheckBadge({ issues }: { issues: string[] }) {
+  if (issues.length === 0) {
+    return <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">OK</span>;
+  }
+  return <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} мәселе</span>;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const m: Record<string, { c: string; l: string }> = {
     DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
@@ -1478,6 +1598,44 @@ function categoryTitle(c: any): string {
   const custom = localizeName(c.name);
   if (custom) return custom;
   return `${c.gender === "MALE" ? "Ер" : "Қыз"} ${c.ageMin}-${c.ageMax} жас ${c.weightMin}-${c.weightMax} кг`;
+}
+
+function validateApplicationEntry(entry: any): string[] {
+  const issues: string[] = [];
+  const athlete = entry.athlete;
+  const category = entry.category;
+  if (!athlete || !category) return ["дерек толық емес"];
+
+  if (athlete.gender !== category.gender) {
+    issues.push("жыныс сәйкес емес");
+  }
+
+  const age = athleteAge(athlete);
+  if (age === null) {
+    issues.push("жасы жоқ");
+  } else if (age < Number(category.ageMin) || age > Number(category.ageMax)) {
+    issues.push(`жас ${age}, керек ${category.ageMin}-${category.ageMax}`);
+  }
+
+  const weight = Number(athlete.weightKg);
+  if (!Number.isFinite(weight)) {
+    issues.push("салмақ жоқ");
+  } else if (weight <= Number(category.weightMin) || weight > Number(category.weightMax)) {
+    issues.push(`салмақ ${weight} кг, керек (${category.weightMin}, ${category.weightMax}]`);
+  }
+
+  return issues;
+}
+
+function athleteAge(athlete: any): number | null {
+  if (!athlete?.dateOfBirth) return null;
+  const dob = new Date(athlete.dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const birthdayPassed = now.getMonth() > dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() >= dob.getDate());
+  if (!birthdayPassed) age -= 1;
+  return age;
 }
 
 function weightLabel(c: any): string {
