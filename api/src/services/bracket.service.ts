@@ -67,7 +67,7 @@ export async function generateBracket(
     );
   }
 
-  // Собираем участников из утверждённых заявок
+  // Собираем участников из утверждённых заявок (дедупликация по athleteId)
   const entries = await prisma.applicationEntry.findMany({
     where: {
       categoryId,
@@ -75,7 +75,14 @@ export async function generateBracket(
     },
     include: { athlete: true },
   });
-  const athletes = entries.map((e) => e.athlete);
+  const seen = new Set<string>();
+  const athletes: typeof entries[number]["athlete"][] = [];
+  for (const e of entries) {
+    if (!seen.has(e.athlete.id)) {
+      seen.add(e.athlete.id);
+      athletes.push(e.athlete);
+    }
+  }
 
   if (athletes.length < 2) {
     throw new BracketError(
@@ -87,11 +94,17 @@ export async function generateBracket(
 
   const seed = Math.floor(Math.random() * 1_000_000_000);
 
-  // Генерируем сетку в зависимости от формата
-  if (category.format === BracketFormat.ROUND_ROBIN) {
+  // Автовыбор формата: ≤4 участника → круговая, иначе SE
+  const effectiveFormat =
+    category.format === BracketFormat.ROUND_ROBIN
+      ? BracketFormat.ROUND_ROBIN
+      : athletes.length <= 4
+        ? BracketFormat.ROUND_ROBIN
+        : BracketFormat.SE_IJF;
+
+  if (effectiveFormat === BracketFormat.ROUND_ROBIN) {
     return generateRoundRobinBracket(tournamentId, categoryId, athletes, seed);
   }
-  // SE_IJF и MIXED (MIXED пока упрощается до SE)
   return generateSingleEliminationBracket(tournamentId, categoryId, athletes, seed);
 }
 

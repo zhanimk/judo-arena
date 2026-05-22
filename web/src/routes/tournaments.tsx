@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
@@ -54,6 +54,7 @@ function localizeName(name: any): string {
 }
 
 function Tournaments() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [filter, setFilter] = useState<"ALL" | Status>("ALL");
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
@@ -74,6 +75,10 @@ function Tournaments() {
   const openCount = tournaments.filter((t: any) => t.status === "REGISTRATION_OPEN").length;
   const totalApplications = tournaments.reduce((sum: number, t: any) => sum + (t._count?.applications ?? 0), 0);
 
+  if (pathname !== "/tournaments") {
+    return <Outlet />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -88,10 +93,10 @@ function Tournaments() {
               <Radio className="h-3.5 w-3.5" /> Жарыстар күнтізбесі
             </div>
             <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
-              Турнирлер, жеребе және live нәтижелер бір жерде
+              Жарыстар, жеребе және live нәтижелер бір жерде
             </h1>
             <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Қай жарысқа тіркелу ашық, қай жерде өтеді, қанша санат бар және live табло қашан қосылады — бәрі осы бетте.
+              Қай жарысқа тіркелу ашық, қай жерде өтеді, қанша санат бар және live экран қашан қосылады — бәрі осы бетте.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
               <StatCard label="Жарыс" value={String(tournaments.length)} />
@@ -123,6 +128,10 @@ function Tournaments() {
                   <Info icon={MapPin}>{featured.location || featured.city}</Info>
                   <Info icon={Users}>{featured._count?.applications ?? 0} өтінім · {featured._count?.categories ?? 0} санат</Info>
                 </div>
+                <div className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold">
+                  Толық ашу
+                  <GitBranch className="h-4 w-4" />
+                </div>
               </div>
             </Link>
           )}
@@ -141,7 +150,7 @@ function Tournaments() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Қала, турнир, орын..."
+                placeholder="Қала, жарыс, орын..."
                 className="h-11 w-full rounded-md border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-gold"
               />
             </label>
@@ -213,6 +222,19 @@ function Tournaments() {
                   <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
                     <Metric icon={Users} label="Өтінім" value={t._count?.applications ?? 0} />
                     <Metric icon={GitBranch} label="Санат" value={t._count?.categories ?? 0} />
+                  </div>
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/40 pt-4">
+                    <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+                      {["Ақпарат", "Санат", "Хаттама"].map((tab) => (
+                        <span key={tab} className="rounded-full border border-border/60 bg-background/35 px-2.5 py-1">
+                          {tab}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-gold/10 px-3 py-2 text-xs font-semibold text-gold transition-colors group-hover:bg-gold group-hover:text-gold-foreground">
+                      Толық ашу
+                      <GitBranch className="h-3.5 w-3.5" />
+                    </span>
                   </div>
                 </div>
               </Link>

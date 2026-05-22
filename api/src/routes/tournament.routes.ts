@@ -59,6 +59,7 @@ import {
 import {
   createOrGetDraftApplication,
   listApplicationsForTournament,
+  listCoachApplications,
   listAthleteApplicationEntries,
   getApplication,
   addEntry,
@@ -84,6 +85,7 @@ function attachErrorHandler(app: FastifyInstance) {
         issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
       });
     }
+    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     app.log.error(err);
     return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
   });
@@ -200,6 +202,14 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteCategory(request.params.id);
       return reply.code(204).send();
+    },
+  );
+
+  app.get(
+    "/coach/applications",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request) => {
+      return listCoachApplications(request.user!.sub);
     },
   );
 

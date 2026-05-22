@@ -52,25 +52,25 @@ const statusText: Record<string, string> = {
 const partners = [
   { name: "ҚР Дзюдо Федерациясы", type: "Федерация", city: "Қазақстан", desc: "Ұлттық жарыстар мен төрешілік стандарттарды қолдайды.", image: heroKazakhstan, logo: emblem, accent: "from-sky-500/25" },
   { name: "Almaty Judo Club", type: "Клуб", city: "Алматы", desc: "Жас спортшыларды республикалық аренаға дайындайды.", image: athleteBlue1, logo: emblem, accent: "from-amber-500/25" },
-  { name: "Astana Pro", type: "Академия", city: "Астана", desc: "Жаттықтырушылар штабы және турнирлік аналитика серіктесі.", image: teamLineup, logo: emblem, accent: "from-emerald-500/25" },
+  { name: "Astana Pro", type: "Академия", city: "Астана", desc: "Жаттықтырушылар штабы және жарыс аналитикасы серіктесі.", image: teamLineup, logo: emblem, accent: "from-emerald-500/25" },
   { name: "Tigers Karaganda", type: "Клуб", city: "Қарағанды", desc: "Аймақтық жарыстар мен балалар лигасын дамытады.", image: athleteBlue2, logo: emblem, accent: "from-orange-500/25" },
-  { name: "Shymkent Warriors", type: "Клуб", city: "Шымкент", desc: "Татами мәдениетін және ашық турнирлерді қолдайды.", image: athleteWomanWhite, logo: emblem, accent: "from-rose-500/25" },
-  { name: "IJF Standard", type: "Стандарт", city: "International", desc: "Ережелер, хаттамалар және бағалау логикасына негіз.", image: techniqueKyu, logo: emblem, accent: "from-violet-500/25" },
-  { name: "Aktobe Dojo", type: "Dojo", city: "Ақтөбе", desc: "Өңірлік таланттарды цифрлық рейтингке қосады.", image: heroImg, logo: emblem, accent: "from-cyan-500/25" },
-  { name: "Pavlodar Elite", type: "Клуб", city: "Павлодар", desc: "Жарыс күніндегі live-табло және протокол серіктесі.", image: judoka3d, logo: emblem, accent: "from-lime-500/25" },
+  { name: "Shymkent Warriors", type: "Клуб", city: "Шымкент", desc: "Татами мәдениетін және ашық жарыстарды қолдайды.", image: athleteWomanWhite, logo: emblem, accent: "from-rose-500/25" },
+  { name: "IJF Standard", type: "Стандарт", city: "Халықаралық", desc: "Ережелер, хаттама және бағалау логикасына негіз.", image: techniqueKyu, logo: emblem, accent: "from-violet-500/25" },
+  { name: "Aktobe Dojo", type: "Dojo", city: "Ақтөбе", desc: "Өңірлік таланттарды цифрлық дәрежеге қосады.", image: heroImg, logo: emblem, accent: "from-cyan-500/25" },
+  { name: "Pavlodar Elite", type: "Клуб", city: "Павлодар", desc: "Жарыс күніндегі live-табло және хаттама серіктесі.", image: judoka3d, logo: emblem, accent: "from-lime-500/25" },
 ];
 
 const upcoming = [
   { name: "Алматы Кубогі 2026", date: "24–26 мамыр", city: "Алматы", status: "LIVE", participants: 248, teams: 32, categories: 18, format: "SE + Repechage", startsAt: Date.now() + 1000 * 60 * 60 * 6, accent: "from-destructive/20 to-gold/10" },
-  { name: "Қазақстан Чемпионаты", date: "12–15 маусым", city: "Астана", status: "Тіркеу", participants: 412, teams: 44, categories: 24, format: "SE + Round-Robin", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 18, accent: "from-gold/20 to-sky-500/10" },
-  { name: "Tigers Open", date: "2–3 шілде", city: "Қарағанды", status: "Тіркеу", participants: 96, teams: 14, categories: 10, format: "Round-Robin", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 41, accent: "from-orange-500/20 to-gold/10" },
+  { name: "Қазақстан Чемпионаты", date: "12–15 маусым", city: "Астана", status: "Тіркеу", participants: 412, teams: 44, categories: 24, format: "SE + Айналмалы", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 18, accent: "from-gold/20 to-sky-500/10" },
+  { name: "Tigers Open", date: "2–3 шілде", city: "Қарағанды", status: "Тіркеу", participants: 96, teams: 14, categories: 10, format: "Айналмалы", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 41, accent: "from-orange-500/20 to-gold/10" },
   { name: "Astana Junior Cup", date: "20 шілде", city: "Астана", status: "Тіркеу", participants: 184, teams: 26, categories: 16, format: "SE + Repechage", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 60, accent: "from-emerald-500/20 to-gold/10" },
 ];
 
 const liveTatami = [
-  { tatami: 1, category: "U18 · −66 кг", current: "Д. Нұрлан vs Р. Олжас", next: "Final · Match 42", status: "Golden Score", progress: 72 },
-  { tatami: 2, category: "Senior · −81 кг", current: "Ә. Сәрсенов vs Н. Қайратұлы", next: "Bronze A · Match 57", status: "Semi-final", progress: 58 },
-  { tatami: 3, category: "U21 · −73 кг", current: "М. Ержан vs С. Бекзат", next: "Repechage · Match 31", status: "Ippon review", progress: 84 },
+  { tatami: 1, category: "U18 · −66 кг", current: "Д. Нұрлан vs Р. Олжас", next: "Шешуші · Белдесу 42", status: "Қосымша уақыт", progress: 72 },
+  { tatami: 2, category: "Ересектер · −81 кг", current: "Ә. Сәрсенов vs Н. Қайратұлы", next: "Қола A · Белдесу 57", status: "Жартылай шешуші", progress: 58 },
+  { tatami: 3, category: "U21 · −73 кг", current: "М. Ержан vs С. Бекзат", next: "Жұбаныш · Белдесу 31", status: "Иппон тексеру", progress: 84 },
 ];
 
 const clubs = [
@@ -93,7 +93,7 @@ const topAthletes = [
 
 const techniqueVideos = [
   {
-    title: "Видео техник на 5 КЮ",
+    title: "5 КЮ техника бейнесі",
     level: "5 КЮ",
     date: "12.11.2021",
     focus: "Базалық лақтырулар",
@@ -102,7 +102,7 @@ const techniqueVideos = [
     image: techniqueKyu,
   },
   {
-    title: "Видео техник на 4 КЮ",
+    title: "4 КЮ техника бейнесі",
     level: "4 КЮ",
     date: "22.11.2021",
     focus: "Қорғаныс және ауысу",
@@ -111,7 +111,7 @@ const techniqueVideos = [
     image: athleteBlue1,
   },
   {
-    title: "Видео техник на 3 КЮ",
+    title: "3 КЮ техника бейнесі",
     level: "3 КЮ",
     date: "23.11.2021",
     focus: "Комбинация",
@@ -120,7 +120,7 @@ const techniqueVideos = [
     image: athleteBlue2,
   },
   {
-    title: "Видео техник на 2 КЮ",
+    title: "2 КЮ техника бейнесі",
     level: "2 КЮ",
     date: "23.11.2021",
     focus: "Татамидегі бақылау",
@@ -129,7 +129,7 @@ const techniqueVideos = [
     image: teamLineup,
   },
   {
-    title: "Видео техник на 1 КЮ",
+    title: "1 КЮ техника бейнесі",
     level: "1 КЮ",
     date: "23.11.2021",
     focus: "Жарысқа дайындық",
@@ -157,6 +157,23 @@ function formatDateRange(start?: string | Date | null, end?: string | Date | nul
   return `${fmt.format(startDate)} – ${fmt.format(endDate)}`;
 }
 
+function formatTime(start?: string | Date | null) {
+  if (!start) return "Уақыты белгісіз";
+  return new Intl.DateTimeFormat("kk-KZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(start));
+}
+
+function participantCount(tournament: any) {
+  return (
+    tournament?._count?.participants ??
+    tournament?._count?.entries ??
+    tournament?._count?.applicationEntries ??
+    tournament?.participantsCount ??
+    tournament?.entriesCount ??
+    tournament?._count?.applications ??
+    0
+  );
+}
+
 function athleteName(a: any) {
   return `${a?.name ?? ""} ${a?.surname ?? ""}`.trim() || "Спортшы";
 }
@@ -181,21 +198,18 @@ function Countdown({ to }: { to: number }) {
   const m = Math.floor((diff / (1000 * 60)) % 60);
   const s = Math.floor((diff / 1000) % 60);
   const Cell = ({ v, l }: { v: number; l: string }) => (
-    <div className="flex flex-col items-center min-w-[44px]">
-      <div className="font-display text-xl sm:text-2xl font-bold text-gradient-gold tabular-nums leading-none">
+    <div className="flex min-w-[3.8rem] flex-col items-center rounded-xl border border-gold/20 bg-background/50 px-2 py-3 sm:min-w-[5rem] sm:px-4">
+      <div className="font-display text-3xl font-bold text-gradient-gold tabular-nums leading-none sm:text-5xl">
         {String(v).padStart(2, "0")}
       </div>
-      <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-1">{l}</div>
+      <div className="mt-2 text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">{l}</div>
     </div>
   );
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
       <Cell v={d} l="күн" />
-      <span className="text-gold/40">:</span>
       <Cell v={h} l="сағ" />
-      <span className="text-gold/40">:</span>
       <Cell v={m} l="мин" />
-      <span className="text-gold/40">:</span>
       <Cell v={s} l="сек" />
     </div>
   );
@@ -258,7 +272,7 @@ function Home() {
     tatami: match.tatamiNumber ?? i + 1,
     category: categoryName(match.bracket?.category),
     current: `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`,
-    next: `Round ${match.round ?? 1} · Match ${match.position ?? i + 1}`,
+    next: `Кезең ${match.round ?? 1} · Белдесу ${match.position ?? i + 1}`,
     status: statusText[match.status] ?? match.status ?? "Кезекте",
     progress: match.status === "COMPLETED" ? 100 : match.status === "IN_PROGRESS" ? 64 : 28,
   }));
@@ -293,7 +307,18 @@ function Home() {
     image: topAthletes[i]?.image ?? athleteBlue1,
   }));
   const [activeTechnique, setActiveTechnique] = useState(0);
+  const [activeBelt, setActiveBelt] = useState(3);
   const currentTechnique = techniqueVideos[activeTechnique];
+  const beltPath = [
+    { label: "Ақ", level: "6 КЮ", color: "from-white to-zinc-200", text: "text-navy-deep", progress: 14, skills: "Ұстау, құлау, негізгі тұрыс" },
+    { label: "Сары", level: "5 КЮ", color: "from-yellow-300 to-yellow-500", text: "text-navy-deep", progress: 28, skills: "De-ashi-barai, Hiza-guruma" },
+    { label: "Қызғылт сары", level: "4 КЮ", color: "from-orange-400 to-orange-600", text: "text-navy-deep", progress: 42, skills: "Tai-otoshi, Kesa-gatame" },
+    { label: "Жасыл", level: "3 КЮ", color: "from-green-500 to-emerald-700", text: "text-white", progress: 57, skills: "Uchi-mata, комбинация" },
+    { label: "Көк", level: "2 КЮ", color: "from-sky-500 to-blue-700", text: "text-white", progress: 71, skills: "Tomoe-nage, ne-waza бақылау" },
+    { label: "Қоңыр", level: "1 КЮ", color: "from-amber-700 to-amber-950", text: "text-white", progress: 86, skills: "Sode, Juji-gatame, тактика" },
+    { label: "Қара", level: "1 ДАН", color: "from-neutral-900 to-black", text: "text-gold", progress: 100, skills: "Шеберлік, жарыс тәжірибесі" },
+  ];
+  const currentBelt = beltPath[activeBelt];
 
   // Parallax scroll for cinematic section
   const cineRef = useRef<HTMLDivElement | null>(null);
@@ -328,219 +353,363 @@ function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SiteHeader />
+      <SiteHeader hideUntilScroll />
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero" />
-        <div className="absolute inset-0 grid-bg opacity-60" />
-        <div className="absolute inset-0 opacity-20">
-          <img src={heroKazakhstan} alt="" className="h-full w-full object-cover object-center mix-blend-luminosity" />
-        </div>
-        {/* Aurora blobs */}
-        <div className="absolute -top-32 -left-32 h-[32rem] w-[32rem] rounded-full bg-gold/15 blur-3xl animate-aurora" />
-        <div className="absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full bg-primary/15 blur-3xl animate-aurora" style={{ animationDelay: "3s" }} />
-        <div className="absolute top-1/3 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-gold/5 blur-3xl animate-aurora" style={{ animationDelay: "6s" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/30 to-background" />
+      <section id="zharys" className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-navy-deep" />
+        <img
+          src={heroKazakhstan}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/78 to-background" />
+        <div className="absolute inset-0 grid-bg opacity-30" />
 
-        <div className="container mx-auto px-4 relative pt-12 pb-20 sm:pt-20 sm:pb-28 lg:pt-28 lg:pb-36">
-          <div className="grid lg:grid-cols-[1.2fr_1fr] gap-10 lg:gap-12 items-center">
-            {/* Left: copy */}
-            <div className="animate-in fade-in slide-in-from-bottom-6 duration-1000">
-              <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-destructive animate-ping opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
-                </span>
-                <span className="text-xs tracking-widest uppercase text-muted-foreground">
-                  Қазір {tournaments.filter((t: any) => t.status === "IN_PROGRESS").length} жарыс — LIVE эфирде
-                </span>
-              </div>
-              <h1 className="font-display text-[2.75rem] sm:text-6xl md:text-7xl lg:text-[8rem] font-bold leading-[0.9] tracking-tight">
-                <span className="block text-3d">Дзюдоның</span>
-                <span className="block text-gradient-gold italic text-3d">цифрлық</span>
-                <span className="relative inline-block text-3d">
-                  аренасы
-                  <span className="absolute -right-6 top-2 h-3 w-3 rounded-full bg-gold animate-gold-pulse" />
-                </span>
-              </h1>
-              <p className="mt-6 sm:mt-8 text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-                Өтінімнен медаль табыстауға дейін — бәрі бір экранда.
-                Жеребе, төрелік және дәреже нақты уақытта жұмыс істейді.
-              </p>
-              <div className="mt-8 sm:mt-10 flex flex-wrap gap-3 sm:gap-4">
-                <Link to="/tournaments" className="group bg-gradient-gold text-gold-foreground px-5 sm:px-7 py-3 sm:py-3.5 rounded-md font-medium shadow-gold hover:scale-105 transition-transform inline-flex items-center gap-2 text-sm sm:text-base">
-                  Жарыстарды көру
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link to="/login" className="glass border border-gold/30 px-5 sm:px-7 py-3 sm:py-3.5 rounded-md font-medium hover:border-gold/60 transition-colors text-sm sm:text-base">
-                  Жүйеге кіру
-                </Link>
-              </div>
-
-              <div className="mt-10 sm:mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-2xl">
-                {homeStats.map((s, i) => (
-                  <div key={s.label} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 100}ms`, animationFillMode: "backwards" }}>
-                    <div className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-gradient-gold">{s.value}</div>
-                    <div className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground mt-1">{s.label}</div>
-                  </div>
-                ))}
-              </div>
+        <div className="container relative mx-auto px-4 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
+          <div className="mx-auto max-w-6xl text-center">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-background/65 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold backdrop-blur">
+              <Trophy className="h-4 w-4" />
+              Жақын жарыс
             </div>
 
-            {/* Right: 3D live judging mock */}
+            <h1 className="font-display text-5xl font-bold leading-none sm:text-7xl lg:text-8xl">
+              Judo<span className="text-gradient-gold">-Arena</span>
+            </h1>
+
+            <div className="mx-auto mt-8 max-w-5xl [perspective:1400px]">
             <div
-              className="relative perspective-1200 animate-in fade-in slide-in-from-right-8 duration-1000 delay-200 fill-mode-backwards"
+              ref={tiltRef}
               onMouseMove={handleTilt}
               onMouseLeave={resetTilt}
+              className="group relative overflow-hidden rounded-2xl border border-gold/30 bg-card/88 text-left shadow-elegant backdrop-blur-xl transition-transform duration-200 ease-out [transform:rotateY(-8deg)_rotateX(6deg)] [transform-style:preserve-3d]"
             >
-              {/* Rotating conic glow */}
-              <div className="absolute inset-[-30px] flex items-center justify-center pointer-events-none">
-                <div className="h-[120%] w-[120%] rounded-full conic-gold opacity-30 blur-2xl animate-spin-conic" />
-              </div>
-              <div className="absolute -inset-4 bg-gradient-gold opacity-25 blur-3xl rounded-3xl" />
-
-              {/* Tilted card */}
-              <div
-                ref={tiltRef}
-                className="relative preserve-3d gradient-border rounded-2xl p-6 bg-card/60 backdrop-blur-xl shadow-elegant transition-transform duration-300 ease-out"
-                style={{ transform: "rotateY(-8deg) rotateX(6deg)" }}
-              >
-                {/* floating emblem layer */}
-                <img
-                  src={emblem}
-                  alt=""
-                  className="hidden lg:block absolute -top-12 -right-10 h-24 w-24 opacity-40 animate-spin-slow"
-                  style={{ transform: "translateZ(60px)" }}
-                />
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Radio className="h-4 w-4 text-destructive animate-pulse" />
-                    <span className="text-xs uppercase tracking-widest text-destructive font-semibold">LIVE · Татами #2</span>
+              <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-br from-gold/35 via-transparent to-destructive/20 opacity-60 blur-xl transition-opacity group-hover:opacity-90" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_38%,oklch(0.86_0.16_90/0.18)_48%,transparent_58%,transparent_100%)] opacity-0 transition-opacity group-hover:opacity-100" />
+              <div className="pointer-events-none absolute right-6 top-6 h-24 w-24 rounded-full border border-gold/20 bg-gold/10 blur-sm [transform:translateZ(46px)]" />
+              <div className="relative [transform:translateZ(34px)]">
+              <div className="border-b border-border/50 bg-background/45 px-5 py-4 sm:px-7">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_18px_oklch(0.62_0.22_25/0.8)]" />
+                    Тіркеу және қатысу
                   </div>
-                  <div className="text-xs text-muted-foreground">−81 кг · Жартылай финал</div>
+                  {featuredTournament && (
+                    <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-semibold text-gold">
+                      {statusText[featuredTournament.status] ?? featuredTournament.status}
+                    </span>
+                  )}
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3" style={{ transform: "translateZ(40px)" }}>
-                  {[
-                    { color: "blue", name: "Ә. Сәрсенов", club: "Almaty Judo", score: live.blue, bg: "bg-sky-500/15", text: "text-sky-300", border: "border-sky-400/30" },
-                    { color: "white", name: "Н. Қайратұлы", club: "Astana Pro", score: live.white, bg: "bg-foreground/10", text: "text-foreground", border: "border-foreground/20" },
-                  ].map((p) => (
-                    <div key={p.color} className={`rounded-xl p-4 border ${p.bg} ${p.border}`}>
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground">{p.color === "blue" ? "Көк" : "Ақ"}</div>
-                      <div className="mt-1 font-display text-lg font-semibold truncate">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.club}</div>
-                      <div key={p.score} className={`mt-3 font-display text-5xl font-bold tabular-nums ${p.text}`} style={{ animation: "ticker-rise 250ms ease-out" }}>
-                        {p.score}
-                      </div>
+              {featuredTournament ? (
+                <div className="p-5 sm:p-7 lg:p-8">
+                  <h2 className="font-display text-4xl font-bold leading-tight text-foreground sm:text-6xl">
+                    {localizeName(featuredTournament.name)}
+                  </h2>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.9fr_1.2fr_0.8fr]">
+                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
+                      <Calendar className="mb-4 h-6 w-6 text-gold" />
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Күні</div>
+                      <div className="mt-2 font-display text-xl font-bold sm:text-2xl">{formatDateRange(featuredTournament.startDate, featuredTournament.endDate)}</div>
                     </div>
-                  ))}
-                </div>
+                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
+                      <Timer className="mb-4 h-6 w-6 text-gold" />
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Басталу уақыты</div>
+                      <div className="mt-2 font-display text-3xl font-bold text-gradient-gold sm:text-4xl">{formatTime(featuredTournament.startDate)}</div>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
+                      <MapPin className="mb-4 h-6 w-6 text-gold" />
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Өтетін жері</div>
+                      <div className="mt-2 font-display text-xl font-bold sm:text-2xl">{featuredTournament.location || featuredTournament.city || "Белгісіз"}</div>
+                    </div>
+                    <div className="rounded-xl border border-gold/30 bg-gold/10 p-5">
+                      <Users className="mb-4 h-6 w-6 text-gold" />
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Қатысушылар</div>
+                      <div className="mt-2 font-display text-5xl font-bold text-gradient-gold">{participantCount(featuredTournament)}</div>
+                    </div>
+                  </div>
 
-                <div className="mt-4 flex items-center justify-between glass rounded-lg p-3" style={{ transform: "translateZ(25px)" }}>
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                    <Timer className="h-4 w-4 text-gold" />
-                    <span className="uppercase tracking-widest">Қалған уақыт</span>
-                  </div>
-                  <div className="font-display text-2xl font-bold tabular-nums text-gradient-gold">{mm}:{ss}</div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs" style={{ transform: "translateZ(20px)" }}>
-                  <div className="glass rounded-md p-2 text-center">
-                    <div className="text-gold font-semibold">IPPON</div>
-                    <div className="text-muted-foreground mt-0.5">Жеңіс</div>
-                  </div>
-                  <div className="glass rounded-md p-2 text-center">
-                    <div className="text-gold font-semibold">WAZA-ARI</div>
-                    <div className="text-muted-foreground mt-0.5">Жартылай</div>
-                  </div>
-                  <div className="glass rounded-md p-2 text-center">
-                    <div className="text-destructive font-semibold">SHIDO</div>
-                    <div className="text-muted-foreground mt-0.5">Ескерту</div>
+                  <div className="mt-6 rounded-2xl border border-gold/25 bg-gold/10 p-5 lg:flex lg:items-center lg:justify-between lg:gap-6">
+                    <div className="text-center lg:text-left">
+                      <div className="mb-4 text-xs uppercase tracking-[0.24em] text-gold">
+                        Басталуына қалған уақыт
+                      </div>
+                      <Countdown to={new Date(featuredTournament.startDate).getTime()} />
+                    </div>
+                    <Link
+                      to="/login"
+                      search={{ mode: "register" }}
+                      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-8 py-4 text-lg font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02] lg:mt-0 lg:w-auto"
+                    >
+                      Тіркелу
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-8 text-center sm:p-10">
+                  <h2 className="font-display text-3xl font-bold">Жақын жарыс әлі жарияланбады</h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    Жарыс қосылған кезде атауы, күні, орны, басталу уақыты және тіркелу батырмасы осы жерде көрінеді.
+                  </p>
+                  <Link
+                    to="/tournaments"
+                    className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
+                  >
+                    Жарыстарды көру
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              )}
+            </div>
+            </div>
             </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
       </section>
 
-      {/* TOURNAMENT ENTRY — team registration flow */}
-      <section className="container mx-auto px-4 -mt-6 relative z-10">
-        <div className="relative overflow-hidden rounded-2xl gradient-border bg-gradient-navy border border-gold/30 p-5 sm:p-7 shadow-elegant">
-          <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gold/20 blur-3xl animate-float" />
-          <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute inset-0 grid-bg opacity-25" />
-
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:items-center">
+      {/* TEAMS + ATHLETES */}
+      <section id="klubtar" className="relative py-14 sm:py-20 border-y border-border/40 bg-navy-deep/30 overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-25" />
+        <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
+        <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="container mx-auto px-4 relative">
+          <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-gold">
-                <Sparkles className="h-3.5 w-3.5" />
-                Турнирге өтінім
-              </div>
-              <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
-                Командаңызды тіркеп, қатысушыларды <span className="text-gradient-gold italic">санаттарға</span> қосыңыз
-              </h3>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Жаттықтырушы турнирді таңдайды, спортшыларды салмақ және жас санатына бөледі, ал әкімші өтінімді бекіткен соң сетка құрылады.
+              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">2 · Клуб және спортшылар</div>
+              <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
+                Клубтар мен <span className="text-gradient-gold italic">спортшылар</span>
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                Клубтар, спортшылар және дәреже нақты жүйе деректерінен жүктеледі.
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  to="/tournaments"
-                  className="inline-flex items-center gap-2 bg-gradient-gold text-gold-foreground px-5 py-3 rounded-md font-semibold shadow-gold hover:scale-105 transition-transform"
-                >
-                  Турнир таңдау <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 glass border border-gold/30 px-5 py-3 rounded-md font-medium hover:border-gold/60 transition-colors"
-                >
-                  Өтінім беру
-                </Link>
-              </div>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { icon: Trophy, n: "01", t: "Турнир", d: "Күн, қала және татами саны таңдалады." },
-                { icon: Users, n: "02", t: "Қатысушылар", d: "Команда спортшыларын санаттарға бөледі." },
-                { icon: Shield, n: "03", t: "Бекіту", d: "Әкімші өтінімді тексеріп, сеткаға жібереді." },
-              ].map((step) => (
-                <div
-                  key={step.n}
-                  className="group relative min-h-[10rem] overflow-hidden rounded-xl border border-gold/20 bg-background/45 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
-                >
-                  <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
-                  <div className="relative flex items-center justify-between">
-                    <div className="h-11 w-11 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                      <step.icon className="h-5 w-5 text-gold-foreground" />
-                    </div>
-                    <span className="font-display text-3xl font-bold text-gold/25">{step.n}</span>
-                  </div>
-                  <div className="relative mt-4 font-display text-lg font-semibold">{step.t}</div>
-                  <p className="relative mt-2 text-xs leading-relaxed text-muted-foreground">{step.d}</p>
-                </div>
-              ))}
-            </div>
+            <Link to="/rankings" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+              Дәрежеге өту <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
-          <div className="relative mt-5 grid gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:grid-cols-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              Команда және клуб деректері сақталады
+          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {teamRows.slice(0, 4).map((c, i) => (
+                <Link
+                  to="/rankings"
+                  key={c.name}
+                  className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
+                >
+                  <img
+                    src={c.image}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover opacity-12 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-18"
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-60`} />
+                  <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
+                  <div className="relative">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
+                          <Building2 className="h-5 w-5 text-gold-foreground" />
+                        </div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Клуб #{String(i + 1).padStart(2, "0")}
+                        </div>
+                      </div>
+                      <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
+                        {c.ready}%
+                      </span>
+                    </div>
+                    <h3 className="font-display text-xl font-semibold group-hover:text-gold transition-colors">
+                      {c.name}
+                    </h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-gold/70" /> {c.city}</span>
+                      <span className="inline-flex items-center gap-1"><User className="h-3 w-3 text-gold/70" /> {c.coach}</span>
+                    </div>
+                    <div className="mt-5 grid grid-cols-3 gap-2">
+                      {[
+                        { label: "Спортшы", value: c.athletes },
+                        { label: "Өтінім", value: c.entries },
+                        { label: "Санат", value: c.categories },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-lg bg-background/40 border border-border/60 p-3">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{item.label}</div>
+                          <div className="font-display text-2xl font-bold text-gradient-gold">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-5">
+                      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <span>Жарысқа дайындық</span>
+                        <span>{c.ready}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-background/50 border border-border/50">
+                        <div className="h-full rounded-full bg-gradient-gold shadow-gold" style={{ width: `${c.ready}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {teamRows.length === 0 && (
+                <div className="sm:col-span-2 rounded-2xl border border-gold/20 bg-card/55 p-8 text-center text-muted-foreground">
+                  Backend-те клубтар пайда болғанда, олар осы жерде көрсетіледі.
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              Спортшылар жас/салмақ бойынша бөлінеді
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              Бекітілген өтінімнен сетка жасалады
+
+            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+              <div className="flex items-center justify-between border-b border-border/40 bg-background/30 px-4 py-4 sm:px-5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
+                    Тікелей дәреже
+                  </div>
+                  <h3 className="font-display text-xl font-semibold">Команда спортшылары</h3>
+                </div>
+                <Star className="h-5 w-5 text-gold" />
+              </div>
+              <div className="divide-y divide-border/40">
+                {athleteRows.map((a) => {
+                  const medal = a.rank === 1 ? "text-yellow-400" : a.rank === 2 ? "text-zinc-300" : a.rank === 3 ? "text-amber-600" : "text-muted-foreground";
+                  const change = a.change.startsWith("+") ? "text-emerald-400" : a.change.startsWith("−") ? "text-rose-400" : "text-muted-foreground";
+                  return (
+                    <Link
+                      to="/rankings"
+                      key={`${a.rank}-${a.name}`}
+                      className="group grid grid-cols-[3rem_1fr_auto] gap-3 px-4 py-4 hover:bg-gold/5 transition-colors items-center sm:px-5"
+                    >
+                      <div className={`font-display text-2xl font-bold ${medal} flex items-center gap-2`}>
+                        {a.rank <= 3 && <Star className="h-4 w-4 fill-current" />}
+                        {a.rank}
+                      </div>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="h-10 w-10 overflow-hidden rounded-full border border-gold/30 bg-gradient-gold shrink-0">
+                          <img src={a.image} alt="" className="h-full w-full object-cover" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold group-hover:text-gold transition-colors">{a.name}</div>
+                          <div className="truncate text-[11px] text-muted-foreground">{a.club} · {a.weight}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-display text-lg font-bold text-gradient-gold tabular-nums">{a.points}</div>
+                        <div className={`text-xs tabular-nums ${change}`}>{a.change}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+                {athleteRows.length === 0 && (
+                  <div className="px-5 py-10 text-center text-muted-foreground">
+                    Дәрежеде әзірше спортшылар жоқ. Жарыс қорытындысы шыққанда ұпайлар осында түседі.
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-border/40 p-4">
+                <Link to="/rankings" className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
+                  Барлық спортшылар <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+
+      {/* ЖАРЫС ХАТТАМАЛАРЫ */}
+      <section id="hattamalar" className="relative py-16 sm:py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-hero opacity-60" />
+        <div className="absolute inset-0 grid-bg opacity-25" />
+        <div className="container mx-auto px-4 relative">
+          <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">3 · Жарыс хаттамасы</div>
+              <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight">
+                Жарыс <span className="text-gradient-gold italic">хаттамасы</span>
+              </h2>
+              <p className="mt-3 text-muted-foreground max-w-xl">
+                Кез келген көрермен тіркелусіз белдесулердің нәтижелерін көре алады.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30">
+              <Radio className="h-3.5 w-3.5 animate-pulse" /> LIVE · Татами #2 · −73 кг
+            </span>
+          </div>
+          <div className="glass rounded-2xl p-6 border border-gold/20 shadow-elegant">
+            <Bracket rounds={sampleRounds} />
+          </div>
+          <div className="mt-6 text-center">
+            <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+              Жарыс хаттамасына өту <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+
+      {/* PROTOCOL RESULT MODULE */}
+      <section className="container mx-auto px-4 pb-14 sm:pb-20">
+        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-5 shadow-elegant backdrop-blur sm:p-7">
+          <div className="absolute inset-0 grid-bg opacity-20" />
+          <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gold/10 blur-3xl" />
+          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-gold">
+                <Trophy className="h-3.5 w-3.5" />
+                Хаттама және нәтиже
+              </div>
+              <h3 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
+                Шешуші кездесуден кейін орындар, ұпайлар және <span className="text-gradient-gold italic">хаттама</span> дайын
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Бұл блок жеке дәреже ретінде емес, жарыс қорытындысын түсіндіреді: тор аяқталады, орындар есептеледі, дәреже ұпайлары беріледі және PDF хаттама жасалады.
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {[
+                  { to: "/tournaments", label: "Тор", icon: GitBranch, desc: "Белдесу жолы" },
+                  { to: "/rankings", label: "Ұпай", icon: BarChart, desc: "Дәрежеге қосу" },
+                  { to: "/tournaments", label: "PDF", icon: Shield, desc: "Ресми құжат" },
+                ].map((q) => (
+                  <Link
+                    key={q.to}
+                    to={q.to}
+                    className="group relative overflow-hidden rounded-xl border border-gold/20 bg-background/40 p-4 transition-all hover:-translate-y-1 hover:border-gold/50"
+                  >
+                    <div className="mb-3 h-10 w-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
+                      <q.icon className="h-5 w-5 text-gold-foreground" />
+                    </div>
+                    <div className="font-display font-semibold group-hover:text-gold transition-colors">{q.label}</div>
+                    <div className="text-xs text-muted-foreground">{q.desc}</div>
+                  </Link>
+                ))}
+              </div>
+              <Link
+                to="/tournaments"
+                className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+              >
+                Жарыс хаттамасын ашу <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              {[
+                { p: 100, l: "1-орын", c: "from-yellow-400 to-amber-500", t: "text-navy-deep" },
+                { p: 80,  l: "2-орын", c: "from-zinc-300 to-zinc-500", t: "text-navy-deep" },
+                { p: 50,  l: "3-орын", c: "from-amber-700 to-amber-900", t: "text-white" },
+                { p: 30,  l: "5-орын", c: "from-muted to-muted", t: "text-foreground" },
+                { p: 15,  l: "7-орын", c: "from-muted to-muted", t: "text-foreground" },
+              ].map((s) => (
+                <div key={s.l} className={`relative rounded-xl bg-gradient-to-br ${s.c} p-4 text-center shadow-elegant md:min-h-[8rem] md:flex md:flex-col md:justify-center`}>
+                  <div className={`font-display text-3xl font-bold tabular-nums ${s.t}`}>{s.p}</div>
+                  <div className={`mt-1 text-[10px] uppercase tracking-widest opacity-80 ${s.t}`}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       {/* UPCOMING TOURNAMENTS WITH COUNTDOWN */}
       <section className="container mx-auto px-4 py-14 sm:py-20">
@@ -548,10 +717,10 @@ function Home() {
           <div>
             <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Жақын жарыстар</div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
-              Турнир күнтізбесі және <span className="text-gradient-gold italic">тіркеу</span>
+              Жарыс күнтізбесі және <span className="text-gradient-gold italic">тіркеу</span>
             </h2>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Командалар өтінім береді, қатысушылар санаттарға бөлінеді, ал басталған турнирлерде сетка мен матчтар live жаңарады.
+              Командалар өтінім береді, қатысушылар санаттарға бөлінеді, ал басталған жарыстарда live-тор мен белдесулер жаңарады.
             </p>
           </div>
           <Link to="/tournaments" className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold hover:border-gold/60">
@@ -575,7 +744,7 @@ function Home() {
                     <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" /> {statusText[featuredTournament.status] ?? featuredTournament.status}
                   </span>
                   <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-                    Featured event
+                    Негізгі жарыс
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -586,7 +755,7 @@ function Home() {
                   {localizeName(featuredTournament.name)}
                 </h3>
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Live турнир модулі: командалар, қатысушылар, сетка, матчтар және протокол бір жерден бақыланады.
+                  Live жарыс модулі: командалар, қатысушылар, live-тор, белдесулер және хаттама бір жерден бақыланады.
                 </p>
               </div>
 
@@ -604,7 +773,7 @@ function Home() {
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {["Шолу", "Қатысушылар", "Сетка", "Матчтар", "Протокол"].map((tab, i) => (
+                  {["Шолу", "Қатысушылар", "Live-тор", "Белдесулер", "Хаттама"].map((tab, i) => (
                     <span
                       key={tab}
                       className={`rounded-full border px-3 py-2 text-xs transition-colors ${
@@ -625,11 +794,11 @@ function Home() {
             <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-4 backdrop-blur">
               <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
               <div className="rounded-xl border border-border/60 bg-background/55 py-3 pl-10 pr-4 text-sm text-muted-foreground">
-                Турнир, қала немесе клуб іздеу
+                Жарыс, қала немесе клуб іздеу
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {["2026", "LIVE", "Тіркеу ашық", "Single Elim", "Round-Robin"].map((filter) => (
+              {["2026", "LIVE", "Тіркеу ашық", "Бір шығару", "Айналмалы"].map((filter) => (
                 <span key={filter} className="rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground">
                   {filter}
                 </span>
@@ -686,12 +855,12 @@ function Home() {
                 <div className="flex flex-col gap-4 border-t border-border/40 pt-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {t.status === "IN_PROGRESS" ? "Матчтар жүріп жатыр" : "Басталуына дейін"}
+                      {t.status === "IN_PROGRESS" ? "Белдесулер жүріп жатыр" : "Басталуына дейін"}
                     </div>
                     <Countdown to={new Date(t.startDate).getTime()} />
                   </div>
                   <span className="inline-flex items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold group-hover:border-gold/60">
-                    {t.status === "IN_PROGRESS" ? "Live сетка" : "Толық ақпарат"}
+                    {t.status === "IN_PROGRESS" ? "Live тор" : "Толық ақпарат"}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </div>
@@ -702,10 +871,11 @@ function Home() {
         </div>
         ) : (
           <div className="rounded-2xl border border-gold/20 bg-card/60 p-8 text-center text-muted-foreground">
-            Әзірше backend-те турнир жоқ. Админ жаңа жарыс қосқанда ол осы жерде бірден шығады.
+            Әзірше жүйеде жарыс жоқ. Әкімші жаңа жарыс қосқанда ол осы жерде бірден шығады.
           </div>
         )}
       </section>
+
 
       {/* LIVE CENTER */}
       <section className="container mx-auto px-4 pb-14 sm:pb-20">
@@ -718,17 +888,17 @@ function Home() {
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-destructive">
                   <Radio className="h-3.5 w-3.5 animate-pulse" />
-                  Live center
+                  Live орталық
                 </div>
                 <h2 className="font-display text-3xl font-bold sm:text-4xl md:text-5xl">
-                  Татами, сетка және <span className="text-gradient-gold italic">протокол</span> бір экранда
+                  Татами, тор және <span className="text-gradient-gold italic">хаттама</span> бір экранда
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Халықаралық жарыс форматындағы бақылау орталығы: әр татамидегі ағымдағы матч, келесі кездесу, сетка статусы және ресми құжаттар.
+                  Халықаралық жарыс форматындағы бақылау орталығы: әр татамидегі ағымдағы белдесу, келесі кездесу, live-тор күйі және ресми құжаттар.
                 </p>
               </div>
-              <Link to="/protocol" className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
-                Протоколдар <ArrowRight className="h-4 w-4" />
+              <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
+                Жарыс хаттамасы <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
@@ -748,7 +918,7 @@ function Home() {
                       {item.current}
                     </h3>
                     <div className="relative mt-4 rounded-xl border border-border/60 bg-card/50 p-3">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Next</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Келесі</div>
                       <div className="mt-1 text-sm text-foreground">{item.next}</div>
                     </div>
                     <div className="relative mt-4">
@@ -764,7 +934,7 @@ function Home() {
                 ))}
                 {liveMatches.length === 0 && (
                   <div className="md:col-span-3 rounded-2xl border border-border/60 bg-background/45 p-8 text-center text-muted-foreground">
-                    Матчтар сетка дайындалғаннан кейін осы live-блокта көрінеді.
+                    Белдесулер live-тор дайындалғаннан кейін осы блокта көрінеді.
                   </div>
                 )}
               </div>
@@ -776,16 +946,16 @@ function Home() {
                     <Shield className="h-5 w-5 text-gold-foreground" />
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Official documents</div>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Ресми құжаттар</div>
                     <h3 className="font-display text-xl font-semibold">Құжаттар модулі</h3>
                   </div>
                 </div>
                 <div className="space-y-3">
                   {[
-                    { title: "Старт парағы", status: "Ready" },
-                    { title: "Турнир сеткасы", status: "Live" },
-                    { title: "Категория протоколы", status: "Auto" },
-                    { title: "PDF қорытынды", status: "After final" },
+                    { title: "Бастау парағы", status: "Дайын" },
+                    { title: "Жарыс торы", status: "Live" },
+                    { title: "Санат хаттамасы", status: "Авто" },
+                    { title: "PDF қорытынды", status: "Соңында" },
                   ].map((doc) => (
                     <div key={doc.title} className="flex items-center justify-between rounded-xl border border-border/60 bg-card/45 px-4 py-3">
                       <span className="text-sm">{doc.title}</span>
@@ -801,206 +971,83 @@ function Home() {
         </div>
       </section>
 
-      {/* TEAMS + ATHLETES */}
-      <section className="relative py-14 sm:py-20 border-y border-border/40 bg-navy-deep/30 overflow-hidden">
-        <div className="absolute inset-0 grid-bg opacity-25" />
-        <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
-        <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-        <div className="container mx-auto px-4 relative">
-          <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
+
+      {/* TOURNAMENT ENTRY — team registration flow */}
+      <section className="container mx-auto px-4 -mt-6 relative z-10">
+        <div className="relative overflow-hidden rounded-2xl gradient-border bg-gradient-navy border border-gold/30 p-5 sm:p-7 shadow-elegant">
+          <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gold/20 blur-3xl animate-float" />
+          <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute inset-0 grid-bg opacity-25" />
+
+          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:items-center">
             <div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Командалар және қатысушылар</div>
-              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
-                Клуб өтінімі мен <span className="text-gradient-gold italic">спортшылар рейтингі</span>
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-                Клубтар, спортшылар және рейтинг нақты backend деректерінен жүктеледі.
-              </p>
-            </div>
-            <Link to="/rankings" className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold hover:border-gold/60">
-              Толық рейтинг <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {teamRows.slice(0, 4).map((c, i) => (
-                <Link
-                  to="/rankings"
-                  key={c.name}
-                  className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
-                >
-                  <img
-                    src={c.image}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover opacity-12 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-18"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${c.color} opacity-60`} />
-                  <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
-                  <div className="relative">
-                    <div className="mb-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                          <Building2 className="h-5 w-5 text-gold-foreground" />
-                        </div>
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                          Клуб #{String(i + 1).padStart(2, "0")}
-                        </div>
-                      </div>
-                      <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
-                        {c.ready}%
-                      </span>
-                    </div>
-                    <h3 className="font-display text-xl font-semibold group-hover:text-gold transition-colors">
-                      {c.name}
-                    </h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-gold/70" /> {c.city}</span>
-                      <span className="inline-flex items-center gap-1"><User className="h-3 w-3 text-gold/70" /> {c.coach}</span>
-                    </div>
-                    <div className="mt-5 grid grid-cols-3 gap-2">
-                      {[
-                        { label: "Спортшы", value: c.athletes },
-                        { label: "Өтінім", value: c.entries },
-                        { label: "Санат", value: c.categories },
-                      ].map((item) => (
-                        <div key={item.label} className="rounded-lg bg-background/40 border border-border/60 p-3">
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{item.label}</div>
-                          <div className="font-display text-2xl font-bold text-gradient-gold">{item.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-5">
-                      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <span>Турнирге дайындық</span>
-                        <span>{c.ready}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-background/50 border border-border/50">
-                        <div className="h-full rounded-full bg-gradient-gold shadow-gold" style={{ width: `${c.ready}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {teamRows.length === 0 && (
-                <div className="sm:col-span-2 rounded-2xl border border-gold/20 bg-card/55 p-8 text-center text-muted-foreground">
-                  Backend-те клубтар пайда болғанда, олар осы жерде көрсетіледі.
-                </div>
-              )}
-            </div>
-
-            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
-              <div className="flex items-center justify-between border-b border-border/40 bg-background/30 px-4 py-4 sm:px-5">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
-                    Live leaderboard
-                  </div>
-                  <h3 className="font-display text-xl font-semibold">Команда спортшылары</h3>
-                </div>
-                <Star className="h-5 w-5 text-gold" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-gold">
+                <Sparkles className="h-3.5 w-3.5" />
+                Жарысқа өтінім
               </div>
-              <div className="divide-y divide-border/40">
-                {athleteRows.map((a) => {
-                  const medal = a.rank === 1 ? "text-yellow-400" : a.rank === 2 ? "text-zinc-300" : a.rank === 3 ? "text-amber-600" : "text-muted-foreground";
-                  const change = a.change.startsWith("+") ? "text-emerald-400" : a.change.startsWith("−") ? "text-rose-400" : "text-muted-foreground";
-                  return (
-                    <Link
-                      to="/rankings"
-                      key={`${a.rank}-${a.name}`}
-                      className="group grid grid-cols-[3rem_1fr_auto] gap-3 px-4 py-4 hover:bg-gold/5 transition-colors items-center sm:px-5"
-                    >
-                      <div className={`font-display text-2xl font-bold ${medal} flex items-center gap-2`}>
-                        {a.rank <= 3 && <Star className="h-4 w-4 fill-current" />}
-                        {a.rank}
-                      </div>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="h-10 w-10 overflow-hidden rounded-full border border-gold/30 bg-gradient-gold shrink-0">
-                          <img src={a.image} alt="" className="h-full w-full object-cover" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate font-semibold group-hover:text-gold transition-colors">{a.name}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">{a.club} · {a.weight}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-display text-lg font-bold text-gradient-gold tabular-nums">{a.points}</div>
-                        <div className={`text-xs tabular-nums ${change}`}>{a.change}</div>
-                      </div>
-                    </Link>
-                  );
-                })}
-                {athleteRows.length === 0 && (
-                  <div className="px-5 py-10 text-center text-muted-foreground">
-                    Рейтингте әзірше спортшылар жоқ. Турнир қорытындысы шыққанда ұпайлар осында түседі.
-                  </div>
-                )}
-              </div>
-              <div className="border-t border-border/40 p-4">
-                <Link to="/rankings" className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
-                  Барлық спортшылар <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PROTOCOL RESULT MODULE */}
-      <section className="container mx-auto px-4 pb-14 sm:pb-20">
-        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-5 shadow-elegant backdrop-blur sm:p-7">
-          <div className="absolute inset-0 grid-bg opacity-20" />
-          <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gold/10 blur-3xl" />
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-gold">
-                <Trophy className="h-3.5 w-3.5" />
-                Қорытынды модулі
-              </div>
-              <h3 className="font-display text-2xl font-bold leading-tight sm:text-3xl">
-                Финалдан кейін орындар, ұпайлар және <span className="text-gradient-gold italic">протокол</span> дайын
+              <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
+                Командаңызды тіркеп, қатысушыларды <span className="text-gradient-gold italic">санаттарға</span> қосыңыз
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Бұл блок жеке рейтинг ретінде емес, турнир қорытындысын түсіндіреді: сетка аяқталады, орындар есептеледі, рейтинг ұпайлары беріледі және PDF протокол жасалады.
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Жаттықтырушы жарысты таңдайды, спортшыларды салмақ және жас санатына бөледі, ал әкімші өтінімді бекіткен соң тор құрылады.
               </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  { to: "/tournaments", label: "Сетка", icon: GitBranch, desc: "Матч жолы" },
-                  { to: "/rankings", label: "Ұпай", icon: BarChart, desc: "Рейтингке қосу" },
-                  { to: "/protocol", label: "PDF", icon: Shield, desc: "Ресми құжат" },
-                ].map((q) => (
-                  <Link
-                    key={q.to}
-                    to={q.to}
-                    className="group relative overflow-hidden rounded-xl border border-gold/20 bg-background/40 p-4 transition-all hover:-translate-y-1 hover:border-gold/50"
-                  >
-                    <div className="mb-3 h-10 w-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                      <q.icon className="h-5 w-5 text-gold-foreground" />
-                    </div>
-                    <div className="font-display font-semibold group-hover:text-gold transition-colors">{q.label}</div>
-                    <div className="text-xs text-muted-foreground">{q.desc}</div>
-                  </Link>
-                ))}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  to="/tournaments"
+                  className="inline-flex items-center gap-2 bg-gradient-gold text-gold-foreground px-5 py-3 rounded-md font-semibold shadow-gold hover:scale-105 transition-transform"
+                >
+                  Жарыс таңдау <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 glass border border-gold/30 px-5 py-3 rounded-md font-medium hover:border-gold/60 transition-colors"
+                >
+                  Өтінім беру
+                </Link>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { p: 100, l: "1-орын", c: "from-yellow-400 to-amber-500", t: "text-navy-deep" },
-                { p: 80,  l: "2-орын", c: "from-zinc-300 to-zinc-500", t: "text-navy-deep" },
-                { p: 50,  l: "3-орын", c: "from-amber-700 to-amber-900", t: "text-white" },
-                { p: 30,  l: "5-орын", c: "from-muted to-muted", t: "text-foreground" },
-                { p: 15,  l: "7-орын", c: "from-muted to-muted", t: "text-foreground" },
-              ].map((s) => (
-                <div key={s.l} className={`relative rounded-xl bg-gradient-to-br ${s.c} p-4 text-center shadow-elegant md:min-h-[8rem] md:flex md:flex-col md:justify-center`}>
-                  <div className={`font-display text-3xl font-bold tabular-nums ${s.t}`}>{s.p}</div>
-                  <div className={`mt-1 text-[10px] uppercase tracking-widest opacity-80 ${s.t}`}>{s.l}</div>
+                { icon: Trophy, n: "01", t: "Жарыс", d: "Күн, қала және татами саны таңдалады." },
+                { icon: Users, n: "02", t: "Қатысушылар", d: "Команда спортшыларын санаттарға бөледі." },
+                { icon: Shield, n: "03", t: "Бекіту", d: "Әкімші өтінімді тексеріп, торға жібереді." },
+              ].map((step) => (
+                <div
+                  key={step.n}
+                  className="group relative min-h-[10rem] overflow-hidden rounded-xl border border-gold/20 bg-background/45 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
+                >
+                  <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
+                  <div className="relative flex items-center justify-between">
+                    <div className="h-11 w-11 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
+                      <step.icon className="h-5 w-5 text-gold-foreground" />
+                    </div>
+                    <span className="font-display text-3xl font-bold text-gold/25">{step.n}</span>
+                  </div>
+                  <div className="relative mt-4 font-display text-lg font-semibold">{step.t}</div>
+                  <p className="relative mt-2 text-xs leading-relaxed text-muted-foreground">{step.d}</p>
                 </div>
               ))}
             </div>
           </div>
+
+          <div className="relative mt-5 grid gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:grid-cols-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-gold" />
+              Команда және клуб деректері сақталады
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-gold" />
+              Спортшылар жас/салмақ бойынша бөлінеді
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-gold" />
+              Бекітілген өтінімнен тор жасалады
+            </div>
+          </div>
         </div>
       </section>
+
 
       {/* PARTNERS MARQUEE */}
       <section className="border-y border-border/40 bg-navy-deep/40 py-6 overflow-hidden">
@@ -1015,7 +1062,7 @@ function Home() {
       </section>
 
       {/* TECHNIQUE VIDEO LIBRARY */}
-      <section ref={cineRef} className="relative overflow-hidden border-y border-border/40 py-16 sm:py-24">
+      <section id="tehnika" ref={cineRef} className="relative overflow-hidden border-y border-border/40 py-16 sm:py-24">
         <div className="absolute inset-0 bg-gradient-hero opacity-70" />
         <div className="absolute inset-0 grid-bg opacity-25" />
         <div
@@ -1044,11 +1091,11 @@ function Home() {
                 <span className="text-[10px] uppercase tracking-[0.28em] text-gold">КЮ техникасы</span>
               </div>
               <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
-                Ішкі <span className="text-gradient-gold italic">видео зал</span> техникаға
+                Ішкі <span className="text-gradient-gold italic">бейне зал</span>: техника және белбеу
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Спортшылар КЮ деңгейін таңдап, техниканы осы жерде қарайды: сыртқы сайтқа өтпей,
-                жарысқа дайындық пен белбеу жүйесі бір бетте қалады.
+                КЮ бейнелері мен белбеу жолы бір жерде: спортшы деңгейін таңдайды, техникасын көреді,
+                келесі белбеуге не керек екенін түсінеді.
               </p>
           </div>
 
@@ -1097,8 +1144,8 @@ function Home() {
                   {currentTechnique.title}
                 </h3>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {currentTechnique.focus}. Бұл жерде кейін нақты video файл немесе YouTube embed қойылады,
-                  ал қазір дизайн дайын player күйінде көрсетілген.
+                  {currentTechnique.focus}. Бұл жерде кейін нақты бейне файл немесе YouTube қойылады,
+                  ал қазір дайын ойнатқыш күйінде көрсетілген.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   {currentTechnique.moves.map((move) => (
@@ -1129,8 +1176,8 @@ function Home() {
               <div className="rounded-2xl border border-gold/20 bg-card/80 p-4 shadow-elegant backdrop-blur">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.26em] text-gold">playlist</div>
-                    <div className="font-display text-xl font-bold">КЮ видеолары</div>
+                    <div className="text-[10px] uppercase tracking-[0.26em] text-gold">бейне тізімі</div>
+                    <div className="font-display text-xl font-bold">КЮ бейнелері</div>
                   </div>
                   <div className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs text-gold">
                     {techniqueVideos.length} сабақ
@@ -1169,20 +1216,51 @@ function Home() {
                 </div>
               </div>
 
-              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-navy-deep p-5 shadow-elegant">
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full conic-gold opacity-25 blur-2xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/80 p-4 shadow-elegant backdrop-blur">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gold/15 blur-2xl" />
                 <div className="relative">
-                  <div className="mb-4 text-[10px] uppercase tracking-[0.26em] text-gold">3D belt path</div>
-                  <div className="space-y-2" style={{ perspective: "800px" }}>
-                    {["Ақ", "Сары", "Қызғылт", "Жасыл", "Көк"].map((belt, i) => (
-                      <div
-                        key={belt}
-                        className="flex h-9 items-center justify-between rounded-md border border-white/10 bg-gradient-to-r from-white/15 to-gold/10 px-4 text-sm"
-                        style={{ transform: `rotateX(14deg) translateZ(${i * 7}px)` }}
-                      >
-                        <span>{belt}</span>
-                        <span className="text-xs text-gold">{6 - i} КЮ</span>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.26em] text-gold">белбеу жолы</div>
+                      <div className="font-display text-xl font-bold">КЮ жүйесі</div>
+                    </div>
+                    <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
+                      {currentBelt.level}
+                    </span>
+                  </div>
+
+                  <div className="mb-4 rounded-xl border border-border/60 bg-background/40 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className={`h-8 w-16 rounded-md bg-gradient-to-r ${currentBelt.color} shadow-elegant`} />
+                        <div>
+                          <div className="font-display text-xl font-bold">{currentBelt.label}</div>
+                          <div className="text-xs text-muted-foreground">{currentBelt.skills}</div>
+                        </div>
                       </div>
+                      <div className="font-display text-2xl font-bold text-gradient-gold">{currentBelt.progress}%</div>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full border border-border/50 bg-background/60">
+                      <div className="h-full rounded-full bg-gradient-gold transition-all duration-500" style={{ width: `${currentBelt.progress}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                    {beltPath.map((belt, i) => (
+                      <button
+                        key={belt.label}
+                        type="button"
+                        onClick={() => setActiveBelt(i)}
+                        className={`rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 ${
+                          activeBelt === i
+                            ? "border-gold/70 bg-gold/15 shadow-gold"
+                            : "border-border/60 bg-background/40 hover:border-gold/40"
+                        }`}
+                      >
+                        <span className={`mb-2 block h-3 rounded-full bg-gradient-to-r ${belt.color}`} />
+                        <span className="block truncate font-display text-sm font-semibold">{belt.label}</span>
+                        <span className="text-[10px] text-gold">{belt.level}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1205,7 +1283,7 @@ function Home() {
             </p>
           </div>
           <div className="hidden rounded-full border border-gold/20 bg-gold/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-gold sm:block">
-            sponsor roll
+            серіктестер
           </div>
         </div>
 
@@ -1250,80 +1328,6 @@ function Home() {
         </div>
       </section>
 
-      {/* 3D BELT RANKS */}
-      <section className="relative py-16 sm:py-24 overflow-hidden border-y border-border/40 bg-navy-deep/30">
-        <div className="absolute inset-0 grid-bg opacity-30" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[40rem] w-[40rem] rounded-full conic-gold opacity-10 blur-3xl animate-spin-conic" />
-        <div className="container mx-auto px-4 relative">
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3 sm:mb-4">Дан жүйесі</div>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold text-3d">
-              Ақ белбеуден<br/><span className="text-gradient-gold italic">қара белбеуге</span> дейін
-            </h2>
-            <p className="mt-5 text-muted-foreground">
-              Әр спортшының жолы дәрежеде автоматты түрде көрсетіледі. IJF стандарты.
-            </p>
-          </div>
-
-          <div className="perspective-1200">
-            <div className="mx-auto max-w-4xl preserve-3d" style={{ transform: "rotateX(18deg)" }}>
-              <div className="space-y-3">
-                {[
-                  { c: "from-white/90 to-white/60", text: "text-navy-deep", label: "Ақ", k: "6 kyu" },
-                  { c: "from-yellow-300 to-yellow-500", text: "text-navy-deep", label: "Сары", k: "5 kyu" },
-                  { c: "from-orange-400 to-orange-600", text: "text-navy-deep", label: "Қызғылт сары", k: "4 kyu" },
-                  { c: "from-green-500 to-green-700", text: "text-white", label: "Жасыл", k: "3 kyu" },
-                  { c: "from-sky-500 to-sky-700", text: "text-white", label: "Көк", k: "2 kyu" },
-                  { c: "from-amber-700 to-amber-900", text: "text-white", label: "Қоңыр", k: "1 kyu" },
-                  { c: "from-neutral-900 to-black", text: "text-gold", label: "Қара", k: "1–10 dan" },
-                ].map((b, i) => (
-                  <div
-                    key={b.label}
-                    className={`group relative h-12 rounded-md bg-gradient-to-r ${b.c} flex items-center justify-between px-6 shadow-elegant hover:translate-y-[-4px] transition-transform`}
-                    style={{ transform: `translateZ(${i * 8}px)` }}
-                  >
-                    <span className={`font-display font-bold tracking-wide ${b.text}`}>{b.label}</span>
-                    <span className={`text-xs uppercase tracking-widest ${b.text} opacity-80`}>{b.k}</span>
-                    <span className="absolute right-12 top-0 bottom-0 w-px bg-black/20" />
-                    <span className="absolute right-20 top-0 bottom-0 w-px bg-black/20" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* LIVE BRACKET (public, no auth) */}
-      <section className="relative py-16 sm:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero opacity-60" />
-        <div className="absolute inset-0 grid-bg opacity-25" />
-        <div className="container mx-auto px-4 relative">
-          <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">Live хаттама</div>
-              <h2 className="font-display text-4xl md:text-5xl font-bold">
-                Жарыс <span className="text-gradient-gold italic">хаттамасы</span> — нақты уақытта
-              </h2>
-              <p className="mt-3 text-muted-foreground max-w-xl">
-                Кез келген көрермен тіркелусіз жекпе-жектердің нәтижелерін көре алады.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30">
-              <Radio className="h-3.5 w-3.5 animate-pulse" /> LIVE · Татами #2 · −73 кг
-            </span>
-          </div>
-          <div className="glass rounded-2xl p-6 border border-gold/20 shadow-elegant">
-            <Bracket rounds={sampleRounds} />
-          </div>
-          <div className="mt-6 text-center">
-            <Link to="/tournaments" className="inline-flex items-center gap-2 text-sm text-gold hover:underline">
-              Барлық хаттамаларды көру <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* HOW IT WORKS */}
       <section className="relative py-16 sm:py-24 border-y border-border/40 bg-navy-deep/40">
         <div className="container mx-auto px-4">
@@ -1336,7 +1340,7 @@ function Home() {
           <div className="grid md:grid-cols-4 gap-6 relative">
             <div className="hidden md:block absolute top-8 left-[12%] right-[12%] h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
             {[
-              { n: "01", t: "Тіркелу", d: "Спортшы немесе жаттықтырушы аккаунт жасайды." },
+              { n: "01", t: "Тіркелу", d: "Спортшы немесе жаттықтырушы жеке кабинет ашады." },
               { n: "02", t: "Өтінім", d: "Жаттықтырушы клубтан атынан өтінім жібереді." },
               { n: "03", t: "Жеребе", d: "Әкімші бір батырмамен IJF хаттамасын құрады." },
               { n: "04", t: "Жекпе-жек", d: "Төреші LIVE панелде ұпайларды тіркейді." },
@@ -1374,27 +1378,27 @@ function Home() {
               </div>
               <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
                 Команда келді.<br />
-                Сетка ашылды.<br />
+                Тор ашылды.<br />
                 <span className="text-gradient-gold italic">Татами дайын.</span>
               </h2>
               <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Басты бет соңында бос ұран емес, жарыстың нақты финалдық көрінісі: кім тіркелді,
+                Басты бет соңында бос ұран емес, жарыстың нақты шешуші көрінісі: кім тіркелді,
                 қай татамиде күреседі және қандай құжат дайын болады.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-medium text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
                   Live жарыстар <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link to="/protocol" className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-background/55 px-6 py-3 font-medium backdrop-blur transition-colors hover:border-gold/60">
-                  Протоколдар
+                <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-background/55 px-6 py-3 font-medium backdrop-blur transition-colors hover:border-gold/60">
+                  Жарыс хаттамасы
                 </Link>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:content-end">
               {[
-                { title: "Старт парағы", value: "248", desc: "қатысушы бекітілді", icon: Users },
-                { title: "Сетка", value: "18", desc: "санат бойынша құрылды", icon: GitBranch },
+                { title: "Бастау парағы", value: "248", desc: "қатысушы бекітілді", icon: Users },
+                { title: "Тор", value: "18", desc: "санат бойынша құрылды", icon: GitBranch },
                 { title: "Татами", value: "3", desc: "live кезек жұмыс істейді", icon: Radio },
                 { title: "Қорытынды", value: "PDF", desc: "медаль және хаттама", icon: Shield },
               ].map((item) => (

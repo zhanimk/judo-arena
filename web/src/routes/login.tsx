@@ -9,6 +9,9 @@ import { RedirectIfAuthenticated } from "@/lib/protected-route";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Кіру — Judo-Arena" }] }),
+  validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
+    mode: search.mode === "register" ? "register" : search.mode === "login" ? "login" : undefined,
+  }),
   component: () => (
     <RedirectIfAuthenticated>
       <Login />
@@ -20,8 +23,9 @@ type Mode = "login" | "register";
 
 function Login() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(search.mode ?? "login");
   const [role, setRole] = useState<"ATHLETE" | "COACH">("ATHLETE");
 
   const [email, setEmail] = useState("");

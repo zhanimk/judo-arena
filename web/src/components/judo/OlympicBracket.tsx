@@ -43,12 +43,12 @@ interface Props {
   format: "SE_IJF" | "ROUND_ROBIN" | "MIXED";
 }
 
-const CARD_W = 260;
-const CARD_H = 98;
-const ROUND_GAP = 96;
-const HEADER_H = 54;
-const BASE_GAP = 26;
-const PAD = 20;
+const CARD_W = 200;
+const CARD_H = 68;
+const ROUND_GAP = 56;
+const HEADER_H = 44;
+const BASE_GAP = 14;
+const PAD = 14;
 
 export function OlympicBracket({ matches, size, format }: Props) {
   if (matches.length === 0) {
@@ -152,8 +152,8 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
               className="absolute z-10"
               style={{ left: layout.positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}
             >
-              <div className="mb-3 flex h-10 items-center justify-center">
-                <span className="rounded-full border border-gold/30 bg-background/90 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold shadow-sm backdrop-blur">
+              <div className="mb-2 flex h-8 items-center justify-center">
+                <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
                   {roundLabels[roundIndex] ?? `Раунд ${roundIndex + 1}`}
                 </span>
               </div>
@@ -177,13 +177,13 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
               className="absolute z-10 flex items-center"
               style={{ left: championX, top: layout.positions.at(-1)?.[0]?.y ?? HEADER_H, width: CARD_W, height: CARD_H }}
             >
-              <div className="w-full rounded-lg border-2 border-gold/70 bg-gradient-gold p-4 text-center shadow-gold">
-                <Trophy className="mx-auto mb-1.5 h-6 w-6 text-gold-foreground" />
-                <div className="font-display text-lg font-bold text-gold-foreground">
+              <div className="w-full rounded-lg border-2 border-gold/70 bg-gradient-gold p-3 text-center shadow-gold">
+                <Trophy className="mx-auto mb-1 h-5 w-5 text-gold-foreground" />
+                <div className="font-display text-sm font-bold text-gold-foreground">
                   {champion.name} {champion.surname}
                 </div>
                 {champion.clubCity && (
-                  <div className="mt-1 text-xs text-gold-foreground/80">{champion.clubCity}</div>
+                  <div className="text-[10px] text-gold-foreground/80">{champion.clubCity}</div>
                 )}
               </div>
             </div>
@@ -191,28 +191,41 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
         </div>
       </div>
 
-      {/* Repechage + Bronze */}
+      {/* Repechage + Bronze — flow: Repechage → Bronze */}
       {(repechage.length > 0 || bronze.length > 0) && (
         <div className="border-t border-border/40 pt-6">
-          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">Жұбату & Қола</div>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {repechage.map((m) => (
-              <div key={m.id}>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                  Жұбату {m.position + 1}
-                </div>
-                <MatchCard match={m} />
+          {repechage.length > 0 && (
+            <div className="mb-5">
+              <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">Жұбату (Repechage)</div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {repechage.map((m) => (
+                  <div key={m.id}>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                      Жұбату {m.position + 1}
+                    </div>
+                    <MatchCard match={m} />
+                  </div>
+                ))}
               </div>
-            ))}
-            {bronze.map((m) => (
-              <div key={m.id}>
-                <div className="text-[10px] uppercase tracking-widest text-amber-600 mb-2 inline-flex items-center gap-1">
-                  🥉 Қола үшін
-                </div>
-                <MatchCard match={m} bronze />
+            </div>
+          )}
+          {bronze.length > 0 && (
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3 flex items-center gap-1.5">
+                Қола медальдар
               </div>
-            ))}
-          </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {bronze.map((m, i) => (
+                  <div key={m.id} className="rounded-lg border border-amber-600/20 bg-amber-600/5 p-3">
+                    <div className="text-[10px] uppercase tracking-widest text-amber-600 mb-1.5 font-semibold">
+                      Қола {bronze.length > 1 ? i + 1 : ""}
+                    </div>
+                    <MatchCard match={m} bronze />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -242,81 +255,86 @@ function getMainBracketLayout(rounds: BracketMatch[][]) {
 function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: boolean; bronze?: boolean }) {
   const red = match.redAthlete;
   const blue = match.blueAthlete;
-  const liveBorder = match.status === "IN_PROGRESS";
+  const live = match.status === "IN_PROGRESS";
+  const done = match.status === "COMPLETED";
   const score = match.scoreSnapshot ?? {};
 
   return (
-    <div className={`relative h-full bg-white/95 dark:bg-card rounded-lg overflow-hidden shadow-md border-2 transition-all
-      ${liveBorder ? "border-destructive shadow-[0_0_24px_-6px_rgba(220,50,50,0.55)]" :
-        final ? "border-gold/60" :
-        bronze ? "border-amber-600/60" :
-        match.status === "COMPLETED" ? "border-gold/30" : "border-border/60"}
+    <div className={`relative h-full rounded-lg overflow-hidden shadow-sm border transition-all
+      ${live ? "border-destructive shadow-[0_0_18px_-4px_rgba(220,50,50,0.5)]" :
+        final ? "border-gold/50" :
+        bronze ? "border-amber-600/50" :
+        done ? "border-gold/20" : "border-border/50"}
+      bg-white/96 dark:bg-card
     `}>
-      {match.status === "IN_PROGRESS" && (
-        <div className="absolute -top-2 left-3 z-10 text-[9px] px-1.5 py-0.5 rounded bg-destructive text-white uppercase tracking-widest animate-pulse">
-          Live
+      {live && (
+        <div className="absolute right-1.5 top-1 z-10 animate-pulse rounded bg-destructive px-1 py-px text-[8px] font-bold uppercase tracking-widest text-white">
+          LIVE
         </div>
       )}
       <AthleteRow
         athlete={red}
         score={formatScore(score.red)}
-        isWinner={match.winnerId === red?.id}
+        isWinner={done && match.winnerId === red?.id}
+        isLoser={done && !!match.winnerId && match.winnerId !== red?.id}
         side="red"
       />
-      <div className="h-px bg-border/40" />
+      <div className="h-px bg-border/30" />
       <AthleteRow
         athlete={blue}
         score={formatScore(score.blue)}
-        isWinner={match.winnerId === blue?.id}
+        isWinner={done && match.winnerId === blue?.id}
+        isLoser={done && !!match.winnerId && match.winnerId !== blue?.id}
         side="blue"
       />
     </div>
   );
 }
 
-function AthleteRow({ athlete, score, isWinner, side }: {
-  athlete?: BracketAthlete | null; score?: string; isWinner: boolean; side: "red" | "blue";
+function AthleteRow({ athlete, score, isWinner, isLoser, side }: {
+  athlete?: BracketAthlete | null;
+  score?: string;
+  isWinner: boolean;
+  isLoser: boolean;
+  side: "red" | "blue";
 }) {
-  const flag = athlete?.country ? COUNTRY_FLAGS[athlete.country] ?? athlete.country : "";
-  const winnerCls = isWinner ? "bg-gold/15 text-gold-foreground dark:text-gold font-bold" : "text-foreground/90";
+  const flag = athlete?.country ? COUNTRY_FLAGS[athlete.country] ?? "" : "";
 
   return (
-    <div className={`flex items-center px-3 py-2.5 gap-2 ${winnerCls}`}>
-      {/* Side indicator */}
-      <div className={`w-1 h-8 rounded-sm ${side === "red" ? "bg-rose-500/40" : "bg-sky-500/40"}`} />
+    <div className={`flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors
+      ${isWinner ? "bg-gold/12 font-semibold" : isLoser ? "opacity-45" : ""}
+    `}>
+      {/* Side bar */}
+      <div className={`w-0.5 h-5 rounded-full shrink-0 ${side === "red" ? "bg-rose-400" : "bg-sky-400"}`} />
 
-      {/* Country flag/code */}
-      <div className="flex flex-col items-center min-w-[28px]">
-        {flag && (
-          flag.length <= 3
-            ? <span className="text-[9px] uppercase font-mono font-bold tracking-tight">{flag}</span>
-            : <span className="text-lg leading-none">{flag}</span>
-        )}
-      </div>
+      {/* Flag */}
+      {flag && (
+        <span className="shrink-0 text-sm leading-none">{flag}</span>
+      )}
 
       {/* Name */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 truncate">
         {athlete ? (
-          <div className="text-sm truncate">
-            <span className="font-medium">{athlete.name}</span>{" "}
-            <span className="font-bold uppercase">{athlete.surname}</span>
-          </div>
+          <>
+            <span>{athlete.name} </span>
+            <span className="font-bold uppercase tracking-tight">{athlete.surname}</span>
+          </>
         ) : (
-          <div className="text-xs text-muted-foreground italic">— TBD —</div>
+          <span className="italic text-muted-foreground/60">TBD</span>
         )}
       </div>
 
-      {/* Score / Play */}
-      <div className="ml-2 shrink-0">
+      {/* Score */}
+      <div className="shrink-0 ml-1">
         {score ? (
-          <span className={`text-xs tabular-nums font-semibold ${isWinner ? "text-gold" : "text-muted-foreground"}`}>
+          <span className={`tabular-nums font-semibold ${isWinner ? "text-gold" : "text-muted-foreground/70"}`}>
             {score}
           </span>
-        ) : athlete && (
-          <button className="w-6 h-6 rounded-full bg-gold/20 hover:bg-gold/40 flex items-center justify-center transition-colors">
-            <Play className="h-3 w-3 text-gold fill-current" />
-          </button>
-        )}
+        ) : athlete && !isLoser ? (
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold/15">
+            <Play className="h-2.5 w-2.5 fill-gold text-gold" />
+          </span>
+        ) : null}
       </div>
     </div>
   );

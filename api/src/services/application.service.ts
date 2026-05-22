@@ -144,6 +144,34 @@ export async function getApplication(actorUserId: string, applicationId: string)
   return app;
 }
 
+export async function listCoachApplications(coachUserId: string) {
+  const coach = await prisma.user.findUnique({ where: { id: coachUserId } });
+  if (!coach || coach.role !== UserRole.COACH) {
+    throw new ApplicationError("FORBIDDEN", "Доступно только тренеру", 403);
+  }
+  if (!coach.clubId) return [];
+
+  return prisma.application.findMany({
+    where: { clubId: coach.clubId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      tournament: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          applicationDeadline: true,
+          location: true,
+          city: true,
+        },
+      },
+      _count: { select: { entries: true } },
+    },
+  });
+}
+
 export async function listAthleteApplicationEntries(actorUserId: string) {
   const actor = await prisma.user.findUnique({
     where: { id: actorUserId },
@@ -261,6 +289,66 @@ export async function removeEntry(actorUserId: string, applicationId: string, en
     throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
   }
   await prisma.applicationEntry.delete({ where: { id: entryId } });
+}
+
+// ============================================================
+// ADMIN-FORCE ENTRY MANAGEMENT (bypass DRAFT/deadline checks)
+// Used for weigh-in adjustments after application is APPROVED
+// ============================================================
+
+export async function adminForceRemoveEntry(applicationId: string, entryId: string): Promise<void> {
+  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+
+  const entry = await prisma.applicationEntry.findUnique({ where: { id: entryId } });
+  if (!entry || entry.applicationId !== applicationId) {
+    throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
+  }
+  await prisma.applicationEntry.delete({ where: { id: entryId } });
+}
+
+export async function adminForceMoveEntry(
+  applicationId: string,
+  entryId: string,
+  newCategoryId: string,
+) {
+  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+
+  const entry = await prisma.applicationEntry.findUnique({
+    where: { id: entryId },
+    include: { athlete: true },
+  });
+  if (!entry || entry.applicationId !== applicationId) {
+    throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
+  }
+
+  const category = await prisma.category.findUnique({ where: { id: newCategoryId } });
+  if (!category || category.tournamentId !== app.tournamentId) {
+    throw new ApplicationError("CATEGORY_MISMATCH", "Категория не из этого турнира", 409);
+  }
+
+  // Check duplicate in target category
+  const duplicate = await prisma.applicationEntry.findFirst({
+    where: {
+      athleteId: entry.athleteId,
+      categoryId: newCategoryId,
+      application: { tournamentId: app.tournamentId },
+      NOT: { id: entryId },
+    },
+  });
+  if (duplicate) {
+    throw new ApplicationError("DUPLICATE_ENTRY", "Спортсмен уже записан в эту категорию", 409);
+  }
+
+  // Atomic move: delete old, create new
+  return prisma.$transaction(async (tx) => {
+    await tx.applicationEntry.delete({ where: { id: entryId } });
+    return tx.applicationEntry.create({
+      data: { applicationId, athleteId: entry.athleteId, categoryId: newCategoryId },
+      include: { athlete: true, category: true },
+    });
+  });
 }
 
 // ============================================================

@@ -10,6 +10,15 @@
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
+function qs(params?: Record<string, any>): string {
+  if (!params) return "";
+  const filtered = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""),
+  );
+  const q = new URLSearchParams(filtered as any).toString();
+  return q ? "?" + q : "";
+}
+
 let accessToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 let isRefreshing = false;
@@ -158,8 +167,8 @@ export const api = {
   // --- CLUBS ---
   clubs: {
     list: (params?: { city?: string; search?: string }) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<{ items: any[]; total: number }>(`/api/clubs${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<{ items: any[]; total: number }>(`/api/clubs${q}`);
     },
     get: (id: string) => request<any>(`/api/clubs/${id}`),
     create: (data: any) => request<any>("/api/clubs", { method: "POST", json: data }),
@@ -184,8 +193,8 @@ export const api = {
   // --- TOURNAMENTS ---
   tournaments: {
     list: (params?: { status?: string; city?: string; search?: string; upcoming?: boolean; limit?: number; offset?: number }) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<{ items: any[]; total: number }>(`/api/tournaments${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<{ items: any[]; total: number }>(`/api/tournaments${q}`);
     },
     get: (id: string) => request<any>(`/api/tournaments/${id}`),
     create: (data: any) => request<any>("/api/tournaments", { method: "POST", json: data }),
@@ -206,6 +215,7 @@ export const api = {
 
   // --- APPLICATIONS ---
   applications: {
+    myClub: () => request<any[]>("/api/coach/applications"),
     mineAsAthlete: () => request<any[]>("/api/athlete/applications"),
     get: (id: string) => request<any>(`/api/applications/${id}`),
     addEntry: (id: string, athleteId: string, categoryId: string) =>
@@ -218,6 +228,11 @@ export const api = {
       request<any>(`/api/applications/${id}/approve`, { method: "POST", json: { reviewerNotes: notes } }),
     reject: (id: string, notes?: string) =>
       request<any>(`/api/applications/${id}/reject`, { method: "POST", json: { reviewerNotes: notes } }),
+    // Admin-only: bypass DRAFT check (for weigh-in adjustments)
+    adminRemoveEntry: (appId: string, entryId: string) =>
+      request<void>(`/api/admin/applications/${appId}/entries/${entryId}`, { method: "DELETE" }),
+    adminMoveEntry: (appId: string, entryId: string, newCategoryId: string) =>
+      request<any>(`/api/admin/applications/${appId}/entries/${entryId}/category`, { method: "PATCH", json: { newCategoryId } }),
   },
 
   // --- BRACKETS ---
@@ -237,8 +252,8 @@ export const api = {
   // --- MATCHES ---
   matches: {
     list: (params?: { tournamentId?: string; bracketId?: string; athleteId?: string; status?: string; tatamiNumber?: number; limit?: number; offset?: number }) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<any[]>(`/api/matches${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<any[]>(`/api/matches${q}`);
     },
     get: (id: string) => request<any>(`/api/matches/${id}`),
     start: (id: string, judgeToken?: string) =>
@@ -262,6 +277,10 @@ export const api = {
     createJudgeSession: (id: string, judgeName?: string) =>
       request<any>(`/api/matches/${id}/judge-session`, { method: "POST", json: { judgeName } }),
     judgeByToken: (token: string) => request<any>(`/api/judge/${token}`),
+    reset: (id: string) =>
+      request<any>(`/api/matches/${id}/reset`, { method: "POST" }),
+    goldenScore: (id: string, judgeToken?: string) =>
+      request<any>(`/api/matches/${id}/golden-score`, { method: "POST", judgeToken }),
   },
 
   // --- ADMIN ---
@@ -271,24 +290,45 @@ export const api = {
     finalize: (tournamentId: string) =>
       request<any>(`/api/admin/tournaments/${tournamentId}/finalize`, { method: "POST" }),
     auditLogs: (params?: any) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<any>(`/api/admin/audit-logs${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<any>(`/api/admin/audit-logs${q}`);
     },
     bracketPdfUrl: (bracketId: string) => `${API_BASE}/api/pdf/bracket?bracketId=${bracketId}`,
     protocolPdfUrl: (tournamentId: string) =>
       `${API_BASE}/api/pdf/protocol?tournamentId=${tournamentId}`,
 
-    // Клубы — управление
+    // Клубы — полный CRUD
     getClub: (id: string) => request<any>(`/api/admin/clubs/${id}`),
+    createClub: (data: { name: { ru: string; kk?: string; en?: string }; city: string; country?: string; shortName?: string }) =>
+      request<any>("/api/admin/clubs", { method: "POST", json: data }),
+    updateClub: (id: string, data: any) =>
+      request<any>(`/api/admin/clubs/${id}/details`, { method: "PATCH", json: data }),
+    deleteClub: (id: string) =>
+      request<any>(`/api/admin/clubs/${id}`, { method: "DELETE" }),
     blockClub: (id: string, blocked: boolean, reason?: string) =>
       request<any>(`/api/admin/clubs/${id}/block`, { method: "PATCH", json: { blocked, reason } }),
 
-    // Пользователи
+    // Группы клуба — полный CRUD
+    createGroup: (clubId: string, data: { name: string; ageMin: number; ageMax: number }) =>
+      request<any>(`/api/admin/clubs/${clubId}/groups`, { method: "POST", json: data }),
+    updateGroup: (groupId: string, data: { name?: string; ageMin?: number; ageMax?: number }) =>
+      request<any>(`/api/admin/club-groups/${groupId}`, { method: "PATCH", json: data }),
+    deleteGroup: (groupId: string) =>
+      request<any>(`/api/admin/club-groups/${groupId}`, { method: "DELETE" }),
+
+    // Пользователи — полный CRUD
     listUsers: (params?: any) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<{ items: any[]; total: number }>(`/api/admin/users${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<{ items: any[]; total: number }>(`/api/admin/users${q}`);
     },
     getUser: (id: string) => request<any>(`/api/admin/users/${id}`),
+    createUser: (data: any) => request<any>("/api/admin/users", { method: "POST", json: data }),
+    updateUser: (id: string, data: any) =>
+      request<any>(`/api/admin/users/${id}/profile`, { method: "PATCH", json: data }),
+    changeUserClub: (id: string, clubId: string | null) =>
+      request<any>(`/api/admin/users/${id}/club`, { method: "PATCH", json: { clubId } }),
+    resetUserPassword: (id: string, password: string) =>
+      request<any>(`/api/admin/users/${id}/reset-password`, { method: "POST", json: { password } }),
     toggleUserActive: (id: string, active: boolean) =>
       request<any>(`/api/admin/users/${id}/active`, { method: "PATCH", json: { active } }),
 
@@ -322,8 +362,12 @@ export const api = {
     athlete: (id: string) =>
       request<{ athleteId: string; totalPoints: number; entries: any[] }>(`/api/ratings/athletes/${id}`),
     leaderboard: (params?: { categoryId?: string; clubId?: string; limit?: number }) => {
-      const q = new URLSearchParams(params as any).toString();
-      return request<any[]>(`/api/ratings/leaderboard${q ? "?" + q : ""}`);
+      const q = qs(params);
+      return request<any[]>(`/api/ratings/leaderboard${q}`);
+    },
+    clubLeaderboard: (params?: { limit?: number }) => {
+      const q = qs(params);
+      return request<any[]>(`/api/ratings/clubs${q}`);
     },
   },
 };

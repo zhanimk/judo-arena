@@ -9,6 +9,8 @@ import {
   Gavel,
   GripVertical,
   MonitorPlay,
+  RefreshCw,
+  RotateCcw,
   Unlink,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -102,7 +104,7 @@ export function TournamentScoreboardPanel({
   const matchesQuery = useQuery({
     queryKey: ["admin-scoreboard-matches", selectedTournamentId],
     enabled: Boolean(selectedTournamentId),
-    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 500 }),
+    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 200 }),
     refetchInterval: 2500,
   });
 
@@ -119,6 +121,21 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Кезекті өзгерту кезінде қате шықты"),
+  });
+
+  const resetMatchMutation = useMutation({
+    mutationFn: (matchId: string) => api.matches.reset(matchId),
+    onMutate: () => setError(""),
+    onSuccess: invalidateBoard,
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Матчты қайта бастау кезінде қате"),
+  });
+
+  const overrideMatch = useMutation({
+    mutationFn: ({ matchId, winnerSide, reason }: { matchId: string; winnerSide: "RED" | "BLUE"; reason: string }) =>
+      api.admin.override(matchId, winnerSide, reason),
+    onMutate: () => setError(""),
+    onSuccess: invalidateBoard,
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Override кезінде қате"),
   });
 
   const createSession = useMutation({
@@ -234,6 +251,8 @@ export function TournamentScoreboardPanel({
                     onDragStart={() => setDraggedMatchId(m.id)}
                     onDragEnd={() => setDraggedMatchId(null)}
                     onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
+                    onReset={() => resetMatchMutation.mutate(m.id)}
+                    onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
                   />
                 ))}
               </div>
@@ -275,6 +294,8 @@ export function TournamentScoreboardPanel({
                       onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
                       onMoveUp={() => reorderQueue.mutate({ matchId: m.id, direction: "up" })}
                       onMoveDown={() => reorderQueue.mutate({ matchId: m.id, direction: "down" })}
+                      onReset={() => resetMatchMutation.mutate(m.id)}
+                      onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
                     />
                   ))}
                 </div>
@@ -293,6 +314,8 @@ export function TournamentScoreboardPanel({
                       onDragEnd={() => setDraggedMatchId(null)}
                       onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
                       onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
+                      onReset={() => resetMatchMutation.mutate(m.id)}
+                      onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
                     />
                   ))}
                 </div>
@@ -309,9 +332,25 @@ export function TournamentScoreboardPanel({
           ) : (
             <div className="space-y-2">
               {completed.map((m: Match) => (
-                <div key={m.id} className="flex items-center justify-between rounded-md border border-border/60 bg-card/50 p-3 text-sm">
-                  <span className="min-w-0 truncate">{athleteName(m.redAthlete)} vs {athleteName(m.blueAthlete)}</span>
-                  <span className="shrink-0 text-xs text-gold">Жеңімпаз: {winnerName(m)}</span>
+                <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 p-3 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{athleteName(m.redAthlete)} vs {athleteName(m.blueAthlete)}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {m.bracket?.category ? categoryShort(m.bracket.category) : ""}
+                      {m.bracketSection ? ` · ${m.bracketSection}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gold">★ {winnerName(m)}</span>
+                    <button
+                      onClick={() => resetMatchMutation.mutate(m.id)}
+                      disabled={resetMatchMutation.isPending}
+                      className="rounded p-1.5 text-amber-500 hover:bg-amber-500/15"
+                      title="Қайта бастау"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -435,6 +474,8 @@ function MatchCard({
   onUnassign,
   onMoveUp,
   onMoveDown,
+  onReset,
+  onOverride,
 }: {
   match: Match;
   live?: boolean;
@@ -446,8 +487,15 @@ function MatchCard({
   onUnassign?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onReset?: () => void;
+  onOverride?: (winnerSide: "RED" | "BLUE") => void;
 }) {
   const hasPair = Boolean(match.redAthlete && match.blueAthlete);
+  const catName = match.bracket?.category
+    ? categoryShort(match.bracket.category)
+    : "";
+  const isDone = match.status === "COMPLETED";
+
   return (
     <article
       draggable
@@ -457,28 +505,38 @@ function MatchCard({
       }}
       onDragEnd={onDragEnd}
       className={`rounded-lg border bg-background/70 p-3 shadow-sm transition hover:border-gold/50 ${
-        live ? "border-destructive/50" : "border-border/70"
+        live ? "border-destructive/50" : isDone ? "border-green-500/30" : "border-border/70"
       }`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-              {queueIndex ? `Кезек #${queueIndex} · ` : ""}R{match.round}.{match.position}
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+              {queueIndex ? <span>#{queueIndex}</span> : null}
+              <span>R{match.round}.{match.position}</span>
+              {catName && (
+                <span className="normal-case tracking-normal rounded bg-gold/10 px-1.5 py-px text-[10px] text-gold font-medium">
+                  {catName}
+                </span>
+              )}
             </div>
             <div className="truncate text-sm font-medium">{athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}</div>
           </div>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${live ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
+          live ? "bg-destructive/15 text-destructive" :
+          isDone ? "bg-green-500/15 text-green-500" :
+          "bg-muted text-muted-foreground"
+        }`}>
           {statusLabel(match.status)}
         </span>
       </div>
 
       {!compact && (
         <div className="grid grid-cols-2 gap-2">
-          <ScoreSide side="RED" athlete={match.redAthlete} score={match.scoreSnapshot?.red} />
-          <ScoreSide side="BLUE" athlete={match.blueAthlete} score={match.scoreSnapshot?.blue} />
+          <ScoreSide side="RED" athlete={match.redAthlete} score={match.scoreSnapshot?.red} isWinner={isDone && match.winnerId === match.redAthlete?.id} />
+          <ScoreSide side="BLUE" athlete={match.blueAthlete} score={match.scoreSnapshot?.blue} isWinner={isDone && match.winnerId === match.blueAthlete?.id} />
         </div>
       )}
 
@@ -505,7 +563,7 @@ function MatchCard({
             </button>
           </div>
         )}
-        {hasPair && (
+        {hasPair && !isDone && (
           <button
             onClick={onJudge}
             className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2.5 py-1.5 text-xs text-gold"
@@ -513,6 +571,36 @@ function MatchCard({
             <Gavel className="h-3.5 w-3.5" />
             Төреші
           </button>
+        )}
+        {onReset && (match.status === "IN_PROGRESS" || isDone) && (
+          <button
+            onClick={onReset}
+            className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-500"
+            title="Матчты қайта бастау (барлығын тазалау)"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Қайта
+          </button>
+        )}
+        {onOverride && isDone && match.redAthlete && match.blueAthlete && (
+          <div className="inline-flex overflow-hidden rounded-md border border-sky-500/40">
+            <button
+              onClick={() => onOverride("RED")}
+              disabled={match.winnerId === match.redAthlete?.id}
+              className="px-2 py-1.5 text-xs text-rose-400 hover:bg-rose-500/15 disabled:opacity-30"
+              title={`${athleteName(match.redAthlete)} жеңді деп белгілеу`}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => onOverride("BLUE")}
+              disabled={match.winnerId === match.blueAthlete?.id}
+              className="border-l border-sky-500/40 px-2 py-1.5 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
+              title={`${athleteName(match.blueAthlete)} жеңді деп белгілеу`}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </button>
+          </div>
         )}
         {onUnassign && (
           <button onClick={onUnassign} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60">
@@ -525,10 +613,24 @@ function MatchCard({
   );
 }
 
-function ScoreSide({ side, athlete, score }: { side: "RED" | "BLUE"; athlete: any; score: any }) {
+function categoryShort(cat: any): string {
+  if (!cat) return "";
+  const g = cat.gender === "MALE" ? "Ер" : cat.gender === "FEMALE" ? "Қыз" : "";
+  const w = cat.weightMax >= 200 ? `+${cat.weightMin}` : `-${cat.weightMax}`;
+  return `${g} ${w}кг`.trim();
+}
+
+function ScoreSide({ side, athlete, score, isWinner }: { side: "RED" | "BLUE"; athlete: any; score: any; isWinner?: boolean }) {
   return (
-    <div className={`rounded-md border p-2 ${side === "RED" ? "border-rose-400/30 bg-rose-500/10" : "border-sky-400/30 bg-sky-500/10"}`}>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{side === "RED" ? "Қызыл" : "Көк"}</div>
+    <div className={`rounded-md border p-2 ${
+      isWinner
+        ? "border-gold/50 bg-gold/10"
+        : side === "RED" ? "border-rose-400/30 bg-rose-500/10" : "border-sky-400/30 bg-sky-500/10"
+    }`}>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {side === "RED" ? "Қызыл" : "Көк"}
+        {isWinner && <span className="ml-1 text-gold">★</span>}
+      </div>
       <div className="truncate text-sm font-medium">{athleteName(athlete)}</div>
       <div className="mt-1 text-xs">I:{score?.ippon ?? 0} W:{score?.wazaari ?? 0} S:{score?.shido ?? 0}</div>
     </div>

@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
@@ -10,15 +10,35 @@ const nav = [
   { to: "/", labelKey: "nav.home" },
   { to: "/tournaments", labelKey: "nav.tournaments" },
   { to: "/rankings", labelKey: "nav.rankings" },
-  { to: "/protocol", labelKey: "nav.protocol" },
 ];
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  hideUntilScroll?: boolean;
+};
+
+export function SiteHeader({ hideUntilScroll = false }: SiteHeaderProps) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(!hideUntilScroll);
+
+  useEffect(() => {
+    if (!hideUntilScroll) {
+      setScrolled(true);
+      return;
+    }
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [hideUntilScroll]);
+
   return (
-    <header className="sticky top-0 z-50 py-3 sm:py-4">
+    <header
+      className={`${hideUntilScroll ? "fixed inset-x-0" : "sticky"} top-0 z-50 py-3 transition-all duration-300 sm:py-4 ${
+        scrolled || open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0"
+      }`}
+    >
       <div className="absolute inset-x-0 top-0 h-full bg-background/60 backdrop-blur-md" />
       <div className="container mx-auto px-4">
         <div className="relative grid min-h-16 grid-cols-[1fr_auto] items-center gap-3 overflow-hidden rounded-2xl border border-gold/20 bg-background/85 px-4 py-3 shadow-elegant backdrop-blur-xl md:grid-cols-[1fr_auto_1fr] sm:px-5">

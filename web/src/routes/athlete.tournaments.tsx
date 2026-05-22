@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { LayoutDashboard, User, Trophy, Activity, Bell, Calendar, MapPin, Clock, GitBranch, Users, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, User, Trophy, Activity, Bell, Calendar, MapPin, Clock, GitBranch, Users, Building2, CheckCircle2, AlertTriangle, Swords } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "@/lib/api";
@@ -20,6 +20,7 @@ const nav = [
   { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
   { to: "/athlete/profile", label: "Профиль", icon: User },
   { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
+  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
   { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
   { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
 ];

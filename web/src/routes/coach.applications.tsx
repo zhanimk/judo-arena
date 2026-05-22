@@ -38,9 +38,10 @@ function CoachApplicationsRoute() {
 function CoachApplications() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const tQuery = useQuery({
-    queryKey: ["all-tournaments-for-apps"],
-    queryFn: () => api.tournaments.list(),
+
+  const appsQuery = useQuery({
+    queryKey: ["my-club-applications"],
+    queryFn: () => api.applications.myClub(),
   });
   const notificationsQuery = useQuery({
     queryKey: ["my-application-notifications"],
@@ -54,23 +55,10 @@ function CoachApplications() {
     },
   });
 
-  // Получаем заявки по каждому турниру (только свои благодаря COACH-фильтру на бэке)
-  const appsQuery = useQuery({
-    queryKey: ["my-applications", (tQuery.data?.items ?? []).map((t: any) => t.id).join(",")],
-    queryFn: async () => {
-      const all: any[] = [];
-      for (const t of tQuery.data?.items ?? []) {
-        try {
-          const apps = await api.tournaments.applications(t.id);
-          for (const a of apps) all.push({ ...a, tournamentName: localizeName(t.name) });
-        } catch { /* ignore */ }
-      }
-      return all;
-    },
-    enabled: (tQuery.data?.items ?? []).length > 0,
-  });
-
-  const apps = appsQuery.data ?? [];
+  const apps = (appsQuery.data ?? []).map((a: any) => ({
+    ...a,
+    tournamentName: localizeName(a.tournament?.name),
+  }));
   const filteredApps = useMemo(() => {
     if (statusFilter === "ALL") return apps;
     return apps.filter((a: any) => a.status === statusFilter);

@@ -1,6 +1,21 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { Building2, LayoutDashboard, Users, ClipboardList, Trophy, Bell, Calendar, MapPin, Clock, GitBranch, ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  GitBranch,
+  LayoutDashboard,
+  MapPin,
+  Plus,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -39,42 +54,60 @@ function CoachTournaments() {
     queryKey: ["tournaments-public"],
     queryFn: () => api.tournaments.list(),
   });
+  const myAppsQuery = useQuery({
+    queryKey: ["my-club-applications"],
+    queryFn: () => api.applications.myClub(),
+  });
+
+  const appByTournament = new Map((myAppsQuery.data ?? []).map((a: any) => [a.tournamentId, a]));
 
   return (
     <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Барлық жарыстар">
       <Panel title="Жарыстар">
-        {tQuery.isLoading ? <LoadingState /> :
-          (tQuery.data?.items ?? []).length === 0 ? (
-            <EmptyState title="Әзірше жарыс жоқ" />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {tQuery.data!.items.map((t: any) => (
+        {tQuery.isLoading ? (
+          <LoadingState />
+        ) : (tQuery.data?.items ?? []).length === 0 ? (
+          <EmptyState title="Әзірше жарыс жоқ" />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {tQuery.data!.items.map((t: any) => {
+              const deadline = t.applicationDeadline ?? t.startDate;
+              const deadlinePassed = new Date(deadline).getTime() < Date.now();
+              const existingApp = appByTournament.get(t.id);
+              const canApply = t.status === "REGISTRATION_OPEN" && !deadlinePassed && !existingApp;
+
+              return (
                 <div key={t.id} className="glass rounded-xl p-5 flex flex-col border border-border/60">
-                  {(() => {
-                    const deadline = t.applicationDeadline ?? t.startDate;
-                    const deadlinePassed = new Date(deadline).getTime() < Date.now();
-                    return (
-                      <>
                   <Link
                     to="/coach/tournaments/$id"
                     params={{ id: t.id }}
-                    className="font-display text-xl font-semibold mb-3 hover:text-gold"
+                    className="font-display text-xl font-semibold mb-3 hover:text-gold leading-tight"
                   >
                     {localizeName(t.name)}
                   </Link>
+
                   <div className="space-y-2 text-sm text-muted-foreground flex-1">
-                    <div className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-gold/70" />
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-gold/70 shrink-0" />
                       {dateRange(t.startDate, t.endDate)}
                     </div>
-                    <div className={`flex items-center gap-2 ${deadlinePassed ? "text-destructive" : ""}`}>
-                      <Clock className="h-3.5 w-3.5 text-gold/70" />
+                    <div className={`flex items-center gap-2 ${deadlinePassed && t.status === "REGISTRATION_OPEN" ? "text-destructive" : ""}`}>
+                      <Clock className="h-3.5 w-3.5 text-gold/70 shrink-0" />
                       Дедлайн: {new Date(deadline).toLocaleString("kk-KZ")}
                     </div>
-                    <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-gold/70" />{t.location || t.city}</div>
-                    <div className="flex items-center gap-2"><GitBranch className="h-3.5 w-3.5 text-gold/70" />{t._count?.categories ?? 0} санат · {t.tatamiCount ?? 1} татами</div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-gold/70 shrink-0" />
+                      {t.location || t.city}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="h-3.5 w-3.5 text-gold/70 shrink-0" />
+                      {t._count?.categories ?? 0} санат · {t.tatamiCount ?? 1} татами
+                    </div>
                   </div>
+
                   <div className="mt-4 flex flex-wrap justify-between items-center gap-2">
-                    <StatusBadge status={t.status} />
+                    <TournamentStatusBadge status={t.status} />
+
                     <div className="flex gap-2">
                       <Link
                         to="/coach/tournaments/$id"
@@ -83,44 +116,81 @@ function CoachTournaments() {
                       >
                         Қарау <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
-                      {t.status === "REGISTRATION_OPEN" && !deadlinePassed && (
+
+                      {existingApp ? (
+                        <Link
+                          to="/coach/applications/$id"
+                          params={{ id: existingApp.id }}
+                          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs border ${applicationButtonStyle(existingApp.status)}`}
+                        >
+                          <ApplicationStatusIcon status={existingApp.status} />
+                          {appStatusLabel(existingApp.status)}
+                        </Link>
+                      ) : canApply ? (
                         <Link
                           to="/coach/tournaments/$id"
                           params={{ id: t.id }}
-                          className="text-xs bg-gradient-gold text-gold-foreground px-3 py-2 rounded-md shadow-gold inline-flex items-center gap-1"
+                          className="inline-flex items-center gap-1 rounded-md bg-gradient-gold px-3 py-2 text-xs font-medium text-gold-foreground shadow-gold"
                         >
+                          <Plus className="h-3.5 w-3.5" />
                           Өтінім беру
                         </Link>
-                      )}
-                      {t.status === "REGISTRATION_OPEN" && deadlinePassed && (
-                        <span className="rounded border border-destructive/30 px-3 py-1.5 text-xs text-destructive">Дедлайн өтті</span>
-                      )}
+                      ) : t.status === "REGISTRATION_OPEN" && deadlinePassed ? (
+                        <span className="rounded border border-destructive/30 px-3 py-1.5 text-xs text-destructive">
+                          Дедлайн өтті
+                        </span>
+                      ) : null}
                     </div>
                   </div>
-                      </>
-                    );
-                  })()}
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
       </Panel>
     </DashboardShell>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function TournamentStatusBadge({ status }: { status: string }) {
   const m: Record<string, { c: string; l: string }> = {
+    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
     REGISTRATION_OPEN: { c: "bg-gold/15 text-gold border border-gold/30", l: "Тіркеу ашық" },
+    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Тіркеу жабық" },
     IN_PROGRESS: { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
     COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
+    CANCELLED: { c: "bg-muted text-muted-foreground", l: "Жойылды" },
   };
   const x = m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
   return <span className={`text-[10px] px-2 py-0.5 rounded-full ${x.c}`}>{x.l}</span>;
 }
 
+function ApplicationStatusIcon({ status }: { status: string }) {
+  if (status === "APPROVED") return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (status === "REJECTED") return <AlertTriangle className="h-3.5 w-3.5" />;
+  return <ClipboardList className="h-3.5 w-3.5" />;
+}
+
+function applicationButtonStyle(status: string): string {
+  if (status === "APPROVED") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15";
+  if (status === "REJECTED") return "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
+  if (status === "SUBMITTED") return "border-gold/30 bg-gold/10 text-gold hover:bg-gold/15";
+  return "border-border text-muted-foreground hover:text-foreground";
+}
+
+function appStatusLabel(status: string): string {
+  const m: Record<string, string> = {
+    DRAFT: "Жоба",
+    SUBMITTED: "Қаралуда",
+    APPROVED: "Бекітілді",
+    REJECTED: "Қайтарылды",
+    WITHDRAWN: "Алынды",
+  };
+  return m[status] ?? status;
+}
+
 function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }
 
 function dateRange(start: string, end: string): string {
-  return `${new Date(start).toLocaleDateString("kk-KZ")} - ${new Date(end).toLocaleDateString("kk-KZ")}`;
+  return `${new Date(start).toLocaleDateString("kk-KZ")} – ${new Date(end).toLocaleDateString("kk-KZ")}`;
 }

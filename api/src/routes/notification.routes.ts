@@ -70,6 +70,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
       });
     }
+    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     app.log.error(err);
     return reply.code(500).send({ error: "INTERNAL_ERROR" });
   });

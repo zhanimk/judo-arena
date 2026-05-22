@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { LayoutDashboard, User, Trophy, Activity, Bell } from "lucide-react";
+import { LayoutDashboard, User, Trophy, Activity, Bell, Swords } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
@@ -19,6 +19,7 @@ const nav = [
   { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
   { to: "/athlete/profile", label: "Профиль", icon: User },
   { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
+  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
   { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
   { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
 ];

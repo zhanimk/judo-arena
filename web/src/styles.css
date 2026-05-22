@@ -259,6 +259,39 @@
   @keyframes spin-conic { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .animate-spin-conic { animation: spin-conic 12s linear infinite; }
 
+  /* ── WOW EFFECTS ─────────────────────────────────────── */
+  /* 1. Belt armillary sphere orbit */
+  @keyframes belt-orbit {
+    from { transform: rotateX(22deg) rotateY(0deg); }
+    to   { transform: rotateX(22deg) rotateY(360deg); }
+  }
+  .animate-belt-orbit { animation: belt-orbit 18s linear infinite; }
+
+  /* 2. IPPON text drop + bounce */
+  @keyframes ippon-drop {
+    0%   { transform: translateY(-130px) scale(0.75); opacity: 0; }
+    55%  { transform: translateY(7px) scale(1.07);   opacity: 1; }
+    70%  { transform: translateY(-4px) scale(0.97); }
+    83%  { transform: translateY(2px) scale(1.01); }
+    100% { transform: translateY(0) scale(1);         opacity: 1; }
+  }
+  .animate-ippon-drop { animation: ippon-drop 2.8s cubic-bezier(0.34,1.56,0.64,1) infinite; }
+
+  /* 3. Shockwave ring expand */
+  @keyframes shockwave {
+    0%   { transform: scale(0.15); opacity: 0.85; }
+    100% { transform: scale(2.4);  opacity: 0; }
+  }
+  .animate-shockwave { animation: shockwave 2.8s ease-out infinite; }
+
+  /* 4. Gold spark burst (uses --dx, --dy CSS vars per element) */
+  @keyframes spark-burst {
+    0%   { transform: translate(0,0) scale(1); opacity: 1; }
+    65%  { opacity: 0.5; }
+    100% { transform: translate(var(--spark-dx), var(--spark-dy)) scale(0); opacity: 0; }
+  }
+  .animate-spark { animation: spark-burst 2.8s ease-out infinite; }
+
   /* 3D text */
   .text-3d {
     text-shadow:

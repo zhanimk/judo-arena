@@ -17,7 +17,7 @@ import { clubRoutes, clubAdjacentRoutes } from "./routes/club.routes.js";
 import { tournamentRoutes, tournamentAdjacentRoutes } from "./routes/tournament.routes.js";
 import { bracketTournamentRoutes, bracketDirectRoutes } from "./routes/bracket.routes.js";
 import { matchRoutes, judgeAdjacentRoutes } from "./routes/match.routes.js";
-import { adminRoutes, ratingRoutes, pdfRoutes } from "./routes/admin.routes.js";
+import { adminRoutes, ratingRoutes, pdfRoutes, adminApplicationRoutes } from "./routes/admin.routes.js";
 import { notificationRoutes } from "./routes/notification.routes.js";
 import { attachSocketIO } from "./sockets/io.js";
 
@@ -100,6 +100,7 @@ async function buildServer() {
   await app.register(matchRoutes, { prefix: "/api/matches" });
   await app.register(judgeAdjacentRoutes, { prefix: "/api" });
   await app.register(adminRoutes, { prefix: "/api/admin" });
+  await app.register(adminApplicationRoutes, { prefix: "/api/admin/applications" });
   await app.register(ratingRoutes, { prefix: "/api/ratings" });
   await app.register(pdfRoutes, { prefix: "/api/pdf" });
   await app.register(notificationRoutes, { prefix: "/api/notifications" });

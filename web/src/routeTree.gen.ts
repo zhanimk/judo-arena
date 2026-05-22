@@ -34,15 +34,16 @@ import { Route as AthleteTournamentsRouteImport } from './routes/athlete.tournam
 import { Route as AthleteResultsRouteImport } from './routes/athlete.results'
 import { Route as AthleteProfileRouteImport } from './routes/athlete.profile'
 import { Route as AthleteNotificationsRouteImport } from './routes/athlete.notifications'
+import { Route as AthleteMatchesRouteImport } from './routes/athlete.matches'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminRatingsRouteImport } from './routes/admin.ratings'
+import { Route as AdminProtocolsRouteImport } from './routes/admin.protocols'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminMatchesRouteImport } from './routes/admin.matches'
 import { Route as AdminClubsRouteImport } from './routes/admin.clubs'
-import { Route as AdminBracketsRouteImport } from './routes/admin.brackets'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminApplicationsRouteImport } from './routes/admin.applications'
 import { Route as CoachTournamentsIdRouteImport } from './routes/coach.tournaments.$id'
@@ -178,6 +179,11 @@ const AthleteNotificationsRoute = AthleteNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AthleteRoute,
 } as any)
+const AthleteMatchesRoute = AthleteMatchesRouteImport.update({
+  id: '/matches',
+  path: '/matches',
+  getParentRoute: () => AthleteRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -203,6 +209,11 @@ const AdminRatingsRoute = AdminRatingsRouteImport.update({
   path: '/ratings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProtocolsRoute = AdminProtocolsRouteImport.update({
+  id: '/protocols',
+  path: '/protocols',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -216,11 +227,6 @@ const AdminMatchesRoute = AdminMatchesRouteImport.update({
 const AdminClubsRoute = AdminClubsRouteImport.update({
   id: '/clubs',
   path: '/clubs',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminBracketsRoute = AdminBracketsRouteImport.update({
-  id: '/brackets',
-  path: '/brackets',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAuditRoute = AdminAuditRouteImport.update({
@@ -249,9 +255,9 @@ const CoachApplicationsIdRoute = CoachApplicationsIdRouteImport.update({
   getParentRoute: () => CoachApplicationsRoute,
 } as any)
 const AthleteMatchesIdRoute = AthleteMatchesIdRouteImport.update({
-  id: '/matches/$id',
-  path: '/matches/$id',
-  getParentRoute: () => AthleteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AthleteMatchesRoute,
 } as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/$id',
@@ -282,15 +288,16 @@ export interface FileRoutesByFullPath {
   '/tournaments': typeof TournamentsRouteWithChildren
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
-  '/admin/brackets': typeof AdminBracketsRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
   '/admin/matches': typeof AdminMatchesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/protocols': typeof AdminProtocolsRoute
   '/admin/ratings': typeof AdminRatingsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
   '/athlete/notifications': typeof AthleteNotificationsRoute
   '/athlete/profile': typeof AthleteProfileRoute
   '/athlete/results': typeof AthleteResultsRoute
@@ -324,15 +331,16 @@ export interface FileRoutesByTo {
   '/tournaments': typeof TournamentsRouteWithChildren
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
-  '/admin/brackets': typeof AdminBracketsRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
   '/admin/matches': typeof AdminMatchesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/protocols': typeof AdminProtocolsRoute
   '/admin/ratings': typeof AdminRatingsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
   '/athlete/notifications': typeof AthleteNotificationsRoute
   '/athlete/profile': typeof AthleteProfileRoute
   '/athlete/results': typeof AthleteResultsRoute
@@ -370,15 +378,16 @@ export interface FileRoutesById {
   '/tournaments': typeof TournamentsRouteWithChildren
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
-  '/admin/brackets': typeof AdminBracketsRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
   '/admin/matches': typeof AdminMatchesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/protocols': typeof AdminProtocolsRoute
   '/admin/ratings': typeof AdminRatingsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
   '/athlete/notifications': typeof AthleteNotificationsRoute
   '/athlete/profile': typeof AthleteProfileRoute
   '/athlete/results': typeof AthleteResultsRoute
@@ -417,15 +426,16 @@ export interface FileRouteTypes {
     | '/tournaments'
     | '/admin/applications'
     | '/admin/audit'
-    | '/admin/brackets'
     | '/admin/clubs'
     | '/admin/matches'
     | '/admin/notifications'
+    | '/admin/protocols'
     | '/admin/ratings'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/athlete/matches'
     | '/athlete/notifications'
     | '/athlete/profile'
     | '/athlete/results'
@@ -459,15 +469,16 @@ export interface FileRouteTypes {
     | '/tournaments'
     | '/admin/applications'
     | '/admin/audit'
-    | '/admin/brackets'
     | '/admin/clubs'
     | '/admin/matches'
     | '/admin/notifications'
+    | '/admin/protocols'
     | '/admin/ratings'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/athlete/matches'
     | '/athlete/notifications'
     | '/athlete/profile'
     | '/athlete/results'
@@ -504,15 +515,16 @@ export interface FileRouteTypes {
     | '/tournaments'
     | '/admin/applications'
     | '/admin/audit'
-    | '/admin/brackets'
     | '/admin/clubs'
     | '/admin/matches'
     | '/admin/notifications'
+    | '/admin/protocols'
     | '/admin/ratings'
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/tournaments'
     | '/admin/users'
+    | '/athlete/matches'
     | '/athlete/notifications'
     | '/athlete/profile'
     | '/athlete/results'
@@ -728,6 +740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AthleteNotificationsRouteImport
       parentRoute: typeof AthleteRoute
     }
+    '/athlete/matches': {
+      id: '/athlete/matches'
+      path: '/matches'
+      fullPath: '/athlete/matches'
+      preLoaderRoute: typeof AthleteMatchesRouteImport
+      parentRoute: typeof AthleteRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -763,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRatingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/protocols': {
+      id: '/admin/protocols'
+      path: '/protocols'
+      fullPath: '/admin/protocols'
+      preLoaderRoute: typeof AdminProtocolsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/notifications': {
       id: '/admin/notifications'
       path: '/notifications'
@@ -782,13 +808,6 @@ declare module '@tanstack/react-router' {
       path: '/clubs'
       fullPath: '/admin/clubs'
       preLoaderRoute: typeof AdminClubsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/brackets': {
-      id: '/admin/brackets'
-      path: '/brackets'
-      fullPath: '/admin/brackets'
-      preLoaderRoute: typeof AdminBracketsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/audit': {
@@ -828,10 +847,10 @@ declare module '@tanstack/react-router' {
     }
     '/athlete/matches/$id': {
       id: '/athlete/matches/$id'
-      path: '/matches/$id'
+      path: '/$id'
       fullPath: '/athlete/matches/$id'
       preLoaderRoute: typeof AthleteMatchesIdRouteImport
-      parentRoute: typeof AthleteRoute
+      parentRoute: typeof AthleteMatchesRoute
     }
     '/admin/users/$id': {
       id: '/admin/users/$id'
@@ -895,10 +914,10 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminApplicationsRoute: typeof AdminApplicationsRoute
   AdminAuditRoute: typeof AdminAuditRoute
-  AdminBracketsRoute: typeof AdminBracketsRoute
   AdminClubsRoute: typeof AdminClubsRouteWithChildren
   AdminMatchesRoute: typeof AdminMatchesRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminProtocolsRoute: typeof AdminProtocolsRoute
   AdminRatingsRoute: typeof AdminRatingsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -910,10 +929,10 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminApplicationsRoute: AdminApplicationsRoute,
   AdminAuditRoute: AdminAuditRoute,
-  AdminBracketsRoute: AdminBracketsRoute,
   AdminClubsRoute: AdminClubsRouteWithChildren,
   AdminMatchesRoute: AdminMatchesRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminProtocolsRoute: AdminProtocolsRoute,
   AdminRatingsRoute: AdminRatingsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
@@ -924,22 +943,34 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AthleteMatchesRouteChildren {
+  AthleteMatchesIdRoute: typeof AthleteMatchesIdRoute
+}
+
+const AthleteMatchesRouteChildren: AthleteMatchesRouteChildren = {
+  AthleteMatchesIdRoute: AthleteMatchesIdRoute,
+}
+
+const AthleteMatchesRouteWithChildren = AthleteMatchesRoute._addFileChildren(
+  AthleteMatchesRouteChildren,
+)
+
 interface AthleteRouteChildren {
+  AthleteMatchesRoute: typeof AthleteMatchesRouteWithChildren
   AthleteNotificationsRoute: typeof AthleteNotificationsRoute
   AthleteProfileRoute: typeof AthleteProfileRoute
   AthleteResultsRoute: typeof AthleteResultsRoute
   AthleteTournamentsRoute: typeof AthleteTournamentsRoute
   AthleteIndexRoute: typeof AthleteIndexRoute
-  AthleteMatchesIdRoute: typeof AthleteMatchesIdRoute
 }
 
 const AthleteRouteChildren: AthleteRouteChildren = {
+  AthleteMatchesRoute: AthleteMatchesRouteWithChildren,
   AthleteNotificationsRoute: AthleteNotificationsRoute,
   AthleteProfileRoute: AthleteProfileRoute,
   AthleteResultsRoute: AthleteResultsRoute,
   AthleteTournamentsRoute: AthleteTournamentsRoute,
   AthleteIndexRoute: AthleteIndexRoute,
-  AthleteMatchesIdRoute: AthleteMatchesIdRoute,
 }
 
 const AthleteRouteWithChildren =

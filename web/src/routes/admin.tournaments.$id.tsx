@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings,
   ClipboardList, GitBranch, ArrowLeft, Loader2, Send, FileText,
   Plus, Pencil, Trash2, Save, X, AlertTriangle, MapPin, Clock,
-  Wand2, Monitor, ExternalLink,
+  Wand2, Monitor, ExternalLink, ArrowRightLeft, Gavel, Copy, Check, MonitorPlay,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -124,7 +124,7 @@ function AdminTournamentDetail() {
     { id: "categories", label: `Санаттар (${t.categories?.length ?? 0})` },
     { id: "applications", label: "Өтінімдер" },
     { id: "scoreboard", label: "Табло" },
-    { id: "protocol", label: "Хаттама" },
+    { id: "protocol", label: "Хаттама / Сетка" },
     { id: "notify", label: "Хабарландыру" },
     { id: "audit", label: "Аудит" },
   ];
@@ -585,6 +585,31 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
     queryFn: () => api.applications.get(selectedId!),
     enabled: !!selectedId,
   });
+  const categoriesQuery = useQuery({
+    queryKey: ["tournament-categories", tournamentId],
+    queryFn: () => api.tournaments.categories(tournamentId),
+  });
+
+  const adminRemoveEntry = useMutation({
+    mutationFn: ({ appId, entryId }: { appId: string; entryId: string }) =>
+      api.applications.adminRemoveEntry(appId, entryId),
+    onSuccess: () => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["admin-application-detail", selectedId] });
+      qc.invalidateQueries({ queryKey: ["tournament-apps", tournamentId] });
+    },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Жою қатесі"),
+  });
+  const adminMoveEntry = useMutation({
+    mutationFn: ({ appId, entryId, newCategoryId }: { appId: string; entryId: string; newCategoryId: string }) =>
+      api.applications.adminMoveEntry(appId, entryId, newCategoryId),
+    onSuccess: () => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["admin-application-detail", selectedId] });
+      qc.invalidateQueries({ queryKey: ["tournament-apps", tournamentId] });
+    },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Жылжыту қатесі"),
+  });
 
   const approve = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes?: string }) => api.applications.approve(id, notes),
@@ -677,7 +702,18 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
               ) : !detailQuery.data ? (
                 <EmptyState title="Өтінім табылмады" />
               ) : (
-                <ApplicationReviewDetail app={detailQuery.data} onReview={setReview} />
+                <ApplicationReviewDetail
+                  app={detailQuery.data}
+                  onReview={setReview}
+                  allCategories={categoriesQuery.data ?? []}
+                  onRemoveEntry={(entryId) =>
+                    adminRemoveEntry.mutate({ appId: detailQuery.data!.id, entryId })
+                  }
+                  onMoveEntry={(entryId, newCategoryId) =>
+                    adminMoveEntry.mutate({ appId: detailQuery.data!.id, entryId, newCategoryId })
+                  }
+                  isMutating={adminRemoveEntry.isPending || adminMoveEntry.isPending}
+                />
               )}
             </div>
 
@@ -720,10 +756,20 @@ function ApplicationsTab({ tournamentId }: { tournamentId: string }) {
 function ApplicationReviewDetail({
   app,
   onReview,
+  allCategories,
+  onRemoveEntry,
+  onMoveEntry,
+  isMutating,
 }: {
   app: any;
   onReview: (review: { id: string; action: "approve" | "reject"; notes: string }) => void;
+  allCategories: any[];
+  onRemoveEntry: (entryId: string) => void;
+  onMoveEntry: (entryId: string, newCategoryId: string) => void;
+  isMutating: boolean;
 }) {
+  const [showMoveFor, setShowMoveFor] = useState<string | null>(null);
+
   const grouped = new Map<string, any[]>();
   for (const entry of app.entries ?? []) {
     const key = entry.categoryId;
@@ -806,26 +852,79 @@ function ApplicationReviewDetail({
                   <FormatBadge format={category?.format} />
                 </div>
                 <div className="space-y-2">
-                  {entries.map((entry: any) => (
-                    <div key={entry.id} className={`rounded border px-3 py-2 text-sm ${validateApplicationEntry(entry).length ? "border-amber-500/40 bg-amber-500/10" : "border-border/40"}`}>
-                      <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium">{entry.athlete?.name} {entry.athlete?.surname}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {entry.athlete?.gender === "MALE" ? "Ер" : "Қыз"} · {athleteAge(entry.athlete) ?? "жас жоқ"} жас · {entry.athlete?.weightKg ?? "—"} кг · {entry.athlete?.beltRank ?? "—"}
+                  {entries.map((entry: any) => {
+                    const issues = validateApplicationEntry(entry);
+                    // Categories available for move: same tournament, different from current
+                    const moveTargets = allCategories.filter(
+                      (c: any) => c.id !== entry.categoryId,
+                    );
+                    return (
+                      <div key={entry.id} className={`rounded border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/40"}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-medium">{entry.athlete?.name} {entry.athlete?.surname}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.athlete?.gender === "MALE" ? "Ер" : "Қыз"} · {athleteAge(entry.athlete) ?? "жас жоқ"} жас · {entry.athlete?.weightKg ?? "—"} кг · {entry.athlete?.beltRank ?? "—"}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <EntryCheckBadge issues={issues} />
+                            {moveTargets.length > 0 && (
+                              <button
+                                onClick={() => setShowMoveFor(showMoveFor === entry.id ? null : entry.id)}
+                                disabled={isMutating}
+                                className={`rounded p-1.5 disabled:opacity-50 transition-colors ${
+                                  showMoveFor === entry.id
+                                    ? "bg-gold/15 text-gold"
+                                    : "text-muted-foreground hover:bg-gold/10 hover:text-gold"
+                                }`}
+                                title="Басқа категорияға жылжыту"
+                              >
+                                <ArrowRightLeft className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setShowMoveFor(null); onRemoveEntry(entry.id); }}
+                              disabled={isMutating}
+                              className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                              title="Жою"
+                            >
+                              {isMutating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
                         </div>
+                        {issues.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
+                            {issues.map((issue) => (
+                              <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
+                            ))}
+                          </div>
+                        )}
+                        {showMoveFor === entry.id && (
+                          <div className="mt-2 border-t border-border/40 pt-2">
+                            <div className="text-xs text-muted-foreground mb-1.5">Басқа категорияға жылжыту (взвешивание):</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {moveTargets.map((c: any) => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => {
+                                    onMoveEntry(entry.id, c.id);
+                                    setShowMoveFor(null);
+                                  }}
+                                  disabled={isMutating}
+                                  className="text-xs px-2 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 inline-flex items-center gap-1"
+                                >
+                                  <ArrowRightLeft className="h-3 w-3" />
+                                  {c.gender === "MALE" ? "Ер" : "Қыз"} {c.weightMin}-{c.weightMax} кг
+                                  <span className="text-gold/70">{c.ageMin}-{c.ageMax} жас</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                        <EntryCheckBadge issues={validateApplicationEntry(entry)} />
-                      </div>
-                      {validateApplicationEntry(entry).length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
-                          {validateApplicationEntry(entry).map((issue) => (
-                            <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -836,84 +935,11 @@ function ApplicationReviewDetail({
   );
 }
 
-function BracketsTab({ tournamentId }: { tournamentId: string }) {
-  const qc = useQueryClient();
-  const [selected, setSelected] = useState<string | null>(null);
-
-  const tQuery = useQuery({ queryKey: ["admin-tournament", tournamentId], queryFn: () => api.tournaments.get(tournamentId) });
-  const bracketsQuery = useQuery({
-    queryKey: ["tournament-brackets-admin", tournamentId],
-    queryFn: () => api.brackets.forTournament(tournamentId),
-  });
-
-  const generate = useMutation({
-    mutationFn: (categoryId: string) => api.brackets.generate(tournamentId, categoryId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tournament-brackets-admin", tournamentId] }),
-  });
-  const remove = useMutation({
-    mutationFn: (bracketId: string) => api.brackets.delete(bracketId),
-    onSuccess: () => {
-      setSelected(null);
-      qc.invalidateQueries({ queryKey: ["tournament-brackets-admin", tournamentId] });
-    },
-  });
-
-  return (
-    <Panel title="Турнирлік торлар">
-      <div className="space-y-2 mb-4">
-        {(tQuery.data?.categories ?? []).map((c: any) => {
-          const bracket = bracketsQuery.data?.find((b: any) => b.categoryId === c.id);
-          return (
-            <div key={c.id} className="glass rounded p-3 flex justify-between items-center text-sm">
-              <div>
-                <div className="font-medium">
-                  {c.gender === "MALE" ? "Ер" : "Әйел"} {c.weightMin}-{c.weightMax} кг
-                </div>
-                <div className="text-xs text-muted-foreground">{c.format}</div>
-              </div>
-              <div className="flex gap-2 items-center">
-                {bracket ? (
-                  <>
-                    <button onClick={() => setSelected(selected === c.id ? null : c.id)}
-                      className="text-xs glass border border-gold/30 px-2.5 py-1 rounded hover:border-gold/60">
-                      {selected === c.id ? "Жабу" : "Қарау"}
-                    </button>
-                    <a href={api.admin.bracketPdfUrl(bracket.id)} target="_blank" rel="noopener"
-                      className="text-xs glass border border-gold/30 px-2.5 py-1 rounded hover:border-gold/60">
-                      📄 PDF
-                    </a>
-                    <button onClick={() => remove.mutate(bracket.id)}
-                      disabled={remove.isPending}
-                      className="text-xs border border-destructive/30 text-destructive px-2.5 py-1 rounded hover:bg-destructive/10 disabled:opacity-50">
-                      Өшіру
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => generate.mutate(c.id)}
-                    disabled={generate.isPending}
-                    className="text-xs bg-gold/15 text-gold border border-gold/40 px-2.5 py-1 rounded disabled:opacity-50">
-                    ⚙️ Жеребе тастау
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {selected && (
-        <div className="glass rounded-xl p-4 border border-gold/20 mt-6">
-          <LiveBracket tournamentId={tournamentId} categoryId={selected} />
-        </div>
-      )}
-    </Panel>
-  );
-}
 
 function MatchesTab({ tournamentId }: { tournamentId: string }) {
   const query = useQuery({
     queryKey: ["tournament-matches", tournamentId],
-    queryFn: () => api.matches.list({ tournamentId, limit: 500 }),
+    queryFn: () => api.matches.list({ tournamentId, limit: 200 }),
   });
   return (
     <Panel
@@ -1078,6 +1104,21 @@ function ProtocolTab({ tournament }: { tournament: any }) {
       qc.invalidateQueries({ queryKey: ["protocol-matches", tournament.id] });
     },
   });
+  const [judgeUrl, setJudgeUrl] = useState<string | null>(null);
+  const [judgeCopied, setJudgeCopied] = useState(false);
+  const [judgeError, setJudgeError] = useState("");
+  const createJudge = useMutation({
+    mutationFn: ({ matchId, judgeName }: { matchId: string; judgeName: string }) =>
+      api.matches.createJudgeSession(matchId, judgeName),
+    onSuccess: (s) => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      setJudgeUrl(`${origin}/judge/${s.token}`);
+      setJudgeCopied(false);
+      setJudgeError("");
+    },
+    onError: (e: any) => setJudgeError(e instanceof ApiError ? e.message : "Төреші сілтемесін құру кезінде қате"),
+  });
+
   const completed = (matchesQuery.data ?? []).filter((m: any) => m.status === "COMPLETED").length;
   const total = matchesQuery.data?.length ?? 0;
   const entryCountByCategory = buildCategoryEntryCounts(applicationsQuery.data ?? []);
@@ -1206,68 +1247,133 @@ function ProtocolTab({ tournament }: { tournament: any }) {
       </Panel>
 
       <Panel title="JudoTV татами жоспары">
+        {judgeUrl && (
+          <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs uppercase tracking-widest text-gold">Төреші сілтемесі</div>
+                <input readOnly value={judgeUrl} className="mt-1 w-full rounded-md border border-border bg-input px-3 py-1.5 font-mono text-xs" />
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(judgeUrl);
+                    setJudgeCopied(true);
+                    setTimeout(() => setJudgeCopied(false), 1400);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-3 py-2 text-xs text-gold"
+                >
+                  {judgeCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {judgeCopied ? "Көшірілді" : "Көшіру"}
+                </button>
+                <button onClick={() => setJudgeUrl(null)} className="rounded p-1.5 text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {judgeError && (
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{judgeError}</div>
+        )}
+
         {matchesQuery.isLoading ? (
           <LoadingState />
         ) : playableTotal === 0 ? (
           <EmptyState title="Татами жоспары әлі жоқ" hint="Алдымен өтінімдерді бекітіп, сеткаларды дайындаңыз" />
         ) : (
           <div className="grid gap-4 lg:grid-cols-3">
-            {tatamiPlan.map((tatami) => (
-              <div key={tatami.number} className="rounded-md border border-border/60 bg-background/30 p-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-display text-lg font-semibold">Татами {tatami.number}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {tatami.live.length} live · {tatami.queue.length} кезекте · {tatami.done.length} аяқталды
+            {tatamiPlan.map((tatami) => {
+              const firstPlayable = [...tatami.live, ...tatami.queue].find(
+                (m: any) => m.redAthlete && m.blueAthlete
+              );
+              return (
+                <div key={tatami.number} className="rounded-md border border-border/60 bg-background/30 p-3">
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-display text-lg font-semibold">Татами {tatami.number}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {tatami.live.length} live · {tatami.queue.length} кезекте · {tatami.done.length} аяқталды
+                        </div>
+                      </div>
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        search={{ tab: "scoreboard" }}
+                        className="rounded-md border border-gold/30 px-2.5 py-1 text-xs text-gold hover:bg-gold/10"
+                      >
+                        Басқару
+                      </Link>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <button
+                        onClick={() => {
+                          if (!firstPlayable) {
+                            setJudgeError(`Татами ${tatami.number}: дайын матч жоқ`);
+                            return;
+                          }
+                          setJudgeError("");
+                          createJudge.mutate({ matchId: firstPlayable.id, judgeName: `Tatami ${tatami.number}` });
+                        }}
+                        disabled={!firstPlayable || createJudge.isPending}
+                        className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2 py-1 text-[11px] text-gold disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Gavel className="h-3 w-3" />
+                        Төреші сілтемесі
+                      </button>
+                      <Link
+                        to="/live-wall/$tournamentId"
+                        params={{ tournamentId: tournament.id }}
+                        search={{ tatami: tatami.number }}
+                        target="_blank"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card/50 px-2 py-1 text-[11px] hover:border-gold/40"
+                      >
+                        <MonitorPlay className="h-3 w-3" />
+                        Табло
+                      </Link>
                     </div>
                   </div>
-                  <Link
-                    to="/admin/tournaments/$id"
-                    params={{ id: tournament.id }}
-                    search={{ tab: "scoreboard" }}
-                    className="rounded-md border border-gold/30 px-2.5 py-1 text-xs text-gold hover:bg-gold/10"
-                  >
-                    Басқару
-                  </Link>
-                </div>
 
-                <div className="space-y-2">
-                  {[...tatami.live, ...tatami.queue.slice(0, 6)].map((match: any, index: number) => (
-                    <div key={match.id} className={`rounded-md border p-2 text-sm ${
-                      match.status === "IN_PROGRESS"
-                        ? "border-destructive/40 bg-destructive/10"
-                        : "border-border/50 bg-card/50"
-                    }`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">
-                            {matchAthleteName(match.redAthlete)} vs {matchAthleteName(match.blueAthlete)}
+                  <div className="space-y-2">
+                    {[...tatami.live, ...tatami.queue.slice(0, 6)].map((match: any, index: number) => (
+                      <div key={match.id} className={`rounded-md border p-2 text-sm ${
+                        match.status === "IN_PROGRESS"
+                          ? "border-destructive/40 bg-destructive/10"
+                          : "border-border/50 bg-card/50"
+                      }`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">
+                              {matchAthleteName(match.redAthlete)} vs {matchAthleteName(match.blueAthlete)}
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              #{index + 1} · {categoryTitle(match.bracket?.category)} · {matchSectionLabel(match.bracketSection)} R{match.round}
+                            </div>
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            #{index + 1} · {categoryTitle(match.bracket?.category)} · {matchSectionLabel(match.bracketSection)} R{match.round}
-                          </div>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${
+                            match.status === "IN_PROGRESS"
+                              ? "bg-destructive/20 text-destructive"
+                              : "bg-muted text-muted-foreground"
+                          }`}>
+                            {adminMatchStatusLabel(match.status)}
+                          </span>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${
-                          match.status === "IN_PROGRESS"
-                            ? "bg-destructive/20 text-destructive"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
-                          {adminMatchStatusLabel(match.status)}
-                        </span>
                       </div>
-                    </div>
-                  ))}
-                  {tatami.queue.length > 6 && (
-                    <div className="rounded-md border border-border/50 bg-muted/20 p-2 text-center text-xs text-muted-foreground">
-                      +{tatami.queue.length - 6} келесі матч
-                    </div>
-                  )}
-                  {tatami.live.length === 0 && tatami.queue.length === 0 && (
-                    <EmptyState title="Кезек бос" hint="Матчтар осы татамиге бөлінбеген" />
-                  )}
+                    ))}
+                    {tatami.queue.length > 6 && (
+                      <div className="rounded-md border border-border/50 bg-muted/20 p-2 text-center text-xs text-muted-foreground">
+                        +{tatami.queue.length - 6} келесі матч
+                      </div>
+                    )}
+                    {tatami.live.length === 0 && tatami.queue.length === 0 && (
+                      <EmptyState title="Кезек бос" hint="Матчтар осы татамиге бөлінбеген" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Panel>

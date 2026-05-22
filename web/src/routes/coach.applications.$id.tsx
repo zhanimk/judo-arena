@@ -8,6 +8,7 @@ import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/da
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRightLeft,
   Bell,
   Building2,
   CalendarDays,
@@ -54,6 +55,8 @@ function ApplicationDetail() {
   const [error, setError] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [movingEntry, setMovingEntry] = useState<string | null>(null);
+  const [showMoveFor, setShowMoveFor] = useState<string | null>(null);
   const [responsibilityAccepted, setResponsibilityAccepted] = useState(false);
   const [athleteSearch, setAthleteSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
@@ -107,6 +110,16 @@ function ApplicationDetail() {
     mutationFn: () => api.applications.withdraw(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+  });
+  const moveEntry = useMutation({
+    mutationFn: async ({ entryId, athleteId, newCategoryId }: { entryId: string; athleteId: string; newCategoryId: string }) => {
+      await api.applications.removeEntry(id, entryId);
+      return api.applications.addEntry(id, athleteId, newCategoryId);
+    },
+    onMutate: ({ entryId }) => { setMovingEntry(entryId); setError(""); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["application", id] }); setShowMoveFor(null); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onSettled: () => setMovingEntry(null),
   });
 
   if (appQuery.isLoading) {
@@ -163,6 +176,18 @@ function ApplicationDetail() {
       </Link>
 
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
+
+      {!user?.clubId && app.status === "DRAFT" && (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <div className="flex items-center gap-2 font-medium text-amber-300">
+            <AlertTriangle className="h-4 w-4" />
+            Клубыңыз тіркелмеген
+          </div>
+          <div className="mt-1 text-amber-100/80">
+            Спортшы қосу үшін клубқа тіркелу керек. Adminге хабарласып, аккаунтты клубқа байланыстырыңыз.
+          </div>
+        </div>
+      )}
 
       {app.status === "REJECTED" && (
         <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
@@ -240,31 +265,74 @@ function ApplicationDetail() {
         {/* Текущие entries */}
         {entriesCount > 0 && (
           <div className="space-y-2 mb-6">
-            {app.entries.map((e: any) => (
-              <div key={e.id} className="flex justify-between items-center glass rounded-md p-3">
-                <div>
-                  <div className="font-medium text-sm">
-                    {e.athlete.name} {e.athlete.surname}
+            {app.entries.map((e: any) => {
+              const moveCategories = categories.filter(
+                (c: any) => c.id !== e.category?.id && fitsCategory(e.athlete, c),
+              );
+              return (
+                <div key={e.id} className="glass rounded-md p-3">
+                  <div className="flex justify-between items-center gap-3">
+                    <div>
+                      <div className="font-medium text-sm">
+                        {e.athlete.name} {e.athlete.surname}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {e.athlete.weightKg ? `${e.athlete.weightKg} кг` : ""}
+                        {" · "}
+                        {e.category?.gender === "MALE" ? "Ер" : "Әйел"} {e.category?.weightMin}-{e.category?.weightMax} кг
+                        {e.category?.ageMin ? ` · ${e.category.ageMin}-${e.category.ageMax} жас` : ""}
+                      </div>
+                    </div>
+                    {canEditRoster && (
+                      <div className="flex items-center gap-1.5">
+                        {moveCategories.length > 0 && (
+                          <button
+                            onClick={() => setShowMoveFor(showMoveFor === e.id ? null : e.id)}
+                            disabled={movingEntry === e.id || removing === e.id}
+                            className={`rounded-md p-2 disabled:opacity-50 transition-colors ${
+                              showMoveFor === e.id
+                                ? "bg-gold/15 text-gold"
+                                : "text-muted-foreground hover:bg-gold/10 hover:text-gold"
+                            }`}
+                            aria-label="Категориясын ауыстыру"
+                            title="Категориясын ауыстыру"
+                          >
+                            <ArrowRightLeft className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setShowMoveFor(null); removeEntry.mutate(e.id); }}
+                          disabled={removing === e.id || movingEntry === e.id}
+                          className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                          aria-label="Өшіру"
+                        >
+                          {removing === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {e.athlete.weightKg ? `${e.athlete.weightKg} кг` : ""}
-                    {" · "}
-                    {e.category?.gender === "MALE" ? "Ер" : "Әйел"} {e.category?.weightMin}-{e.category?.weightMax} кг
-                    {e.category?.ageMin ? ` · ${e.category.ageMin}-${e.category.ageMax} жас` : ""}
-                  </div>
+                  {canEditRoster && showMoveFor === e.id && (
+                    <div className="mt-2 border-t border-border/40 pt-2">
+                      <div className="text-xs text-muted-foreground mb-1.5">Басқа категорияға ауыстыру:</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {moveCategories.map((c: any) => (
+                          <button
+                            key={c.id}
+                            onClick={() => moveEntry.mutate({ entryId: e.id, athleteId: e.athlete.id, newCategoryId: c.id })}
+                            disabled={movingEntry === e.id}
+                            className="text-xs px-2 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            {movingEntry === e.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRightLeft className="h-3 w-3" />}
+                            {c.gender === "MALE" ? "Ер" : "Әйел"} {c.weightMin}-{c.weightMax} кг
+                            <span className="text-gold/70">{c.ageMin}-{c.ageMax} жас</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {canEditRoster && (
-                  <button
-                    onClick={() => removeEntry.mutate(e.id)}
-                    disabled={removing === e.id}
-                    className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    aria-label="Өшіру"
-                  >
-                    {removing === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

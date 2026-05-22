@@ -24,6 +24,7 @@ import {
   finalizeTournament,
   getAthleteRating,
   getLeaderboard,
+  getClubLeaderboard,
   RatingError,
 } from "../services/rating.service.js";
 import { listAuditLogs } from "../services/audit.service.js";
@@ -38,13 +39,28 @@ import {
   getSystemConfig,
   updateSystemConfig,
   getStats,
+  createUserByAdmin,
+  updateUserByAdmin,
+  changeUserClub,
+  resetUserPassword,
+  createClubByAdmin,
+  updateClubByAdmin,
+  deleteClubByAdmin,
+  createGroupByAdmin,
+  updateGroupByAdmin,
+  deleteGroupByAdmin,
   AdminManagementError,
 } from "../services/admin-management.service.js";
 import {
   generateBracketPdf,
   generateTournamentProtocolPdf,
+  generateDiplomaPdf,
   PdfError,
 } from "../services/pdf.service.js";
+import {
+  adminForceRemoveEntry,
+  adminForceMoveEntry,
+} from "../services/application.service.js";
 
 const overrideSchema = z
   .object({
@@ -52,6 +68,61 @@ const overrideSchema = z
     reason: z.string().min(3).max(500),
   })
   .strict();
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  role: z.enum(["ATHLETE", "COACH", "ADMIN"]),
+  name: z.string().min(1),
+  surname: z.string().min(1),
+  nameLatin: z.string().optional(),
+  surnameLatin: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
+  weightKg: z.number().positive().optional(),
+  beltRank: z.string().optional(),
+  phone: z.string().optional(),
+  preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
+  clubId: z.string().optional(),
+});
+
+const updateUserSchema = z.object({
+  name: z.string().min(1).optional(),
+  surname: z.string().min(1).optional(),
+  nameLatin: z.string().nullable().optional(),
+  surnameLatin: z.string().nullable().optional(),
+  email: z.string().email().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
+  weightKg: z.number().positive().nullable().optional(),
+  beltRank: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
+});
+
+const clubNameSchema = z.object({ ru: z.string().min(1), kk: z.string().optional(), en: z.string().optional() });
+
+const createClubSchema = z.object({
+  name: clubNameSchema,
+  city: z.string().min(1),
+  country: z.string().optional(),
+  shortName: z.string().optional(),
+  description: z.object({ ru: z.string().optional(), kk: z.string().optional(), en: z.string().optional() }).optional(),
+});
+
+const updateClubSchema = z.object({
+  name: clubNameSchema.optional(),
+  city: z.string().min(1).optional(),
+  country: z.string().optional(),
+  shortName: z.string().nullable().optional(),
+  description: z.object({ ru: z.string().optional(), kk: z.string().optional(), en: z.string().optional() }).nullable().optional(),
+});
+
+const groupSchema = z.object({
+  name: z.string().min(1),
+  ageMin: z.number().int().min(0),
+  ageMax: z.number().int().min(0),
+});
 
 const auditQuerySchema = z.object({
   targetEntity: z.string().optional(),
@@ -76,6 +147,12 @@ const pdfProtocolQuerySchema = z.object({
   tournamentId: z.string(),
 });
 
+const pdfDiplomaQuerySchema = z.object({
+  athleteId: z.string(),
+  tournamentId: z.string(),
+  categoryId: z.string(),
+});
+
 function attachErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError || err instanceof AdminManagementError) {
@@ -88,6 +165,7 @@ function attachErrorHandler(app: FastifyInstance) {
         issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
       });
     }
+    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     app.log.error(err);
     return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
   });
@@ -126,8 +204,34 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ============================================================
-  // КЛУБЫ — управление
+  // КЛУБЫ — полный CRUD
   // ============================================================
+  app.post(
+    "/clubs",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest) => {
+      const input = createClubSchema.parse(request.body);
+      return createClubByAdmin(request.user!.sub, input);
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/clubs/:id/details",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const input = updateClubSchema.parse(request.body);
+      return updateClubByAdmin(request.user!.sub, request.params.id, input);
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/clubs/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return deleteClubByAdmin(request.user!.sub, request.params.id);
+    },
+  );
+
   app.patch<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>(
     "/clubs/:id/block",
     { preHandler: [authenticate, authorize("ADMIN")] },
@@ -145,8 +249,73 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ============================================================
-  // ПОЛЬЗОВАТЕЛИ — управление
+  // CLUB GROUPS — полный CRUD
   // ============================================================
+  app.post<{ Params: { id: string } }>(
+    "/clubs/:id/groups",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const input = groupSchema.parse(request.body);
+      return createGroupByAdmin(request.user!.sub, request.params.id, input);
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/club-groups/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const input = groupSchema.partial().parse(request.body);
+      return updateGroupByAdmin(request.user!.sub, request.params.id, input);
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/club-groups/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return deleteGroupByAdmin(request.user!.sub, request.params.id);
+    },
+  );
+
+  // ============================================================
+  // ПОЛЬЗОВАТЕЛИ — полный CRUD
+  // ============================================================
+  app.post(
+    "/users",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest) => {
+      const input = createUserSchema.parse(request.body);
+      return createUserByAdmin(request.user!.sub, input);
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/users/:id/profile",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const input = updateUserSchema.parse(request.body);
+      return updateUserByAdmin(request.user!.sub, request.params.id, input);
+    },
+  );
+
+  app.patch<{ Params: { id: string } }>(
+    "/users/:id/club",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { clubId } = z.object({ clubId: z.string().nullable() }).parse(request.body);
+      return changeUserClub(request.user!.sub, request.params.id, clubId);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/users/:id/reset-password",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { password } = z.object({ password: z.string().min(6) }).parse(request.body);
+      return resetUserPassword(request.user!.sub, request.params.id, password);
+    },
+  );
+
   app.get(
     "/users",
     { preHandler: [authenticate, authorize("ADMIN")] },
@@ -245,6 +414,47 @@ export async function ratingRoutes(app: FastifyInstance): Promise<void> {
     const q = leaderboardQuerySchema.parse(request.query);
     return getLeaderboard(q);
   });
+
+  app.get("/clubs", async (request) => {
+    const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
+    return getClubLeaderboard({ limit });
+  });
+}
+
+// ============================================================
+// /api/admin/applications/*  — admin entry management
+// Bypasses DRAFT check so admin can adjust after weigh-in
+// ============================================================
+export async function adminApplicationRoutes(app: FastifyInstance): Promise<void> {
+  attachErrorHandler(app);
+
+  app.addHook("preHandler", authenticate);
+  app.addHook("preHandler", authorize("ADMIN"));
+
+  const moveBodySchema = z.object({ newCategoryId: z.string().min(1) });
+
+  // Force-delete a single entry (any status)
+  app.delete<{ Params: { appId: string; entryId: string } }>(
+    "/:appId/entries/:entryId",
+    async (request, reply) => {
+      await adminForceRemoveEntry(request.params.appId, request.params.entryId);
+      return reply.code(204).send();
+    },
+  );
+
+  // Force-move a single entry to a different category (any status)
+  app.patch<{ Params: { appId: string; entryId: string } }>(
+    "/:appId/entries/:entryId/category",
+    async (request, reply) => {
+      const { newCategoryId } = moveBodySchema.parse(request.body);
+      const result = await adminForceMoveEntry(
+        request.params.appId,
+        request.params.entryId,
+        newCategoryId,
+      );
+      return reply.send(result);
+    },
+  );
 }
 
 // ============================================================
@@ -270,6 +480,16 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
     return reply
       .type("application/pdf")
       .header("Content-Disposition", `attachment; filename="protocol-${q.tournamentId}.pdf"`)
+      .send(buffer);
+  });
+
+  // PDF диплома — после COMPLETED
+  app.get("/diploma", async (request, reply) => {
+    const q = pdfDiplomaQuerySchema.parse(request.query);
+    const buffer = await generateDiplomaPdf(q.athleteId, q.tournamentId, q.categoryId);
+    return reply
+      .type("application/pdf")
+      .header("Content-Disposition", `attachment; filename="diploma-${q.athleteId}.pdf"`)
       .send(buffer);
   });
 }

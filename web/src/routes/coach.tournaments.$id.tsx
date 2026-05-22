@@ -183,6 +183,18 @@ function CoachTournamentDetail() {
 
       {error && <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
 
+      {!user?.clubId && (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <div className="flex items-center gap-2 font-medium text-amber-300">
+            <AlertTriangle className="h-4 w-4" />
+            Клуб тіркелмеген
+          </div>
+          <div className="mt-1 text-amber-100/80">
+            Турнирге өтінім беру үшін алдымен клубқа тіркелу керек. Нәтижесіз — тренерді клубқа байланыстыратын Adminге хабарласыңыз.
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 glass rounded-xl p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

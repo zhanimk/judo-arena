@@ -232,6 +232,57 @@ function computePlacesFromSEMatches(matches: any[]): Record<string, number> {
 // Leaderboards
 // ============================================================
 
+export async function getClubLeaderboard(options: { limit?: number } = {}) {
+  const limit = options.limit ?? 50;
+
+  // Сумма очков по спортсменам
+  const athletePoints = await prisma.ratingEntry.groupBy({
+    by: ["athleteId"],
+    _sum: { points: true },
+  });
+
+  if (athletePoints.length === 0) return [];
+
+  // Клубы спортсменов
+  const athletes = await prisma.user.findMany({
+    where: { id: { in: athletePoints.map((e) => e.athleteId) }, clubId: { not: null } },
+    select: { id: true, clubId: true },
+  });
+  const clubOfAthlete = new Map(athletes.map((a) => [a.id, a.clubId!]));
+
+  // Группируем по клубу в памяти
+  const clubPoints = new Map<string, { total: number; athletes: number }>();
+  for (const entry of athletePoints) {
+    const clubId = clubOfAthlete.get(entry.athleteId);
+    if (!clubId) continue;
+    const pts = Number(entry._sum.points ?? 0);
+    const prev = clubPoints.get(clubId) ?? { total: 0, athletes: 0 };
+    clubPoints.set(clubId, { total: prev.total + pts, athletes: prev.athletes + 1 });
+  }
+
+  const sorted = [...clubPoints.entries()]
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, limit);
+
+  const clubs = await prisma.club.findMany({
+    where: { id: { in: sorted.map(([id]) => id) } },
+    select: {
+      id: true, name: true, shortName: true, city: true,
+      _count: { select: { members: true } },
+    },
+  });
+  const clubById = new Map(clubs.map((c) => [c.id, c]));
+
+  return sorted
+    .filter(([id]) => clubById.has(id))
+    .map(([id, { total, athletes }], idx) => ({
+      rank: idx + 1,
+      club: clubById.get(id)!,
+      totalPoints: total,
+      athleteCount: athletes,
+    }));
+}
+
 export async function getAthleteRating(athleteId: string) {
   const entries = await prisma.ratingEntry.findMany({
     where: { athleteId },

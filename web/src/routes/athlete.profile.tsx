@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell, Panel } from "@/components/dashboard/DashboardShell";
-import { Activity, Bell, LayoutDashboard, Loader2, Save, Trophy, User, X } from "lucide-react";
+import { Activity, Bell, LayoutDashboard, Loader2, Save, Trophy, User, X, Swords } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useMutation } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ const nav = [
   { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
   { to: "/athlete/profile", label: "Профиль", icon: User },
   { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
+  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
   { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
   { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
 ];

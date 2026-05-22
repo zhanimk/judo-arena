@@ -13,6 +13,7 @@
 
 import { prisma } from "../lib/prisma.js";
 import {
+  Prisma,
   MatchStatus,
   MatchEventType,
   MatchSide,
@@ -560,6 +561,113 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
 
     await prisma.match.update({ where: { id: target.id }, data });
   }
+}
+
+// ============================================================
+// ADMIN: RESTART / RESET МАТЧА
+// ============================================================
+
+/**
+ * Сбросить завершённый или текущий матч к PENDING.
+ * Очищает score, events, winner; если winner уже был propagated —
+ * откатываем downstream через rollback.
+ *
+ * Используется когда нужно переиграть матч с нуля.
+ */
+export async function resetMatch(matchId: string): Promise<Match> {
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: { bracket: true },
+  });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (match.status === MatchStatus.PENDING) {
+    throw new MatchError("ALREADY_PENDING", "Матч уже в ожидании", 409);
+  }
+  if (!match.redAthleteId || !match.blueAthleteId) {
+    throw new MatchError("INCOMPLETE_PAIRING", "Нет участников", 409);
+  }
+
+  // Если матч COMPLETED и winner propagated — откатим downstream
+  if (match.status === MatchStatus.COMPLETED && match.winnerId && match.bracket.format !== BracketFormat.ROUND_ROBIN) {
+    // Найти все downstream-матчи где играет winner
+    const downstream = await prisma.match.findMany({
+      where: {
+        bracketId: match.bracketId,
+        OR: [{ redAthleteId: match.winnerId }, { blueAthleteId: match.winnerId }],
+        NOT: { id: match.id },
+      },
+    });
+
+    for (const d of downstream) {
+      // Каскадно откатываем downstream при необходимости
+      if (d.status === MatchStatus.COMPLETED && d.winnerId) {
+        const furtherDown = await prisma.match.findMany({
+          where: {
+            bracketId: match.bracketId,
+            OR: [{ redAthleteId: d.winnerId }, { blueAthleteId: d.winnerId }],
+            NOT: { id: d.id },
+          },
+        });
+        for (const fd of furtherDown) {
+          const fdData: any = { winnerId: null, finishedAt: null, startedAt: null, scoreSnapshot: null, status: MatchStatus.PENDING };
+          if (fd.redAthleteId === d.winnerId) fdData.redAthleteId = null;
+          if (fd.blueAthleteId === d.winnerId) fdData.blueAthleteId = null;
+          await prisma.match.update({ where: { id: fd.id }, data: fdData });
+          await prisma.matchEvent.deleteMany({ where: { matchId: fd.id } });
+        }
+      }
+
+      const data: any = { winnerId: null, finishedAt: null, startedAt: null, scoreSnapshot: null, status: MatchStatus.PENDING };
+      if (d.redAthleteId === match.winnerId) data.redAthleteId = null;
+      if (d.blueAthleteId === match.winnerId) data.blueAthleteId = null;
+      await prisma.match.update({ where: { id: d.id }, data });
+      await prisma.matchEvent.deleteMany({ where: { matchId: d.id } });
+    }
+
+    // Если loser was also propagated (repechage/bronze) — clear that too
+    const loserId = match.redAthleteId === match.winnerId ? match.blueAthleteId : match.redAthleteId;
+    if (loserId) {
+      const loserDownstream = await prisma.match.findMany({
+        where: {
+          bracketId: match.bracketId,
+          OR: [{ redAthleteId: loserId }, { blueAthleteId: loserId }],
+          NOT: { id: match.id },
+        },
+      });
+      for (const ld of loserDownstream) {
+        const data: any = {};
+        if (ld.redAthleteId === loserId) data.redAthleteId = null;
+        if (ld.blueAthleteId === loserId) data.blueAthleteId = null;
+        if (Object.keys(data).length > 0) {
+          data.winnerId = null;
+          data.finishedAt = null;
+          data.startedAt = null;
+          data.scoreSnapshot = null;
+          data.status = MatchStatus.PENDING;
+          await prisma.match.update({ where: { id: ld.id }, data });
+          await prisma.matchEvent.deleteMany({ where: { matchId: ld.id } });
+        }
+      }
+    }
+  }
+
+  // Сбросить сам матч
+  await prisma.matchEvent.deleteMany({ where: { matchId } });
+  const updated = await prisma.match.update({
+    where: { id: matchId },
+    data: {
+      status: MatchStatus.PENDING,
+      winnerId: null,
+      scoreSnapshot: Prisma.JsonNull,
+      startedAt: null,
+      finishedAt: null,
+      isGoldenScore: false,
+      isReplay: true,
+      replayReason: "Матч қайта басталды",
+    },
+  });
+
+  return updated;
 }
 
 // ============================================================
