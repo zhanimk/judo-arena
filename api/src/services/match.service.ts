@@ -38,6 +38,16 @@ export interface ScoreSnapshot {
   isGoldenScore: boolean;
   /** Текущее удержание (osaekomi). null если никто не удерживает. */
   osaekomi: { side: "RED" | "BLUE"; startedAt: string } | null;
+  /** Match clock state. elapsedSec is accumulated time before runningStartedAt. */
+  clock: { running: boolean; elapsedSec: number; runningStartedAt: string | null };
+  /** Result waiting for judge/admin confirmation before bracket propagation. */
+  pendingResult: {
+    winnerSide: "RED" | "BLUE";
+    winnerId: string;
+    reason: string;
+    triggeredBy: string;
+    createdAt: string;
+  } | null;
 }
 
 function emptyScore(): ScoreSnapshot {
@@ -46,7 +56,60 @@ function emptyScore(): ScoreSnapshot {
     blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
     isGoldenScore: false,
     osaekomi: null,
+    clock: { running: false, elapsedSec: 0, runningStartedAt: null },
+    pendingResult: null,
   };
+}
+
+function normalizeScore(value: unknown): ScoreSnapshot {
+  const base = emptyScore();
+  if (!value || typeof value !== "object") return base;
+  const score = value as Partial<ScoreSnapshot>;
+  return {
+    red: { ...base.red, ...(score.red ?? {}) },
+    blue: { ...base.blue, ...(score.blue ?? {}) },
+    isGoldenScore: Boolean(score.isGoldenScore),
+    osaekomi: score.osaekomi ?? null,
+    pendingResult: score.pendingResult ?? null,
+    clock: {
+      running: Boolean(score.clock?.running),
+      elapsedSec: Math.max(0, Number(score.clock?.elapsedSec ?? 0)),
+      runningStartedAt: score.clock?.runningStartedAt ?? null,
+    },
+  };
+}
+
+function currentClockElapsedSec(score: ScoreSnapshot, now = new Date()): number {
+  if (!score.clock.running || !score.clock.runningStartedAt) return score.clock.elapsedSec;
+  const startedMs = new Date(score.clock.runningStartedAt).getTime();
+  if (!Number.isFinite(startedMs)) return score.clock.elapsedSec;
+  return Math.max(0, score.clock.elapsedSec + Math.floor((now.getTime() - startedMs) / 1000));
+}
+
+function stopClock(score: ScoreSnapshot, now = new Date()): ScoreSnapshot {
+  score.clock.elapsedSec = currentClockElapsedSec(score, now);
+  score.clock.running = false;
+  score.clock.runningStartedAt = null;
+  return score;
+}
+
+function markPendingResult(
+  score: ScoreSnapshot,
+  winnerSide: "RED" | "BLUE",
+  winnerId: string,
+  reason: string,
+  triggeredBy: string,
+): ScoreSnapshot {
+  stopClock(score);
+  score.osaekomi = null;
+  score.pendingResult = {
+    winnerSide,
+    winnerId,
+    reason,
+    triggeredBy,
+    createdAt: new Date().toISOString(),
+  };
+  return score;
 }
 
 // Пороги времени удержания (IJF rules)
@@ -128,7 +191,12 @@ export async function startMatch(
 ): Promise<{ match: Match; event: any }> {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
-  if (match.status === MatchStatus.IN_PROGRESS) {
+  const now = new Date();
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
+  if (match.status === MatchStatus.IN_PROGRESS && score.clock.running) {
     throw new MatchError("ALREADY_RUNNING", "Матч уже идёт", 409);
   }
   if (match.status === MatchStatus.COMPLETED) {
@@ -137,14 +205,31 @@ export async function startMatch(
   if (!match.redAthleteId || !match.blueAthleteId) {
     throw new MatchError("INCOMPLETE_PAIRING", "В матче не хватает участников", 409);
   }
+  if (match.tatamiNumber) {
+    const activeOnTatami = await prisma.match.findFirst({
+      where: {
+        id: { not: match.id },
+        tournamentId: match.tournamentId,
+        tatamiNumber: match.tatamiNumber,
+        status: MatchStatus.IN_PROGRESS,
+      },
+      select: { id: true, queuePosition: true },
+    });
+    if (activeOnTatami) {
+      throw new MatchError("TATAMI_BUSY", "На этом татами уже идёт схватка", 409);
+    }
+  }
+
+  score.clock.running = true;
+  score.clock.runningStartedAt = now.toISOString();
 
   const [updated, event] = await prisma.$transaction([
     prisma.match.update({
       where: { id: matchId },
       data: {
         status: MatchStatus.IN_PROGRESS,
-        startedAt: match.startedAt ?? new Date(),
-        scoreSnapshot: emptyScore() as any,
+        startedAt: match.startedAt ?? now,
+        scoreSnapshot: score as any,
       },
     }),
     prisma.matchEvent.create({
@@ -153,7 +238,7 @@ export async function startMatch(
         type: MatchEventType.HAJIME,
         side: MatchSide.SYSTEM,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: emptyScore() as any,
+        scoreSnapshot: score as any,
       },
     }),
   ]);
@@ -167,16 +252,30 @@ export async function pauseMatch(matchId: string, judgeSessionId?: string) {
   if (match.status !== MatchStatus.IN_PROGRESS) {
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
   }
-  const event = await prisma.matchEvent.create({
-    data: {
-      matchId,
-      type: MatchEventType.MATE,
-      side: MatchSide.SYSTEM,
-      actorJudgeSessionId: judgeSessionId,
-      scoreSnapshot: match.scoreSnapshot as any,
-    },
-  });
-  return { match, event };
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
+  if (!score.clock.running) {
+    throw new MatchError("ALREADY_PAUSED", "Матч уже на паузе", 409);
+  }
+  stopClock(score);
+  const [updated, event] = await prisma.$transaction([
+    prisma.match.update({
+      where: { id: matchId },
+      data: { scoreSnapshot: score as any },
+    }),
+    prisma.matchEvent.create({
+      data: {
+        matchId,
+        type: MatchEventType.MATE,
+        side: MatchSide.SYSTEM,
+        actorJudgeSessionId: judgeSessionId,
+        scoreSnapshot: score as any,
+      },
+    }),
+  ]);
+  return { match: updated, event };
 }
 
 export async function enterGoldenScore(matchId: string, judgeSessionId?: string) {
@@ -185,7 +284,10 @@ export async function enterGoldenScore(matchId: string, judgeSessionId?: string)
   if (match.status !== MatchStatus.IN_PROGRESS) {
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
   }
-  const score = (match.scoreSnapshot as unknown as ScoreSnapshot) ?? emptyScore();
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
   score.isGoldenScore = true;
 
   const [updated, event] = await prisma.$transaction([
@@ -225,20 +327,30 @@ export async function addScoreEvent(
     throw new MatchError("INCOMPLETE_PAIRING", "Нет участников", 409);
   }
 
-  const score = ((match.scoreSnapshot as unknown as ScoreSnapshot) ?? emptyScore());
-  if (!score.red) Object.assign(score, emptyScore());
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
   const sideKey = side === "RED" ? "red" : "blue";
 
   // Применяем эффект очка
   switch (type) {
     case "IPPON":
-      score[sideKey].ippon += 1;
+      // IPPON — чистая победа, не может быть 2 иппона у одного
+      if (score[sideKey].ippon >= 1) {
+        throw new MatchError("ALREADY_IPPON", "Ипон уже начислен", 409);
+      }
+      score[sideKey].ippon = 1;
       break;
     case "WAZA_ARI":
+      // Waza-ari нельзя добавить если ипон уже есть (матч должен был завершиться)
+      if (score[sideKey].ippon >= 1) {
+        throw new MatchError("ALREADY_IPPON", "Ипон уже начислен — ваза-ари нельзя добавить", 409);
+      }
       score[sideKey].wazaari += 1;
       // Два waza-ari = ippon (IJF rule)
       if (score[sideKey].wazaari >= 2) {
-        score[sideKey].ippon = Math.max(score[sideKey].ippon, 1);
+        score[sideKey].ippon = 1;
       }
       break;
     case "YUKO":
@@ -258,8 +370,9 @@ export async function addScoreEvent(
   // Определение победителя
   let winnerId: string | null = null;
   let autoFinished = false;
-  const redWon = score.red.ippon >= 1 || score.blue.hansoku;
-  const blueWon = score.blue.ippon >= 1 || score.red.hansoku;
+  const goldenScorePoint = score.isGoldenScore && (type === "IPPON" || type === "WAZA_ARI" || type === "YUKO");
+  const redWon = score.red.ippon >= 1 || score.blue.hansoku || (goldenScorePoint && side === "RED");
+  const blueWon = score.blue.ippon >= 1 || score.red.hansoku || (goldenScorePoint && side === "BLUE");
 
   if (redWon && !blueWon) {
     winnerId = match.redAthleteId;
@@ -271,6 +384,16 @@ export async function addScoreEvent(
 
   const eventType: MatchEventType = type as MatchEventType;
   const matchSide: MatchSide = side === "RED" ? MatchSide.RED : MatchSide.BLUE;
+
+  if (autoFinished && winnerId) {
+    markPendingResult(
+      score,
+      winnerId === match.redAthleteId ? "RED" : "BLUE",
+      winnerId,
+      type,
+      judgeSessionId ?? "system",
+    );
+  }
 
   const event = await prisma.matchEvent.create({
     data: {
@@ -286,18 +409,8 @@ export async function addScoreEvent(
     where: { id: matchId },
     data: {
       scoreSnapshot: score as any,
-      ...(autoFinished && {
-        status: MatchStatus.COMPLETED,
-        winnerId,
-        finishedAt: new Date(),
-      }),
     },
   });
-
-  // Если матч завершился — продвигаем победителя в следующий матч
-  if (autoFinished && winnerId) {
-    await propagateWinner(updated, winnerId);
-  }
 
   return { match: updated, event, autoFinished, winnerId };
 }
@@ -317,8 +430,10 @@ export async function startOsaekomi(
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
   }
 
-  const score = ((match.scoreSnapshot as unknown as ScoreSnapshot) ?? emptyScore());
-  if (!score.red) Object.assign(score, emptyScore());
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
   if (score.osaekomi) {
     throw new MatchError("OSAEKOMI_ALREADY", "Удержание уже идёт", 409);
   }
@@ -384,7 +499,10 @@ export async function endOsaekomi(
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
   }
 
-  const score = ((match.scoreSnapshot as unknown as ScoreSnapshot) ?? emptyScore());
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Сначала утвердите или сбросьте результат схватки", 409);
+  }
   if (!score.osaekomi) {
     throw new MatchError("NO_OSAEKOMI", "Удержание не активно", 409);
   }
@@ -427,6 +545,16 @@ export async function endOsaekomi(
     }
   }
 
+  if (autoFinished && winnerId) {
+    markPendingResult(
+      score,
+      winnerId === match.redAthleteId ? "RED" : "BLUE",
+      winnerId,
+      scored?.type ?? reason,
+      judgeSessionId ?? "system",
+    );
+  }
+
   // Записываем событие TOKETA с meta
   await prisma.matchEvent.create({
     data: {
@@ -449,18 +577,8 @@ export async function endOsaekomi(
     where: { id: matchId },
     data: {
       scoreSnapshot: score as any,
-      ...(autoFinished &&
-        winnerId && {
-          status: MatchStatus.COMPLETED,
-          winnerId,
-          finishedAt: new Date(),
-        }),
     },
   });
-
-  if (autoFinished && winnerId) {
-    await propagateWinner(updated, winnerId);
-  }
 
   return {
     match: updated,
@@ -490,6 +608,11 @@ export async function finishMatchManually(
     throw new MatchError("INCOMPLETE_PAIRING", "Нет участников", 409);
   }
   const winnerId = winnerSide === "RED" ? match.redAthleteId : match.blueAthleteId;
+  const score = normalizeScore(match.scoreSnapshot);
+  if (score.pendingResult) {
+    throw new MatchError("RESULT_PENDING", "Результат уже ожидает утверждения", 409);
+  }
+  markPendingResult(score, winnerSide, winnerId, reason ?? "Судья шешімі", judgeSessionId ?? "system");
 
   await prisma.matchEvent.create({
     data: {
@@ -497,7 +620,7 @@ export async function finishMatchManually(
       type: MatchEventType.SORE_MADE,
       side: winnerSide === "RED" ? MatchSide.RED : MatchSide.BLUE,
       actorJudgeSessionId: judgeSessionId,
-      scoreSnapshot: match.scoreSnapshot as any,
+      scoreSnapshot: score as any,
       meta: reason ? { reason } : undefined,
     },
   });
@@ -505,9 +628,45 @@ export async function finishMatchManually(
   const updated = await prisma.match.update({
     where: { id: matchId },
     data: {
+      scoreSnapshot: score as any,
+    },
+  });
+
+  return updated;
+}
+
+export async function confirmMatchResult(matchId: string, judgeSessionId?: string): Promise<Match> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (match.status === MatchStatus.COMPLETED) {
+    throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+  }
+  const score = stopClock(normalizeScore(match.scoreSnapshot));
+  if (!score.pendingResult) {
+    throw new MatchError("NO_PENDING_RESULT", "Нет результата для утверждения", 409);
+  }
+  const winnerId = score.pendingResult.winnerId;
+  const winnerSide = score.pendingResult.winnerSide;
+
+  await prisma.matchEvent.create({
+    data: {
+      matchId,
+      type: MatchEventType.SORE_MADE,
+      side: winnerSide === "RED" ? MatchSide.RED : MatchSide.BLUE,
+      actorJudgeSessionId: judgeSessionId,
+      scoreSnapshot: score as any,
+      meta: { confirmed: true, pendingResult: score.pendingResult },
+    },
+  });
+
+  score.pendingResult = null;
+  const updated = await prisma.match.update({
+    where: { id: matchId },
+    data: {
       status: MatchStatus.COMPLETED,
       winnerId,
       finishedAt: new Date(),
+      scoreSnapshot: score as any,
     },
   });
 
@@ -561,6 +720,122 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
 
     await prisma.match.update({ where: { id: target.id }, data });
   }
+}
+
+// ============================================================
+// ОТМЕНА ОЖИДАЮЩЕГО РЕЗУЛЬТАТА (до подтверждения)
+// ============================================================
+
+/**
+ * Сбросить pendingResult — судья ошибся и хочет отменить объявленную победу.
+ * Матч остаётся IN_PROGRESS, часы остановлены; судья нажимает ХАДЖИМЕ чтобы продолжить.
+ */
+export async function cancelPendingResult(
+  matchId: string,
+  judgeSessionId?: string,
+): Promise<Match> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (match.status !== MatchStatus.IN_PROGRESS) {
+    throw new MatchError("NOT_RUNNING", "Матч не IN_PROGRESS", 409);
+  }
+  const score = normalizeScore(match.scoreSnapshot);
+  if (!score.pendingResult) {
+    throw new MatchError("NO_PENDING_RESULT", "Нет ожидающего результата", 409);
+  }
+
+  score.pendingResult = null;
+
+  await prisma.matchEvent.create({
+    data: {
+      matchId,
+      type: MatchEventType.MATE,
+      side: MatchSide.SYSTEM,
+      actorJudgeSessionId: judgeSessionId,
+      scoreSnapshot: score as any,
+      meta: { cancelledPendingResult: true },
+    },
+  });
+
+  return prisma.match.update({
+    where: { id: matchId },
+    data: { scoreSnapshot: score as any },
+  });
+}
+
+// ============================================================
+// ОТМЕНА ПОСЛЕДНЕГО ДЕЙСТВИЯ (undo)
+// ============================================================
+
+const UNDOABLE_TYPES = [
+  MatchEventType.IPPON,
+  MatchEventType.WAZA_ARI,
+  MatchEventType.YUKO,
+  MatchEventType.SHIDO,
+  MatchEventType.HANSOKU_MAKE,
+  MatchEventType.GOLDEN_SCORE,
+] as const;
+
+/**
+ * Отменить последнее засчитанное очко / шидо / хансоку.
+ * Восстанавливает score из события до него; текущее состояние таймера сохраняется.
+ * Pendingresult всегда сбрасывается при undo.
+ */
+export async function undoLastScoreEvent(
+  matchId: string,
+  judgeSessionId?: string,
+): Promise<Match> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (match.status !== MatchStatus.IN_PROGRESS) {
+    throw new MatchError("NOT_RUNNING", "Матч не IN_PROGRESS", 409);
+  }
+
+  // Все scoring-события этого матча по порядку
+  const events = await prisma.matchEvent.findMany({
+    where: { matchId, type: { in: UNDOABLE_TYPES as unknown as MatchEventType[] } },
+    orderBy: { occurredAt: "asc" },
+  });
+
+  if (events.length === 0) {
+    throw new MatchError("NO_EVENTS", "Нет действий для отмены", 409);
+  }
+
+  const lastEvent = events[events.length - 1]!;
+  const prevEvent = events.length >= 2 ? events[events.length - 2] : null;
+
+  // Базовый score: из события до последнего (или нулевой если первое)
+  const prevScore = prevEvent ? normalizeScore(prevEvent.scoreSnapshot) : emptyScore();
+  const currentScore = normalizeScore(match.scoreSnapshot);
+
+  // Восстанавливаем очки, но сохраняем текущее состояние таймера и осаекоми
+  const restored: ScoreSnapshot = {
+    red:          prevScore.red,
+    blue:         prevScore.blue,
+    isGoldenScore: prevScore.isGoldenScore,
+    pendingResult: null,
+    clock:        currentScore.clock,
+    osaekomi:     currentScore.osaekomi,
+  };
+
+  await prisma.matchEvent.delete({ where: { id: lastEvent.id } });
+
+  // Логируем факт undo
+  await prisma.matchEvent.create({
+    data: {
+      matchId,
+      type: MatchEventType.MATE,
+      side: MatchSide.SYSTEM,
+      actorJudgeSessionId: judgeSessionId,
+      scoreSnapshot: restored as any,
+      meta: { undo: true, undoneType: lastEvent.type, undoneId: lastEvent.id },
+    },
+  });
+
+  return prisma.match.update({
+    where: { id: matchId },
+    data: { scoreSnapshot: restored as any },
+  });
 }
 
 // ============================================================

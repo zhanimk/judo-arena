@@ -35,6 +35,7 @@ function JudgePanel() {
     match?.tournamentId ? [`tournament:${match.tournamentId}`] : [],
     {
       "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+      "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
       "match:finished": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
       "match:osaekomiStart": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
       "match:osaekomiEnd": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
@@ -43,6 +44,7 @@ function JudgePanel() {
 
   // Локальный таймер удержания
   const [osaeStartedLocal, setOsaeStartedLocal] = useState<number | null>(null);
+  const [actionError, setActionError] = useState("");
   const [, force] = useState({});
 
   useEffect(() => {
@@ -51,6 +53,12 @@ function JudgePanel() {
     return () => clearInterval(id);
   }, [osaeStartedLocal]);
 
+  useEffect(() => {
+    if (!match?.scoreSnapshot?.clock?.running) return;
+    const id = setInterval(() => force({}), 250);
+    return () => clearInterval(id);
+  }, [match?.scoreSnapshot?.clock?.running, match?.scoreSnapshot?.clock?.runningStartedAt]);
+
   // Снимать таймер если на сервере не активен
   useEffect(() => {
     const osa = match?.scoreSnapshot?.osaekomi;
@@ -58,30 +66,59 @@ function JudgePanel() {
     else if (osa && osaeStartedLocal === null) {
       setOsaeStartedLocal(new Date(osa.startedAt).getTime());
     }
-  }, [match?.scoreSnapshot?.osaekomi]);
+  }, [match?.scoreSnapshot?.osaekomi, osaeStartedLocal]);
 
   const refetch = () => qc.invalidateQueries({ queryKey: ["judge-session", token] });
 
   const startMatch = useMutation({
     mutationFn: () => api.matches.start(matchId!, token),
+    onMutate: () => setActionError(""),
     onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Әрекет орындалмады"),
   });
   const pauseMatch = useMutation({
     mutationFn: () => api.matches.pause(matchId!, token),
+    onMutate: () => setActionError(""),
     onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Әрекет орындалмады"),
   });
   const score = useMutation({
     mutationFn: (params: { type: string; side: "RED" | "BLUE" }) =>
       api.matches.score(matchId!, params.type, params.side, token),
+    onMutate: () => setActionError(""),
     onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Ұпай қабылданбады"),
   });
   const osaekomi = useMutation({
     mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, token),
+    onMutate: () => setActionError(""),
     onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Ұстау басталмады"),
   });
   const toketa = useMutation({
     mutationFn: () => api.matches.toketa(matchId!, token),
+    onMutate: () => setActionError(""),
     onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Toketa қабылданбады"),
+  });
+  const goldenScore = useMutation({
+    mutationFn: () => api.matches.goldenScore(matchId!, token),
+    onMutate: () => setActionError(""),
+    onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Golden Score қосылмады"),
+  });
+  const confirmResult = useMutation({
+    mutationFn: () => api.matches.confirm(matchId!, token),
+    onMutate: () => setActionError(""),
+    onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Нәтиже бекітілмеді"),
+  });
+  const finishMatch = useMutation({
+    mutationFn: (params: { winnerSide: "RED" | "BLUE"; reason?: string }) =>
+      api.matches.finish(matchId!, params.winnerSide, params.reason, token),
+    onMutate: () => setActionError(""),
+    onSuccess: refetch,
+    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : "Аяқтау қабылданбады"),
   });
 
   if (sessionQuery.isLoading) {
@@ -110,14 +147,21 @@ function JudgePanel() {
   const redS = score_.red ?? {};
   const blueS = score_.blue ?? {};
   const isRunning = match?.status === "IN_PROGRESS";
+  const isClockRunning = isRunning && Boolean(score_.clock?.running);
+  const isPaused = isRunning && !isClockRunning;
   const isFinished = match?.status === "COMPLETED";
   const winnerId = match?.winnerId;
+  const pendingResult = score_.pendingResult;
+  const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
+  const elapsedSec = getClockElapsedSec(score_);
+  const displaySec = score_.isGoldenScore ? elapsedSec : Math.max(0, durationSec - elapsedSec);
 
   const osaekomiActive = osaeStartedLocal !== null;
   const osaekomiDurationSec = osaekomiActive
     ? Math.floor((Date.now() - osaeStartedLocal) / 1000)
     : 0;
   const osaekomiSide = score_.osaekomi?.side as "RED" | "BLUE" | undefined;
+  const osaekomiSideLabel = osaekomiSide === "RED" ? "АҚ" : osaekomiSide === "BLUE" ? "КӨК" : "";
 
   return (
     <div className="min-h-screen bg-gradient-hero text-foreground p-4 sm:p-6">
@@ -149,7 +193,7 @@ function JudgePanel() {
           <div className="mb-4 glass rounded-xl border-2 border-gold/60 p-4 animate-pulse">
             <div className="flex items-center justify-between">
               <span className="text-xs uppercase tracking-widest text-gold flex items-center gap-2">
-                <Timer className="h-4 w-4" /> OSAEKOMI · {osaekomiSide}
+                <Timer className="h-4 w-4" /> OSAEKOMI · {osaekomiSideLabel}
               </span>
               <span className="font-display text-4xl text-gold tabular-nums">
                 {String(Math.floor(osaekomiDurationSec / 60)).padStart(2, "0")}:
@@ -162,9 +206,43 @@ function JudgePanel() {
           </div>
         )}
 
+        <div className="mb-4 glass rounded-2xl border border-border/60 p-4 text-center">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            {pendingResult ? "Нәтижені бекіту керек" : score_.isGoldenScore ? "Golden Score" : isPaused ? "Mate" : isClockRunning ? "Уақыт жүріп жатыр" : "Күтуде"}
+          </div>
+          <div className={`font-display text-6xl font-black tabular-nums ${
+            score_.isGoldenScore ? "text-gold" : displaySec <= 30 && isClockRunning ? "text-destructive" : "text-foreground"
+          }`}>
+            {fmtTimer(displaySec)}
+          </div>
+        </div>
+
+        {actionError && (
+          <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-sm font-medium text-destructive">
+            {actionError}
+          </div>
+        )}
+
+        {pendingResult && (
+          <div className="mb-5 glass rounded-2xl border-2 border-gold/70 bg-gold/10 p-5 text-center">
+            <Trophy className="h-10 w-10 text-gold mx-auto mb-2" />
+            <div className="text-xs uppercase tracking-widest text-gold/80">Схватка аяқталды</div>
+            <div className="font-display text-2xl text-gradient-gold mt-1">
+              {pendingResult.winnerSide === "RED" ? `${red?.name} ${red?.surname}` : `${blue?.name} ${blue?.surname}`}
+            </div>
+            <button
+              onClick={() => confirmResult.mutate()}
+              disabled={confirmResult.isPending}
+              className="mt-4 rounded-lg bg-gradient-gold px-8 py-3 font-bold text-gold-foreground shadow-gold disabled:opacity-50"
+            >
+              НӘТИЖЕНІ БЕКІТУ
+            </button>
+          </div>
+        )}
+
         {/* Контрол матча */}
         <div className="mb-6 flex flex-wrap gap-2 justify-center">
-          {!isRunning && !isFinished && (
+          {!pendingResult && (!isRunning || isPaused) && !isFinished && (
             <button
               onClick={() => startMatch.mutate()}
               disabled={startMatch.isPending}
@@ -173,7 +251,7 @@ function JudgePanel() {
               <Play className="h-5 w-5" /> ХАДЖИМЕ
             </button>
           )}
-          {isRunning && (
+          {!pendingResult && isClockRunning && (
             <button
               onClick={() => pauseMatch.mutate()}
               disabled={pauseMatch.isPending}
@@ -182,9 +260,36 @@ function JudgePanel() {
               <Pause className="h-5 w-5" /> МАТЕ
             </button>
           )}
+          {!pendingResult && isRunning && !score_.isGoldenScore && (
+            <button
+              onClick={() => goldenScore.mutate()}
+              disabled={goldenScore.isPending}
+              className="glass border border-gold/40 px-6 py-3 rounded-lg font-medium text-gold"
+            >
+              GOLDEN SCORE
+            </button>
+          )}
+          {isRunning && !pendingResult && (
+            <>
+              <button
+                onClick={() => finishMatch.mutate({ winnerSide: "RED", reason: "Судья шешімі" })}
+                disabled={finishMatch.isPending}
+                className="rounded-lg border border-gray-400/50 bg-gray-500/10 px-6 py-3 font-bold text-gray-200 disabled:opacity-50"
+              >
+                АҚ ЖЕҢДІ
+              </button>
+              <button
+                onClick={() => finishMatch.mutate({ winnerSide: "BLUE", reason: "Судья шешімі" })}
+                disabled={finishMatch.isPending}
+                className="rounded-lg border border-sky-400/50 bg-sky-500/10 px-6 py-3 font-bold text-sky-200 disabled:opacity-50"
+              >
+                КӨК ЖЕҢДІ
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Стороны RED / BLUE */}
+        {/* Стороны: АҚ / КӨК */}
         <div className="grid gap-4 md:grid-cols-2">
           {(["RED", "BLUE"] as const).map((side) => {
             const a = side === "RED" ? red : blue;
@@ -194,13 +299,13 @@ function JudgePanel() {
               <div
                 key={side}
                 className={`glass rounded-2xl p-5 border-2 ${
-                  side === "RED" ? "border-rose-400/40" : "border-sky-400/40"
+                  side === "RED" ? "border-gray-400/40" : "border-sky-400/40"
                 } ${winnerId === a?.id ? "shadow-gold" : ""}`}
               >
                 {/* Имя */}
                 <div className="mb-3">
-                  <div className={`text-xs uppercase tracking-widest ${side === "RED" ? "text-rose-300" : "text-sky-300"}`}>
-                    {side === "RED" ? "🔴 Қызыл" : "🔵 Көк"}
+                  <div className={`text-xs uppercase tracking-widest ${side === "RED" ? "text-gray-300" : "text-sky-300"}`}>
+                    {side === "RED" ? "⬜ Ақ" : "🔵 Көк"}
                   </div>
                   <div className="font-display text-2xl font-semibold leading-tight">
                     {a ? `${a.name} ${a.surname}` : "—"}
@@ -226,31 +331,31 @@ function JudgePanel() {
                 <div className="grid grid-cols-2 gap-2">
                   <ScoreBtn
                     label="IPPON"
-                    color="bg-gradient-gold text-gold-foreground"
-                    onClick={() => score.mutate({ type: "IPPON", side })}
-                    disabled={!isRunning}
-                  />
+	                    color="bg-gradient-gold text-gold-foreground"
+	                    onClick={() => score.mutate({ type: "IPPON", side })}
+	                    disabled={!isClockRunning || Boolean(pendingResult)}
+	                  />
                   <ScoreBtn
                     label="WAZA-ARI"
-                    color="glass border border-gold/40 text-gold"
-                    onClick={() => score.mutate({ type: "WAZA_ARI", side })}
-                    disabled={!isRunning}
-                  />
+	                    color="glass border border-gold/40 text-gold"
+	                    onClick={() => score.mutate({ type: "WAZA_ARI", side })}
+	                    disabled={!isClockRunning || Boolean(pendingResult)}
+	                  />
                   <ScoreBtn
                     label={isOsae ? "TOKETA" : "OSAEKOMI"}
                     color={isOsae ? "bg-gold text-gold-foreground animate-pulse" : "glass border border-gold/30 text-gold/80"}
                     onClick={() => {
-                      if (isOsae) toketa.mutate();
-                      else osaekomi.mutate(side);
-                    }}
-                    disabled={!isRunning}
-                  />
+	                      if (isOsae) toketa.mutate();
+	                      else osaekomi.mutate(side);
+	                    }}
+	                    disabled={Boolean(pendingResult) || (!isClockRunning && !isOsae)}
+	                  />
                   <ScoreBtn
                     label="SHIDO"
-                    color="bg-destructive/20 text-destructive border border-destructive/40"
-                    onClick={() => score.mutate({ type: "SHIDO", side })}
-                    disabled={!isRunning}
-                  />
+	                    color="bg-destructive/20 text-destructive border border-destructive/40"
+	                    onClick={() => score.mutate({ type: "SHIDO", side })}
+	                    disabled={!isClockRunning || Boolean(pendingResult)}
+	                  />
                 </div>
               </div>
             );
@@ -280,4 +385,20 @@ function ScoreBtn({
       {label}
     </button>
   );
+}
+
+function getClockElapsedSec(score: any): number {
+  const clock = score?.clock;
+  const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
+  if (!clock?.running || !clock.runningStartedAt) return base;
+  const startedMs = new Date(clock.runningStartedAt).getTime();
+  if (!Number.isFinite(startedMs)) return base;
+  return Math.max(0, base + Math.floor((Date.now() - startedMs) / 1000));
+}
+
+function fmtTimer(sec: number): string {
+  const safe = Math.max(0, Math.floor(sec));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }

@@ -84,7 +84,7 @@ export const listMatchesQuerySchema = z.object({
   athleteId: z.string().optional(),
   tatamiNumber: z.coerce.number().int().optional(),
   status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });
 export type ListMatchesQuery = z.infer<typeof listMatchesQuerySchema>;

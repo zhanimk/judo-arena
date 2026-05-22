@@ -118,6 +118,7 @@ model User {
   ratingEntries      RatingEntry[]
   notifications      Notification[]
   auditLogs          AuditLog[]
+  tatamiSessions     TatamiSession[]   @relation("TatamiSessionCreator")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -196,6 +197,7 @@ model Tournament {
   brackets     Bracket[]
   matches      Match[]
   ratingEntries RatingEntry[]
+  tatamiSessions TatamiSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -359,6 +361,24 @@ model JudgeSession {
   createdAt DateTime @default(now())
 
   @@index([matchId])
+}
+
+/// Сессия судьи на целый татами (один токен = все матчи татами за день).
+model TatamiSession {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  tournamentId  String
+  tournament    Tournament @relation(fields: [tournamentId], references: [id])
+  tatamiNumber  Int
+  judgeName     String?
+  createdById   String
+  createdBy     User     @relation("TatamiSessionCreator", fields: [createdById], references: [id])
+  expiresAt     DateTime // default: +14 часов
+  isRevoked     Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([tournamentId, tatamiNumber])
 }
 
 // ============================================================

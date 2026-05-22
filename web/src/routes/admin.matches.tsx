@@ -6,12 +6,12 @@ import {
   ChevronUp,
   Copy,
   ExternalLink,
-  Gavel,
   GripVertical,
   MonitorPlay,
-  RefreshCw,
   RotateCcw,
+  Tv,
   Unlink,
+  UserCheck,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DashboardShell, EmptyState, LoadingState, Panel } from "@/components/dashboard/DashboardShell";
@@ -19,6 +19,7 @@ import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
+import { buildTatamiState, hasPendingResult, matchOrder } from "@/lib/tatami-state";
 
 type Match = any;
 
@@ -54,10 +55,8 @@ export function TournamentScoreboardPanel({
   const navigate = useNavigate();
   const [selectedTournamentId, setSelectedTournamentId] = useState(fixedTournamentId ?? initialTournamentId ?? "");
   const [draggedMatchId, setDraggedMatchId] = useState<string | null>(null);
-  const [sessionFor, setSessionFor] = useState<{ id: string; players: string } | null>(null);
-  const [judgeName, setJudgeName] = useState("");
-  const [sessionResult, setSessionResult] = useState<{ url: string; copied: boolean } | null>(null);
   const [wallCopied, setWallCopied] = useState(false);
+  const [copiedTatamiSessionId, setCopiedTatamiSessionId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const tournamentsQuery = useQuery({
@@ -65,7 +64,7 @@ export function TournamentScoreboardPanel({
     queryFn: () => api.tournaments.list(),
   });
 
-  const tournaments = tournamentsQuery.data?.items ?? [];
+  const tournaments = useMemo(() => tournamentsQuery.data?.items ?? [], [tournamentsQuery.data]);
   const selectedTournament = tournaments.find((t: any) => t.id === selectedTournamentId);
   const tatamiCount = Math.max(3, Number(selectedTournament?.tatamiCount ?? 3));
 
@@ -95,6 +94,7 @@ export function TournamentScoreboardPanel({
     "match:started": invalidateBoard,
     "match:event": invalidateBoard,
     "match:scoreUpdate": invalidateBoard,
+    "match:pendingResult": invalidateBoard,
     "match:finished": invalidateBoard,
     "match:osaekomiStart": invalidateBoard,
     "match:osaekomiEnd": invalidateBoard,
@@ -104,7 +104,7 @@ export function TournamentScoreboardPanel({
   const matchesQuery = useQuery({
     queryKey: ["admin-scoreboard-matches", selectedTournamentId],
     enabled: Boolean(selectedTournamentId),
-    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 200 }),
+    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 500 }),
     refetchInterval: 2500,
   });
 
@@ -138,20 +138,46 @@ export function TournamentScoreboardPanel({
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Override кезінде қате"),
   });
 
-  const createSession = useMutation({
-    mutationFn: ({ matchId, judgeName }: { matchId: string; judgeName: string }) =>
-      api.matches.createJudgeSession(matchId, judgeName),
-    onSuccess: (s) => {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      setSessionResult({ url: `${origin}/judge/${s.token}`, copied: false });
-    },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Төреші сілтемесін құру кезінде қате шықты"),
+
+  // Татами сессия (1 ссылка на весь татами)
+  const [tatamiSessionFor, setTatamiSessionFor] = useState<{ tatamiNumber: number } | null>(null);
+  const [tatamiSessionResult, setTatamiSessionResult] = useState<{ url: string; copied: boolean } | null>(null);
+  const [tatamiJudgeName, setTatamiJudgeName] = useState("");
+
+  const tatamiSessionsQuery = useQuery({
+    queryKey: ["admin-tatami-sessions", selectedTournamentId],
+    enabled: Boolean(selectedTournamentId),
+    queryFn: () => api.tatamiSession.list(selectedTournamentId),
   });
 
-  const matches = matchesQuery.data ?? [];
+  const createTatamiSession = useMutation({
+    mutationFn: ({ tournamentId, tatamiNumber, judgeName }: { tournamentId: string; tatamiNumber: number; judgeName: string }) =>
+      api.tatamiSession.create(tournamentId, tatamiNumber, judgeName || undefined),
+    onSuccess: (s) => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      setTatamiSessionResult({
+        url: `${origin}/tatami/${s.token}`,
+        copied: false,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] });
+    },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Татами сессиясын құру кезінде қате шықты"),
+  });
+
+  const revokeTatamiSession = useMutation({
+    mutationFn: (sessionId: string) => api.tatamiSession.revoke(sessionId),
+    onMutate: () => setError(""),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] }),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Татами сессиясын өшіру кезінде қате шықты"),
+  });
+
+  const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const tatamiSessions = useMemo(() => tatamiSessionsQuery.data ?? [], [tatamiSessionsQuery.data]);
   const board = useMemo(() => buildTatamiBoard(matches, tatamiCount), [matches, tatamiCount]);
   const unassigned = board.unassigned;
-  const completed = matches.filter((m: Match) => m.status === "COMPLETED").slice(0, 12);
+  const completed = matches
+    .filter((m: Match) => m.status === "COMPLETED")
+    .sort((a: Match, b: Match) => new Date(b.finishedAt ?? 0).getTime() - new Date(a.finishedAt ?? 0).getTime());
   const liveCount = matches.filter((m: Match) => m.status === "IN_PROGRESS").length;
   const wallPath = selectedTournamentId ? `/live-wall/${selectedTournamentId}` : "";
 
@@ -173,6 +199,13 @@ export function TournamentScoreboardPanel({
     await navigator.clipboard.writeText(`${window.location.origin}${wallPath}`);
     setWallCopied(true);
     window.setTimeout(() => setWallCopied(false), 1400);
+  };
+
+  const copyTatamiSession = async (session: any) => {
+    if (!session?.token || typeof window === "undefined") return;
+    await navigator.clipboard.writeText(`${window.location.origin}/tatami/${session.token}`);
+    setCopiedTatamiSessionId(session.id);
+    window.setTimeout(() => setCopiedTatamiSessionId(null), 1400);
   };
 
   return (
@@ -250,7 +283,6 @@ export function TournamentScoreboardPanel({
                     compact
                     onDragStart={() => setDraggedMatchId(m.id)}
                     onDragEnd={() => setDraggedMatchId(null)}
-                    onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
                     onReset={() => resetMatchMutation.mutate(m.id)}
                     onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
                   />
@@ -259,158 +291,260 @@ export function TournamentScoreboardPanel({
             )}
           </DropZone>
         </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          {board.tatamis.map((tatami) => {
+            const session = tatamiSessions.find((s: any) => Number(s.tatamiNumber) === tatami.number);
+            return (
+              <DropZone
+                key={tatami.number}
+                title={`Татами ${tatami.number}`}
+                hint={`${tatami.live.length} live · ${tatami.queue.length} кезекте${tatami.pendingResult ? " · нәтиже күтіп тұр" : ""}${session ? ` · судья: ${session.judgeName || "сілтеме дайын"}` : ""}`}
+                action={
+                  <div className="flex flex-wrap gap-1.5">
+                    {session && (
+                      <button
+                        onClick={() => copyTatamiSession(session)}
+                        className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2.5 py-1.5 text-xs text-gold"
+                      >
+                        {copiedTatamiSessionId === session.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedTatamiSessionId === session.id ? "Көшірілді" : "Сілтеме"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setTatamiSessionFor({ tatamiNumber: tatami.number });
+                        setTatamiSessionResult(null);
+                        setTatamiJudgeName(session?.judgeName || `Татами ${tatami.number}`);
+                        setError("");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      {session ? "Жаңарту" : "Құру"}
+                    </button>
+                    {session ? (
+                      <Link
+                        to="/tatami/$token"
+                        params={{ token: session.token }}
+                        target="_blank"
+                        className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/10 px-2.5 py-1.5 text-xs text-gold hover:bg-gold/15"
+                      >
+                        <Tv className="h-3.5 w-3.5" />
+                        Табло
+                      </Link>
+                    ) : null}
+                  </div>
+                }
+                onDrop={() => dropOnTatami(tatami.number)}
+                active={Boolean(draggedMatchId)}
+              >
+                <div className="space-y-3">
+                  {tatami.live.length > 0 && (
+                    <div className="space-y-3">
+                      {tatami.live.map((m) => (
+                        <MatchCard
+                          key={m.id}
+                          match={m}
+                          live
+                          onDragStart={() => setDraggedMatchId(m.id)}
+                          onDragEnd={() => setDraggedMatchId(null)}
+                          onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
+                          onMoveUp={() => reorderQueue.mutate({ matchId: m.id, direction: "up" })}
+                          onMoveDown={() => reorderQueue.mutate({ matchId: m.id, direction: "down" })}
+                          onReset={() => resetMatchMutation.mutate(m.id)}
+                          onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {tatami.queue.length === 0 && tatami.live.length === 0 ? (
+                    <EmptyState title="Бұл татамиде матч жоқ" hint="Матчты осында сүйреп әкеліңіз" />
+                  ) : (() => {
+                    // First match visible in judge panel = first with both athletes set
+                    const firstReadyIdx = tatami.live.length === 0
+                      ? tatami.queue.findIndex((m: Match) => m.redAthleteId && m.blueAthleteId)
+                      : -1;
+                    return (
+                      <div className="space-y-2">
+                        {tatami.queue.map((m: Match, index: number) => {
+                          const isMissingAthlete = !m.redAthleteId || !m.blueAthleteId;
+                          const isJudgeNext = index === firstReadyIdx;
+                          return (
+                            <div key={m.id}>
+                              {isJudgeNext && (
+                                <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
+                                  <span>▶</span> Судья панелінде осы
+                                </div>
+                              )}
+                              {isMissingAthlete && (
+                                <div className="mb-1 text-[10px] text-amber-500 opacity-70">⚠ Спортшы тағайындалмаған — судья өткізіп жібереді</div>
+                              )}
+                              <MatchCard
+                                match={m}
+                                queueIndex={index + 1}
+                                onDragStart={() => setDraggedMatchId(m.id)}
+                                onDragEnd={() => setDraggedMatchId(null)}
+                                onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
+                                onReset={() => resetMatchMutation.mutate(m.id)}
+                                onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </DropZone>
+            );
+          })}
+        </div>
       </Panel>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
-        {board.tatamis.map((tatami) => (
-          <DropZone
-            key={tatami.number}
-            title={`Татами ${tatami.number}`}
-            hint={`${tatami.live.length} live · ${tatami.queue.length} кезекте`}
-            action={
-              <button
-                onClick={() => openJudgeForTatami(tatami, createSession.mutate, setSessionFor, setSessionResult, setJudgeName, setError)}
-                disabled={!firstPlayableMatch(tatami)}
-                className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2.5 py-1.5 text-xs text-gold disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Gavel className="h-3.5 w-3.5" />
-                Судья ноут
-              </button>
-            }
-            onDrop={() => dropOnTatami(tatami.number)}
-            active={Boolean(draggedMatchId)}
-          >
-            <div className="space-y-3">
-              {tatami.live.length > 0 && (
-                <div className="space-y-3">
-                  {tatami.live.map((m) => (
-                    <MatchCard
-                      key={m.id}
-                      match={m}
-                      live
-                      onDragStart={() => setDraggedMatchId(m.id)}
-                      onDragEnd={() => setDraggedMatchId(null)}
-                      onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
-                      onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
-                      onMoveUp={() => reorderQueue.mutate({ matchId: m.id, direction: "up" })}
-                      onMoveDown={() => reorderQueue.mutate({ matchId: m.id, direction: "down" })}
-                      onReset={() => resetMatchMutation.mutate(m.id)}
-                      onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {tatami.queue.length === 0 && tatami.live.length === 0 ? (
-                <EmptyState title="Бұл татамиде матч жоқ" hint="Матчты осында сүйреп әкеліңіз" />
-              ) : (
-                <div className="space-y-2">
-                  {tatami.queue.map((m, index) => (
-                    <MatchCard
-                      key={m.id}
-                      match={m}
-                      queueIndex={index + 1}
-                      onDragStart={() => setDraggedMatchId(m.id)}
-                      onDragEnd={() => setDraggedMatchId(null)}
-                      onJudge={() => openJudgeModal(m, setSessionFor, setSessionResult, setJudgeName, setError)}
-                      onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
-                      onReset={() => resetMatchMutation.mutate(m.id)}
-                      onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </DropZone>
-        ))}
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Panel title="Соңғы аяқталған матчтар">
+      <div className="mt-6">
+        <Panel title={`Аяқталған матчтар тарихы (${completed.length})`}>
           {completed.length === 0 ? (
             <EmptyState title="Әлі аяқталған матч жоқ" />
           ) : (
             <div className="space-y-2">
-              {completed.map((m: Match) => (
-                <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-card/50 p-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{athleteName(m.redAthlete)} vs {athleteName(m.blueAthlete)}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {m.bracket?.category ? categoryShort(m.bracket.category) : ""}
-                      {m.bracketSection ? ` · ${m.bracketSection}` : ""}
+              {completed.map((m: Match) => {
+                const redScore  = m.scoreSnapshot?.red  ?? {};
+                const blueScore = m.scoreSnapshot?.blue ?? {};
+                const redWon  = m.winnerId === m.redAthlete?.id;
+                const blueWon = m.winnerId === m.blueAthlete?.id;
+                const finishedAt = m.finishedAt ? new Date(m.finishedAt).toLocaleTimeString("kk-KZ", { hour: "2-digit", minute: "2-digit" }) : "";
+                return (
+                  <div key={m.id} className="rounded-lg border border-border/60 bg-card/50 p-3">
+                    {/* Header row */}
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="rounded bg-muted/60 px-1.5 py-px font-mono">R{m.round}.{m.position}</span>
+                        {m.bracket?.category && (
+                          <span className="rounded bg-gold/10 px-1.5 py-px text-gold font-medium">{categoryShort(m.bracket.category)}</span>
+                        )}
+                        {m.bracketSection && <span className="opacity-60">{m.bracketSection}</span>}
+                        {finishedAt && <span className="opacity-50">{finishedAt}</span>}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`"${athleteName(m.redAthlete)} vs ${athleteName(m.blueAthlete)}" матчын қайта бастайсыз ба? Нәтиже өшіріледі.`)) {
+                            resetMatchMutation.mutate(m.id);
+                          }
+                        }}
+                        disabled={resetMatchMutation.isPending}
+                        className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-500 hover:bg-amber-500/20 disabled:opacity-40"
+                        title="Матчты қайта бастау — нәтиже өшіріліп, спортшылар алдыңғы орнына оралады"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Қайтару
+                      </button>
+                    </div>
+                    {/* Scores */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className={`rounded-md border p-2 ${redWon ? "border-gold/50 bg-gold/8" : "border-border/50 bg-muted/20"}`}>
+                        <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          <span>АҚ</span>{redWon && <span className="text-gold">★ Жеңді</span>}
+                        </div>
+                        <div className="truncate text-sm font-semibold">{athleteName(m.redAthlete)}</div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          I:{redScore.ippon ?? 0} W:{redScore.wazaari ?? 0} Y:{redScore.yuko ?? 0} S:{redScore.shido ?? 0}
+                        </div>
+                      </div>
+                      <div className={`rounded-md border p-2 ${blueWon ? "border-sky-500/50 bg-sky-500/8" : "border-border/50 bg-muted/20"}`}>
+                        <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          <span>КӨК</span>{blueWon && <span className="text-sky-400">★ Жеңді</span>}
+                        </div>
+                        <div className="truncate text-sm font-semibold">{athleteName(m.blueAthlete)}</div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          I:{blueScore.ippon ?? 0} W:{blueScore.wazaari ?? 0} Y:{blueScore.yuko ?? 0} S:{blueScore.shido ?? 0}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gold">★ {winnerName(m)}</span>
-                    <button
-                      onClick={() => resetMatchMutation.mutate(m.id)}
-                      disabled={resetMatchMutation.isPending}
-                      className="rounded p-1.5 text-amber-500 hover:bg-amber-500/15"
-                      title="Қайта бастау"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Panel>
-
-        <Panel title="Қалай беру керек">
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>1. Админ осы бетте турнирді таңдайды және матчтарды татамиге сүйреп қояды.</p>
-            <p>2. Әр матчтан төрешіге жеке сілтеме шығарады. Төреші сол сілтемеден HAJIME, MATE, IPPON енгізеді.</p>
-            <p>3. “Проекторға ашу” батырмасы барлық 3 татамиді бір экранда көрсетеді. Ол бет автоматты жаңарып тұрады.</p>
-          </div>
-        </Panel>
       </div>
 
-      {sessionFor && (
+      {/* Татами сессиясы модалы */}
+      {tatamiSessionFor && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur"
-          onClick={() => setSessionFor(null)}
+          onClick={() => setTatamiSessionFor(null)}
         >
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold">Төреші сессиясын құру</h3>
-            <p className="mb-4 mt-1 text-xs text-muted-foreground">{sessionFor.players}</p>
+            <h3 className="font-display text-lg font-semibold">Татами #{tatamiSessionFor.tatamiNumber} — Табло және басқару</h3>
+            <p className="mb-4 mt-1 text-xs text-muted-foreground">
+              Бір сілтеме — бүкіл күн. Осы жерде табло да, басқару батырмалары да бірге ашылады.
+            </p>
 
-            {sessionResult ? (
-              <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Төреші URL</label>
-                <div className="mt-1 flex gap-2">
-                  <input readOnly value={sessionResult.url} className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 font-mono text-xs" />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(sessionResult.url);
-                      setSessionResult({ ...sessionResult, copied: true });
-                    }}
-                    className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-3 py-2 text-xs text-gold"
-                  >
-                    {sessionResult.copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    {sessionResult.copied ? "Көшірілді" : "Көшіру"}
-                  </button>
+            {tatamiSessionResult ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Табло және басқару сілтемесі</label>
+                  <div className="mt-1 flex gap-2">
+                    <input readOnly value={tatamiSessionResult.url} className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 font-mono text-xs" />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(tatamiSessionResult.url);
+                        setTatamiSessionResult({ ...tatamiSessionResult, copied: true });
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-3 py-2 text-xs text-gold"
+                    >
+                      {tatamiSessionResult.copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {tatamiSessionResult.copied ? "Көшірілді" : "Көшіру"}
+                    </button>
+                  </div>
                 </div>
-                <button onClick={() => setSessionFor(null)} className="mt-4 w-full rounded-md bg-gradient-gold py-2 font-medium text-gold-foreground shadow-gold">
-                  Дайын
+
+                <button
+                  onClick={() => {
+                    window.open(tatamiSessionResult.url, "_blank", "noopener,noreferrer");
+                    setTatamiSessionFor(null);
+                  }}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold py-2 font-medium text-gold-foreground shadow-gold"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Таблоны ашу
                 </button>
               </div>
             ) : (
               <>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Төреші аты</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">Төреші аты (міндетті емес)</label>
                 <input
-                  value={judgeName}
-                  onChange={(e) => setJudgeName(e.target.value)}
+                  value={tatamiJudgeName}
+                  onChange={(e: any) => setTatamiJudgeName(e.target.value)}
                   className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
                   placeholder="Мысалы Берік Сериков"
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button onClick={() => setSessionFor(null)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted/60">
+                  <button onClick={() => setTatamiSessionFor(null)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted/60">
                     Болдырмау
                   </button>
+                  {tatamiSessions.find((s: any) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber) && (
+                    <button
+                      onClick={() => {
+                        const session = tatamiSessions.find((s: any) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber);
+                        if (session) revokeTatamiSession.mutate(session.id);
+                        setTatamiSessionFor(null);
+                      }}
+                      disabled={revokeTatamiSession.isPending}
+                      className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive hover:bg-destructive/15 disabled:opacity-50"
+                    >
+                      Өшіру
+                    </button>
+                  )}
                   <button
-                    onClick={() => createSession.mutate({ matchId: sessionFor.id, judgeName })}
-                    disabled={createSession.isPending}
+                    onClick={() => createTatamiSession.mutate({
+                      tournamentId: selectedTournamentId,
+                      tatamiNumber: tatamiSessionFor.tatamiNumber,
+                      judgeName: tatamiJudgeName,
+                    })}
+                    disabled={createTatamiSession.isPending || !selectedTournamentId}
                     className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
                   >
                     Сілтеме құру
@@ -470,7 +604,6 @@ function MatchCard({
   queueIndex,
   onDragStart,
   onDragEnd,
-  onJudge,
   onUnassign,
   onMoveUp,
   onMoveDown,
@@ -483,18 +616,17 @@ function MatchCard({
   queueIndex?: number;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onJudge: () => void;
   onUnassign?: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onReset?: () => void;
   onOverride?: (winnerSide: "RED" | "BLUE") => void;
 }) {
-  const hasPair = Boolean(match.redAthlete && match.blueAthlete);
   const catName = match.bracket?.category
     ? categoryShort(match.bracket.category)
     : "";
   const isDone = match.status === "COMPLETED";
+  const pendingResult = match.scoreSnapshot?.pendingResult;
 
   return (
     <article
@@ -505,7 +637,7 @@ function MatchCard({
       }}
       onDragEnd={onDragEnd}
       className={`rounded-lg border bg-background/70 p-3 shadow-sm transition hover:border-gold/50 ${
-        live ? "border-destructive/50" : isDone ? "border-green-500/30" : "border-border/70"
+        pendingResult ? "border-amber-400/70 bg-amber-400/10" : live ? "border-gold/60 bg-gold/5" : isDone ? "border-green-500/30" : "border-border/70"
       }`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -525,13 +657,21 @@ function MatchCard({
           </div>
         </div>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
-          live ? "bg-destructive/15 text-destructive" :
+          pendingResult ? "bg-amber-400/15 text-amber-500" :
+          live ? "bg-gold/15 text-gold" :
           isDone ? "bg-green-500/15 text-green-500" :
           "bg-muted text-muted-foreground"
         }`}>
-          {statusLabel(match.status)}
+          {pendingResult ? "Бекіту керек" : statusLabel(match.status)}
         </span>
       </div>
+
+      {pendingResult && (
+        <div className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/10 p-2 text-xs text-amber-600">
+          Жеңімпаз: <b>{pendingResult.winnerSide === "RED" ? athleteName(match.redAthlete) : athleteName(match.blueAthlete)}</b>
+          <span className="text-muted-foreground"> · {pendingResult.reason}</span>
+        </div>
+      )}
 
       {!compact && (
         <div className="grid grid-cols-2 gap-2">
@@ -563,14 +703,10 @@ function MatchCard({
             </button>
           </div>
         )}
-        {hasPair && !isDone && (
-          <button
-            onClick={onJudge}
-            className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2.5 py-1.5 text-xs text-gold"
-          >
-            <Gavel className="h-3.5 w-3.5" />
-            Төреші
-          </button>
+        {pendingResult && (
+          <div className="inline-flex items-center gap-1 rounded-md border border-amber-400/50 bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-600">
+            Судья бекітуін күтуде
+          </div>
         )}
         {onReset && (match.status === "IN_PROGRESS" || isDone) && (
           <button
@@ -587,18 +723,18 @@ function MatchCard({
             <button
               onClick={() => onOverride("RED")}
               disabled={match.winnerId === match.redAthlete?.id}
-              className="px-2 py-1.5 text-xs text-rose-400 hover:bg-rose-500/15 disabled:opacity-30"
-              title={`${athleteName(match.redAthlete)} жеңді деп белгілеу`}
+              className="px-2 py-1.5 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
+              title={`АҚ: ${athleteName(match.redAthlete)} жеңді деп белгілеу`}
             >
-              <RefreshCw className="h-3 w-3" />
+              АҚ
             </button>
             <button
               onClick={() => onOverride("BLUE")}
               disabled={match.winnerId === match.blueAthlete?.id}
               className="border-l border-sky-500/40 px-2 py-1.5 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
-              title={`${athleteName(match.blueAthlete)} жеңді деп белгілеу`}
+              title={`КӨК: ${athleteName(match.blueAthlete)} жеңді деп белгілеу`}
             >
-              <RefreshCw className="h-3 w-3" />
+              КӨК
             </button>
           </div>
         )}
@@ -625,10 +761,10 @@ function ScoreSide({ side, athlete, score, isWinner }: { side: "RED" | "BLUE"; a
     <div className={`rounded-md border p-2 ${
       isWinner
         ? "border-gold/50 bg-gold/10"
-        : side === "RED" ? "border-rose-400/30 bg-rose-500/10" : "border-sky-400/30 bg-sky-500/10"
+        : side === "RED" ? "border-gray-400/30 bg-gray-500/10" : "border-sky-400/30 bg-sky-500/10"
     }`}>
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        {side === "RED" ? "Қызыл" : "Көк"}
+        {side === "RED" ? "АҚ" : "КӨК"}
         {isWinner && <span className="ml-1 text-gold">★</span>}
       </div>
       <div className="truncate text-sm font-medium">{athleteName(athlete)}</div>
@@ -648,60 +784,12 @@ function Metric({ label, value, accent }: { label: string; value: string; accent
 
 function buildTatamiBoard(matches: Match[], tatamiCount: number) {
   const playable = matches.filter((m) => m.status === "PENDING" || m.status === "IN_PROGRESS");
-  const unassigned = playable.filter((m) => !m.tatamiNumber).sort(matchSort);
-  const tatamis = Array.from({ length: tatamiCount }, (_, index) => {
-    const number = index + 1;
-    const assigned = playable.filter((m) => Number(m.tatamiNumber) === number).sort(matchSort);
-    return {
-      number,
-      live: assigned.filter((m) => m.status === "IN_PROGRESS"),
-      queue: assigned.filter((m) => m.status !== "IN_PROGRESS"),
-    };
-  });
+  const unassigned = playable.filter((m) => !m.tatamiNumber).sort(matchOrder);
+  const tatamis = buildTatamiState(playable, tatamiCount).map((tatami) => ({
+    ...tatami,
+    live: tatami.current ? [tatami.current] : [],
+  }));
   return { unassigned, tatamis };
-}
-
-function matchSort(a: Match, b: Match) {
-  if (a.status === "IN_PROGRESS" && b.status !== "IN_PROGRESS") return -1;
-  if (a.status !== "IN_PROGRESS" && b.status === "IN_PROGRESS") return 1;
-  return (a.queuePosition ?? 999999) - (b.queuePosition ?? 999999) || (a.round ?? 0) - (b.round ?? 0) || (a.position ?? 0) - (b.position ?? 0);
-}
-
-function openJudgeModal(
-  match: Match,
-  setSessionFor: (value: { id: string; players: string } | null) => void,
-  setSessionResult: (value: { url: string; copied: boolean } | null) => void,
-  setJudgeName: (value: string) => void,
-  setError: (value: string) => void,
-) {
-  setSessionFor({ id: match.id, players: `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}` });
-  setSessionResult(null);
-  setJudgeName("");
-  setError("");
-}
-
-function firstPlayableMatch(tatami: { live: Match[]; queue: Match[] }) {
-  return [...tatami.live, ...tatami.queue].find((m) => m.redAthlete && m.blueAthlete) ?? null;
-}
-
-function openJudgeForTatami(
-  tatami: { number: number; live: Match[]; queue: Match[] },
-  createSession: (value: { matchId: string; judgeName: string }) => void,
-  setSessionFor: (value: { id: string; players: string } | null) => void,
-  setSessionResult: (value: { url: string; copied: boolean } | null) => void,
-  setJudgeName: (value: string) => void,
-  setError: (value: string) => void,
-) {
-  const match = firstPlayableMatch(tatami);
-  if (!match) {
-    setError(`Татами ${tatami.number}: төрешіге беретін дайын матч жоқ`);
-    return;
-  }
-  setSessionFor({ id: match.id, players: `Татами ${tatami.number} · ${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}` });
-  setSessionResult(null);
-  setJudgeName(`Tatami ${tatami.number}`);
-  setError("");
-  createSession({ matchId: match.id, judgeName: `Tatami ${tatami.number}` });
 }
 
 function athleteName(athlete: any) {

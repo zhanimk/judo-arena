@@ -23,6 +23,7 @@ import { Route as CoachIndexRouteImport } from './routes/coach.index'
 import { Route as AthleteIndexRouteImport } from './routes/athlete.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
+import { Route as TatamiTokenRouteImport } from './routes/tatami.$token'
 import { Route as LiveWallTournamentIdRouteImport } from './routes/live-wall.$tournamentId'
 import { Route as JudgeTokenRouteImport } from './routes/judge.$token'
 import { Route as CoachTournamentsRouteImport } from './routes/coach.tournaments'
@@ -123,6 +124,11 @@ const TournamentsIdRoute = TournamentsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => TournamentsRoute,
+} as any)
+const TatamiTokenRoute = TatamiTokenRouteImport.update({
+  id: '/tatami/$token',
+  path: '/tatami/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LiveWallTournamentIdRoute = LiveWallTournamentIdRouteImport.update({
   id: '/live-wall/$tournamentId',
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
+  '/tatami/$token': typeof TatamiTokenRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
   '/athlete/': typeof AthleteIndexRoute
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
+  '/tatami/$token': typeof TatamiTokenRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin': typeof AdminIndexRoute
   '/athlete': typeof AthleteIndexRoute
@@ -399,6 +407,7 @@ export interface FileRoutesById {
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
+  '/tatami/$token': typeof TatamiTokenRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/admin/': typeof AdminIndexRoute
   '/athlete/': typeof AthleteIndexRoute
@@ -447,6 +456,7 @@ export interface FileRouteTypes {
     | '/coach/tournaments'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
+    | '/tatami/$token'
     | '/tournaments/$id'
     | '/admin/'
     | '/athlete/'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/coach/tournaments'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
+    | '/tatami/$token'
     | '/tournaments/$id'
     | '/admin'
     | '/athlete'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/coach/tournaments'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
+    | '/tatami/$token'
     | '/tournaments/$id'
     | '/admin/'
     | '/athlete/'
@@ -561,6 +573,7 @@ export interface RootRouteChildren {
   RankingsRoute: typeof RankingsRoute
   TournamentsRoute: typeof TournamentsRouteWithChildren
   LiveWallTournamentIdRoute: typeof LiveWallTournamentIdRoute
+  TatamiTokenRoute: typeof TatamiTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -662,6 +675,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/tournaments/$id'
       preLoaderRoute: typeof TournamentsIdRouteImport
       parentRoute: typeof TournamentsRoute
+    }
+    '/tatami/$token': {
+      id: '/tatami/$token'
+      path: '/tatami/$token'
+      fullPath: '/tatami/$token'
+      preLoaderRoute: typeof TatamiTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/live-wall/$tournamentId': {
       id: '/live-wall/$tournamentId'
@@ -1064,6 +1084,7 @@ const rootRouteChildren: RootRouteChildren = {
   RankingsRoute: RankingsRoute,
   TournamentsRoute: TournamentsRouteWithChildren,
   LiveWallTournamentIdRoute: LiveWallTournamentIdRoute,
+  TatamiTokenRoute: TatamiTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

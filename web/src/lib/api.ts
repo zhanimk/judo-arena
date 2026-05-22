@@ -40,6 +40,8 @@ interface RequestOptions extends RequestInit {
   json?: unknown;
   // Для судьи: альтернативная авторизация через X-Judge-Token
   judgeToken?: string;
+  // Для судьи татами: авторизация через X-Tatami-Token
+  tatamiToken?: string;
   // Не делать refresh при 401 (например, при логине)
   skipRefresh?: boolean;
 }
@@ -78,12 +80,13 @@ async function request<T = unknown>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
-  const { json, judgeToken, skipRefresh, headers, ...rest } = opts;
+  const { json, judgeToken, tatamiToken, skipRefresh, headers, ...rest } = opts;
 
   const buildHeaders = (token?: string | null): HeadersInit => {
     const h: Record<string, string> = {};
     if (json !== undefined) h["Content-Type"] = "application/json";
     if (judgeToken) h["X-Judge-Token"] = judgeToken;
+    else if (tatamiToken) h["X-Tatami-Token"] = tatamiToken;
     else if (token) h["Authorization"] = `Bearer ${token}`;
     if (headers) Object.assign(h, headers as Record<string, string>);
     return h;
@@ -100,7 +103,7 @@ async function request<T = unknown>(
   let res = await doFetch(accessToken);
 
   // Если 401 — пробуем обновить токен и повторить запрос
-  if (res.status === 401 && !skipRefresh && !judgeToken) {
+  if (res.status === 401 && !skipRefresh && !judgeToken && !tatamiToken) {
     const newToken = await refreshTokens();
     if (newToken) {
       res = await doFetch(newToken);
@@ -256,18 +259,24 @@ export const api = {
       return request<any[]>(`/api/matches${q}`);
     },
     get: (id: string) => request<any>(`/api/matches/${id}`),
-    start: (id: string, judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/start`, { method: "POST", judgeToken }),
-    pause: (id: string, judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/pause`, { method: "POST", judgeToken }),
-    score: (id: string, type: string, side: "RED" | "BLUE", judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/score`, { method: "POST", json: { type, side }, judgeToken }),
-    osaekomi: (id: string, side: "RED" | "BLUE", judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/osaekomi`, { method: "POST", json: { side }, judgeToken }),
-    toketa: (id: string, judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/toketa`, { method: "POST", json: { reason: "TOKETA" }, judgeToken }),
-    finish: (id: string, winnerSide: "RED" | "BLUE", reason?: string, judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/finish`, { method: "POST", json: { winnerSide, reason }, judgeToken }),
+    start: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/start`, { method: "POST", judgeToken, tatamiToken }),
+    pause: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/pause`, { method: "POST", judgeToken, tatamiToken }),
+    score: (id: string, type: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/score`, { method: "POST", json: { type, side }, judgeToken, tatamiToken }),
+    osaekomi: (id: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/osaekomi`, { method: "POST", json: { side }, judgeToken, tatamiToken }),
+    toketa: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/toketa`, { method: "POST", json: { reason: "TOKETA" }, judgeToken, tatamiToken }),
+    finish: (id: string, winnerSide: "RED" | "BLUE", reason?: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/finish`, { method: "POST", json: { winnerSide, reason }, judgeToken, tatamiToken }),
+    confirm: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/confirm`, { method: "POST", judgeToken, tatamiToken }),
+    cancelResult: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/cancel-result`, { method: "POST", judgeToken, tatamiToken }),
+    undoLast: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/undo`, { method: "POST", judgeToken, tatamiToken }),
     assignTatami: (id: string, tatamiNumber: number | null) =>
       request<any>(`/api/matches/${id}/tatami`, { method: "PATCH", json: { tatamiNumber } }),
     reorderQueue: (id: string, direction: "up" | "down") =>
@@ -279,8 +288,23 @@ export const api = {
     judgeByToken: (token: string) => request<any>(`/api/judge/${token}`),
     reset: (id: string) =>
       request<any>(`/api/matches/${id}/reset`, { method: "POST" }),
-    goldenScore: (id: string, judgeToken?: string) =>
-      request<any>(`/api/matches/${id}/golden-score`, { method: "POST", judgeToken }),
+    goldenScore: (id: string, judgeToken?: string, tatamiToken?: string) =>
+      request<any>(`/api/matches/${id}/golden-score`, { method: "POST", judgeToken, tatamiToken }),
+  },
+
+  // --- TATAMI SESSIONS ---
+  tatamiSession: {
+    create: (tournamentId: string, tatamiNumber: number, judgeName?: string) =>
+      request<any>(`/api/tournaments/${tournamentId}/tatami-sessions`, {
+        method: "POST",
+        json: { tatamiNumber, judgeName },
+      }),
+    get: (token: string) =>
+      request<any>(`/api/tatami-session/${token}`, { skipRefresh: true }),
+    list: (tournamentId: string) =>
+      request<any[]>(`/api/tournaments/${tournamentId}/tatami-sessions`),
+    revoke: (sessionId: string) =>
+      request<void>(`/api/tatami-sessions/${sessionId}/revoke`, { method: "POST" }),
   },
 
   // --- ADMIN ---

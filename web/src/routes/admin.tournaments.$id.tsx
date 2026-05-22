@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings,
   ClipboardList, GitBranch, ArrowLeft, Loader2, Send, FileText,
   Plus, Pencil, Trash2, Save, X, AlertTriangle, MapPin, Clock,
-  Wand2, Monitor, ExternalLink, ArrowRightLeft, Gavel, Copy, Check, MonitorPlay,
+  Wand2, Monitor, ExternalLink, ArrowRightLeft,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -936,56 +936,6 @@ function ApplicationReviewDetail({
 }
 
 
-function MatchesTab({ tournamentId }: { tournamentId: string }) {
-  const query = useQuery({
-    queryKey: ["tournament-matches", tournamentId],
-    queryFn: () => api.matches.list({ tournamentId, limit: 200 }),
-  });
-  return (
-    <Panel
-      title={`Барлығы ${query.data?.length ?? 0} матч`}
-      action={
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/admin/matches"
-            search={{ tournamentId }}
-            className="rounded-md bg-gradient-gold px-3 py-2 text-sm font-medium text-gold-foreground shadow-gold"
-          >
-            Табло басқару →
-          </Link>
-          <Link
-            to="/live-wall/$tournamentId"
-            params={{ tournamentId }}
-            target="_blank"
-            className="rounded-md border border-border px-3 py-2 text-sm hover:border-gold/40"
-          >
-            Проектор →
-          </Link>
-        </div>
-      }
-    >
-      {query.isLoading ? <LoadingState /> :
-        (query.data ?? []).length === 0 ? <EmptyState title="Матчтар әлі жоқ" /> : (
-          <div className="space-y-1 max-h-[500px] overflow-y-auto text-sm">
-            {(query.data ?? []).map((m: any) => (
-              <div key={m.id} className="glass rounded p-2 flex justify-between items-center">
-                <div className="text-xs">
-                  <span className="text-muted-foreground">R{m.round}.{m.position}</span>{" "}
-                  {m.redAthlete?.surname ?? "TBD"} vs {m.blueAthlete?.surname ?? "TBD"}
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
-                  m.status === "COMPLETED" ? "bg-emerald-500/15 text-emerald-300" :
-                  m.status === "IN_PROGRESS" ? "bg-destructive/20 text-destructive" :
-                  "bg-muted text-muted-foreground"
-                }`}>{m.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-    </Panel>
-  );
-}
-
 function NotifyTab({ tournament }: { tournament: any }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -1104,21 +1054,6 @@ function ProtocolTab({ tournament }: { tournament: any }) {
       qc.invalidateQueries({ queryKey: ["protocol-matches", tournament.id] });
     },
   });
-  const [judgeUrl, setJudgeUrl] = useState<string | null>(null);
-  const [judgeCopied, setJudgeCopied] = useState(false);
-  const [judgeError, setJudgeError] = useState("");
-  const createJudge = useMutation({
-    mutationFn: ({ matchId, judgeName }: { matchId: string; judgeName: string }) =>
-      api.matches.createJudgeSession(matchId, judgeName),
-    onSuccess: (s) => {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      setJudgeUrl(`${origin}/judge/${s.token}`);
-      setJudgeCopied(false);
-      setJudgeError("");
-    },
-    onError: (e: any) => setJudgeError(e instanceof ApiError ? e.message : "Төреші сілтемесін құру кезінде қате"),
-  });
-
   const completed = (matchesQuery.data ?? []).filter((m: any) => m.status === "COMPLETED").length;
   const total = matchesQuery.data?.length ?? 0;
   const entryCountByCategory = buildCategoryEntryCounts(applicationsQuery.data ?? []);
@@ -1134,9 +1069,7 @@ function ProtocolTab({ tournament }: { tournament: any }) {
   const progress = (tournament.categories?.length ?? 0) > 0
     ? Math.round((readyCategories / (tournament.categories?.length ?? 1)) * 100)
     : 0;
-  const tatamiPlan = buildJudoTvTatamiPlan(matchesQuery.data ?? [], tournament.tatamiCount);
   const playableTotal = (matchesQuery.data ?? []).filter((m: any) => m.redAthlete && m.blueAthlete).length;
-  const unassignedPlayable = (matchesQuery.data ?? []).filter((m: any) => m.redAthlete && m.blueAthlete && !m.tatamiNumber && m.status !== "COMPLETED").length;
 
   return (
     <div className="space-y-6">
@@ -1223,9 +1156,17 @@ function ProtocolTab({ tournament }: { tournament: any }) {
           <div className="rounded-md border border-border/60 bg-background/30 p-4">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Татами</div>
             <div className="mt-2 font-display text-3xl font-bold">{tournament.tatamiCount}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{unassignedPlayable} бөлінбеген</div>
           </div>
         </div>
+
+        {/* Duration estimate */}
+        {playableTotal > 0 && tournament.tatamiCount > 0 && (
+          <DurationEstimate
+            categories={tournament.categories ?? []}
+            matches={matchesQuery.data ?? []}
+            tatamiCount={tournament.tatamiCount}
+          />
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <a
@@ -1244,138 +1185,6 @@ function ProtocolTab({ tournament }: { tournament: any }) {
             Жария бет
           </Link>
         </div>
-      </Panel>
-
-      <Panel title="JudoTV татами жоспары">
-        {judgeUrl && (
-          <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-xs uppercase tracking-widest text-gold">Төреші сілтемесі</div>
-                <input readOnly value={judgeUrl} className="mt-1 w-full rounded-md border border-border bg-input px-3 py-1.5 font-mono text-xs" />
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(judgeUrl);
-                    setJudgeCopied(true);
-                    setTimeout(() => setJudgeCopied(false), 1400);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-3 py-2 text-xs text-gold"
-                >
-                  {judgeCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {judgeCopied ? "Көшірілді" : "Көшіру"}
-                </button>
-                <button onClick={() => setJudgeUrl(null)} className="rounded p-1.5 text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {judgeError && (
-          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{judgeError}</div>
-        )}
-
-        {matchesQuery.isLoading ? (
-          <LoadingState />
-        ) : playableTotal === 0 ? (
-          <EmptyState title="Татами жоспары әлі жоқ" hint="Алдымен өтінімдерді бекітіп, сеткаларды дайындаңыз" />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {tatamiPlan.map((tatami) => {
-              const firstPlayable = [...tatami.live, ...tatami.queue].find(
-                (m: any) => m.redAthlete && m.blueAthlete
-              );
-              return (
-                <div key={tatami.number} className="rounded-md border border-border/60 bg-background/30 p-3">
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-display text-lg font-semibold">Татами {tatami.number}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {tatami.live.length} live · {tatami.queue.length} кезекте · {tatami.done.length} аяқталды
-                        </div>
-                      </div>
-                      <Link
-                        to="/admin/tournaments/$id"
-                        params={{ id: tournament.id }}
-                        search={{ tab: "scoreboard" }}
-                        className="rounded-md border border-gold/30 px-2.5 py-1 text-xs text-gold hover:bg-gold/10"
-                      >
-                        Басқару
-                      </Link>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <button
-                        onClick={() => {
-                          if (!firstPlayable) {
-                            setJudgeError(`Татами ${tatami.number}: дайын матч жоқ`);
-                            return;
-                          }
-                          setJudgeError("");
-                          createJudge.mutate({ matchId: firstPlayable.id, judgeName: `Tatami ${tatami.number}` });
-                        }}
-                        disabled={!firstPlayable || createJudge.isPending}
-                        className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/15 px-2 py-1 text-[11px] text-gold disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <Gavel className="h-3 w-3" />
-                        Төреші сілтемесі
-                      </button>
-                      <Link
-                        to="/live-wall/$tournamentId"
-                        params={{ tournamentId: tournament.id }}
-                        search={{ tatami: tatami.number }}
-                        target="_blank"
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-card/50 px-2 py-1 text-[11px] hover:border-gold/40"
-                      >
-                        <MonitorPlay className="h-3 w-3" />
-                        Табло
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {[...tatami.live, ...tatami.queue.slice(0, 6)].map((match: any, index: number) => (
-                      <div key={match.id} className={`rounded-md border p-2 text-sm ${
-                        match.status === "IN_PROGRESS"
-                          ? "border-destructive/40 bg-destructive/10"
-                          : "border-border/50 bg-card/50"
-                      }`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium">
-                              {matchAthleteName(match.redAthlete)} vs {matchAthleteName(match.blueAthlete)}
-                            </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">
-                              #{index + 1} · {categoryTitle(match.bracket?.category)} · {matchSectionLabel(match.bracketSection)} R{match.round}
-                            </div>
-                          </div>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${
-                            match.status === "IN_PROGRESS"
-                              ? "bg-destructive/20 text-destructive"
-                              : "bg-muted text-muted-foreground"
-                          }`}>
-                            {adminMatchStatusLabel(match.status)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {tatami.queue.length > 6 && (
-                      <div className="rounded-md border border-border/50 bg-muted/20 p-2 text-center text-xs text-muted-foreground">
-                        +{tatami.queue.length - 6} келесі матч
-                      </div>
-                    )}
-                    {tatami.live.length === 0 && tatami.queue.length === 0 && (
-                      <EmptyState title="Кезек бос" hint="Матчтар осы татамиге бөлінбеген" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </Panel>
 
       <Panel title="Категориялар / веса">
@@ -1489,89 +1298,6 @@ function CategoryPills({ items, selected, onSelect }: {
       ))}
     </div>
   );
-}
-
-function buildJudoTvTatamiPlan(matches: any[], tatamiCount: number) {
-  const count = Math.max(1, Number(tatamiCount || 1));
-  const assigned = matches
-    .filter((match) => match.tatamiNumber && match.redAthlete && match.blueAthlete)
-    .sort(judoTvMatchSort);
-
-  return Array.from({ length: count }, (_, index) => {
-    const number = index + 1;
-    const tatamiMatches = assigned.filter((match) => Number(match.tatamiNumber) === number);
-    return {
-      number,
-      live: tatamiMatches.filter((match) => match.status === "IN_PROGRESS"),
-      queue: tatamiMatches.filter((match) => match.status === "PENDING"),
-      done: tatamiMatches.filter((match) => match.status === "COMPLETED"),
-    };
-  });
-}
-
-function judoTvMatchSort(a: any, b: any) {
-  return (
-    matchStatusOrder(a.status) - matchStatusOrder(b.status) ||
-    (a.queuePosition ?? 999999) - (b.queuePosition ?? 999999) ||
-    categoryOrder(a) - categoryOrder(b) ||
-    matchSectionOrder(a.bracketSection) - matchSectionOrder(b.bracketSection) ||
-    (a.round ?? 0) - (b.round ?? 0) ||
-    (a.position ?? 0) - (b.position ?? 0)
-  );
-}
-
-function categoryOrder(match: any): number {
-  const category = match.bracket?.category;
-  if (!category) return 999999;
-  const gender = category.gender === "MALE" ? 0 : 100000;
-  return gender + (Number(category.ageMin) || 0) * 1000 + (Number(category.weightMax) || 0);
-}
-
-function matchStatusOrder(status: string): number {
-  const order: Record<string, number> = {
-    IN_PROGRESS: 0,
-    PENDING: 1,
-    COMPLETED: 2,
-    CANCELLED: 3,
-  };
-  return order[status] ?? 9;
-}
-
-function matchSectionOrder(section?: string | null): number {
-  const order: Record<string, number> = {
-    main: 1,
-    repechage: 2,
-    bronze1: 3,
-    bronze2: 3,
-    final: 4,
-  };
-  return section ? order[section] ?? 9 : 9;
-}
-
-function matchSectionLabel(section?: string | null): string {
-  const labels: Record<string, string> = {
-    main: "Негізгі",
-    repechage: "Жұбату",
-    bronze1: "Қола",
-    bronze2: "Қола",
-    final: "Финал",
-  };
-  return section ? labels[section] ?? section : "Сетка";
-}
-
-function adminMatchStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    PENDING: "Күтуде",
-    IN_PROGRESS: "LIVE",
-    COMPLETED: "Бітті",
-    CANCELLED: "Болмады",
-  };
-  return labels[status] ?? status;
-}
-
-function matchAthleteName(athlete: any): string {
-  if (!athlete) return "TBD";
-  return [athlete.name, athlete.surname].filter(Boolean).join(" ") || "TBD";
 }
 
 function buildCategoryEntryCounts(applications: any[]) {
@@ -1780,3 +1506,49 @@ function formatWeighIn(t: any): string {
 }
 
 function localizeName(n: any): string { if (!n) return ""; if (typeof n === "string") return n; return n.kk || n.ru || n.en || ""; }
+
+/** Duration estimate based on match count, category durations and tatami count */
+function DurationEstimate({ categories, matches, tatamiCount }: { categories: any[]; matches: any[]; tatamiCount: number }) {
+  const playable = matches.filter((m: any) => m.redAthlete && m.blueAthlete && m.status !== "CANCELLED");
+  if (playable.length === 0) return null;
+
+  // Build category duration map
+  const catDurations = new Map<string, number>();
+  for (const c of categories) {
+    catDurations.set(c.id, (c.matchDurationSec ?? 240) / 60);
+  }
+
+  // Count by gender
+  let maleCount = 0;
+  let femaleCount = 0;
+  let totalMatchMinutes = 0;
+  const bufferPerMatch = 2; // 2 min break between matches
+
+  for (const m of playable) {
+    const catId = m.bracket?.categoryId || m.bracket?.category?.id;
+    const cat = m.bracket?.category;
+    const matchDur = catDurations.get(catId) ?? 4;
+    totalMatchMinutes += matchDur + bufferPerMatch;
+    if (cat?.gender === "MALE") maleCount++;
+    else femaleCount++;
+  }
+
+  const estimatedMinutes = Math.ceil(totalMatchMinutes / tatamiCount);
+  const hours = Math.floor(estimatedMinutes / 60);
+  const mins = estimatedMinutes % 60;
+  const durationStr = hours > 0 ? `~${hours} сағ ${mins} мин` : `~${mins} мин`;
+
+  return (
+    <div className="mt-4 rounded-md border border-gold/30 bg-gold/5 p-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-gold">
+        <Clock className="h-4 w-4" />
+        Шамамен ұзақтығы: {durationStr}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {playable.length} матч · {tatamiCount} татами
+        {maleCount > 0 && ` · Ер: ${maleCount}`}
+        {femaleCount > 0 && ` · Қыз: ${femaleCount}`}
+      </div>
+    </div>
+  );
+}

@@ -672,7 +672,7 @@ function Home() {
                   { to: "/tournaments", label: "PDF", icon: Shield, desc: "Ресми құжат" },
                 ].map((q) => (
                   <Link
-                    key={q.to}
+                    key={`${q.to}-${q.label}`}
                     to={q.to}
                     className="group relative overflow-hidden rounded-xl border border-gold/20 bg-background/40 p-4 transition-all hover:-translate-y-1 hover:border-gold/50"
                   >

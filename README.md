@@ -27,11 +27,11 @@ Full-cycle automation: athlete registration → club applications → bracket ge
 - **Bracket propagation** — winner automatically advances; losers routed to Repechage or Bronze
 - **Admin Override + Rollback** — recursively reverts downstream match chain with full AuditLog
 - **Real-time** — Socket.IO rooms (`tournament:{id}`, `bracket:{id}`, `tatami:{n}`, `user:{id}`)
-- **Stateless judge sessions** — one-time URL `/judge/<token>` (12h TTL), no account needed
+- **Stateless judge sessions** — one-time URL `/judge/<token>` for a match, or `/tatami/<token>` for a full tatami queue
 - **PDF** — bracket schedule (after generation) + results protocol (after finalization)
 - **Rating** — automatic points allocation on finalization: 100/80/50/30/15/0 per place
 - **i18n** — KZ / RU / EN, stored in localStorage + user profile via API
-- **RBAC** — ATHLETE / COACH / ADMIN / JUDGE (stateless)
+- **RBAC** — ATHLETE / COACH / ADMIN; judge access is stateless via signed session tokens
 
 ---
 
@@ -64,7 +64,13 @@ cd judo-arena
 ./start.sh
 ```
 
-The script: checks environment → starts Docker (Postgres + Redis + Mailpit) → installs dependencies → runs migrations → seeds test data → starts backend (`:4000`) + frontend simultaneously.
+The script: checks environment → starts Docker (Postgres + Redis + Mailpit) → installs dependencies → applies pending migrations → starts backend (`:4000`) + frontend simultaneously.
+
+To load demo data after migrations:
+
+```bash
+./start.sh --seed
+```
 
 Frontend opens at `http://localhost:8080` or `5173` (Vite will print the exact port).
 
@@ -80,18 +86,19 @@ Frontend opens at `http://localhost:8080` or `5173` (Vite will print the exact p
 
 ## Environment variables
 
-Copy `api/.env.example` → `api/.env` and fill in:
+Copy `.env.example` → `.env` in the repository root and fill in:
 
 ```env
 DATABASE_URL="postgresql://judo:judo_dev_password@localhost:5433/judo_arena"
 REDIS_URL="redis://localhost:6379"
-JWT_SECRET="change-me-in-production"
-JWT_REFRESH_SECRET="change-me-in-production"
-FRONTEND_URL="http://localhost:5173"
-PORT=4000
+JWT_ACCESS_SECRET="change-me-in-production-at-least-32-chars"
+JWT_REFRESH_SECRET="change-me-in-production-at-least-32-chars"
+CORS_ORIGIN="http://localhost:5173"
+API_PORT=4000
+API_HOST="0.0.0.0"
 ```
 
-Frontend env (`web/.env`):
+Frontend env (`web/.env.local`):
 
 ```env
 VITE_API_URL=http://localhost:4000
@@ -106,7 +113,7 @@ VITE_WS_URL=http://localhost:4000
 judo-arena/
 ├── api/                          Fastify backend
 │   ├── prisma/
-│   │   ├── schema.prisma         15 tables
+│   │   ├── schema.prisma         16 tables
 │   │   └── seed.ts               4 clubs, 37 users, 1 tournament
 │   └── src/
 │       ├── server.ts
@@ -122,6 +129,7 @@ judo-arena/
 │       │   ├── bracket-engine/   seeding, single-elim, round-robin + Vitest tests
 │       │   ├── match.service.ts  + Osaekomi timer
 │       │   ├── judge-session.service.ts
+│       │   ├── tatami-session.service.ts
 │       │   ├── admin-override.service.ts
 │       │   ├── audit.service.ts
 │       │   ├── rating.service.ts
@@ -142,7 +150,7 @@ judo-arena/
 │       │   └── judo/             OlympicBracket, LiveBracket, …
 │       └── routes/               File-based routing
 │           ├── index, login, tournaments, rankings, protocol, about
-│           ├── judge, judge.$token
+│           ├── judge, judge.$token, tatami.$token
 │           ├── live-wall.$tournamentId
 │           ├── athlete.*         (overview, profile, tournaments, matches, results, notifications)
 │           ├── coach.*           (overview, club, athletes, applications, tournaments, notifications)
@@ -156,7 +164,7 @@ judo-arena/
 ## API reference
 
 > All protected endpoints require `Authorization: Bearer <token>`.  
-> Judge endpoints accept `X-Judge-Token: <token>` instead.
+> Match-level judge endpoints accept `X-Judge-Token: <token>`. Tatami-level judge endpoints accept `X-Tatami-Token: <token>`.
 
 ### Auth
 
@@ -237,8 +245,13 @@ Entry validation: gender, age, weight match category; athlete belongs to coach's
 | POST | `/api/matches/:id/finish` | ADMIN/JUDGE | Manual finish |
 | POST | `/api/matches/:id/judge-session` | ADMIN | Create judge session → returns URL |
 | PATCH | `/api/matches/:id/tatami` | ADMIN | Assign tatami |
+| PATCH | `/api/matches/:id/queue` | ADMIN | Move match up/down in tatami queue |
 | GET | `/api/tatami/:tournamentId/:n/queue` | public | Tatami match queue |
 | GET | `/api/judge/:token` | public (token) | Get match by judge token |
+| POST | `/api/tournaments/:id/tatami-sessions` | ADMIN | Create tatami judge session → returns URL |
+| GET | `/api/tournaments/:id/tatami-sessions` | ADMIN | List active tatami sessions |
+| POST | `/api/tatami-sessions/:id/revoke` | ADMIN | Revoke tatami session |
+| GET | `/api/tatami-session/:token` | public (token) | Get current tatami match + queue |
 
 **Socket.IO events:** `match:started`, `match:scoreUpdate`, `match:event`, `match:osaekomiStart`, `match:osaekomiEnd`, `match:goldenScore`, `match:finished`
 
@@ -279,7 +292,7 @@ Entry validation: gender, age, weight match category; athlete belongs to coach's
 5. ADMIN closes registration (→ REGISTRATION_CLOSED)
 6. ADMIN generates bracket  ──── PDF schedule available
 7. ADMIN starts tournament (→ IN_PROGRESS)
-8. ADMIN creates judge sessions → shares URLs
+8. ADMIN creates match judge sessions or tatami sessions → shares URLs
 9. JUDGE: HAJIME → Osaekomi → Toketa → auto Waza-ari → IPPON
         → auto-finish → winner propagates to next match  ── real-time via Socket.IO
 10. ADMIN overrides result if needed → rollback chain → AuditLog
@@ -288,9 +301,9 @@ Entry validation: gender, age, weight match category; athlete belongs to coach's
 
 ---
 
-## Database schema (15 tables)
+## Database schema (16 tables)
 
-`User` · `Club` · `ClubGroup` · `Tournament` · `Category` · `Application` · `ApplicationEntry` · `Bracket` · `Match` · `MatchEvent` · `JudgeSession` · `RatingEntry` · `Notification` · `AuditLog` · `SystemConfig`
+`User` · `Club` · `ClubGroup` · `Tournament` · `Category` · `Application` · `ApplicationEntry` · `Bracket` · `Match` · `MatchEvent` · `JudgeSession` · `TatamiSession` · `RatingEntry` · `Notification` · `AuditLog` · `SystemConfig`
 
 ---
 
@@ -299,6 +312,9 @@ Entry validation: gender, age, weight match category; athlete belongs to coach's
 ```bash
 # Start everything (Docker + API + frontend)
 ./start.sh
+
+# Start and load demo data
+./start.sh --seed
 
 # Backend only
 cd api && npm run dev

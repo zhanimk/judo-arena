@@ -10,6 +10,7 @@
 # Запуск:
 #   chmod +x start.sh   (один раз)
 #   ./start.sh
+#   ./start.sh --seed   применить seed после миграций
 # ============================================================
 
 set -e
@@ -21,6 +22,18 @@ warn()  { printf "${Y}  ⚠ %s${N}\n" "$1"; }
 fail()  { printf "${R}  ✗ %s${N}\n" "$1"; exit 1; }
 
 cd "$(dirname "$0")"
+
+RUN_SEED=false
+for arg in "$@"; do
+  case "$arg" in
+    --seed)
+      RUN_SEED=true
+      ;;
+    *)
+      fail "Неизвестный аргумент: $arg. Доступно: --seed"
+      ;;
+  esac
+done
 
 # ============================================================
 # 0. Проверки
@@ -64,13 +77,16 @@ fi
 ok "Frontend deps OK"
 
 # ============================================================
-# 3. Prisma migrate (если нет миграций)
+# 3. Prisma migrate + optional seed
 # ============================================================
-if [ ! -d "api/prisma/migrations" ] || [ -z "$(ls -A api/prisma/migrations 2>/dev/null)" ]; then
-  print "Применяем миграции Prisma"
-  (cd api && npx prisma migrate dev --name init)
+print "Применяем миграции Prisma"
+(cd api && npx prisma migrate dev)
+
+if [ "$RUN_SEED" = true ]; then
   print "Засеваем тестовые данные"
   (cd api && npx prisma db seed)
+else
+  warn "Seed пропущен. Для демо-данных запусти: ./start.sh --seed"
 fi
 ok "БД готова"
 

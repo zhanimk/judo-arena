@@ -39,7 +39,10 @@ import {
   pauseMatch,
   enterGoldenScore,
   addScoreEvent,
+  confirmMatchResult,
   finishMatchManually,
+  cancelPendingResult,
+  undoLastScoreEvent,
   resetMatch,
   assignToTatami,
   reorderTatamiQueue,
@@ -54,13 +57,21 @@ import {
   revokeSession,
   JudgeSessionError,
 } from "../services/judge-session.service.js";
+import {
+  createTatamiSession,
+  getValidTatamiSession,
+  revokeTatamiSession,
+  listTatamiSessions,
+  TatamiSessionError,
+} from "../services/tatami-session.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { emitMatchEvent } from "../sockets/io.js";
+import { prisma } from "../lib/prisma.js";
 
 function attachErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof MatchError || err instanceof JudgeSessionError) {
+    if (err instanceof MatchError || err instanceof JudgeSessionError || err instanceof TatamiSessionError) {
       return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
     }
     if (err instanceof ZodError) {
@@ -77,13 +88,14 @@ function attachErrorHandler(app: FastifyInstance) {
 }
 
 /**
- * Проверка авторизации: либо ADMIN, либо валидная судейская сессия через header X-Judge-Token.
- * Возвращает judgeSessionId если по токену, иначе null (для ADMIN).
+ * Проверка авторизации: ADMIN, X-Judge-Token (per-match) или X-Tatami-Token (per-tatami).
+ * Возвращает judgeSessionId / "tatami" / null (ADMIN).
  */
 async function authorizeForMatch(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
 ): Promise<string | null | void> {
+  // 1. Пробуем X-Judge-Token (per-match, старая логика)
   const judgeToken = request.headers["x-judge-token"];
   if (typeof judgeToken === "string" && judgeToken.length > 0) {
     try {
@@ -103,7 +115,44 @@ async function authorizeForMatch(
     }
   }
 
-  // Без судейского токена — нужен ADMIN
+  // 2. Пробуем X-Tatami-Token (per-tatami, новая логика)
+  const tatamiToken = request.headers["x-tatami-token"];
+  if (typeof tatamiToken === "string" && tatamiToken.length > 0) {
+    try {
+      const tatamiSession = await prisma.tatamiSession.findUnique({ where: { token: tatamiToken } });
+      if (!tatamiSession) {
+        return reply.code(401).send({ error: "INVALID_TOKEN", message: "Невалидный токен татами" });
+      }
+      if (tatamiSession.isRevoked) {
+        return reply.code(403).send({ error: "REVOKED", message: "Сессия татами отозвана" });
+      }
+      if (tatamiSession.expiresAt < new Date()) {
+        return reply.code(403).send({ error: "EXPIRED", message: "Срок действия сессии татами истёк" });
+      }
+      // Проверяем что матч на правильном татами
+      const match = await prisma.match.findUnique({
+        where: { id: request.params.id },
+        select: { tatamiNumber: true, tournamentId: true },
+      });
+      if (!match) {
+        return reply.code(404).send({ error: "MATCH_NOT_FOUND", message: "Матч не найден" });
+      }
+      if (match.tournamentId !== tatamiSession.tournamentId || match.tatamiNumber !== tatamiSession.tatamiNumber) {
+        return reply.code(403).send({
+          error: "WRONG_TATAMI",
+          message: "Этот матч не на вашем татами",
+        });
+      }
+      return tatamiSession.id; // используем как actorId
+    } catch (err) {
+      if (err instanceof TatamiSessionError) {
+        return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
+      }
+      throw err;
+    }
+  }
+
+  // 3. Без токена — нужен ADMIN
   try {
     await authenticate(request, reply);
     if (reply.sent) return;
@@ -186,7 +235,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
         event: result.event,
       });
       if (result.autoFinished) {
-        emitMatchEvent(result.match, "match:finished", {
+        emitMatchEvent(result.match, "match:pendingResult", {
           matchId: result.match.id,
           winnerId: result.winnerId,
         });
@@ -207,9 +256,57 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
         reason,
         judgeSessionId || undefined,
       );
+      emitMatchEvent(match, "match:pendingResult", {
+        matchId: match.id,
+        winnerId: match.winnerId,
+      });
+      return reply.send(match);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/:id/confirm",
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const judgeSessionId = await authorizeForMatch(request, reply);
+      if (reply.sent) return;
+      const match = await confirmMatchResult(request.params.id, judgeSessionId || undefined);
       emitMatchEvent(match, "match:finished", {
         matchId: match.id,
         winnerId: match.winnerId,
+      });
+      emitMatchEvent(match, "tatami:queueUpdate", {
+        matchId: match.id,
+        tatamiNumber: match.tatamiNumber,
+      });
+      return reply.send(match);
+    },
+  );
+
+  // ---- UNDO last score event (judge or admin, during match) ----
+  app.post<{ Params: { id: string } }>(
+    "/:id/undo",
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const judgeSessionId = await authorizeForMatch(request, reply);
+      if (reply.sent) return;
+      const match = await undoLastScoreEvent(request.params.id, judgeSessionId || undefined);
+      emitMatchEvent(match, "match:scoreUpdate", {
+        matchId: match.id,
+        score: match.scoreSnapshot,
+      });
+      return reply.send(match);
+    },
+  );
+
+  // ---- CANCEL PENDING RESULT (judge or admin, before confirmation) ----
+  app.post<{ Params: { id: string } }>(
+    "/:id/cancel-result",
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const judgeSessionId = await authorizeForMatch(request, reply);
+      if (reply.sent) return;
+      const match = await cancelPendingResult(request.params.id, judgeSessionId || undefined);
+      emitMatchEvent(match, "match:scoreUpdate", {
+        matchId: match.id,
+        score: match.scoreSnapshot,
       });
       return reply.send(match);
     },
@@ -270,7 +367,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
         winnerId: result.winnerId,
       });
       if (result.autoFinished) {
-        emitMatchEvent(result.match, "match:finished", {
+        emitMatchEvent(result.match, "match:pendingResult", {
           matchId: result.match.id,
           winnerId: result.winnerId,
         });
@@ -333,6 +430,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
 export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
+  // ---- JudgeSession (per-match, legacy) ----
   app.get<{ Params: { token: string } }>(
     "/judge/:token",
     async (request: FastifyRequest<{ Params: { token: string } }>) => {
@@ -349,10 +447,58 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // ---- Tatami queue (public) ----
   app.get<{ Params: { tournamentId: string; n: string } }>(
     "/tatami/:tournamentId/:n/queue",
     async (request: FastifyRequest<{ Params: { tournamentId: string; n: string } }>) => {
       return getTatamiQueue(request.params.tournamentId, parseInt(request.params.n, 10));
+    },
+  );
+
+  // ---- TatamiSession (per-tatami, new) ----
+
+  // Создать сессию на татами (ADMIN)
+  app.post<{ Params: { id: string } }>(
+    "/tournaments/:id/tatami-sessions",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const body = request.body as { tatamiNumber: number; judgeName?: string; ttlHours?: number };
+      const session = await createTatamiSession(request.user!.sub, request.params.id, {
+        tatamiNumber: body.tatamiNumber,
+        judgeName: body.judgeName,
+        ttlHours: body.ttlHours,
+      });
+      return reply.code(201).send({
+        ...session,
+        judgeUrl: `/tatami/${session.token}`,
+      });
+    },
+  );
+
+  // Получить текущий матч + очередь по токену (без auth)
+  app.get<{ Params: { token: string } }>(
+    "/tatami-session/:token",
+    async (request: FastifyRequest<{ Params: { token: string } }>) => {
+      return getValidTatamiSession(request.params.token);
+    },
+  );
+
+  // Список активных сессий для турнира (ADMIN)
+  app.get<{ Params: { id: string } }>(
+    "/tournaments/:id/tatami-sessions",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return listTatamiSessions(request.params.id);
+    },
+  );
+
+  // Отозвать сессию (ADMIN)
+  app.post<{ Params: { id: string } }>(
+    "/tatami-sessions/:id/revoke",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      await revokeTatamiSession(request.user!.sub, request.params.id);
+      return reply.code(204).send();
     },
   );
 }
