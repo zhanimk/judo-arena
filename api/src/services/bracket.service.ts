@@ -159,6 +159,16 @@ async function generateSingleEliminationBracket(
   return getBracket(bracket.id);
 }
 
+/**
+ * После генерации сетки — продвинуть одиночных спортсменов (BYE) через все раунды
+ * основной ветки (main + final).
+ *
+ * Проблема: при большом числе null-слотов могут появиться null-null пары в раунде 1,
+ * что создаёт BYE-ситуации в раундах 2+.
+ * Алгоритм идёт раунд за раундом: обнаружил BYE → завершаем матч → продвигаем победителя.
+ *
+ * Repechage/bronze BYEs (появляющиеся во время игры) обрабатываются в propagateWinner.
+ */
 async function advanceFirstRoundByes(
   tx: Prisma.TransactionClient,
   bracketId: string,
@@ -166,42 +176,70 @@ async function advanceFirstRoundByes(
   matches: Match[],
 ) {
   const totalRounds = Math.log2(bracketSize);
-  const byes = matches.filter((match) => {
-    const hasRed = Boolean(match.redAthleteId);
-    const hasBlue = Boolean(match.blueAthleteId);
-    return match.bracketSection === "main" && match.round === 1 && hasRed !== hasBlue;
-  });
 
-  for (const bye of byes) {
-    const winnerId = bye.redAthleteId ?? bye.blueAthleteId;
-    if (!winnerId) continue;
+  // Map для быстрого поиска матча по (round:position:section)
+  const matchMap = new Map<string, Match>();
+  for (const m of matches) {
+    matchMap.set(`${m.round}:${m.position}:${m.bracketSection}`, m);
+  }
 
-    await tx.match.update({
-      where: { id: bye.id },
-      data: {
-        status: MatchStatus.COMPLETED,
-        winnerId,
-        finishedAt: new Date(),
-        scoreSnapshot: { bye: true },
-      },
-    });
+  // In-memory слоты, обновляются по мере обработки BYE
+  const memSlots = new Map<string, { red: string | null; blue: string | null }>();
+  for (const m of matches) {
+    memSlots.set(m.id, { red: m.redAthleteId, blue: m.blueAthleteId });
+  }
 
-    const nextRound = bye.round + 1;
-    const target = matches.find((match) => {
-      const section = nextRound === totalRounds ? "final" : "main";
-      return (
-        match.bracketId === bracketId &&
-        match.round === nextRound &&
-        match.position === Math.floor(bye.position / 2) &&
-        match.bracketSection === section
-      );
-    });
-    if (!target) continue;
+  for (let round = 1; round <= totalRounds; round++) {
+    const section = round === totalRounds ? "final" : "main";
+    const matchesInRound = bracketSize / Math.pow(2, round);
 
-    const data = bye.position % 2 === 0
-      ? { redAthleteId: winnerId }
-      : { blueAthleteId: winnerId };
-    await tx.match.update({ where: { id: target.id }, data });
+    for (let position = 0; position < matchesInRound; position++) {
+      const match = matchMap.get(`${round}:${position}:${section}`);
+      if (!match) continue;
+
+      const s = memSlots.get(match.id)!;
+      const hasRed = Boolean(s.red), hasBlue = Boolean(s.blue);
+      if (hasRed === hasBlue) continue; // оба null или оба есть → пропускаем
+
+      // КЛЮЧЕВАЯ ПРОВЕРКА: источник null-слота должен быть «мёртвой веткой» (нет спортсменов).
+      // Если источник содержит атлетов, значит он ещё не доиграл — не трогаем матч.
+      if (round > 1) {
+        const nullSlotIsRed = !hasRed;
+        // Дочерняя позиция в предыдущем раунде, которая должна была заполнить null-слот
+        const srcChildPos   = nullSlotIsRed ? position * 2 : position * 2 + 1;
+        const srcRound      = round - 1;
+        const srcSection    = srcRound === totalRounds ? "final" : "main";
+        const srcMatch      = matchMap.get(`${srcRound}:${srcChildPos}:${srcSection}`);
+        if (srcMatch) {
+          const srcS = memSlots.get(srcMatch.id)!;
+          // Источник имеет атлетов → он доиграется и заполнит слот → НЕ трогать
+          if (Boolean(srcS.red) || Boolean(srcS.blue)) continue;
+        }
+      }
+
+      const winnerId = (s.red ?? s.blue)!;
+
+      // Завершаем BYE-матч
+      await tx.match.update({
+        where: { id: match.id },
+        data: { status: MatchStatus.COMPLETED, winnerId, finishedAt: new Date(), scoreSnapshot: { bye: true } },
+      });
+
+      // Двигаем победителя в следующий раунд
+      if (round < totalRounds) {
+        const nextRound   = round + 1;
+        const nextPos     = Math.floor(position / 2);
+        const nextSection = nextRound === totalRounds ? "final" : "main";
+        const nextMatch   = matchMap.get(`${nextRound}:${nextPos}:${nextSection}`);
+        if (nextMatch) {
+          const slot = position % 2 === 0 ? "red" : "blue";
+          const data = slot === "red" ? { redAthleteId: winnerId } : { blueAthleteId: winnerId };
+          await tx.match.update({ where: { id: nextMatch.id }, data });
+          const ns = memSlots.get(nextMatch.id)!;
+          if (slot === "red") ns.red = winnerId; else ns.blue = winnerId;
+        }
+      }
+    }
   }
 }
 

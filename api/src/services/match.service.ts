@@ -718,8 +718,115 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
       data.queuePosition = await nextQueuePosition(match.tournamentId, match.tatamiNumber);
     }
 
-    await prisma.match.update({ where: { id: target.id }, data });
+    const updated = await prisma.match.update({ where: { id: target.id }, data });
+
+    // Каскадный BYE: если только что заполненный матч теперь имеет одного спортсмена,
+    // а источник второго слота — мёртвый путь (null-null), автозавершить как BYE.
+    if (p.section === "main" || p.section === "final") {
+      await cascadeBye(updated, bracket.size);
+    }
   }
+}
+
+/**
+ * Проверяет, является ли поддерево, питающее матч (round, position) в раунде 1,
+ * «мёртвым путём» — т.е. ни одного спортсмена во всём поддереве нет.
+ *
+ * Используется одним запросом к БД: ищет любой матч раунда 1 в нужном диапазоне позиций.
+ */
+async function isDeadPath(bracketId: string, round: number, position: number): Promise<boolean> {
+  // Поддерево матча (round, position) в раунде 1 занимает позиции:
+  //   [position * 2^(round-1) , (position+1) * 2^(round-1) )
+  const spread = Math.pow(2, round - 1);
+  const start  = position * spread;
+  const end    = start + spread;
+
+  const hasAthletes = await prisma.match.findFirst({
+    where: {
+      bracketId,
+      round: 1,
+      bracketSection: "main",
+      position: { gte: start, lt: end },
+      OR: [{ redAthleteId: { not: null } }, { blueAthleteId: { not: null } }],
+    },
+    select: { id: true },
+  });
+
+  return !hasAthletes; // нет ни одного спортсмена → мёртвый путь
+}
+
+/**
+ * После того как в матч попал один спортсмен (результат propagateWinner),
+ * проверяет: нет ли ситуации BYE, где второй слот питается от «мёртвого пути»?
+ * Если да — автозавершает матч как BYE и рекурсивно продвигает победителя дальше.
+ *
+ * Это обрабатывает каскадные BYE, возникающие во время игры (не при генерации),
+ * например когда 90 спортсменов в 128-слотовой сетке: раунд 1 не имеет одиночных
+ * BYE при генерации, но они появляются в раундах 2+ по мере завершения реальных матчей.
+ */
+async function cascadeBye(target: Match, bracketSize: number): Promise<void> {
+  // Только основная сетка и финал (repechage/bronze остаются пустыми если нет атлетов)
+  if (target.bracketSection !== "main" && target.bracketSection !== "final") return;
+  // BYE раунда 1 обрабатываются при генерации (advanceFirstRoundByes)
+  if (target.round === 1) return;
+  // Уже завершён — ничего не делаем
+  if (target.status === MatchStatus.COMPLETED) return;
+
+  const hasRed  = Boolean(target.redAthleteId);
+  const hasBlue = Boolean(target.blueAthleteId);
+  // Оба null или оба есть → не BYE
+  if (hasRed === hasBlue) return;
+
+  // Определяем источник null-слота в предыдущем раунде:
+  //   Красный слот ← дочерний матч раунда-1 с позицией 2*P (чётная)
+  //   Синий слот   ← дочерний матч раунда-1 с позицией 2*P+1 (нечётная)
+  const nullIsRed = !hasRed;
+  const srcPos    = nullIsRed ? target.position * 2 : target.position * 2 + 1;
+  const srcRound  = target.round - 1;
+
+  const dead = await isDeadPath(target.bracketId, srcRound, srcPos);
+  if (!dead) return; // Живой путь — подождём реального матча
+
+  // Мёртвый путь → автозавершаем как BYE
+  const winnerId = (target.redAthleteId ?? target.blueAthleteId)!;
+  await prisma.match.update({
+    where: { id: target.id },
+    data: {
+      status: MatchStatus.COMPLETED,
+      winnerId,
+      finishedAt: new Date(),
+      scoreSnapshot: { bye: true } as any,
+    },
+  });
+
+  // Финал завершён — дальше распространять некуда
+  if (target.bracketSection === "final") return;
+
+  // Продвигаем победителя BYE в следующий раунд
+  const totalRounds = Math.log2(bracketSize);
+  const nextRound   = target.round + 1;
+  const nextPos     = Math.floor(target.position / 2);
+  const nextSection = nextRound === totalRounds ? "final" : "main";
+  const nextSlot: "red" | "blue" = target.position % 2 === 0 ? "red" : "blue";
+
+  const nextMatch = await prisma.match.findFirst({
+    where: {
+      bracketId: target.bracketId,
+      round: nextRound,
+      position: nextPos,
+      bracketSection: nextSection,
+    },
+  });
+  if (!nextMatch) return;
+
+  const data: any = nextSlot === "red"
+    ? { redAthleteId: winnerId }
+    : { blueAthleteId: winnerId };
+
+  const updated = await prisma.match.update({ where: { id: nextMatch.id }, data });
+
+  // Рекурсивно проверяем следующий матч
+  await cascadeBye(updated, bracketSize);
 }
 
 // ============================================================

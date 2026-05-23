@@ -136,7 +136,7 @@ const auditQuerySchema = z.object({
 const leaderboardQuerySchema = z.object({
   categoryId: z.string().optional(),
   clubId: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
 });
 
 const pdfBracketQuerySchema = z.object({
