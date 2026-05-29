@@ -58,6 +58,7 @@ function OlympicBracketInner({ matches, size, format }: Props) {
   }
 
   if (format === "ROUND_ROBIN") return <RoundRobinView matches={matches} />;
+  if (format === "MIXED") return <MixedView matches={matches} size={size} />;
 
   const totalRounds = Math.round(Math.log2(Math.max(size, 2)));
   const quartersRound = totalRounds - 2; // round where Pool Final (QF) is played
@@ -777,6 +778,151 @@ function AthleteRow({
             <Play className="h-2.5 w-2.5 fill-gold text-gold" />
           </span>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ─── MIXED view: Group stage tabs + Playoff SE ──────────────────────────── */
+
+function MixedView({ matches, size }: { matches: BracketMatch[]; size: number }) {
+  // Separate group matches from playoff matches
+  const groupSections = Array.from(
+    new Set(matches.map((m) => m.bracketSection).filter((s) => s?.startsWith("group_")))
+  ).sort() as string[];
+
+  const playoffMatches = matches.filter((m) => m.bracketSection === "playoff");
+
+  const [activeTab, setActiveTab] = useState<string>(groupSections[0] ?? "playoff");
+
+  const groupLabel = (s: string) => `Топ ${s.replace("group_", "")}`; // "group_A" → "Топ A"
+
+  return (
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-border pb-0 overflow-x-auto">
+        {groupSections.map((section) => (
+          <button
+            key={section}
+            onClick={() => setActiveTab(section)}
+            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
+              activeTab === section
+                ? "bg-background border border-b-background border-border -mb-px text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {groupLabel(section)}
+          </button>
+        ))}
+        <button
+          onClick={() => setActiveTab("playoff")}
+          className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
+            activeTab === "playoff"
+              ? "bg-background border border-b-background border-border -mb-px text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          🏆 Плей-офф
+        </button>
+      </div>
+
+      {/* Group tab content */}
+      {activeTab !== "playoff" && (
+        <MixedGroupTab
+          matches={matches.filter((m) => m.bracketSection === activeTab)}
+          groupLabel={activeTab.replace("group_", "")}
+        />
+      )}
+
+      {/* Playoff tab */}
+      {activeTab === "playoff" && (
+        <div>
+          {playoffMatches.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-6">
+              Плей-офф барлық топ матчтары аяқталғаннан кейін басталады
+            </p>
+          ) : (
+            <FlatSEView matches={playoffMatches} size={size} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; groupLabel: string }) {
+  // Collect unique athletes in this group
+  const athleteMap = new Map<string, BracketAthlete>();
+  for (const m of matches) {
+    if (m.redAthleteId && m.redAthlete) athleteMap.set(m.redAthleteId, m.redAthlete);
+    if (m.blueAthleteId && m.blueAthlete) athleteMap.set(m.blueAthleteId, m.blueAthlete);
+  }
+
+  // Compute standings
+  const standingsMap = new Map<string, { wins: number; losses: number; played: number }>();
+  for (const id of athleteMap.keys()) standingsMap.set(id, { wins: 0, losses: 0, played: 0 });
+
+  for (const m of matches) {
+    if (m.status !== "COMPLETED" || !m.winnerId) continue;
+    const loserId = m.winnerId === m.redAthleteId ? m.blueAthleteId : m.redAthleteId;
+    const w = standingsMap.get(m.winnerId);
+    const l = loserId ? standingsMap.get(loserId) : undefined;
+    if (w) { w.wins++; w.played++; }
+    if (l) { l.losses++; l.played++; }
+  }
+
+  const standings = Array.from(standingsMap.entries())
+    .map(([id, s]) => ({ id, athlete: athleteMap.get(id)!, ...s }))
+    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+
+  const completedCount = matches.filter((m) => m.status === "COMPLETED").length;
+  const totalCount = matches.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Standings table */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <div className="px-4 py-2 bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between">
+          <span>Топ {groupLabel} — Кесте</span>
+          <span>{completedCount}/{totalCount} матч</span>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-4 py-2 font-medium">#</th>
+              <th className="text-left px-4 py-2 font-medium">Спортшы</th>
+              <th className="text-center px-3 py-2 font-medium">Ж</th>
+              <th className="text-center px-3 py-2 font-medium">Ж</th>
+              <th className="text-center px-3 py-2 font-medium">М</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((s, idx) => (
+              <tr key={s.id} className={`border-b border-border last:border-0 ${idx < 2 ? "bg-green-500/5" : ""}`}>
+                <td className="px-4 py-2 text-muted-foreground">
+                  {idx < 2 ? <span className="text-green-500 font-bold">{idx + 1}</span> : idx + 1}
+                </td>
+                <td className="px-4 py-2 font-medium">
+                  {s.athlete ? `${s.athlete.name} ${s.athlete.surname}` : "—"}
+                  {idx < 2 && (
+                    <span className="ml-2 text-xs text-green-500 font-normal">→ плей-офф</span>
+                  )}
+                </td>
+                <td className="text-center px-3 py-2 text-green-500 font-semibold">{s.wins}</td>
+                <td className="text-center px-3 py-2 text-red-500">{s.losses}</td>
+                <td className="text-center px-3 py-2">{s.played}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Match list */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Матчтар</p>
+        {matches.map((m) => (
+          <MatchCard key={m.id} match={m} />
+        ))}
       </div>
     </div>
   );

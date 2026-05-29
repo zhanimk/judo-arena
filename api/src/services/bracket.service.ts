@@ -21,6 +21,7 @@ import {
 import { seedAthletes, nextPowerOfTwo } from "./bracket-engine/seeding.js";
 import { buildSingleElimination } from "./bracket-engine/single-elimination.js";
 import { buildRoundRobin } from "./bracket-engine/round-robin.js";
+import { buildMixedBracket } from "./bracket-engine/mixed.js";
 import { planTatamiAssignments, type TatamiPlanCategory } from "./bracket-engine/tatami-plan.js";
 
 export class BracketError extends Error {
@@ -96,8 +97,16 @@ export async function generateBracket(
 
   const seed = Math.floor(Math.random() * 1_000_000_000);
 
+  // MIXED = группы (≤8 в группе, Round-Robin) + плей-офф SE
   if (category.format === BracketFormat.MIXED) {
-    throw new BracketError("MIXED_NOT_SUPPORTED", "Формат MIXED ещё не реализован. Используйте SE_IJF или ROUND_ROBIN.", 400);
+    if (athletes.length < 4) {
+      throw new BracketError(
+        "NOT_ENOUGH_FOR_MIXED",
+        `MIXED требует минимум 4 участника, найдено ${athletes.length}`,
+        409,
+      );
+    }
+    return generateMixedBracket(tournamentId, categoryId, athletes, seed);
   }
 
   // Автовыбор формата: ≤4 участника → круговая, иначе SE
@@ -289,6 +298,201 @@ async function generateRoundRobinBracket(
   });
 
   return getBracket(bracket.id);
+}
+
+// ============================================================
+// MIXED
+// ============================================================
+
+async function generateMixedBracket(
+  tournamentId: string,
+  categoryId: string,
+  athletes: { id: string; clubId: string | null }[],
+  seed: number,
+) {
+  const seeded = seedAthletes(athletes, athletes.length, seed);
+  // seeded may contain null slots — filter them out
+  const seededIds = seeded.filter(Boolean) as string[];
+
+  const plan = buildMixedBracket(seededIds);
+
+  const bracket = await prisma.$transaction(async (tx) => {
+    const created = await tx.bracket.create({
+      data: {
+        tournamentId,
+        categoryId,
+        format: BracketFormat.MIXED,
+        size: plan.playoffSize,
+        // Store group metadata as JSON for UI rendering and advancement logic
+        metadata: {
+          groups: plan.groups,
+        } as any,
+      },
+    });
+
+    // Create group-stage matches
+    await tx.match.createMany({
+      data: plan.groupMatches.map((m) => ({
+        tournamentId,
+        bracketId: created.id,
+        round: m.round,
+        position: m.position,
+        bracketSection: m.bracketSection,
+        redAthleteId: m.redAthleteId,
+        blueAthleteId: m.blueAthleteId,
+        status: MatchStatus.PENDING,
+      })),
+    });
+
+    // Create playoff shell (empty athlete slots)
+    await tx.match.createMany({
+      data: plan.playoffMatches.map((m) => ({
+        tournamentId,
+        bracketId: created.id,
+        round: m.round,
+        position: m.position,
+        bracketSection: m.bracketSection,
+        redAthleteId: m.redAthleteId,
+        blueAthleteId: m.blueAthleteId,
+        status: MatchStatus.PENDING,
+      })),
+    });
+
+    return created;
+  });
+
+  return getBracket(bracket.id);
+}
+
+/**
+ * Called from match.service when a group match completes.
+ * Checks if all matches in the group are done; if so, computes standings
+ * and fills the playoff bracket slots for top-2 advancers.
+ *
+ * Exported so match.service can call it without circular dependency.
+ */
+export async function advanceGroupWinnersIfComplete(
+  bracketId: string,
+  groupSection: string, // e.g. "group_A"
+): Promise<void> {
+  // Load all matches in this group
+  const groupMatches = await prisma.match.findMany({
+    where: { bracketId, bracketSection: groupSection },
+  });
+
+  // Not all done yet
+  if (groupMatches.some((m) => m.status !== MatchStatus.COMPLETED)) return;
+
+  // Load bracket metadata to get group athlete lists
+  const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
+  if (!bracket || bracket.format !== BracketFormat.MIXED) return;
+
+  const metadata = bracket.metadata as { groups: { label: string; athleteIds: string[] }[] } | null;
+  if (!metadata?.groups) return;
+
+  const groupLabel = groupSection.replace("group_", ""); // "A"
+  const groupIdx = groupLabel.charCodeAt(0) - 65; // A=0, B=1, …
+  const group = metadata.groups[groupIdx];
+  if (!group) return;
+
+  // Compute standings
+  const { computeGroupStandings } = await import("./bracket-engine/mixed.js");
+  const results = groupMatches
+    .filter((m) => m.redAthleteId && m.blueAthleteId)
+    .map((m) => ({
+      redAthleteId: m.redAthleteId!,
+      blueAthleteId: m.blueAthleteId!,
+      winnerId: m.winnerId,
+    }));
+
+  const standings = computeGroupStandings(group.athleteIds, results);
+  const top2 = standings.slice(0, 2);
+
+  if (top2.length < 2) return;
+
+  // Place top-2 into playoff round-1 slots
+  const { playoffSlotForGroup } = await import("./bracket-engine/mixed.js");
+  const numGroups = metadata.groups.length;
+  // playoffSize is the bracket size (stored in bracket.size)
+  const playoffSize = bracket.size;
+
+  for (const standing of top2) {
+    const place = standing.place as 1 | 2;
+    const { position, slot } = playoffSlotForGroup(groupIdx, place, playoffSize);
+
+    const playoffMatch = await prisma.match.findFirst({
+      where: { bracketId, bracketSection: "playoff", round: 1, position },
+    });
+    if (!playoffMatch) continue;
+
+    const data: any = {};
+    if (slot === "red") data.redAthleteId = standing.athleteId;
+    else data.blueAthleteId = standing.athleteId;
+
+    await prisma.match.update({ where: { id: playoffMatch.id }, data });
+  }
+
+  // After filling slots, check for BYEs in playoff round 1
+  // (if advancers < playoffSize some slots remain null)
+  await resolvePlayoffByes(bracketId, metadata.groups.length * 2, playoffSize);
+}
+
+/** Auto-complete playoff round-1 matches that have exactly 1 athlete (BYE). */
+async function resolvePlayoffByes(
+  bracketId: string,
+  totalAdvancers: number,
+  playoffSize: number,
+): Promise<void> {
+  // We need ALL groups done before processing BYEs (some slots still TBD)
+  const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
+  const metadata = bracket?.metadata as { groups: { label: string; athleteIds: string[] }[] } | null;
+  if (!metadata?.groups) return;
+
+  // Check all groups are complete
+  for (const g of metadata.groups) {
+    const section = `group_${g.label}`;
+    const incomplete = await prisma.match.count({
+      where: { bracketId, bracketSection: section, status: { not: MatchStatus.COMPLETED } },
+    });
+    if (incomplete > 0) return; // still waiting
+  }
+
+  // All groups done — find playoff R1 BYEs
+  const r1Matches = await prisma.match.findMany({
+    where: { bracketId, bracketSection: "playoff", round: 1 },
+  });
+
+  for (const m of r1Matches) {
+    if (m.status === MatchStatus.COMPLETED) continue;
+    const hasRed = Boolean(m.redAthleteId);
+    const hasBlue = Boolean(m.blueAthleteId);
+    if (hasRed === hasBlue) continue; // both null (skip) or both filled (play normally)
+
+    // One athlete, no opponent — BYE
+    const winnerId = (m.redAthleteId ?? m.blueAthleteId)!;
+    const updated = await prisma.match.update({
+      where: { id: m.id },
+      data: {
+        status: MatchStatus.COMPLETED,
+        winnerId,
+        finishedAt: new Date(),
+        scoreSnapshot: { bye: true } as any,
+      },
+    });
+
+    // Advance winner to round 2
+    const nextPos = Math.floor(m.position / 2);
+    const nextMatch = await prisma.match.findFirst({
+      where: { bracketId, bracketSection: "playoff", round: 2, position: nextPos },
+    });
+    if (nextMatch) {
+      const slot = m.position % 2 === 0 ? "red" : "blue";
+      await prisma.match.update({
+        where: { id: nextMatch.id },
+        data: slot === "red" ? { redAthleteId: winnerId } : { blueAthleteId: winnerId },
+      });
+    }
+  }
 }
 
 // ============================================================

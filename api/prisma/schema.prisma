@@ -312,6 +312,7 @@ model Bracket {
   category     Category      @relation(fields: [categoryId], references: [id])
   format       BracketFormat
   size         Int           // Размер сетки (4/8/16/32/64) или N для round-robin
+  metadata     Json?         // MIXED: { groups: [{ label, athleteIds }] }
 
   generatedAt DateTime @default(now())
 

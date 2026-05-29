@@ -725,6 +725,40 @@ async function propagateWinner(match: Match, winnerId: string): Promise<void> {
   // Для Round-Robin не нужно — там просто таблица очков
   if (bracket.format === BracketFormat.ROUND_ROBIN) return;
 
+  // MIXED: group match completed → try to advance top-2 to playoff
+  if (bracket.format === BracketFormat.MIXED && match.bracketSection?.startsWith("group_")) {
+    const { advanceGroupWinnersIfComplete } = await import("./bracket.service.js");
+    await advanceGroupWinnersIfComplete(bracket.id, match.bracketSection);
+    // Playoff matches use standard propagateResult (section = "playoff")
+    return;
+  }
+
+  // MIXED playoff match: propagate within playoff SE
+  if (bracket.format === BracketFormat.MIXED && match.bracketSection === "playoff") {
+    // Treat playoff as a mini-SE: use same propagateResult with "main" mapped to "playoff"
+    // We override bracketSection for the propagation helper
+    const playoffPropagations = propagateResult(
+      match.round,
+      match.position,
+      "main" as any, // reuse main-section logic
+      winnerId,
+      loserId,
+      bracket.size,
+    ).map((p) => ({ ...p, section: p.section === "main" || p.section === "final" ? "playoff" : p.section }));
+
+    for (const p of playoffPropagations) {
+      const target = await prisma.match.findFirst({
+        where: { bracketId: bracket.id, round: p.round, position: p.position, bracketSection: p.section },
+      });
+      if (!target) continue;
+      const data: any = {};
+      if (p.slot === "red") data.redAthleteId = p.athleteId;
+      else data.blueAthleteId = p.athleteId;
+      await prisma.match.update({ where: { id: target.id }, data });
+    }
+    return;
+  }
+
   const propagations = propagateResult(
     match.round,
     match.position,
