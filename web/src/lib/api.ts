@@ -8,7 +8,15 @@
  *   • Обрабатывает CORS с credentials (нужно для cookie)
  */
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// Пустая строка → запросы идут как относительные URL через Vite proxy.
+// Непустая строка (продакш) → прямой адрес API сервера.
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+export function mediaUrl(url?: string | null): string {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_BASE}${url.startsWith("/") ? url : `/${url}`}`;
+}
 
 function qs(params?: Record<string, any>): string {
   if (!params) return "";
@@ -26,6 +34,8 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  // Sync socket connection token (lazy import to avoid circular dep)
+  import("./socket").then(({ updateSocketToken }) => updateSocketToken(token));
 }
 
 export function getAccessToken(): string | null {
@@ -131,6 +141,23 @@ async function request<T = unknown>(
   return body as T;
 }
 
+// Authenticated download — fetches with Bearer token and triggers browser download
+export async function downloadWithAuth(path: string, filename: string): Promise<void> {
+  const token = accessToken;
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "DOWNLOAD_ERROR", "Жүктеу қатесі");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ============================================================
 // API методы (типизированные удобные функции)
 // ============================================================
@@ -165,11 +192,28 @@ export const api = {
 
     setLocale: (locale: "ru" | "kk" | "en") =>
       request<{ ok: boolean; locale: string }>("/api/auth/me/locale", { method: "PATCH", json: { locale } }),
+
+    updateProfile: (data: any) =>
+      request<{ user: any }>("/api/auth/me/profile", { method: "PATCH", json: data }),
+
+    forgotPassword: (email: string) =>
+      request<{ ok: boolean }>("/api/auth/forgot-password", { method: "POST", json: { email }, skipRefresh: true }),
+
+    resetPassword: (token: string, password: string) =>
+      request<{ ok: boolean }>("/api/auth/reset-password", { method: "POST", json: { token, password }, skipRefresh: true }),
+  },
+
+  uploads: {
+    image: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<{ url: string }>("/api/uploads/image", { method: "POST", body: form });
+    },
   },
 
   // --- CLUBS ---
   clubs: {
-    list: (params?: { city?: string; search?: string }) => {
+    list: (params?: { city?: string; search?: string; limit?: number }) => {
       const q = qs(params);
       return request<{ items: any[]; total: number }>(`/api/clubs${q}`);
     },
@@ -185,6 +229,35 @@ export const api = {
     members: (id: string) => request<any[]>(`/api/clubs/${id}/members`),
     addAthlete: (clubId: string, data: any) =>
       request<any>(`/api/clubs/${clubId}/athletes`, { method: "POST", json: data }),
+    bulkImportAthletes: (clubId: string, rows: any[]) =>
+      request<{ created: number; skipped: number; errors: any[] }>(
+        `/api/clubs/${clubId}/athletes/bulk-import`,
+        { method: "POST", json: { rows } },
+      ),
+    joinRequest: (clubId: string) =>
+      request<any>(`/api/clubs/${clubId}/join-request`, { method: "POST" }),
+    coachJoinRequest: (clubId: string) =>
+      request<any>(`/api/clubs/${clubId}/coach-join-request`, { method: "POST" }),
+    removeCoach: (clubId: string, coachId: string) =>
+      request<{ ok: boolean }>(`/api/clubs/${clubId}/coaches/${coachId}`, { method: "DELETE" }),
+    transferOwner: (clubId: string, coachId: string) =>
+      request<{ ok: boolean }>(`/api/clubs/${clubId}/coaches/${coachId}/transfer-owner`, { method: "POST" }),
+  },
+
+  // --- JOIN REQUESTS ---
+  joinRequests: {
+    myList: () => request<any[]>("/api/athlete/join-requests"),
+    cancel: (id: string) => request<void>(`/api/athlete/join-requests/${id}`, { method: "DELETE" }),
+    coachList: () => request<any[]>("/api/coach/join-requests"),
+    review: (id: string, approve: boolean) =>
+      request<{ ok: boolean }>(`/api/coach/join-requests/${id}/review`, { method: "POST", json: { approve } }),
+  },
+  coachClubRequests: {
+    myList: () => request<any[]>("/api/coach/club-join-requests"),
+    cancel: (id: string) => request<{ ok: boolean }>(`/api/coach/club-join-requests/${id}`, { method: "DELETE" }),
+    incoming: () => request<any[]>("/api/coach/club-join-requests/incoming"),
+    review: (id: string, approve: boolean) =>
+      request<{ ok: boolean }>(`/api/coach/club-join-requests/${id}/review`, { method: "POST", json: { approve } }),
   },
   athletes: {
     update: (id: string, data: any) =>
@@ -195,7 +268,7 @@ export const api = {
 
   // --- TOURNAMENTS ---
   tournaments: {
-    list: (params?: { status?: string; city?: string; search?: string; upcoming?: boolean; limit?: number; offset?: number }) => {
+    list: (params?: { status?: string; city?: string; search?: string; upcoming?: boolean; limit?: number; offset?: number; includeArchived?: boolean }) => {
       const q = qs(params);
       return request<{ items: any[]; total: number }>(`/api/tournaments${q}`);
     },
@@ -214,6 +287,21 @@ export const api = {
     applications: (id: string) => request<any[]>(`/api/tournaments/${id}/applications`),
     createApplication: (id: string, notes?: string) =>
       request<any>(`/api/tournaments/${id}/applications`, { method: "POST", json: { notes } }),
+    bulkApprove: (id: string, notes?: string) =>
+      request<{ approved: number }>(`/api/tournaments/${id}/applications/bulk-approve`, { method: "POST", json: { reviewerNotes: notes } }),
+    // Публичный список участников по категории — draw list как на IJF
+    categoryParticipants: (tournamentId: string, categoryId: string) =>
+      request<Array<{
+        entryId: string;
+        weighInStatus: string;
+        athlete: {
+          id: string; name: string; surname: string;
+          nameLatin: string | null; surnameLatin: string | null;
+          gender: string; weightKg: number | null; beltRank: string | null;
+          avatarUrl: string | null;
+          club: { id: string; name: any; city: string | null } | null;
+        };
+      }>>(`/api/tournaments/${tournamentId}/categories/${categoryId}/participants`),
   },
 
   // --- APPLICATIONS ---
@@ -227,6 +315,7 @@ export const api = {
       request<void>(`/api/applications/${id}/entries/${entryId}`, { method: "DELETE" }),
     submit: (id: string) => request<any>(`/api/applications/${id}/submit`, { method: "POST" }),
     withdraw: (id: string) => request<any>(`/api/applications/${id}/withdraw`, { method: "POST" }),
+    history: (id: string) => request<any[]>(`/api/applications/${id}/history`),
     approve: (id: string, notes?: string) =>
       request<any>(`/api/applications/${id}/approve`, { method: "POST", json: { reviewerNotes: notes } }),
     reject: (id: string, notes?: string) =>
@@ -318,6 +407,8 @@ export const api = {
       return request<any>(`/api/admin/audit-logs${q}`);
     },
     bracketPdfUrl: (bracketId: string) => `${API_BASE}/api/pdf/bracket?bracketId=${bracketId}`,
+    allBracketsPdfUrl: (tournamentId: string) =>
+      `${API_BASE}/api/pdf/tournament-brackets?tournamentId=${tournamentId}`,
     protocolPdfUrl: (tournamentId: string) =>
       `${API_BASE}/api/pdf/protocol?tournamentId=${tournamentId}`,
 
@@ -355,7 +446,8 @@ export const api = {
       request<any>(`/api/admin/users/${id}/reset-password`, { method: "POST", json: { password } }),
     toggleUserActive: (id: string, active: boolean) =>
       request<any>(`/api/admin/users/${id}/active`, { method: "PATCH", json: { active } }),
-
+    deleteUser: (id: string) =>
+      request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
     // Турниры — featured/archive
     featureTournament: (id: string, featured: boolean) =>
       request<any>(`/api/admin/tournaments/${id}/feature`, { method: "PATCH", json: { featured } }),
@@ -367,13 +459,24 @@ export const api = {
     updateConfig: (key: string, value: unknown) =>
       request<any>(`/api/admin/system-config/${key}`, { method: "PATCH", json: { value } }),
 
+    // Все заявки (один запрос вместо N+1)
+    allApplications: (params?: { status?: string; tournamentId?: string }) => {
+      const q = qs(params);
+      return request<any[]>(`/api/admin/applications${q}`);
+    },
+
     // Stats
     stats: () => request<any>("/api/admin/stats"),
+    weighIn: (tournamentId: string) =>
+      request<any>(`/api/admin/tournaments/${tournamentId}/weigh-in`),
+    updateWeighIn: (entryId: string, data: { status: string; notes?: string | null }) =>
+      request<any>(`/api/admin/application-entries/${entryId}/weigh-in`, { method: "PATCH", json: data }),
   },
 
   // --- NOTIFICATIONS ---
   notifications: {
-    list: () => request<any[]>("/api/notifications"),
+    list: (params?: { type?: string; unreadOnly?: boolean }) =>
+      request<any[]>(`/api/notifications${qs(params as any)}`),
     unreadCount: () => request<{ count: number }>("/api/notifications/unread-count"),
     markAllRead: () => request<void>("/api/notifications/mark-read", { method: "POST" }),
     markRead: (id: string) => request<any>(`/api/notifications/${id}/read`, { method: "POST" }),

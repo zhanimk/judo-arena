@@ -33,8 +33,16 @@ export async function revokeRefreshToken(userId: string, jti: string): Promise<v
 }
 
 export async function revokeAllUserTokens(userId: string): Promise<void> {
+  // SCAN вместо KEYS — не блокирует Redis на больших keyspace'ах
   const pattern = `refresh:${userId}:*`;
-  const keys = await redis.keys(pattern);
+  const keys: string[] = [];
+  let cursor = "0";
+  do {
+    const [nextCursor, batch] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+    cursor = nextCursor;
+    keys.push(...batch);
+  } while (cursor !== "0");
+
   if (keys.length > 0) {
     await redis.del(...keys);
   }

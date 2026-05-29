@@ -194,3 +194,80 @@ describe("Unknown routes", () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+// ─── Judge token security ──────────────────────────────────────────────────────
+// Tests the getValidSession service logic directly (expired / revoked / invalid).
+// These guard the X-Judge-Token path without requiring the full matchRoutes stack.
+
+vi.mock("../../src/lib/prisma.js", () => ({
+  prisma: {
+    user: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
+    $disconnect: vi.fn(),
+    judgeSession: { findUnique: vi.fn() },
+  },
+}));
+
+describe("Judge token security — getValidSession()", () => {
+  it("throws INVALID_TOKEN (401) for unknown token", async () => {
+    const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(null);
+
+    const { getValidSession, JudgeSessionError } = await import("../../src/services/judge-session.service.js");
+    await expect(getValidSession("no-such-token")).rejects.toMatchObject({
+      code: "INVALID_TOKEN",
+      httpStatus: 401,
+    });
+  });
+
+  it("throws REVOKED (403) for a revoked session", async () => {
+    const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue({
+      id: "sess-1",
+      token: "tok-revoked",
+      matchId: "m-1",
+      isRevoked: true,
+      expiresAt: new Date(Date.now() + 3600_000),
+    });
+
+    const { getValidSession, JudgeSessionError } = await import("../../src/services/judge-session.service.js");
+    await expect(getValidSession("tok-revoked")).rejects.toMatchObject({
+      code: "REVOKED",
+      httpStatus: 403,
+    });
+  });
+
+  it("throws EXPIRED (403) for an expired session", async () => {
+    const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue({
+      id: "sess-2",
+      token: "tok-expired",
+      matchId: "m-1",
+      isRevoked: false,
+      expiresAt: new Date(Date.now() - 1000), // expired 1 second ago
+    });
+
+    const { getValidSession } = await import("../../src/services/judge-session.service.js");
+    await expect(getValidSession("tok-expired")).rejects.toMatchObject({
+      code: "EXPIRED",
+      httpStatus: 403,
+    });
+  });
+
+  it("returns the session for a valid non-expired token", async () => {
+    const session = {
+      id: "sess-3",
+      token: "tok-valid",
+      matchId: "m-1",
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 3600_000),
+    };
+    const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(session);
+
+    const { getValidSession } = await import("../../src/services/judge-session.service.js");
+    const result = await getValidSession("tok-valid");
+    expect(result.id).toBe("sess-3");
+    expect(result.matchId).toBe("m-1");
+  });
+});

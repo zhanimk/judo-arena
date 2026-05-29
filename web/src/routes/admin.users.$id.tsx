@@ -115,8 +115,8 @@ function AdminUserDetail() {
   return (
     <DashboardShell role="Әкімші" navItems={nav} accentTitle={`${u.name} ${u.surname}`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <Link to="/admin/clubs" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold">
-          <ArrowLeft className="h-4 w-4" /> Клубтар & Спортшылар
+        <Link to="/admin/users" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold">
+          <ArrowLeft className="h-4 w-4" /> Пайдаланушылар тізіміне қайту
         </Link>
         <div className="flex gap-2 flex-wrap">
           <button

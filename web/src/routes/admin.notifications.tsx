@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/notifications")({
   head: () => ({ meta: [{ title: "Хабарландыру жіберу — Әкімші" }] }),
@@ -42,9 +43,9 @@ function AdminNotifications() {
   const fillWeighInTemplate = () => {
     if (!selectedTournament) return;
     setKind("tournament");
-    setTitle("Взвешивание туралы хабарландыру");
+    setTitle("Таразылау туралы хабарландыру");
     setBody([
-      `${localizeName(selectedTournament.name)} жарысына взвешивание:`,
+      `${localizeName(selectedTournament.name)} жарысының таразылауы:`,
       `Орын: ${selectedTournament.weighInLocation || selectedTournament.location}, ${selectedTournament.city}`,
       `Уақыты: ${formatWeighIn(selectedTournament)}`,
       selectedTournament.mapUrl ? `Карта: ${selectedTournament.mapUrl}` : null,
@@ -60,12 +61,18 @@ function AdminNotifications() {
       return api.notifications.broadcast({ ...base, kind: "tournament", tournamentId, type: "tournament_update" });
     },
     onSuccess: (r) => {
-      setSuccess(`✓ ${r.count} адамға жіберілді`);
+      const msg = `${r.count} адамға жіберілді ✓`;
+      setSuccess(msg);
       setTitle(""); setBody(""); setError("");
       qc.invalidateQueries({ queryKey: ["audit-notifications"] });
+      toast.success(msg);
       setTimeout(() => setSuccess(""), 4000);
     },
-    onError: (e: any) => { setError(e instanceof ApiError ? e.message : "Қате"); setSuccess(""); },
+    onError: (e: any) => {
+      const msg = e instanceof ApiError ? e.message : "Қате";
+      setError(msg); setSuccess("");
+      toast.error(msg);
+    },
   });
 
   return (
@@ -128,7 +135,7 @@ function AdminNotifications() {
                   disabled={!selectedTournament}
                   className="mt-2 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold hover:bg-gold/15 disabled:opacity-50"
                 >
-                  <Clock className="h-4 w-4" /> Взвешивание шаблоны
+                  <Clock className="h-4 w-4" /> Таразылау шаблоны
                 </button>
               </div>
             )}

@@ -1,11 +1,14 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { ReactNode, useState } from "react";
 import emblem from "@/assets/jcl-logo.jpeg";
-import { LogOut, Loader2, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LogOut, Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, logout as doLogout } from "@/lib/auth-store";
 import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
 import { ThemeToggle } from "@/components/site/ThemeToggle";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtime } from "@/lib/socket";
+import { api } from "@/lib/api";
 
 export interface NavItem { to: string; label: string; icon: React.ComponentType<{ className?: string }>; }
 
@@ -34,6 +37,18 @@ const roleKeys: Record<string, string> = {
   "Спортшы": "roles.athlete",
 };
 
+const dashboardRoot = (role?: string) => {
+  if (role === "ADMIN") return "/admin";
+  if (role === "COACH") return "/coach";
+  return "/athlete";
+};
+
+const profileRoot = (role?: string) => {
+  if (role === "COACH") return "/coach/profile";
+  if (role === "ATHLETE") return "/athlete/profile";
+  return dashboardRoot(role);
+};
+
 export function DashboardShell({
   role, navItems, children, accentTitle,
 }: { role: string; navItems: NavItem[]; children: ReactNode; accentTitle: string }) {
@@ -41,8 +56,29 @@ export function DashboardShell({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const qc = useQueryClient();
   const translatedRole = roleKeys[role] ? t(roleKeys[role]) : role;
   const navLabel = (label: string) => (navLabelKeys[label] ? t(navLabelKeys[label]) : label);
+
+  const unreadQuery = useQuery({
+    queryKey: ["unread-count"],
+    queryFn: () => api.notifications.unreadCount(),
+    // No refetchInterval — Socket.IO's "notification:new" invalidates immediately
+    staleTime: Infinity,
+    enabled: !!user,
+  });
+  const unreadCount = unreadQuery.data?.count ?? 0;
+
+  // N2: подписка на личную Socket.IO комнату — мгновенно обновляет бейдж уведомлений
+  useRealtime(
+    user?.id ? [`user:${user.id}`] : [],
+    {
+      "notification:new": () => {
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+        qc.invalidateQueries({ queryKey: ["unread-count"] });
+      },
+    },
+  );
 
   // Desktop: collapsed = icon-only mode, persisted
   const [collapsed, setCollapsed] = useState(() => {
@@ -92,11 +128,11 @@ export function DashboardShell({
         {/* Logo row */}
         <div className={`flex h-16 items-center border-b border-border/40 ${collapsed ? "justify-center px-2" : "px-4 gap-2"}`}>
           {collapsed ? (
-            <Link to="/" title="JUDO·ARENA" className="flex items-center justify-center">
+            <Link to={dashboardRoot(user?.role)} title="JUDO·ARENA" className="flex items-center justify-center">
               <img src={emblem} alt="" className="h-8 w-8" />
             </Link>
           ) : (
-            <Link to="/" className="flex flex-1 min-w-0 items-center gap-2">
+            <Link to={dashboardRoot(user?.role)} className="flex flex-1 min-w-0 items-center gap-2">
               <img src={emblem} alt="" className="h-8 w-8 shrink-0" />
               <span className="font-display font-bold truncate">JUDO·ARENA</span>
             </Link>
@@ -126,25 +162,31 @@ export function DashboardShell({
         {/* Role / user info */}
         {collapsed ? (
           <div className="flex justify-center py-4">
-            <div
+            <Link
+              to={profileRoot(user?.role)}
               title={`${translatedRole}${user ? ` · ${user.email}` : ""}`}
-              className="h-8 w-8 rounded-full bg-gold/20 flex items-center justify-center text-xs font-bold text-gold cursor-default select-none"
+              className="h-9 w-9 rounded-full bg-gradient-gold flex items-center justify-center text-xs font-bold text-[#1a1204] select-none"
             >
-              {translatedRole.charAt(0)}
-            </div>
+              {user ? `${user.name?.[0] ?? ""}${user.surname?.[0] ?? ""}`.toUpperCase() : translatedRole.charAt(0)}
+            </Link>
           </div>
         ) : (
-          <div className="px-6 py-5">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.role")}</div>
-            <div className="font-display text-lg text-gold">{translatedRole}</div>
-            {user && <div className="mt-1 text-xs text-muted-foreground truncate">{user.email}</div>}
-          </div>
+          <Link to={profileRoot(user?.role)} className="px-4 py-4 flex items-center gap-3 border-b border-border/40 hover:bg-muted/30 transition-colors">
+            <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center text-sm font-bold text-[#1a1204] shrink-0">
+              {user ? `${user.name?.[0] ?? ""}${user.surname?.[0] ?? ""}`.toUpperCase() : "?"}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate">{user ? `${user.name} ${user.surname}` : "—"}</div>
+              <div className="text-[11px] text-gold uppercase tracking-widest">{translatedRole}</div>
+            </div>
+          </Link>
         )}
 
         {/* Nav */}
-        <nav className={`flex-1 space-y-1 ${collapsed ? "px-2" : "px-3"}`}>
+        <nav className={`flex-1 space-y-1 py-2 ${collapsed ? "px-2" : "px-3"}`}>
           {navItems.map((n, idx) => {
             const active = path === n.to;
+            const isNotif = n.label === "Хабарландырулар";
             return (
               <Link
                 key={`${n.to}-${idx}`}
@@ -152,15 +194,29 @@ export function DashboardShell({
                 title={collapsed ? navLabel(n.label) : undefined}
                 onClick={() => setMobileOpen(false)}
                 className={[
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all",
+                  "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all",
                   collapsed ? "justify-center" : "",
                   active
                     ? "bg-gold/10 text-gold border border-gold/20"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 ].join(" ")}
               >
-                <n.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && navLabel(n.label)}
+                <span className="relative shrink-0">
+                  <n.icon className="h-4 w-4" />
+                  {isNotif && unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </span>
+                {!collapsed && (
+                  <span className="flex-1">{navLabel(n.label)}</span>
+                )}
+                {!collapsed && isNotif && unreadCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -207,17 +263,38 @@ export function DashboardShell({
 
             <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold md:text-2xl">{accentTitle}</h1>
 
-            <div className="hidden items-center gap-2 sm:flex lg:hidden">
-              <ThemeToggle className="bg-card/60" />
-              <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              {/* Notification bell — always visible in top bar */}
+              {(() => {
+                const notifNav = navItems.find((n) => n.label === "Хабарландырулар");
+                if (!notifNav) return null;
+                return (
+                  <Link
+                    to={notifNav.to}
+                    className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })()}
+
+              <div className="hidden items-center gap-2 sm:flex lg:hidden">
+                <ThemeToggle className="bg-card/60" />
+                <LanguageSwitcher />
+              </div>
+              <button
+                onClick={handleLogout}
+                className="shrink-0 text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 lg:hidden"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("nav.logout")}</span>
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="shrink-0 text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 lg:hidden"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("nav.logout")}</span>
-            </button>
           </div>
 
           {/* Mobile horizontal nav tabs */}
@@ -265,7 +342,7 @@ export function StatCard({ label, value, hint, accent }: { label: string; value:
   );
 }
 
-export function Panel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+export function Panel({ title, children, action }: { title: string | ReactNode; children: ReactNode; action?: ReactNode }) {
   return (
     <section className="glass rounded-xl p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -291,6 +368,56 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
     <div className="text-center py-8">
       <div className="text-sm font-medium">{title}</div>
       {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+    </div>
+  );
+}
+
+// ─── Skeleton primitives ────────────────────────────────────────────────────
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-muted/50 ${className}`} />;
+}
+
+export function StatCardSkeleton() {
+  return (
+    <div className="glass rounded-xl p-4 sm:p-6 space-y-2">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-9 w-24 mt-1" />
+      <Skeleton className="h-3 w-16" />
+    </div>
+  );
+}
+
+export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="mt-4 space-y-2">
+      <div className="flex gap-4 pb-2 border-b border-border/40">
+        {Array.from({ length: cols }).map((_, i) => <Skeleton key={i} className="h-3 flex-1" />)}
+      </div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex gap-4 py-2.5">
+          {Array.from({ length: cols }).map((_, c) => (
+            <Skeleton key={c} className={`h-4 flex-1 ${c === 0 ? "max-w-[160px]" : c === cols - 1 ? "max-w-[80px]" : ""}`} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function CardListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-3 mt-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-lg border border-border/30 p-3">
+          <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-7 w-20 rounded-md" />
+        </div>
+      ))}
     </div>
   );
 }

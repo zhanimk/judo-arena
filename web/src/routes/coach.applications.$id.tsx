@@ -9,12 +9,11 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
-  Bell,
-  Building2,
   CalendarDays,
-  Clock3,
+  CheckCircle2,
   ClipboardList,
-  LayoutDashboard,
+  Clock3,
+  History,
   Loader2,
   MapPin,
   Plus,
@@ -23,7 +22,9 @@ import {
   Trophy,
   Undo2,
   Users,
+  XCircle,
 } from "lucide-react";
+import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
@@ -39,18 +40,11 @@ export const Route = createFileRoute("/coach/applications/$id")({
   ),
 });
 
-const nav = [
-  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
-  { to: "/coach/club", label: "Клуб", icon: Building2 },
-  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
-  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
-  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function ApplicationDetail() {
   const { id } = useParams({ from: "/coach/applications/$id" });
   const { user } = useAuth();
+  const canManageApplication = user?.clubRole === "OWNER";
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
@@ -144,7 +138,7 @@ function ApplicationDetail() {
   const rosterIds = new Set((app.entries ?? []).map((e: any) => e.athleteId));
   const deadline = app.tournament?.applicationDeadline ?? app.tournament?.startDate;
   const deadlinePassed = deadline ? new Date(deadline).getTime() < Date.now() : false;
-  const canEditRoster = isEditable && !deadlinePassed;
+  const canEditRoster = canManageApplication && isEditable && !deadlinePassed;
   const categories = categoriesQuery.data ?? [];
   const filteredAthletes = (() => {
     const search = athleteSearch.trim().toLowerCase();
@@ -237,9 +231,14 @@ function ApplicationDetail() {
                 ? "Жоба ашық: спортшыларды қосып/өшіріп, дайын болғанда жіберіңіз."
                 : `Өңдеуге болмайды. Ағымдағы мәртебе: ${statusLabel(app.status)}.`}
             </div>
+            {!canManageApplication && app.status === "DRAFT" && (
+              <div className="rounded-md border border-border/60 bg-background/30 p-3">
+                Сіз бұл өтінімді қарау режимінде көріп тұрсыз. Ресми өзгерістерді тек клуб иесі жасай алады.
+              </div>
+            )}
             {app.submittedAt && <div>Жіберілген: {new Date(app.submittedAt).toLocaleString("kk-KZ")}</div>}
             {app.reviewedAt && <div>Қаралған: {new Date(app.reviewedAt).toLocaleString("kk-KZ")}</div>}
-            {(app.status === "DRAFT" || app.status === "SUBMITTED") && (
+            {canManageApplication && (app.status === "DRAFT" || app.status === "SUBMITTED") && (
               <button
                 onClick={() => withdraw.mutate()}
                 disabled={withdraw.isPending}
@@ -436,7 +435,7 @@ function ApplicationDetail() {
           </div>
         )}
 
-        {isEditable && (
+        {isEditable && canManageApplication && (
           <div className="mt-6 rounded-lg border border-gold/25 bg-gold/5 p-4">
             <label className="flex items-start gap-3 text-sm">
               <input
@@ -463,7 +462,16 @@ function ApplicationDetail() {
             {!responsibilityAccepted && entriesCount > 0 && <div className="mt-2 text-xs text-muted-foreground">Жіберу үшін жауапкершілік келісімін белгілеңіз.</div>}
           </div>
         )}
+        {isEditable && !canManageApplication && (
+          <div className="mt-6 rounded-md border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
+            Өтінімді жіберу үшін клуб иесі аккаунтымен кіріңіз немесе клуб иесіне хабарласыңыз.
+          </div>
+        )}
       </Panel>
+
+      <div className="mt-6">
+        <ApplicationHistory applicationId={id} />
+      </div>
 
       <div className="mt-6">
         <Panel title={`Клуб матчтарының кестесі ${clubMatches.length}`}>
@@ -500,6 +508,68 @@ function ApplicationDetail() {
         </Panel>
       </div>
     </DashboardShell>
+  );
+}
+
+function ApplicationHistory({ applicationId }: { applicationId: string }) {
+  const q = useQuery({
+    queryKey: ["application-history", applicationId],
+    queryFn: () => api.applications.history(applicationId),
+    staleTime: 30_000,
+  });
+
+  const actionMeta: Record<string, { label: string; icon: any; color: string }> = {
+    "application.submit":   { label: "Жіберілді",    icon: Send,          color: "text-gold border-gold/40 bg-gold/10" },
+    "application.approve":  { label: "Бекітілді",    icon: CheckCircle2,  color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
+    "application.reject":   { label: "Қайтарылды",   icon: XCircle,       color: "text-destructive border-destructive/40 bg-destructive/10" },
+    "application.withdraw": { label: "Алынды",        icon: Undo2,         color: "text-muted-foreground border-border bg-muted/20" },
+  };
+
+  const items = q.data ?? [];
+
+  return (
+    <Panel title="Өтінім тарихы" action={<History className="h-4 w-4 text-muted-foreground" />}>
+      {q.isLoading ? (
+        <LoadingState />
+      ) : items.length === 0 ? (
+        <EmptyState title="Тарих жоқ" hint="Өтінімге жасалған өзгерістер осында шығады" />
+      ) : (
+        <ol className="relative border-l border-border/40 ml-3 space-y-4">
+          {items.map((log: any) => {
+            const meta = actionMeta[log.action] ?? { label: log.action, icon: Clock3, color: "text-muted-foreground border-border bg-muted/20" };
+            const Icon = meta.icon;
+            const notes = (log.after as any)?.reviewerNotes;
+            const actor = log.actor;
+            return (
+              <li key={log.id} className="ml-5">
+                <span className={`absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full border ${meta.color}`}>
+                  <Icon className="h-3 w-3" />
+                </span>
+                <div className="glass rounded-lg px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className={`text-sm font-semibold ${meta.color.split(" ")[0]}`}>{meta.label}</span>
+                    <time className="text-xs text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString("kk-KZ")}
+                    </time>
+                  </div>
+                  {actor && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {actor.name} {actor.surname}
+                      {actor.role === "ADMIN" && " · Әкімші"}
+                    </div>
+                  )}
+                  {notes && (
+                    <div className="mt-2 border-l-2 border-gold/40 pl-3 text-xs text-muted-foreground">
+                      {notes}
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Panel>
   );
 }
 

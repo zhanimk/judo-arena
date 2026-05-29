@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -8,24 +8,39 @@ import {
   FileText,
   Loader2,
   MapPin,
+  Medal,
   Radio,
+  Shield,
   Trophy,
+  User,
   Users,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { api } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс — Judo-Arena" }] }),
+  validateSearch: (s: Record<string, unknown>): { categoryId?: string } => ({
+    categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
+  }),
   component: TournamentDetail,
 });
 
 function TournamentDetail() {
   const { id } = useParams({ from: "/tournaments/$id" });
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "categories" | "protocol">("overview");
+  const { categoryId: urlCategoryId } = Route.useSearch();
+  const navigate = useNavigate({ from: "/tournaments/$id" });
+
+  const [selectedCategoryId, setSelectedCategoryIdRaw] = useState<string | null>(urlCategoryId ?? null);
+  const [activeTab, setActiveTab] = useState<"overview" | "categories" | "protocol" | "results">("overview");
+
+  // Синхронизируем selectedCategoryId с URL для sharable links
+  function setSelectedCategoryId(id: string | null) {
+    setSelectedCategoryIdRaw(id);
+    navigate({ search: (prev) => ({ ...prev, categoryId: id ?? undefined }), replace: true });
+  }
 
   const tQuery = useQuery({ queryKey: ["tournament", id], queryFn: () => api.tournaments.get(id) });
   const bracketsQuery = useQuery({
@@ -39,6 +54,14 @@ function TournamentDetail() {
     enabled: Boolean(id),
   });
 
+  // Список участников выбранной категории (lazy — только когда категория выбрана)
+  const participantsQuery = useQuery({
+    queryKey: ["category-participants", id, selectedCategoryId],
+    queryFn: () => api.tournaments.categoryParticipants(id, selectedCategoryId!),
+    enabled: Boolean(selectedCategoryId),
+    staleTime: 30_000,
+  });
+
   const t = tQuery.data;
   const brackets = bracketsQuery.data ?? [];
   const matches = matchesQuery.data ?? [];
@@ -47,6 +70,7 @@ function TournamentDetail() {
     const hash = window.location.hash;
     if (hash === "#sanattar") setActiveTab("categories");
     if (hash === "#hattamalar") setActiveTab("protocol");
+    if (hash === "#natijeler") setActiveTab("results");
     if (hash === "#overview") setActiveTab("overview");
   }, []);
 
@@ -131,15 +155,16 @@ function TournamentDetail() {
 
       <div className="sticky top-24 z-40 mx-auto -mt-5 w-full max-w-6xl px-4">
         <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-gold/25 bg-background/90 p-2 shadow-elegant backdrop-blur-xl [scrollbar-width:none]">
-          {[
+          {([
             { id: "overview" as const, label: "1 · Толық ақпарат" },
             { id: "categories" as const, label: "2 · Санаттар" },
-            { id: "protocol" as const, label: "3 · Жарыс хаттамасы" },
-          ].map((item) => (
+            { id: "protocol" as const, label: "3 · Live-тор" },
+            ...(t?.status === "COMPLETED" ? [{ id: "results" as const, label: "4 · Нәтижелер" }] : []),
+          ] as const).map((item) => (
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => setActiveTab(item.id as typeof activeTab)}
               className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 ${
                 activeTab === item.id
                   ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
@@ -241,11 +266,11 @@ function TournamentDetail() {
           <Empty text="Әзірше санаттар қосылмаған." />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {categoryRows.map(({ category, bracket, matches: matchCount, participants }) => (
+            {categoryRows.map(({ category, bracket, matches: matchCount, participants }: { category: any; bracket: any; matches: number; participants: number }) => (
               <button
                 key={category.id}
                 type="button"
-                onClick={() => setSelectedCategoryId(category.id)}
+                onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                 className={`group text-left rounded-2xl border p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 ${
                   selectedCategoryId === category.id
                     ? "border-gold/70 bg-gold/10"
@@ -270,6 +295,86 @@ function TournamentDetail() {
                 </div>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* IJF-style Draw List — список участников выбранной категории */}
+        {selectedCategoryId && (
+          <div className="mt-8 rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border/40 px-6 py-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Draw List</div>
+                <h3 className="font-display text-xl font-bold mt-0.5">
+                  {categoryTitle(categoryRows.find((r: { category: any; bracket: any; matches: number; participants: number }) => r.category.id === selectedCategoryId)?.category)}
+                </h3>
+              </div>
+              <Users className="h-5 w-5 text-gold/60" />
+            </div>
+
+            {participantsQuery.isLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-gold" />
+              </div>
+            ) : (participantsQuery.data ?? []).length === 0 ? (
+              <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+                Бұл санатта бекітілген өтінімдер жоқ
+              </div>
+            ) : (
+              <div className="divide-y divide-border/30">
+                {/* Header */}
+                <div className="hidden sm:grid grid-cols-[36px_1fr_1fr_80px_90px] gap-3 px-6 py-2.5 text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/20">
+                  <div>#</div>
+                  <div>Спортшы</div>
+                  <div>Клуб</div>
+                  <div>Салмақ</div>
+                  <div>Белдік</div>
+                </div>
+                {(participantsQuery.data ?? []).map((entry, i) => {
+                  const a = entry.athlete;
+                  const passed = entry.weighInStatus === "PASSED";
+                  return (
+                    <div
+                      key={entry.entryId}
+                      className="grid gap-3 px-6 py-3 hover:bg-gold/5 transition-colors sm:grid-cols-[36px_1fr_1fr_80px_90px] sm:items-center"
+                    >
+                      <div className="text-sm font-bold text-muted-foreground tabular-nums">{i + 1}</div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {a.avatarUrl ? (
+                          <img src={mediaUrl(a.avatarUrl)} alt="" className="h-9 w-9 rounded-full object-cover border border-border/40 shrink-0" />
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4 text-gold/60" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm truncate">
+                            {a.surname} {a.name}
+                          </div>
+                          {(a.surnameLatin || a.nameLatin) && (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {a.surnameLatin} {a.nameLatin}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground min-w-0 truncate">
+                        {a.club ? localizeName(a.club.name) : "—"}
+                        {a.club?.city && <span className="text-xs opacity-60"> · {a.club.city}</span>}
+                      </div>
+                      <div className="text-sm">
+                        {a.weightKg ? `${a.weightKg} кг` : "—"}
+                        {passed && <span className="ml-1.5 inline-flex rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] text-emerald-400">✓</span>}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        {a.beltRank ? (
+                          <><Shield className="h-3.5 w-3.5 text-gold/50" /> {a.beltRank}</>
+                        ) : "—"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -304,16 +409,28 @@ function TournamentDetail() {
                   <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Live-тор</div>
                   <h3 className="mt-1 font-display text-2xl font-bold">Санат бойынша жарыс жолы</h3>
                 </div>
-                {selectedBracket && (
-                  <a
-                    href={api.admin.bracketPdfUrl(selectedBracket.id)}
-                    target="_blank"
-                    rel="noopener"
-                    className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
-                  >
-                    <Download className="h-4 w-4" /> Live-тор PDF
-                  </a>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedBracket && (
+                    <a
+                      href={api.admin.bracketPdfUrl(selectedBracket.id)}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
+                    >
+                      <Download className="h-4 w-4" /> Live-тор PDF
+                    </a>
+                  )}
+                  {brackets.length > 0 && (
+                    <a
+                      href={api.admin.allBracketsPdfUrl(id)}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:border-gold/40 hover:text-foreground"
+                    >
+                      <FileText className="h-4 w-4" /> Барлық сеткалар PDF
+                    </a>
+                  )}
+                </div>
               </div>
 
               {brackets.length === 0 ? (
@@ -433,7 +550,197 @@ function TournamentDetail() {
       </section>
       )}
 
+      {activeTab === "results" && t?.status === "COMPLETED" && (
+        <ResultsTab
+          categories={t.categories ?? []}
+          brackets={brackets}
+          matches={matches}
+          tournamentId={id}
+        />
+      )}
+
       <SiteFooter />
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Таб "Нәтижелер" — медальный подиум по каждой категории (IJF-style)
+// ──────────────────────────────────────────────────────────────
+
+function ResultsTab({
+  categories,
+  brackets,
+  matches,
+  tournamentId,
+}: {
+  categories: any[];
+  brackets: any[];
+  matches: any[];
+  tournamentId: string;
+}) {
+  const results = useMemo(() => {
+    return categories
+      .map((cat: any) => {
+        const bracket = brackets.find((b: any) => b.categoryId === cat.id);
+        if (!bracket) return null;
+
+        const catMatches = matches.filter((m: any) => m.bracketId === bracket.id && m.status === "COMPLETED");
+
+        // Финальный матч — победитель = 🥇, проигравший = 🥈
+        const finalMatch =
+          catMatches.find((m: any) => m.bracketSection === "final") ??
+          catMatches.filter((m: any) => m.bracketSection === "main").sort((a: any, b: any) => b.round - a.round)[0];
+
+        const gold =
+          finalMatch?.winnerId
+            ? (finalMatch.redAthlete?.id === finalMatch.winnerId ? finalMatch.redAthlete : finalMatch.blueAthlete)
+            : null;
+        const silver =
+          finalMatch?.winnerId
+            ? (finalMatch.redAthlete?.id === finalMatch.winnerId ? finalMatch.blueAthlete : finalMatch.redAthlete)
+            : null;
+
+        // Бронзовые матчи
+        const bronzeMatches = catMatches.filter(
+          (m: any) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
+        );
+        const bronzeWinners = bronzeMatches
+          .filter((m: any) => m.winnerId)
+          .map((m: any) =>
+            m.redAthlete?.id === m.winnerId ? m.redAthlete : m.blueAthlete,
+          )
+          .filter(Boolean);
+
+        // Если нет бронзовых матчей — проигравшие в полуфиналах
+        const semis = catMatches.filter((m: any) => m.bracketSection === "main" && finalMatch && m.round === finalMatch.round - 1);
+        const semifinalLosers =
+          bronzeWinners.length === 0
+            ? semis
+                .filter((m: any) => m.winnerId)
+                .map((m: any) =>
+                  m.redAthlete?.id === m.winnerId ? m.blueAthlete : m.redAthlete,
+                )
+                .filter(Boolean)
+            : [];
+
+        const bronze = bronzeWinners.length > 0 ? bronzeWinners : semifinalLosers;
+
+        return { category: cat, bracket, gold, silver, bronze };
+      })
+      .filter(Boolean);
+  }, [categories, brackets, matches]);
+
+  return (
+    <section id="natijeler" className="container mx-auto px-4 py-12">
+      <div className="mb-8">
+        <div className="text-xs uppercase tracking-[0.3em] text-gold">Жарыс нәтижелері</div>
+        <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+          Медаль кестесі
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+          Санат бойынша алтын, күміс және қола медальдар
+        </p>
+      </div>
+
+      {results.length === 0 ? (
+        <Empty text="Нәтижелер әлі жоқ. Жарыс аяқталғаннан кейін медальдар осы жерде көрінеді." />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {results.map((r: any) => (
+            <div
+              key={r.category.id}
+              className="rounded-2xl border border-border/60 bg-card/60 shadow-elegant backdrop-blur overflow-hidden"
+            >
+              {/* Category header */}
+              <div className="border-b border-border/40 px-5 py-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-display text-lg font-bold">{categoryTitle(r.category)}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {r.category.gender === "MALE" ? "Ер" : "Қыз"} · {r.category.ageMin}-{r.category.ageMax} жас
+                  </div>
+                </div>
+                <FormatBadge format={r.category.format} />
+              </div>
+
+              {/* Podium */}
+              <div className="p-5 space-y-2.5">
+                <PodiumRow place={1} athlete={r.gold} label="Алтын" color="text-yellow-400" bg="bg-yellow-400/10 border-yellow-400/25" />
+                <PodiumRow place={2} athlete={r.silver} label="Күміс" color="text-zinc-400" bg="bg-zinc-400/10 border-zinc-400/20" />
+                {r.bronze.map((a: any, i: number) => (
+                  <PodiumRow key={a?.id ?? i} place={3} athlete={a} label="Қола" color="text-amber-600" bg="bg-amber-600/10 border-amber-600/20" />
+                ))}
+              </div>
+
+              {/* PDF link */}
+              <div className="border-t border-border/30 px-5 py-3">
+                <a
+                  href={`/api/pdf/bracket?bracketId=${r.bracket.id}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1.5 text-xs text-gold hover:underline"
+                >
+                  <Download className="h-3.5 w-3.5" /> Сетка PDF
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Official protocol PDF */}
+      <div className="mt-10 rounded-2xl border border-gold/25 bg-gold/5 p-6 text-center">
+        <Trophy className="mx-auto mb-3 h-10 w-10 text-gold" />
+        <h3 className="font-display text-2xl font-bold">Ресми хаттама</h3>
+        <p className="mt-2 text-sm text-muted-foreground">Барлық санаттардың толық нәтижелері — PDF форматында</p>
+        <a
+          href={`/api/pdf/protocol?tournamentId=${tournamentId}`}
+          target="_blank"
+          rel="noopener"
+          className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
+        >
+          <Download className="h-4 w-4" /> Хаттаманы жүктеу
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function PodiumRow({
+  place,
+  athlete,
+  label,
+  color,
+  bg,
+}: {
+  place: number;
+  athlete: any;
+  label: string;
+  color: string;
+  bg: string;
+}) {
+  const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${bg}`}>
+      <div className="text-xl shrink-0">{medal}</div>
+      <div className="min-w-0 flex-1">
+        {athlete ? (
+          <>
+            <div className="font-semibold text-sm truncate">
+              {athlete.surname} {athlete.name}
+            </div>
+            {athlete.club && (
+              <div className="text-[11px] text-muted-foreground truncate">
+                {localizeName(athlete.club?.name) || athlete.clubId || ""}
+                {athlete.club?.city && ` · ${athlete.club.city}`}
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="text-sm text-muted-foreground/50 italic">Белгісіз</span>
+        )}
+      </div>
+      <div className={`text-[10px] font-bold uppercase tracking-widest ${color}`}>{label}</div>
     </div>
   );
 }

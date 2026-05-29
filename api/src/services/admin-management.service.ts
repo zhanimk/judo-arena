@@ -6,8 +6,10 @@
 
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
-import { UserRole, Gender, Locale } from "@prisma/client";
+import { redis } from "../lib/redis.js";
+import { ClubRole, UserRole, Gender, Locale } from "@prisma/client";
 import { logAudit } from "./audit.service.js";
+import { env } from "../lib/env.js";
 
 export class AdminManagementError extends Error {
   constructor(public code: string, message: string, public httpStatus = 400) {
@@ -163,6 +165,9 @@ export async function toggleUserBlock(actorId: string, userId: string, active: b
 
   const updated = await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
 
+  // Немедленно инвалидируем кэш в authenticate — заблокированный не должен ждать 60 сек
+  await redis.del(`user-cache:${userId}`);
+
   await logAudit({
     actorUserId: actorId,
     action: active ? "user.unblock" : "user.block",
@@ -272,6 +277,7 @@ export async function createUserByAdmin(actorId: string, input: {
   phone?: string;
   preferredLocale?: "ru" | "kk" | "en";
   clubId?: string;
+  clubRole?: "OWNER" | "COACH";
 }) {
   await assertAdmin(actorId);
 
@@ -283,7 +289,7 @@ export async function createUserByAdmin(actorId: string, input: {
     if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_ROUNDS);
 
   const user = await prisma.user.create({
     data: {
@@ -301,6 +307,9 @@ export async function createUserByAdmin(actorId: string, input: {
       phone: input.phone || null,
       preferredLocale: (input.preferredLocale as Locale) ?? Locale.kk,
       clubId: input.clubId || null,
+      clubRole: input.role === "COACH" && input.clubId
+        ? (input.clubRole === "OWNER" ? ClubRole.OWNER : ClubRole.COACH)
+        : null,
     },
   });
 
@@ -352,6 +361,8 @@ export async function updateUserByAdmin(actorId: string, userId: string, input: 
   if (input.preferredLocale !== undefined) data.preferredLocale = input.preferredLocale;
 
   const updated = await prisma.user.update({ where: { id: userId }, data });
+  // Инвалидируем кэш аутентификации (role/email/name могли измениться)
+  await redis.del(`user-cache:${userId}`);
 
   await logAudit({
     actorUserId: actorId,
@@ -376,7 +387,15 @@ export async function changeUserClub(actorId: string, userId: string, clubId: st
     if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
   }
 
-  const updated = await prisma.user.update({ where: { id: userId }, data: { clubId } });
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      clubId,
+      clubRole: user.role === UserRole.COACH && clubId ? ClubRole.COACH : null,
+    },
+  });
+  // Инвалидируем кэш — clubId изменился, authorize использует его
+  await redis.del(`user-cache:${userId}`);
 
   await logAudit({
     actorUserId: actorId,
@@ -396,7 +415,7 @@ export async function resetUserPassword(actorId: string, userId: string, newPass
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS);
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 
   await logAudit({
@@ -574,6 +593,33 @@ export async function deleteGroupByAdmin(actorId: string, groupId: string) {
     targetEntity: "ClubGroup",
     targetId: groupId,
     before: { name: group.name },
+  });
+
+  return { ok: true };
+}
+
+// ============================================================
+// ПОЛЬЗОВАТЕЛЬ — удаление
+// ============================================================
+
+export async function deleteUserByAdmin(actorId: string, userId: string) {
+  await assertAdmin(actorId);
+
+  if (actorId === userId) {
+    throw new AdminManagementError("CANNOT_DELETE_SELF", "Өзіңізді жоюға болмайды", 400);
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  await logAudit({
+    actorUserId: actorId,
+    action: "user.delete",
+    targetEntity: "User",
+    targetId: userId,
+    before: { email: user.email, role: user.role, name: user.name, surname: user.surname },
   });
 
   return { ok: true };

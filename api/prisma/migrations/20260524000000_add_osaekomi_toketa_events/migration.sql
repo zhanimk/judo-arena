@@ -1,0 +1,3 @@
+-- AlterEnum: add OSAEKOMI and TOKETA to MatchEventType
+ALTER TYPE "MatchEventType" ADD VALUE IF NOT EXISTS 'OSAEKOMI';
+ALTER TYPE "MatchEventType" ADD VALUE IF NOT EXISTS 'TOKETA';

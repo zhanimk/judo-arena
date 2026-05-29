@@ -89,6 +89,8 @@ export const listTournamentsQuerySchema = z.object({
   upcoming: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+  /** Admin-only: include archived tournaments. Public API always hides archived. */
+  includeArchived: z.coerce.boolean().optional().default(false),
 });
 export type ListTournamentsQuery = z.infer<typeof listTournamentsQuerySchema>;
 

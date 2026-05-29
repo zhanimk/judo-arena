@@ -12,4 +12,23 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      proxy: {
+        // Forward /api/* and /socket.io/* to the Fastify API in dev.
+        // This makes refresh-token cookies work (same origin, no SameSite issues).
+        "/api": {
+          target: "http://localhost:4000",
+          changeOrigin: true,
+          secure: false,
+        },
+        "/socket.io": {
+          target: "http://localhost:4000",
+          changeOrigin: true,
+          ws: true,
+          secure: false,
+        },
+      },
+    },
+  },
 });

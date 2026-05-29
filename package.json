@@ -19,10 +19,15 @@
     "db:reset": "docker-compose down -v && docker-compose up -d",
     "db:migrate": "npm run prisma:migrate -w api",
     "db:studio": "npm run prisma:studio -w api",
-    "db:seed": "npm run prisma:seed -w api"
+    "db:seed": "npm run prisma:seed -w api",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "@playwright/test": "*"
   },
   "engines": {
     "node": ">=20.0.0"

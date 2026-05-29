@@ -1,7 +1,7 @@
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { ArrowLeft, Edit2, Lock, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
+import { ArrowLeft, Edit2, Lock, Mail, Phone, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -236,11 +236,32 @@ function AdminClubDetail() {
           {coaches.length === 0 ? <EmptyState title="Тренер жоқ" hint="«Қосу» батырмасын басыңыз" /> : (
             <ul className="space-y-2 text-sm">
               {coaches.map((m: any) => (
-                <li key={m.id} className="flex justify-between glass rounded p-2.5">
-                  <Link to="/admin/users/$id" params={{ id: m.id }} className="hover:text-gold font-medium">
-                    {m.name} {m.surname}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">{m.email}</span>
+                <li key={m.id} className="glass rounded p-3">
+                  <div className="flex justify-between items-start">
+                    <Link to="/admin/users/$id" params={{ id: m.id }} className="hover:text-gold font-medium">
+                      {m.name} {m.surname}
+                    </Link>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+                      {m.isActive ? "Белсенді" : "Блок"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-col gap-0.5">
+                    {m.email && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Mail className="h-3 w-3" /> {m.email}
+                      </span>
+                    )}
+                    {m.phone && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Phone className="h-3 w-3" /> {m.phone}
+                      </span>
+                    )}
+                    {m.dateOfBirth && (
+                      <span className="text-xs text-muted-foreground">
+                        Туған: {new Date(m.dateOfBirth).toLocaleDateString("kk-KZ")}
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -258,22 +279,43 @@ function AdminClubDetail() {
           }
         >
           {athletes.length === 0 ? <EmptyState title="Спортшылар жоқ" hint="«Қосу» батырмасын басыңыз" /> : (
-            <ul className="space-y-2 text-sm max-h-96 overflow-y-auto">
+            <ul className="space-y-2 text-sm max-h-[480px] overflow-y-auto">
               {athletes.map((m: any) => (
-                <li key={m.id} className="flex justify-between glass rounded p-2.5">
-                  <div>
-                    <Link to="/admin/users/$id" params={{ id: m.id }} className="font-medium hover:text-gold">
-                      {m.name} {m.surname}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">
-                      {m.gender === "MALE" ? "Ер" : m.gender === "FEMALE" ? "Қыз" : "—"} ·{" "}
-                      {m.weightKg ? `${m.weightKg} кг` : "салмақ жоқ"} ·{" "}
-                      {m.beltRank ?? "белбеу жоқ"}
+                <li key={m.id} className="glass rounded p-3">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <div>
+                      <Link to="/admin/users/$id" params={{ id: m.id }} className="font-medium hover:text-gold">
+                        {m.name} {m.surname}
+                      </Link>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {m.gender === "MALE" ? "Ер" : m.gender === "FEMALE" ? "Қыз" : "—"} ·{" "}
+                        {m.weightKg ? `${m.weightKg} кг` : "салмақ жоқ"} ·{" "}
+                        {m.beltRank ?? "белбеу жоқ"}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="font-display text-gold font-bold">{Math.round(m.totalPoints ?? 0)}</div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+                        {m.isActive ? "Белсенді" : "Блок"}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-display text-gold">{Math.round(m.totalPoints ?? 0)}</div>
-                    <div className="text-[10px] text-muted-foreground">{!m.isActive ? "блок" : "ұпай"}</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                    {m.email && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Mail className="h-3 w-3" /> {m.email}
+                      </span>
+                    )}
+                    {m.phone && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Phone className="h-3 w-3" /> {m.phone}
+                      </span>
+                    )}
+                    {m.dateOfBirth && (
+                      <span className="text-xs text-muted-foreground">
+                        Туған: {new Date(m.dateOfBirth).toLocaleDateString("kk-KZ")}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}

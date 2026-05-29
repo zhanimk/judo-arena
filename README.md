@@ -94,6 +94,7 @@ REDIS_URL="redis://localhost:6379"
 JWT_ACCESS_SECRET="change-me-in-production-at-least-32-chars"
 JWT_REFRESH_SECRET="change-me-in-production-at-least-32-chars"
 CORS_ORIGIN="http://localhost:5173"
+APP_URL="http://localhost:5173"
 API_PORT=4000
 API_HOST="0.0.0.0"
 ```
@@ -312,7 +313,7 @@ Entry validation: gender, age, weight match category; athlete belongs to coach's
 ```bash
 # Start everything (Docker + API + frontend)
 ./start.sh
-
+ 
 # Start and load demo data
 ./start.sh --seed
 
@@ -338,7 +339,8 @@ cd api && npx prisma studio   # → http://localhost:5555
 # → http://localhost:8025
 
 # Reset database completely
-docker compose down -v && docker compose up -d
+docker compose down -v &docker compose down -v && docker compose up -d
+& docker compose up -d
 cd api && npx prisma migrate dev && npx prisma db seed
 ```
 

@@ -8,7 +8,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useState } from "react";
+import { useState, type InputHTMLAttributes } from "react";
 
 export const Route = createFileRoute("/admin/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Әкімші" }] }),
@@ -46,7 +46,7 @@ function AdminTournaments() {
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
 
-  const query = useQuery({ queryKey: ["admin-all-tournaments"], queryFn: () => api.tournaments.list() });
+  const query = useQuery({ queryKey: ["admin-all-tournaments"], queryFn: () => api.tournaments.list({ includeArchived: true, limit: 100 }) });
 
   const change = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.tournaments.setStatus(id, status),
@@ -208,7 +208,7 @@ function AdminTournaments() {
                           disabled={busy === t.id}
                           className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
                         >
-                          <Power className="h-3.5 w-3.5" /> Деактивировать
+                          <Power className="h-3.5 w-3.5" /> Тоқтату
                         </button>
                       )}
                       {(t.status === "DRAFT" || t.status === "CANCELLED") && (
@@ -219,7 +219,7 @@ function AdminTournaments() {
                           disabled={busy === t.id}
                           className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Удалить
+                          <Trash2 className="h-3.5 w-3.5" /> Жою
                         </button>
                       )}
                     </div>
@@ -439,7 +439,12 @@ function AddCategoryForm({ tournamentId, onDone }: { tournamentId: string; onDon
   );
 }
 
-function Input({ label, value, onChange, ...rest }: any) {
+type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+function Input({ label, value, onChange, ...rest }: InputProps) {
   return (
     <div>
       <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>

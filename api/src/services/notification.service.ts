@@ -9,6 +9,7 @@
 
 import { prisma } from "../lib/prisma.js";
 import { UserRole } from "@prisma/client";
+import { emitToUser } from "../sockets/io.js";
 
 export class NotificationError extends Error {
   constructor(public code: string, message: string, public httpStatus = 400) {
@@ -100,17 +101,33 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     payload: input.payload ?? null,
     locale: "kk" as const,
   }));
-  await prisma.notification.createMany({ data });
+  const created = await prisma.notification.createMany({ data });
 
-  return { count: userIds.length };
+  // N2: Socket.IO push в личную комнату каждого получателя
+  for (const item of data) {
+    emitToUser(item.userId, "notification:new", {
+      type: item.type,
+      titleKey: item.titleKey,
+      bodyKey: item.bodyKey,
+      payload: item.payload,
+    });
+  }
+
+  return { count: created.count };
 }
 
 /** Список уведомлений текущего пользователя. */
-export async function listForUser(userId: string, limit = 50) {
+export async function listForUser(
+  userId: string,
+  opts: { type?: string; unreadOnly?: boolean; limit?: number } = {},
+) {
+  const where: Record<string, unknown> = { userId };
+  if (opts.type) where.type = opts.type;
+  if (opts.unreadOnly) where.read = false;
   return prisma.notification.findMany({
-    where: { userId },
+    where,
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take: opts.limit ?? 50,
   });
 }
 

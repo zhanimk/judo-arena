@@ -66,6 +66,20 @@ function AdminOverview() {
             <Link to="/admin/tournaments" className="bg-gradient-gold text-gold-foreground py-2.5 rounded-md text-sm font-medium shadow-gold text-center">
               Турнир орталығын ашу
             </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link to="/admin/applications" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
+                <ClipboardList className="h-3.5 w-3.5 text-gold" /> Өтінімдер
+              </Link>
+              <Link to="/admin/matches" search={{ tournamentId: undefined }} className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
+                <Activity className="h-3.5 w-3.5 text-gold" /> Матчтар
+              </Link>
+              <Link to="/admin/users" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-gold" /> Пайдаланушылар
+              </Link>
+              <Link to="/admin/ratings" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5 text-gold" /> Рейтинг
+              </Link>
+            </div>
             {(tournamentsQuery.data?.items ?? []).slice(0, 2).map((t: any) => (
               <Link
                 key={t.id}
@@ -77,9 +91,6 @@ function AdminOverview() {
                 <span className="text-[11px] text-muted-foreground">{t.status}</span>
               </Link>
             ))}
-            <Link to="/admin/audit" className="glass border border-gold/30 py-2.5 rounded-md text-sm hover:border-gold/60 text-center">
-              Аудит журналы
-            </Link>
           </div>
         </Panel>
 

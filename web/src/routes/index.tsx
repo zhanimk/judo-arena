@@ -11,6 +11,7 @@ import athleteBlue1 from "@/assets/athlete-blue-1.jpg";
 import athleteBlue2 from "@/assets/athlete-blue-2.jpg";
 import techniqueKyu from "@/assets/technique-kyu.jpg";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Shield, Users, ArrowRight,
@@ -320,6 +321,9 @@ function Home() {
   ];
   const currentBelt = beltPath[activeBelt];
 
+  // Scroll reveal for section content
+  const revealRef = useScrollReveal();
+
   // Parallax scroll for cinematic section
   const cineRef = useRef<HTMLDivElement | null>(null);
   const [cineY, setCineY] = useState(0);
@@ -352,7 +356,7 @@ function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" ref={revealRef as React.RefObject<HTMLDivElement>}>
       <SiteHeader hideUntilScroll />
 
       {/* HERO */}
@@ -478,7 +482,7 @@ function Home() {
         <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="container mx-auto px-4 relative">
           <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
-            <div>
+            <div className="reveal">
               <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">2 · Клуб және спортшылар</div>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
                 Клубтар мен <span className="text-gradient-gold italic">спортшылар</span>
@@ -498,7 +502,7 @@ function Home() {
                 <Link
                   to="/rankings"
                   key={c.name}
-                  className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
+                  className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}
                 >
                   <img
                     src={c.image}
@@ -559,7 +563,7 @@ function Home() {
               )}
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur">
+            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur reveal">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
               <div className="flex items-center justify-between border-b border-border/40 bg-background/30 px-4 py-4 sm:px-5">
                 <div>
@@ -623,7 +627,7 @@ function Home() {
         <div className="absolute inset-0 grid-bg opacity-25" />
         <div className="container mx-auto px-4 relative">
           <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
-            <div>
+            <div className="reveal">
               <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">3 · Жарыс хаттамасы</div>
               <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight">
                 Жарыс <span className="text-gradient-gold italic">хаттамасы</span>
@@ -650,61 +654,26 @@ function Home() {
 
       {/* PROTOCOL RESULT MODULE */}
       <section className="container mx-auto px-4 pb-14 sm:pb-20">
-        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-5 shadow-elegant backdrop-blur sm:p-7">
+        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 px-6 py-5 shadow-elegant backdrop-blur sm:px-8">
           <div className="absolute inset-0 grid-bg opacity-20" />
-          <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gold/10 blur-3xl" />
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-gold">
-                <Trophy className="h-3.5 w-3.5" />
-                Хаттама және нәтиже
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold">
+                <Trophy className="h-5 w-5 text-gold-foreground" />
               </div>
-              <h3 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
-                Шешуші кездесуден кейін орындар, ұпайлар және <span className="text-gradient-gold italic">хаттама</span> дайын
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Бұл блок жеке дәреже ретінде емес, жарыс қорытындысын түсіндіреді: тор аяқталады, орындар есептеледі, дәреже ұпайлары беріледі және PDF хаттама жасалады.
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  { to: "/tournaments", label: "Тор", icon: GitBranch, desc: "Белдесу жолы" },
-                  { to: "/rankings", label: "Ұпай", icon: BarChart, desc: "Дәрежеге қосу" },
-                  { to: "/tournaments", label: "PDF", icon: Shield, desc: "Ресми құжат" },
-                ].map((q) => (
-                  <Link
-                    key={`${q.to}-${q.label}`}
-                    to={q.to}
-                    className="group relative overflow-hidden rounded-xl border border-gold/20 bg-background/40 p-4 transition-all hover:-translate-y-1 hover:border-gold/50"
-                  >
-                    <div className="mb-3 h-10 w-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                      <q.icon className="h-5 w-5 text-gold-foreground" />
-                    </div>
-                    <div className="font-display font-semibold group-hover:text-gold transition-colors">{q.label}</div>
-                    <div className="text-xs text-muted-foreground">{q.desc}</div>
-                  </Link>
-                ))}
+              <div>
+                <div className="font-display text-lg font-bold">Жарыс аяқталды — хаттама дайын</div>
+                <p className="text-sm text-muted-foreground">Тор, орындар, дәреже ұпайлары және PDF автоматты есептеледі</p>
               </div>
-              <Link
-                to="/tournaments"
-                className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
-              >
-                Жарыс хаттамасын ашу <ArrowRight className="h-4 w-4" />
-              </Link>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-              {[
-                { p: 100, l: "1-орын", c: "from-yellow-400 to-amber-500", t: "text-navy-deep" },
-                { p: 80,  l: "2-орын", c: "from-zinc-300 to-zinc-500", t: "text-navy-deep" },
-                { p: 50,  l: "3-орын", c: "from-amber-700 to-amber-900", t: "text-white" },
-                { p: 30,  l: "5-орын", c: "from-muted to-muted", t: "text-foreground" },
-                { p: 15,  l: "7-орын", c: "from-muted to-muted", t: "text-foreground" },
-              ].map((s) => (
-                <div key={s.l} className={`relative rounded-xl bg-gradient-to-br ${s.c} p-4 text-center shadow-elegant md:min-h-[8rem] md:flex md:flex-col md:justify-center`}>
-                  <div className={`font-display text-3xl font-bold tabular-nums ${s.t}`}>{s.p}</div>
-                  <div className={`mt-1 text-[10px] uppercase tracking-widest opacity-80 ${s.t}`}>{s.l}</div>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <Link to="/rankings" className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/15">
+                <BarChart className="h-4 w-4" /> Дәреже кестесі
+              </Link>
+              <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+                <GitBranch className="h-4 w-4" /> Жарыстарға өту
+              </Link>
             </div>
           </div>
         </div>
@@ -714,7 +683,7 @@ function Home() {
       {/* UPCOMING TOURNAMENTS WITH COUNTDOWN */}
       <section className="container mx-auto px-4 py-14 sm:py-20">
         <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
-          <div>
+          <div className="reveal">
             <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Жақын жарыстар</div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
               Жарыс күнтізбесі және <span className="text-gradient-gold italic">тіркеу</span>
@@ -804,12 +773,12 @@ function Home() {
                 </span>
               ))}
             </div>
-            {upcomingRest.map((t: any) => (
+            {upcomingRest.map((t: any, i: number) => (
             <Link
               to="/tournaments/$id"
               params={{ id: t.id }}
               key={t.id}
-              className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
+              className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-gold/15 to-sky-500/10 opacity-80" />
               <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
@@ -885,7 +854,7 @@ function Home() {
           <div className="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
           <div className="relative">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div>
+              <div className="reveal">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-destructive">
                   <Radio className="h-3.5 w-3.5 animate-pulse" />
                   Live орталық
@@ -904,8 +873,8 @@ function Home() {
 
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
               <div className="grid gap-4 md:grid-cols-3">
-                {(liveMatches.length ? liveMatches : []).map((item) => (
-                  <div key={item.tatami} className="relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur">
+                {(liveMatches.length ? liveMatches : []).map((item, i) => (
+                  <div key={item.tatami} className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur reveal reveal-delay-${i + 1}`}>
                     <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl" />
                     <div className="relative flex items-center justify-between">
                       <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-destructive">
@@ -980,7 +949,7 @@ function Home() {
           <div className="absolute inset-0 grid-bg opacity-25" />
 
           <div className="relative grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:items-center">
-            <div>
+            <div className="reveal-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-gold">
                 <Sparkles className="h-3.5 w-3.5" />
                 Жарысқа өтінім
@@ -1007,7 +976,7 @@ function Home() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3 reveal-right">
               {[
                 { icon: Trophy, n: "01", t: "Жарыс", d: "Күн, қала және татами саны таңдалады." },
                 { icon: Users, n: "02", t: "Қатысушылар", d: "Команда спортшыларын санаттарға бөледі." },
@@ -1085,7 +1054,7 @@ function Home() {
         ))}
 
         <div className="container mx-auto px-4 relative">
-          <div className="mb-8 max-w-3xl lg:mb-12">
+          <div className="mb-8 max-w-3xl lg:mb-12 reveal">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-gold" />
                 <span className="text-[10px] uppercase tracking-[0.28em] text-gold">КЮ техникасы</span>
@@ -1273,7 +1242,7 @@ function Home() {
       {/* PARTNERS / SPONSORS CAROUSEL */}
       <section className="container mx-auto px-4 py-14 sm:py-20">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-12">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl reveal">
             <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Серіктестер</div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
               Бізге <span className="text-gradient-gold italic">сенім артқандар</span>
@@ -1344,8 +1313,8 @@ function Home() {
               { n: "02", t: "Өтінім", d: "Жаттықтырушы клубтан атынан өтінім жібереді." },
               { n: "03", t: "Жеребе", d: "Әкімші бір батырмамен IJF хаттамасын құрады." },
               { n: "04", t: "Жекпе-жек", d: "Төреші LIVE панелде ұпайларды тіркейді." },
-            ].map((s) => (
-              <div key={s.n} className="relative text-center">
+            ].map((s, i) => (
+              <div key={s.n} className={`relative text-center reveal reveal-delay-${i + 1}`}>
                 <div className="relative mx-auto h-16 w-16 rounded-full bg-gradient-gold flex items-center justify-center font-display text-xl font-bold text-gold-foreground shadow-gold mb-5">
                   {s.n}
                   <span className="absolute inset-0 rounded-full border border-gold/30 animate-ping" />
@@ -1401,8 +1370,8 @@ function Home() {
                 { title: "Тор", value: "18", desc: "санат бойынша құрылды", icon: GitBranch },
                 { title: "Татами", value: "3", desc: "live кезек жұмыс істейді", icon: Radio },
                 { title: "Қорытынды", value: "PDF", desc: "медаль және хаттама", icon: Shield },
-              ].map((item) => (
-                <div key={item.title} className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-background/55 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50">
+              ].map((item, i) => (
+                <div key={item.title} className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-background/55 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}>
                   <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl transition-colors group-hover:bg-gold/20" />
                   <div className="relative flex items-center justify-between">
                     <div className="h-11 w-11 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">

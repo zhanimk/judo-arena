@@ -3,28 +3,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
-  Bell,
-  Building2,
   Calendar,
+  ClipboardList,
   Clock,
   CheckCircle2,
-  ClipboardList,
   Download,
   GitBranch,
-  LayoutDashboard,
   Loader2,
   MapPin,
   Plus,
   Send,
-  Trophy,
   Users,
 } from "lucide-react";
+import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMemo, useState } from "react";
 import { DashboardShell, EmptyState, LoadingState, Panel } from "@/components/dashboard/DashboardShell";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useRealtime } from "@/lib/socket";
 
 export const Route = createFileRoute("/coach/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс санаттары — Judo-Arena" }] }),
@@ -35,20 +33,13 @@ export const Route = createFileRoute("/coach/tournaments/$id")({
   ),
 });
 
-const nav = [
-  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
-  { to: "/coach/club", label: "Клуб", icon: Building2 },
-  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
-  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
-  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 type GroupFilter = "ALL" | "MALE" | "FEMALE";
 
 function CoachTournamentDetail() {
   const { id } = useParams({ from: "/coach/tournaments/$id" });
   const { user } = useAuth();
+  const canManageApplications = user?.clubRole === "OWNER";
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<GroupFilter>("ALL");
@@ -75,6 +66,20 @@ function CoachTournamentDetail() {
     queryKey: ["coach-tournament-matches", id],
     queryFn: () => api.matches.list({ tournamentId: id }),
   });
+
+  // Socket.IO: keep bracket and matches up-to-date during the tournament
+  useRealtime(
+    [`tournament:${id}`],
+    {
+      "bracket:update":    () => {
+        qc.invalidateQueries({ queryKey: ["coach-tournament-brackets", id] });
+        qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] });
+      },
+      "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+      "match:finished":    () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+      "match:started":     () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+    },
+  );
 
   const createApplication = useMutation({
     mutationFn: () => api.tournaments.createApplication(id),
@@ -146,7 +151,7 @@ function CoachTournamentDetail() {
     entry,
     issues: validateApplicationEntry(entry),
   })), [entries]);
-  const invalidEntryCount = entryIssues.filter((item) => item.issues.length > 0).length;
+  const invalidEntryCount = entryIssues.filter((item: { entry: any; issues: string[] }) => item.issues.length > 0).length;
   const enteredCategoryCount = enteredByCategory.size;
 
   if (tQuery.isLoading) {
@@ -239,7 +244,7 @@ function CoachTournamentDetail() {
               >
                 <ClipboardList className="h-4 w-4" /> Өтінімді ашу
               </Link>
-            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed ? (
+            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && canManageApplications ? (
               <button
                 onClick={() => createApplication.mutate()}
                 disabled={createApplication.isPending}
@@ -248,6 +253,10 @@ function CoachTournamentDetail() {
                 {createApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 Өтінім ашу
               </button>
+            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && user?.clubId ? (
+              <span className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">
+                Өтінімді тек клуб иесі ашады
+              </span>
             ) : tournament.status === "REGISTRATION_OPEN" && deadlinePassed ? (
               <span className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive">Өтінім дедлайны өтті</span>
             ) : null}
@@ -353,7 +362,7 @@ function CoachTournamentDetail() {
               const enteredIds = new Set(categoryEntries.map((entry: any) => entry.athleteId));
               const eligibleToAdd = eligible.filter((athlete: any) => !enteredIds.has(athlete.id));
               const categoryMatches = clubMatches.filter((match: any) => match.bracket?.categoryId === category.id);
-              const isOpenDraft = tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && (!ownApplication || ownApplication.status === "DRAFT");
+              const isOpenDraft = canManageApplications && tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && (!ownApplication || ownApplication.status === "DRAFT");
 
               return (
                 <div key={category.id} className="rounded-xl border border-border/60 bg-background/30 p-4">
@@ -485,12 +494,12 @@ function CoachTournamentDetail() {
         )}
       </Panel>
 
-      {ownApplication?.status === "DRAFT" && (
+      {ownApplication?.status === "DRAFT" && canManageApplications && (
         <Panel title="Өтінімді аяқтау">
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
             {entries.length > 0 && (
               <div className="mb-4 space-y-2">
-                {entryIssues.map(({ entry, issues }) => (
+                {entryIssues.map(({ entry, issues }: { entry: any; issues: string[] }) => (
                   <div key={entry.id} className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -501,7 +510,7 @@ function CoachTournamentDetail() {
                     </div>
                     {issues.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
-                        {issues.map((issue) => (
+                        {issues.map((issue: string) => (
                           <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
                         ))}
                       </div>
@@ -534,6 +543,13 @@ function CoachTournamentDetail() {
             {deadlinePassed && <div className="mt-2 text-xs text-destructive">Өтінім дедлайны өтті.</div>}
             {invalidEntryCount > 0 && <div className="mt-2 text-xs text-amber-200">Алдымен категорияға сәйкес емес спортшыларды түзетіңіз.</div>}
             {!responsibilityAccepted && entries.length > 0 && <div className="mt-2 text-xs text-muted-foreground">Жіберу үшін жауапкершілік келісімін белгілеңіз.</div>}
+          </div>
+        </Panel>
+      )}
+      {ownApplication?.status === "DRAFT" && !canManageApplications && (
+        <Panel title="Өтінім қарау режимі">
+          <div className="rounded-md border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
+            Бұл ресми клуб өтінімі. Спортшыларды қосу, өшіру және жіберу құқығы тек клуб иесінде.
           </div>
         </Panel>
       )}
@@ -691,7 +707,7 @@ function formatWeighIn(tournament: any): string {
   const start = tournament.weighInStart ? new Date(tournament.weighInStart).toLocaleString("kk-KZ") : "";
   const end = tournament.weighInEnd ? new Date(tournament.weighInEnd).toLocaleString("kk-KZ") : "";
   const time = start && end ? `${start} - ${end}` : start || "уақыты кейін жарияланады";
-  return `Взвешивание: ${place}, ${time}`;
+  return `Таразылау: ${place}, ${time}`;
 }
 
 function mapEmbedUrl(tournament: any): string {

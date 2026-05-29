@@ -4,6 +4,11 @@
 
 import { z } from "zod";
 
+const imageUrlSchema = z.string().refine(
+  (value) => value.startsWith("/uploads/") || z.string().url().safeParse(value).success,
+  "Невалидный URL изображения",
+);
+
 /** Мультиязычная строка: хотя бы один язык обязателен */
 const i18nString = z
   .object({
@@ -33,7 +38,7 @@ export const createClubSchema = z
     shortName: z.string().min(2).max(50).optional(),
     city: z.string().min(1).max(100),
     country: z.string().length(2).default("KZ"),
-    logoUrl: z.string().url().optional(),
+    logoUrl: imageUrlSchema.optional(),
     description: i18nStringOptional,
   })
   .strict();
@@ -96,7 +101,7 @@ export const createAthleteByCoachSchema = z
     weightKg: z.coerce.number().positive().max(300),
     beltRank: z.string().max(20).optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).default("kk"),
-    phone: z.string().max(20).optional(),
+    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
   })
   .strict();
 
@@ -112,8 +117,8 @@ export const updateAthleteSchema = z
     gender: z.enum(["MALE", "FEMALE"]).optional(),
     weightKg: z.coerce.number().positive().max(300).optional(),
     beltRank: z.string().max(20).optional(),
-    phone: z.string().max(20).optional(),
-    avatarUrl: z.string().url().nullable().optional(),
+    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
+    avatarUrl: imageUrlSchema.nullable().optional(),
     isActive: z.boolean().optional(),
     clubId: z.string().nullable().optional(),  // null = отвязать от клуба
   })

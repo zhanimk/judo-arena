@@ -4,7 +4,8 @@
  * Принципы:
  *   • Сетка генерируется ОДИН раз для пары (tournamentId, categoryId).
  *   • Перегенерация — через DELETE + POST (с проверкой что нет начатых матчей).
- *   • Источник участников — ApplicationEntry, чья родительская Application в статусе APPROVED.
+ *   • Источник участников — ApplicationEntry, чья родительская Application в статусе APPROVED
+ *     и чей статус взвешивания PASSED.
  *   • Турнир должен быть в REGISTRATION_CLOSED или IN_PROGRESS.
  */
 
@@ -72,6 +73,7 @@ export async function generateBracket(
     where: {
       categoryId,
       application: { tournamentId, status: "APPROVED" },
+      weighInStatus: "PASSED",
     },
     include: { athlete: true },
   });
@@ -87,12 +89,16 @@ export async function generateBracket(
   if (athletes.length < 2) {
     throw new BracketError(
       "NOT_ENOUGH_ATHLETES",
-      `Минимум 2 утверждённых участника, найдено ${athletes.length}`,
+      `Минимум 2 допущенных после взвешивания участника, найдено ${athletes.length}`,
       409,
     );
   }
 
   const seed = Math.floor(Math.random() * 1_000_000_000);
+
+  if (category.format === BracketFormat.MIXED) {
+    throw new BracketError("MIXED_NOT_SUPPORTED", "Формат MIXED ещё не реализован. Используйте SE_IJF или ROUND_ROBIN.", 400);
+  }
 
   // Автовыбор формата: ≤4 участника → круговая, иначе SE
   const effectiveFormat =
@@ -363,6 +369,7 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
       where: {
         categoryId: category.id,
         application: { tournamentId, status: "APPROVED" },
+        weighInStatus: "PASSED",
       },
     });
     const existing = await prisma.bracket.findUnique({
@@ -386,7 +393,7 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
         status: "skipped",
         participants,
         matches: 0,
-        message: "Минимум 2 утверждённых участника",
+        message: "Минимум 2 допущенных после взвешивания участника",
       });
       continue;
     }

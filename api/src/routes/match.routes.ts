@@ -66,7 +66,8 @@ import {
 } from "../services/tatami-session.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
-import { emitMatchEvent } from "../sockets/io.js";
+import { emitMatchEvent, emitToBracket, emitToTournament } from "../sockets/io.js";
+import { logAudit } from "../services/audit.service.js";
 import { prisma } from "../lib/prisma.js";
 
 function attachErrorHandler(app: FastifyInstance) {
@@ -220,7 +221,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>(
     "/:id/score",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const { type, side } = scoreEventSchema.parse(request.body);
+      const { type, side, version } = scoreEventSchema.parse(request.body);
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const result = await addScoreEvent(
@@ -228,6 +229,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
         type,
         side,
         judgeSessionId || undefined,
+        version,
       );
       emitMatchEvent(result.match, "match:scoreUpdate", {
         matchId: result.match.id,
@@ -247,7 +249,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>(
     "/:id/finish",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const { winnerSide, reason } = finishMatchSchema.parse(request.body);
+      const { winnerSide, reason, version } = finishMatchSchema.parse(request.body);
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const match = await finishMatchManually(
@@ -255,6 +257,7 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
         winnerSide,
         reason,
         judgeSessionId || undefined,
+        version,
       );
       emitMatchEvent(match, "match:pendingResult", {
         matchId: match.id,
@@ -270,6 +273,16 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const match = await confirmMatchResult(request.params.id, judgeSessionId || undefined);
+      // Audit: judge confirmed match result
+      logAudit({
+        actorUserId: request.user?.sub ?? null,
+        action: "match.confirm",
+        targetEntity: "Match",
+        targetId: match.id,
+        after: { winnerId: match.winnerId, judgeSessionId },
+        ipAddress: request.ip,
+        userAgent: request.headers["user-agent"],
+      }).catch(() => {/* non-blocking */});
       emitMatchEvent(match, "match:finished", {
         matchId: match.id,
         winnerId: match.winnerId,
@@ -277,6 +290,14 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
       emitMatchEvent(match, "tatami:queueUpdate", {
         matchId: match.id,
         tatamiNumber: match.tatamiNumber,
+      });
+      emitToBracket(match.bracketId, "bracket:update", {
+        bracketId: match.bracketId,
+        finishedMatchId: match.id,
+      });
+      emitToTournament(match.tournamentId, "bracket:update", {
+        bracketId: match.bracketId,
+        finishedMatchId: match.id,
       });
       return reply.send(match);
     },
@@ -289,6 +310,15 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const match = await undoLastScoreEvent(request.params.id, judgeSessionId || undefined);
+      logAudit({
+        actorUserId: request.user?.sub ?? null,
+        action: "match.undo",
+        targetEntity: "Match",
+        targetId: match.id,
+        metadata: { judgeSessionId },
+        ipAddress: request.ip,
+        userAgent: request.headers["user-agent"],
+      }).catch(() => {/* non-blocking */});
       emitMatchEvent(match, "match:scoreUpdate", {
         matchId: match.id,
         score: match.scoreSnapshot,
@@ -318,9 +348,14 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const match = await resetMatch(request.params.id);
-      emitMatchEvent(match, "match:event", {
-        matchId: match.id,
-        type: "reset",
+      emitMatchEvent(match, "match:event", { matchId: match.id, type: "reset" });
+      emitToBracket(match.bracketId, "bracket:update", {
+        bracketId: match.bracketId,
+        resetMatchId: match.id,
+      });
+      emitToTournament(match.tournamentId, "bracket:update", {
+        bracketId: match.bracketId,
+        resetMatchId: match.id,
       });
       return reply.send(match);
     },
@@ -330,13 +365,14 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>(
     "/:id/osaekomi",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const { side } = startOsaekomiSchema.parse(request.body);
+      const { side, version } = startOsaekomiSchema.parse(request.body);
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const { match, event } = await startOsaekomi(
         request.params.id,
         side,
         judgeSessionId || undefined,
+        version,
       );
       emitMatchEvent(match, "match:osaekomiStart", {
         matchId: match.id,
@@ -351,13 +387,14 @@ export async function matchRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string } }>(
     "/:id/toketa",
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const { reason } = endOsaekomiSchema.parse(request.body ?? {});
+      const { reason, version } = endOsaekomiSchema.parse(request.body ?? {});
       const judgeSessionId = await authorizeForMatch(request, reply);
       if (reply.sent) return;
       const result = await endOsaekomi(
         request.params.id,
         reason,
         judgeSessionId || undefined,
+        version,
       );
       emitMatchEvent(result.match, "match:osaekomiEnd", {
         matchId: result.match.id,
@@ -433,6 +470,15 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
   // ---- JudgeSession (per-match, legacy) ----
   app.get<{ Params: { token: string } }>(
     "/judge/:token",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+          keyGenerator: (req: any) => `judge-token:${req.ip}`,
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { token: string } }>) => {
       return getValidSession(request.params.token);
     },
@@ -478,6 +524,15 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
   // Получить текущий матч + очередь по токену (без auth)
   app.get<{ Params: { token: string } }>(
     "/tatami-session/:token",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+          keyGenerator: (req: any) => `tatami-token:${req.ip}`,
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { token: string } }>) => {
       return getValidTatamiSession(request.params.token);
     },

@@ -3,10 +3,22 @@ import {
   Outlet, Link, createRootRouteWithContext, useRouter,
   HeadContent, Scripts, useRouterState,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
+import { initSentry, Sentry } from "@/lib/sentry";
+
+// Initialise Sentry as early as possible
+initSentry();
+
+/** Render children only after client-side hydration to avoid SSR/portal conflicts. */
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted ? <>{children}</> : null;
+}
 
 function NotFoundComponent() {
   return (
@@ -26,6 +38,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   console.error(error);
+  Sentry.captureException(error);
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
@@ -84,6 +97,17 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthBootstrap />
       <Outlet />
+      <ClientOnly>
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            style: { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" },
+            className: "font-sans text-sm",
+          }}
+        />
+      </ClientOnly>
     </QueryClientProvider>
   );
 }

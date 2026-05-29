@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardShell, StatCard, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import {
   Award, Building2, ChevronDown, ChevronUp,
-  Lock, Medal, Plus, Search, Star, Trophy, Unlock, User, Users,
+  Lock, Medal, Plus, Search, Shield, Star, Trash2, Trophy, Unlock, User, Users,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -11,13 +11,22 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
 
 export const Route = createFileRoute("/admin/clubs")({
-  head: () => ({ meta: [{ title: "Клубтар & Спортшылар — Әкімші" }] }),
+  head: () => ({ meta: [{ title: "Пайдаланушылар — Әкімші" }] }),
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
-      <AdminClubsPage />
+      <AdminClubsRoute />
     </ProtectedRoute>
   ),
 });
+
+function AdminClubsRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const normalizedPath = pathname.replace(/\/+$/, "");
+  if (normalizedPath !== "/admin/clubs") {
+    return <Outlet />;
+  }
+  return <AdminClubsPage />;
+}
 
 type Tab = "clubs" | "users" | "ratings";
 
@@ -25,7 +34,7 @@ function AdminClubsPage() {
   const [tab, setTab] = useState<Tab>("clubs");
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Клубтар & Спортшылар">
+    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Пайдаланушылар">
       {/* Tab switcher */}
       <div className="mb-6 flex gap-2 rounded-xl border border-border/60 bg-card/40 p-1.5 w-fit overflow-x-auto max-w-full">
         {([
@@ -62,6 +71,7 @@ function ClubsTab() {
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [blockModal, setBlockModal] = useState<{ id: string; name: string } | null>(null);
+  const [deleteClubModal, setDeleteClubModal] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ nameRu: "", nameKk: "", city: "", country: "KZ", shortName: "" });
@@ -72,6 +82,12 @@ function ClubsTab() {
     mutationFn: ({ id, blocked, reason }: { id: string; blocked: boolean; reason?: string }) =>
       api.admin.blockClub(id, blocked, reason),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-clubs"] }); setBlockModal(null); setReason(""); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+  });
+
+  const deleteClubMut = useMutation({
+    mutationFn: (id: string) => api.admin.deleteClub(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-clubs"] }); setDeleteClubModal(null); },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
   });
 
@@ -147,6 +163,10 @@ function ClubsTab() {
                           <Lock className="h-3 w-3" /> Блок
                         </button>
                       )}
+                      <button onClick={() => { setDeleteClubModal({ id: c.id, name: localizeName(c.name) }); setError(""); }}
+                        className="text-xs px-2.5 py-1 rounded bg-destructive/15 text-destructive border border-destructive/30 inline-flex items-center gap-1">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -235,6 +255,33 @@ function ClubsTab() {
           </div>
         </div>
       )}
+
+      {/* Модал: удаление клуба */}
+      {deleteClubModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setDeleteClubModal(null)}>
+          <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">«{deleteClubModal.name}» клубын жою</h3>
+            <p className="text-sm text-muted-foreground mb-1">Клубты жою үшін алдымен барлық мүшелерді шығарыңыз.</p>
+            <p className="text-xs text-destructive/80 mb-4">Бұл әрекетті кері қайтаруға болмайды.</p>
+            {deleteClubMut.error && (
+              <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
+                {(deleteClubMut.error as any)?.message ?? "Қате"}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteClubModal(null)}
+                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+              <button onClick={() => deleteClubMut.mutate(deleteClubModal.id)}
+                disabled={deleteClubMut.isPending}
+                className="text-sm px-4 py-2 rounded bg-destructive text-white disabled:opacity-50 inline-flex items-center gap-1.5">
+                <Trash2 className="h-4 w-4" />
+                {deleteClubMut.isPending ? "Жойылуда..." : "Жою"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -257,6 +304,7 @@ function UsersTab() {
   const [clubFilter, setClubFilter] = useState("");
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteUserModal, setDeleteUserModal] = useState<{ id: string; name: string } | null>(null);
   const [uform, setUform] = useState(EMPTY_USER_FORM);
 
   const query = useQuery({
@@ -286,6 +334,16 @@ function UsersTab() {
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => api.admin.toggleUserActive(id, active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+  });
+
+  const deleteUserMut = useMutation({
+    mutationFn: (id: string) => api.admin.deleteUser(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-users-role-counts"] });
+      setDeleteUserModal(null);
+    },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
   });
 
@@ -407,10 +465,16 @@ function UsersTab() {
                         </span>
                       </td>
                       <td>
-                        <button onClick={() => toggle.mutate({ id: u.id, active: !u.isActive })}
-                          className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1">
-                          {u.isActive ? <><Lock className="h-3 w-3" /> Блок</> : <><Unlock className="h-3 w-3" /> Ашу</>}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => toggle.mutate({ id: u.id, active: !u.isActive })}
+                            className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1">
+                            {u.isActive ? <><Lock className="h-3 w-3" /> Блок</> : <><Unlock className="h-3 w-3" /> Ашу</>}
+                          </button>
+                          <button onClick={() => setDeleteUserModal({ id: u.id, name: `${u.name} ${u.surname}` })}
+                            className="text-xs p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -419,6 +483,28 @@ function UsersTab() {
             </div>
           )}
       </Panel>
+
+      {/* Модал: удаление пользователя */}
+      {deleteUserModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setDeleteUserModal(null)}>
+          <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">«{deleteUserModal.name}» жою</h3>
+            <p className="text-sm text-muted-foreground mb-1">Пайдаланушы деректері толығымен жойылады.</p>
+            <p className="text-xs text-destructive/80 mb-4">Бұл әрекетті кері қайтаруға болмайды.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteUserModal(null)}
+                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+              <button onClick={() => deleteUserMut.mutate(deleteUserModal.id)}
+                disabled={deleteUserMut.isPending}
+                className="text-sm px-4 py-2 rounded bg-destructive text-white disabled:opacity-50 inline-flex items-center gap-1.5">
+                <Trash2 className="h-4 w-4" />
+                {deleteUserMut.isPending ? "Жойылуда..." : "Жою"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модал: создание пользователя */}
       {showCreate && (
@@ -552,6 +638,7 @@ function UsersTab() {
 function RatingsTab() {
   const [search, setSearch] = useState("");
   const [clubId, setClubId] = useState("");
+  const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const clubsQuery = useQuery({
@@ -561,7 +648,7 @@ function RatingsTab() {
   });
   const leaderboardQuery = useQuery({
     queryKey: ["admin-leaderboard", clubId],
-    queryFn: () => api.ratings.leaderboard({ clubId: clubId || undefined, limit: 100 }),
+    queryFn: () => api.ratings.leaderboard({ clubId: clubId || undefined, limit: 200 }),
     staleTime: 30_000,
   });
   const clubLeaderboardQuery = useQuery({
@@ -572,9 +659,10 @@ function RatingsTab() {
 
   const rows: any[] = leaderboardQuery.data ?? [];
   const filtered = rows.filter((row) => {
+    const a = row.athlete;
+    if (gender !== "ALL" && a?.gender !== gender) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    const a = row.athlete;
     return [
       `${a?.name ?? ""} ${a?.surname ?? ""}`,
       a?.club ? localizeName(a.club.name) : "",
@@ -586,6 +674,9 @@ function RatingsTab() {
   const top3 = rows.slice(0, 3);
   const totalAthletes = rows.length;
   const topPoints = rows[0]?.totalPoints ?? 0;
+  const activeClubName = clubId
+    ? localizeName((clubsQuery.data?.items ?? []).find((c: any) => c.id === clubId)?.name)
+    : null;
 
   return (
     <>
@@ -593,7 +684,11 @@ function RatingsTab() {
         <StatCard label="Рейтингтегі спортшылар" value={String(totalAthletes)} accent />
         <StatCard label="Клубтар" value={String(clubsQuery.data?.total ?? "…")} />
         <StatCard label="Жетекші ұпай" value={topPoints ? String(Math.round(topPoints)) : "—"} hint="1-орын" />
-        <StatCard label="Клуб рейтингі" value={String(clubLeaderboardQuery.data?.length ?? "…")} hint="клуб" />
+        <StatCard
+          label={activeClubName ? `Клуб: ${activeClubName}` : "Клуб рейтингі"}
+          value={String(clubLeaderboardQuery.data?.length ?? "…")}
+          hint="клуб"
+        />
       </div>
 
       {/* Top-3 athletes */}
@@ -679,7 +774,32 @@ function RatingsTab() {
       )}
 
       {/* Athlete leaderboard */}
-      <div className="mt-6 mb-4 grid gap-3 sm:grid-cols-[1fr_18rem]">
+      {/* Gender filter */}
+      <div className="mt-6 mb-3 flex gap-1.5 rounded-xl border border-border/60 bg-card/40 p-1 w-fit">
+        {([
+          { value: "ALL",    label: "Барлығы" },
+          { value: "MALE",   label: "Ер балалар" },
+          { value: "FEMALE", label: "Қыз балалар" },
+        ] as { value: "ALL" | "MALE" | "FEMALE"; label: string }[]).map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => { setGender(value); setExpandedId(null); }}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${
+              gender === value
+                ? value === "MALE"
+                  ? "bg-sky-500/20 text-sky-300 shadow-sm"
+                  : value === "FEMALE"
+                  ? "bg-rose-500/20 text-rose-300 shadow-sm"
+                  : "bg-gradient-gold text-gold-foreground shadow-gold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_18rem]">
         <label className="relative block">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
           <input
@@ -713,13 +833,14 @@ function RatingsTab() {
             <div className="text-right">Ұпай</div><div />
           </div>
           <div className="divide-y divide-border/40">
-            {filtered.map((row) => {
+            {filtered.map((row, idx) => {
               const a = row.athlete;
               const isExpanded = expandedId === a.id;
+              const displayRank = gender !== "ALL" ? idx + 1 : row.rank;
               const mc =
-                row.rank === 1 ? "text-yellow-400" :
-                row.rank === 2 ? "text-zinc-300" :
-                row.rank === 3 ? "text-amber-600" :
+                displayRank === 1 ? "text-yellow-400" :
+                displayRank === 2 ? "text-zinc-300" :
+                displayRank === 3 ? "text-amber-600" :
                 "text-muted-foreground";
               return (
                 <div key={a.id}>
@@ -729,8 +850,8 @@ function RatingsTab() {
                     className="w-full text-left grid gap-3 px-4 py-4 hover:bg-gold/5 transition-colors sm:grid-cols-[72px_1fr_1fr_90px_90px_110px_36px] sm:px-6 sm:items-center"
                   >
                     <div className={`flex items-center gap-1.5 font-display text-2xl font-bold ${mc}`}>
-                      {row.rank <= 3 && <Star className="h-3.5 w-3.5 fill-current shrink-0" />}
-                      {row.rank}
+                      {displayRank <= 3 && <Star className="h-3.5 w-3.5 fill-current shrink-0" />}
+                      {displayRank}
                     </div>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-9 w-9 rounded-full bg-gradient-gold flex items-center justify-center shrink-0">
@@ -771,7 +892,9 @@ function RatingsTab() {
       )}
 
       <div className="mt-4 text-xs text-muted-foreground text-right">
-        Барлығы: {filtered.length} спортшы{search && ` (іздеу: "${search}")`}
+        Барлығы: {filtered.length} спортшы
+        {gender !== "ALL" && <> · {gender === "MALE" ? "Ер балалар" : "Қыз балалар"}</>}
+        {search && ` (іздеу: "${search}")`}
       </div>
     </>
   );

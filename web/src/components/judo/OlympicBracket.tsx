@@ -1,13 +1,11 @@
 /**
- * Olympic-style визуализация турнирной сетки (как на JudoTV).
- * Горизонтальная сетка с белыми карточками + SVG-линии соединения.
+ * IJF-style tournament bracket visualization.
  *
- * Поддерживает:
- *  - Single Elimination + Repechage (size 4/8/16/32/64)
- *  - Round-Robin (отрисовывает по турам)
- *  - Live статусы (LIVE / DONE / TBD)
+ * For SE brackets with size ≥ 8: Pool A/B/C/D tabs + Finals section (IJF format).
+ * For size ≤ 4 and Round Robin: flat / per-round view.
  */
 
+import { memo, useState } from "react";
 import { Play, Trophy } from "lucide-react";
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -50,82 +48,163 @@ const HEADER_H = 44;
 const BASE_GAP = 14;
 const PAD = 14;
 
-export function OlympicBracket({ matches, size, format }: Props) {
+/* ─── Main export ─────────────────────────────────────────────────────────── */
+
+function OlympicBracketInner({ matches, size, format }: Props) {
   if (matches.length === 0) {
-    return <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>;
+    return (
+      <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>
+    );
   }
 
-  if (format === "ROUND_ROBIN") {
-    return <RoundRobinView matches={matches} />;
+  if (format === "ROUND_ROBIN") return <RoundRobinView matches={matches} />;
+
+  const totalRounds = Math.round(Math.log2(Math.max(size, 2)));
+  const quartersRound = totalRounds - 2; // round where Pool Final (QF) is played
+
+  if (quartersRound < 1) {
+    return <FlatSEView matches={matches} size={size} />;
   }
 
-  return <SingleEliminationView matches={matches} size={size} />;
+  return (
+    <PooledSEView
+      matches={matches}
+      size={size}
+      totalRounds={totalRounds}
+      quartersRound={quartersRound}
+    />
+  );
 }
 
-function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; size: number }) {
-  const totalRounds = Math.log2(size);
+/** Memoised — re-renders only when matches/size/format props change. */
+export const OlympicBracket = memo(OlympicBracketInner);
 
-  // Группируем основные раунды
-  const mainRounds: BracketMatch[][] = [];
-  for (let r = 1; r <= totalRounds; r++) {
-    const inRound = matches
-      .filter((m) => (m.bracketSection === "main" || (r === totalRounds && m.bracketSection === "final")) && m.round === r)
-      .sort((a, b) => a.position - b.position);
-    if (inRound.length > 0) mainRounds.push(inRound);
-  }
+/* ─── Pool bracket view (size ≥ 8, IJF format) ───────────────────────────── */
 
-  // Repechage
-  const repechage = matches.filter((m) => m.bracketSection === "repechage").sort((a, b) => a.position - b.position);
-  const bronze = matches.filter((m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2")
+const POOL_LABELS = ["A", "B", "C", "D"] as const;
+
+/** Which pool (0=A…3=D) does a match in this round/position belong to? */
+function matchPoolIndex(position: number, round: number, size: number): number {
+  const matchesInRound = size / Math.pow(2, round);
+  return Math.min(3, Math.floor((position * 4) / matchesInRound));
+}
+
+/** Label for a pool round column, given steps remaining to the Pool Final. */
+function poolRoundLabel(stepsToQF: number): string {
+  const MAP: Record<number, string> = {
+    0: "Pool Final",
+    1: "1/8",
+    2: "1/16",
+    3: "1/32",
+    4: "1/64",
+    5: "1/128",
+  };
+  return MAP[stepsToQF] ?? `R${stepsToQF}`;
+}
+
+function PooledSEView({
+  matches,
+  size,
+  totalRounds,
+  quartersRound,
+}: {
+  matches: BracketMatch[];
+  size: number;
+  totalRounds: number;
+  quartersRound: number;
+}) {
+  const [activePool, setActivePool] = useState(0);
+
+  const semisRound = totalRounds - 1;
+
+  const poolMatchesAll = matches.filter(
+    (m) => m.bracketSection === "main" && m.round <= quartersRound,
+  );
+  const finalsMatches = matches.filter(
+    (m) =>
+      (m.bracketSection === "main" || m.bracketSection === "final") &&
+      m.round >= semisRound,
+  );
+  const repechage = matches
+    .filter((m) => m.bracketSection === "repechage")
+    .sort((a, b) => a.position - b.position);
+  const bronze = matches
+    .filter(
+      (m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
+    )
     .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
 
-  // Финальный победитель для финиш-карточки
-  const finalMatch = matches.find((m) => m.bracketSection === "final" && m.status === "COMPLETED");
-  const champion = finalMatch?.winnerId
-    ? (finalMatch.redAthlete?.id === finalMatch.winnerId ? finalMatch.redAthlete : finalMatch.blueAthlete)
-    : null;
+  // Build round arrays for the active pool
+  const poolRounds: BracketMatch[][] = [];
+  for (let r = 1; r <= quartersRound; r++) {
+    const row = poolMatchesAll
+      .filter(
+        (m) =>
+          m.round === r && matchPoolIndex(m.position, r, size) === activePool,
+      )
+      .sort((a, b) => a.position - b.position);
+    poolRounds.push(row);
+  }
 
-  const roundLabels = [
-    "1/32", "1/16", "1/8", "1/4", "Жартылай финал", "Финал"
-  ].slice(-mainRounds.length);
-  const layout = getMainBracketLayout(mainRounds);
-  const championX = PAD + mainRounds.length * (CARD_W + ROUND_GAP);
-  const totalWidth = champion ? layout.width + CARD_W + ROUND_GAP : layout.width;
-  const lineColor = "url(#olympicBracketLine)";
+  const layout = getMainBracketLayout(poolRounds);
 
   return (
     <div className="space-y-8">
-      {/* Основная сетка */}
+      {/* Pool tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground mr-1">
+          Pool
+        </span>
+        {POOL_LABELS.map((label, i) => (
+          <button
+            key={label}
+            onClick={() => setActivePool(i)}
+            className={[
+              "px-4 py-1.5 rounded-full text-sm font-bold border-2 transition-all",
+              activePool === i
+                ? "bg-gold/90 text-gold-foreground border-gold shadow-md shadow-gold/30"
+                : "border-border/50 text-muted-foreground hover:border-gold/40 hover:text-foreground",
+            ].join(" ")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Pool bracket */}
       <div className="overflow-x-auto pb-4">
         <div
           className="relative min-w-max rounded-2xl bg-gradient-to-br from-gold/5 via-background to-sky-100/10"
-          style={{ width: totalWidth, height: layout.height }}
+          style={{ width: layout.width, height: layout.height }}
         >
-          <svg className="pointer-events-none absolute inset-0 z-0" width={totalWidth} height={layout.height} aria-hidden="true">
+          <svg
+            className="pointer-events-none absolute inset-0 z-0"
+            width={layout.width}
+            height={layout.height}
+            aria-hidden
+          >
             <defs>
-              <linearGradient id="olympicBracketLine" x1="0" x2="1">
-                <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.58)" />
-                <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.42)" />
+              <linearGradient id="poolLine" x1="0" x2="1">
+                <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.55)" />
+                <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.38)" />
               </linearGradient>
             </defs>
-            {mainRounds.slice(0, -1).flatMap((roundMatches, roundIndex) =>
-              roundMatches.map((_, matchIndex) => {
-                const from = layout.positions[roundIndex]?.[matchIndex];
-                const to = layout.positions[roundIndex + 1]?.[Math.floor(matchIndex / 2)];
+            {poolRounds.slice(0, -1).flatMap((roundMatches, ri) =>
+              roundMatches.map((_, mi) => {
+                const from = layout.positions[ri]?.[mi];
+                const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
                 if (!from || !to) return null;
-
                 const x1 = from.x + CARD_W;
                 const y1 = from.y + CARD_H / 2;
                 const x2 = to.x;
                 const y2 = to.y + CARD_H / 2;
                 const mid = x1 + ROUND_GAP / 2;
-
                 return (
                   <path
-                    key={`${roundIndex}-${matchIndex}`}
+                    key={`${ri}-${mi}`}
                     d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
                     fill="none"
-                    stroke={lineColor}
+                    stroke="url(#poolLine)"
                     strokeWidth="2"
                     strokeLinecap="square"
                     strokeLinejoin="miter"
@@ -134,69 +213,167 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
                 );
               }),
             )}
-            {champion && layout.positions.at(-1)?.[0] && (
-              <path
-                d={`M ${layout.positions.at(-1)![0].x + CARD_W} ${layout.positions.at(-1)![0].y + CARD_H / 2} H ${championX}`}
-                fill="none"
-                stroke={lineColor}
-                strokeWidth="2"
-                strokeLinecap="square"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
           </svg>
 
-          {mainRounds.map((roundMatches, roundIndex) => (
-            <div
-              key={roundLabels[roundIndex] ?? roundIndex}
-              className="absolute z-10"
-              style={{ left: layout.positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}
-            >
-              <div className="mb-2 flex h-8 items-center justify-center">
-                <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
-                  {roundLabels[roundIndex] ?? `Раунд ${roundIndex + 1}`}
-                </span>
-              </div>
-              {roundMatches.map((match, matchIndex) => {
-                const position = layout.positions[roundIndex]![matchIndex]!;
-                return (
-                  <div
-                    key={match.id}
-                    className="absolute"
-                    style={{ left: 0, top: position.y - HEADER_H, width: CARD_W, height: CARD_H }}
-                  >
-                    <MatchCard match={match} final={roundIndex === mainRounds.length - 1} />
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
-          {champion && (
-            <div
-              className="absolute z-10 flex items-center"
-              style={{ left: championX, top: layout.positions.at(-1)?.[0]?.y ?? HEADER_H, width: CARD_W, height: CARD_H }}
-            >
-              <div className="w-full rounded-lg border-2 border-gold/70 bg-gradient-gold p-3 text-center shadow-gold">
-                <Trophy className="mx-auto mb-1 h-5 w-5 text-gold-foreground" />
-                <div className="font-display text-sm font-bold text-gold-foreground">
-                  {champion.name} {champion.surname}
+          {poolRounds.map((roundMatches, ri) => {
+            const label = poolRoundLabel(quartersRound - (ri + 1));
+            return (
+              <div
+                key={`pool-r${ri}`}
+                className="absolute z-10"
+                style={{
+                  left: layout.positions[ri]?.[0]?.x ?? PAD,
+                  top: 0,
+                  width: CARD_W,
+                }}
+              >
+                <div className="mb-2 flex h-8 items-center justify-center">
+                  <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
+                    {label}
+                  </span>
                 </div>
-                {champion.clubCity && (
-                  <div className="text-[10px] text-gold-foreground/80">{champion.clubCity}</div>
-                )}
+                {roundMatches.map((match, mi) => {
+                  const pos = layout.positions[ri]?.[mi];
+                  if (!pos) return null;
+                  const isEmpty =
+                    !match.redAthleteId && !match.blueAthleteId;
+                  const isBye = match.scoreSnapshot?.bye === true;
+                  return (
+                    <div
+                      key={match.id}
+                      className="absolute"
+                      style={{
+                        left: 0,
+                        top: pos.y - HEADER_H,
+                        width: CARD_W,
+                        height: CARD_H,
+                      }}
+                    >
+                      <MatchCard
+                        match={match}
+                        dim={isEmpty}
+                        bye={isBye}
+                        final={ri === poolRounds.length - 1}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 
-      {/* Repechage + Bronze — flow: Repechage → Bronze */}
+      {/* Finals + Repechage + Bronze */}
+      <FinalsSection
+        matches={finalsMatches}
+        repechage={repechage}
+        bronze={bronze}
+        totalRounds={totalRounds}
+        semisRound={semisRound}
+      />
+    </div>
+  );
+}
+
+/* ─── Finals section ─────────────────────────────────────────────────────── */
+
+function FinalsSection({
+  matches,
+  repechage,
+  bronze,
+  totalRounds,
+  semisRound,
+}: {
+  matches: BracketMatch[];
+  repechage: BracketMatch[];
+  bronze: BracketMatch[];
+  totalRounds: number;
+  semisRound: number;
+}) {
+  const semis = matches
+    .filter((m) => m.round === semisRound && m.bracketSection === "main")
+    .sort((a, b) => a.position - b.position);
+
+  const finalMatch = matches.find((m) => m.bracketSection === "final")
+    ?? matches.find((m) => m.round === totalRounds);
+
+  const champion =
+    finalMatch?.status === "COMPLETED" && finalMatch.winnerId
+      ? finalMatch.redAthlete?.id === finalMatch.winnerId
+        ? finalMatch.redAthlete
+        : finalMatch.blueAthlete
+      : null;
+
+  const hasContent =
+    semis.length > 0 ||
+    !!finalMatch ||
+    repechage.length > 0 ||
+    bronze.length > 0;
+
+  if (!hasContent) return null;
+
+  return (
+    <div className="border-t border-border/40 pt-6 space-y-6">
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gold/20" />
+        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-gold">
+          Финалдар
+        </span>
+        <div className="h-px flex-1 bg-gold/20" />
+      </div>
+
+      {/* Semi-finals */}
+      {semis.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+            Жартылай финал
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {semis.map((m, i) => (
+              <div key={m.id}>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground/70 mb-1.5">
+                  Semi {i + 1}
+                </div>
+                <MatchCard match={m} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Final + Champion */}
+      {finalMatch && (
+        <div className="max-w-xs mx-auto">
+          <div className="text-[10px] uppercase tracking-widest text-gold mb-1.5 text-center font-semibold">
+            Финал
+          </div>
+          <MatchCard match={finalMatch} final />
+          {champion && (
+            <div className="mt-3 rounded-lg border-2 border-gold/70 bg-gradient-gold p-3 text-center shadow-gold">
+              <Trophy className="mx-auto mb-1 h-5 w-5 text-gold-foreground" />
+              <div className="font-display text-sm font-bold text-gold-foreground">
+                {champion.name} {champion.surname}
+              </div>
+              {champion.clubCity && (
+                <div className="text-[10px] text-gold-foreground/80">
+                  {champion.clubCity}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Repechage + Bronze */}
       {(repechage.length > 0 || bronze.length > 0) && (
-        <div className="border-t border-border/40 pt-6">
+        <div className="border-t border-border/30 pt-5 space-y-5">
           {repechage.length > 0 && (
-            <div className="mb-5">
-              <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">Жұбату (Repechage)</div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                Жұбату (Repechage)
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {repechage.map((m) => (
                   <div key={m.id}>
@@ -211,12 +388,15 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
           )}
           {bronze.length > 0 && (
             <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3 flex items-center gap-1.5">
+              <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3">
                 Қола медальдар
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {bronze.map((m, i) => (
-                  <div key={m.id} className="rounded-lg border border-amber-600/20 bg-amber-600/5 p-3">
+                  <div
+                    key={m.id}
+                    className="rounded-lg border border-amber-600/20 bg-amber-600/5 p-3"
+                  >
                     <div className="text-[10px] uppercase tracking-widest text-amber-600 mb-1.5 font-semibold">
                       Қола {bronze.length > 1 ? i + 1 : ""}
                     </div>
@@ -232,10 +412,218 @@ function SingleEliminationView({ matches, size }: { matches: BracketMatch[]; siz
   );
 }
 
+/* ─── Flat SE view (size ≤ 4) ────────────────────────────────────────────── */
+
+function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }) {
+  const totalRounds = Math.round(Math.log2(Math.max(size, 2)));
+
+  const mainRounds: BracketMatch[][] = [];
+  for (let r = 1; r <= totalRounds; r++) {
+    const inRound = matches
+      .filter(
+        (m) =>
+          (m.bracketSection === "main" ||
+            (r === totalRounds && m.bracketSection === "final")) &&
+          m.round === r,
+      )
+      .sort((a, b) => a.position - b.position);
+    if (inRound.length > 0) mainRounds.push(inRound);
+  }
+
+  const repechage = matches
+    .filter((m) => m.bracketSection === "repechage")
+    .sort((a, b) => a.position - b.position);
+  const bronze = matches
+    .filter(
+      (m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
+    )
+    .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
+
+  const finalMatch = matches.find(
+    (m) => m.bracketSection === "final" && m.status === "COMPLETED",
+  );
+  const champion = finalMatch?.winnerId
+    ? finalMatch.redAthlete?.id === finalMatch.winnerId
+      ? finalMatch.redAthlete
+      : finalMatch.blueAthlete
+    : null;
+
+  const labels = ["1/32", "1/16", "1/8", "1/4", "Жартылай", "Финал"].slice(
+    -mainRounds.length,
+  );
+  const layout = getMainBracketLayout(mainRounds);
+  const championX = PAD + mainRounds.length * (CARD_W + ROUND_GAP);
+  const totalWidth = champion ? layout.width + CARD_W + ROUND_GAP : layout.width;
+
+  return (
+    <div className="space-y-8">
+      <div className="overflow-x-auto pb-4">
+        <div
+          className="relative min-w-max rounded-2xl bg-gradient-to-br from-gold/5 via-background to-sky-100/10"
+          style={{ width: totalWidth, height: layout.height }}
+        >
+          <svg
+            className="pointer-events-none absolute inset-0 z-0"
+            width={totalWidth}
+            height={layout.height}
+            aria-hidden
+          >
+            <defs>
+              <linearGradient id="flatLine" x1="0" x2="1">
+                <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.58)" />
+                <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.42)" />
+              </linearGradient>
+            </defs>
+            {mainRounds.slice(0, -1).flatMap((roundMatches, ri) =>
+              roundMatches.map((_, mi) => {
+                const from = layout.positions[ri]?.[mi];
+                const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
+                if (!from || !to) return null;
+                const x1 = from.x + CARD_W;
+                const y1 = from.y + CARD_H / 2;
+                const x2 = to.x;
+                const y2 = to.y + CARD_H / 2;
+                const mid = x1 + ROUND_GAP / 2;
+                return (
+                  <path
+                    key={`${ri}-${mi}`}
+                    d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
+                    fill="none"
+                    stroke="url(#flatLine)"
+                    strokeWidth="2"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              }),
+            )}
+            {champion && layout.positions.at(-1)?.[0] && (
+              <path
+                d={`M ${layout.positions.at(-1)![0].x + CARD_W} ${layout.positions.at(-1)![0].y + CARD_H / 2} H ${championX}`}
+                fill="none"
+                stroke="url(#flatLine)"
+                strokeWidth="2"
+                strokeLinecap="square"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </svg>
+
+          {mainRounds.map((roundMatches, ri) => (
+            <div
+              key={labels[ri] ?? ri}
+              className="absolute z-10"
+              style={{
+                left: layout.positions[ri]?.[0]?.x ?? PAD,
+                top: 0,
+                width: CARD_W,
+              }}
+            >
+              <div className="mb-2 flex h-8 items-center justify-center">
+                <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
+                  {labels[ri] ?? `Раунд ${ri + 1}`}
+                </span>
+              </div>
+              {roundMatches.map((match, mi) => {
+                const pos = layout.positions[ri]![mi]!;
+                return (
+                  <div
+                    key={match.id}
+                    className="absolute"
+                    style={{
+                      left: 0,
+                      top: pos.y - HEADER_H,
+                      width: CARD_W,
+                      height: CARD_H,
+                    }}
+                  >
+                    <MatchCard match={match} final={ri === mainRounds.length - 1} />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          {champion && (
+            <div
+              className="absolute z-10 flex items-center"
+              style={{
+                left: championX,
+                top: layout.positions.at(-1)?.[0]?.y ?? HEADER_H,
+                width: CARD_W,
+                height: CARD_H,
+              }}
+            >
+              <div className="w-full rounded-lg border-2 border-gold/70 bg-gradient-gold p-3 text-center shadow-gold">
+                <Trophy className="mx-auto mb-1 h-5 w-5 text-gold-foreground" />
+                <div className="font-display text-sm font-bold text-gold-foreground">
+                  {champion.name} {champion.surname}
+                </div>
+                {champion.clubCity && (
+                  <div className="text-[10px] text-gold-foreground/80">
+                    {champion.clubCity}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {(repechage.length > 0 || bronze.length > 0) && (
+        <div className="border-t border-border/40 pt-6">
+          {repechage.length > 0 && (
+            <div className="mb-5">
+              <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                Жұбату (Repechage)
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {repechage.map((m) => (
+                  <div key={m.id}>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                      Жұбату {m.position + 1}
+                    </div>
+                    <MatchCard match={m} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {bronze.length > 0 && (
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3">
+                Қола медальдар
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {bronze.map((m, i) => (
+                  <div
+                    key={m.id}
+                    className="rounded-lg border border-amber-600/20 bg-amber-600/5 p-3"
+                  >
+                    <div className="text-[10px] uppercase tracking-widest text-amber-600 mb-1.5 font-semibold">
+                      Қола {bronze.length > 1 ? i + 1 : ""}
+                    </div>
+                    <MatchCard match={m} bronze />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Layout helper ──────────────────────────────────────────────────────── */
+
 function getMainBracketLayout(rounds: BracketMatch[][]) {
   const positions = rounds.map((roundMatches, roundIndex) => {
-    const top = HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
-    const gap = (CARD_H + BASE_GAP) * Math.pow(2, roundIndex) - CARD_H;
+    const top =
+      HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
+    const gap =
+      (CARD_H + BASE_GAP) * Math.pow(2, roundIndex) - CARD_H;
 
     return roundMatches.map((_, matchIndex) => ({
       x: PAD + roundIndex * (CARD_W + ROUND_GAP),
@@ -243,16 +631,43 @@ function getMainBracketLayout(rounds: BracketMatch[][]) {
     }));
   });
 
-  const width = PAD * 2 + rounds.length * CARD_W + Math.max(0, rounds.length - 1) * ROUND_GAP;
+  const width =
+    PAD * 2 +
+    rounds.length * CARD_W +
+    Math.max(0, rounds.length - 1) * ROUND_GAP;
   const height = Math.max(
     360,
-    ...positions.flatMap((round) => round.map((position) => position.y + CARD_H + PAD)),
+    ...positions.flatMap((round) =>
+      round.map((pos) => pos.y + CARD_H + PAD),
+    ),
   );
 
   return { positions, width, height };
 }
 
-function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: boolean; bronze?: boolean }) {
+/* ─── Match card ─────────────────────────────────────────────────────────── */
+
+function MatchCard({
+  match,
+  final,
+  bronze,
+  dim,
+  bye,
+}: {
+  match: BracketMatch;
+  final?: boolean;
+  bronze?: boolean;
+  dim?: boolean;
+  bye?: boolean;
+}) {
+  if (dim) {
+    return (
+      <div className="relative h-full rounded-lg overflow-hidden border border-border/15 bg-background/20 opacity-25 flex items-center justify-center">
+        <span className="text-[10px] text-muted-foreground/40 italic">—</span>
+      </div>
+    );
+  }
+
   const red = match.redAthlete;
   const blue = match.blueAthlete;
   const live = match.status === "IN_PROGRESS";
@@ -260,16 +675,30 @@ function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: bool
   const score = match.scoreSnapshot ?? {};
 
   return (
-    <div className={`relative h-full rounded-lg overflow-hidden shadow-sm border transition-all
-      ${live ? "border-destructive shadow-[0_0_18px_-4px_rgba(220,50,50,0.5)]" :
-        final ? "border-gold/50" :
-        bronze ? "border-amber-600/50" :
-        done ? "border-gold/20" : "border-border/50"}
-      bg-white/96 dark:bg-card
-    `}>
+    <div
+      className={`relative h-full rounded-lg overflow-hidden shadow-sm border transition-all
+        ${
+          live
+            ? "border-destructive shadow-[0_0_18px_-4px_rgba(220,50,50,0.5)]"
+            : final
+              ? "border-gold/50"
+              : bronze
+                ? "border-amber-600/50"
+                : done
+                  ? "border-gold/20"
+                  : "border-border/50"
+        }
+        bg-white/96 dark:bg-card
+      `}
+    >
       {live && (
         <div className="absolute right-1.5 top-1 z-10 animate-pulse rounded bg-destructive px-1 py-px text-[8px] font-bold uppercase tracking-widest text-white">
           LIVE
+        </div>
+      )}
+      {bye && done && (
+        <div className="absolute right-1.5 bottom-1 z-10 rounded bg-muted/80 px-1 py-px text-[8px] uppercase tracking-widest text-muted-foreground">
+          BYE
         </div>
       )}
       <AthleteRow
@@ -291,43 +720,56 @@ function MatchCard({ match, final, bronze }: { match: BracketMatch; final?: bool
   );
 }
 
-function AthleteRow({ athlete, score, isWinner, isLoser, side }: {
+/* ─── Athlete row ────────────────────────────────────────────────────────── */
+
+function AthleteRow({
+  athlete,
+  score,
+  isWinner,
+  isLoser,
+  side,
+}: {
   athlete?: BracketAthlete | null;
   score?: string;
   isWinner: boolean;
   isLoser: boolean;
   side: "red" | "blue";
 }) {
-  const flag = athlete?.country ? COUNTRY_FLAGS[athlete.country] ?? "" : "";
+  const flag = athlete?.country ? (COUNTRY_FLAGS[athlete.country] ?? "") : "";
 
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors
-      ${isWinner ? "bg-gold/12 font-semibold" : isLoser ? "opacity-45" : ""}
-    `}>
-      {/* Side bar */}
-      <div className={`w-0.5 h-5 rounded-full shrink-0 ${side === "red" ? "bg-rose-400" : "bg-sky-400"}`} />
-
-      {/* Flag */}
+    <div
+      className={`flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors
+        ${isWinner ? "bg-gold/12 font-semibold" : isLoser ? "opacity-45" : ""}
+      `}
+    >
+      <div
+        className={`w-0.5 h-5 rounded-full shrink-0 ${
+          side === "red" ? "bg-rose-400" : "bg-sky-400"
+        }`}
+      />
       {flag && (
         <span className="shrink-0 text-sm leading-none">{flag}</span>
       )}
-
-      {/* Name */}
       <div className="flex-1 min-w-0 truncate">
         {athlete ? (
           <>
             <span>{athlete.name} </span>
-            <span className="font-bold uppercase tracking-tight">{athlete.surname}</span>
+            <span className="font-bold uppercase tracking-tight">
+              {athlete.surname}
+            </span>
           </>
         ) : (
           <span className="italic text-muted-foreground/60">TBD</span>
         )}
       </div>
-
-      {/* Score */}
       <div className="shrink-0 ml-1">
         {score ? (
-          <span className={`tabular-nums font-semibold ${isWinner ? "text-gold" : "text-muted-foreground/70"}`}>
+          <span
+            className={`tabular-nums font-semibold ${
+              isWinner ? "text-gold" : "text-muted-foreground/70"
+            }`}
+          >
             {score}
           </span>
         ) : athlete && !isLoser ? (
@@ -339,6 +781,8 @@ function AthleteRow({ athlete, score, isWinner, isLoser, side }: {
     </div>
   );
 }
+
+/* ─── Round Robin view ───────────────────────────────────────────────────── */
 
 function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
   const byRound = new Map<number, BracketMatch[]>();
@@ -352,9 +796,15 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
     <div className="space-y-6">
       {rounds.map(([round, ms]) => (
         <div key={round}>
-          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{round}-тур</div>
+          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
+            {round}-тур
+          </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {ms.sort((a, b) => a.position - b.position).map((m) => <MatchCard key={m.id} match={m} />)}
+            {ms
+              .sort((a, b) => a.position - b.position)
+              .map((m) => (
+                <MatchCard key={m.id} match={m} />
+              ))}
           </div>
         </div>
       ))}
@@ -362,12 +812,15 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
   );
 }
 
+/* ─── Score formatter ────────────────────────────────────────────────────── */
+
 function formatScore(s: any): string | undefined {
   if (!s) return undefined;
   if (s.ippon > 0) return "Ippon";
-  if (s.wazaari >= 2) return "Waza-ari 2";
+  if (s.wazaari >= 2) return "WA×2";
+  if (s.wazaari > 0 && s.yuko > 0) return `WA+Y${s.yuko}`;
   if (s.wazaari > 0) return "Waza-ari";
-  if (s.yuko > 0) return "Yuko";
+  if (s.yuko > 0) return `Yuko ${s.yuko}`;
   if (s.shido > 0) return `Shido ${s.shido}`;
   return undefined;
 }

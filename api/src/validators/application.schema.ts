@@ -25,3 +25,20 @@ export const reviewApplicationSchema = z
   })
   .strict();
 export type ReviewApplicationInput = z.infer<typeof reviewApplicationSchema>;
+
+export const weighInStatusSchema = z.enum([
+  "PENDING",
+  "PASSED",
+  "FAILED_WEIGHT",
+  "FAILED_DOCUMENTS",
+  "ABSENT",
+  "WITHDRAWN",
+]);
+
+export const updateWeighInSchema = z
+  .object({
+    status: weighInStatusSchema,
+    notes: z.string().max(1000).nullable().optional(),
+  })
+  .strict();
+export type UpdateWeighInInput = z.infer<typeof updateWeighInSchema>;

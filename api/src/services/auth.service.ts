@@ -16,8 +16,8 @@ import {
   revokeRefreshToken,
   revokeAllUserTokens,
 } from "../lib/refresh-store.js";
-import type { RegisterInput, LoginInput } from "../validators/auth.schema.js";
-import type { User } from "@prisma/client";
+import type { RegisterInput, LoginInput, UpdateMeProfileInput } from "../validators/auth.schema.js";
+import { ClubRole, UserRole, type User } from "@prisma/client";
 
 // ============================================================
 // Ошибки сервиса (выбрасываем — handler их ловит и преобразует в HTTP)
@@ -43,6 +43,9 @@ export async function register(input: RegisterInput): Promise<{ user: User; toke
   if (input.clubId) {
     const club = await prisma.club.findUnique({ where: { id: input.clubId } });
     if (!club) throw new AuthError("CLUB_NOT_FOUND", "Клуб не найден", 404);
+    if (input.role === UserRole.COACH) {
+      throw new AuthError("COACH_CLUB_REQUIRES_REQUEST", "Тренер должен отправить заявку на вступление в клуб", 400);
+    }
   }
 
   const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_ROUNDS);
@@ -63,6 +66,7 @@ export async function register(input: RegisterInput): Promise<{ user: User; toke
       preferredLocale: input.preferredLocale,
       phone: input.phone,
       clubId: input.clubId,
+      clubRole: input.role === UserRole.COACH && input.clubId ? ClubRole.COACH : undefined,
     },
   });
 
@@ -137,6 +141,21 @@ export async function logout(userId: string, jti: string | null, allDevices = fa
 // ============================================================
 export async function updateLocale(userId: string, locale: "ru" | "kk" | "en"): Promise<void> {
   await prisma.user.update({ where: { id: userId }, data: { preferredLocale: locale } });
+}
+
+export async function updateMeProfile(userId: string, input: UpdateMeProfileInput): Promise<User> {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.name !== undefined && { name: input.name.trim() }),
+      ...(input.surname !== undefined && { surname: input.surname.trim() }),
+      ...(input.nameLatin !== undefined && { nameLatin: input.nameLatin?.trim() || null }),
+      ...(input.surnameLatin !== undefined && { surnameLatin: input.surnameLatin?.trim() || null }),
+      ...(input.phone !== undefined && { phone: input.phone?.trim() || null }),
+      ...(input.avatarUrl !== undefined && { avatarUrl: input.avatarUrl }),
+      ...(input.preferredLocale !== undefined && { preferredLocale: input.preferredLocale }),
+    },
+  });
 }
 
 // ============================================================

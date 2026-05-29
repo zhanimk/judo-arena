@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, StatCard, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { LayoutDashboard, Trophy, Activity, User, Bell, Loader2, Swords } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
 export const Route = createFileRoute("/athlete/")({
   head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
@@ -14,15 +15,6 @@ export const Route = createFileRoute("/athlete/")({
     </ProtectedRoute>
   ),
 });
-
-const nav = [
-  { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
-  { to: "/athlete/profile", label: "Профиль", icon: User },
-  { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
-  { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
-  { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function AthleteOverview() {
   const { user } = useAuth();

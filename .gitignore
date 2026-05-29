@@ -37,15 +37,23 @@ Thumbs.db
 
 # Тесты
 coverage/
+
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/
+*.zip
 .nyc_output/
 
 # Загруженные пользователями файлы (dev)
 uploads/
 
-# Бэкапы БД (если будут)
-*.sql
-!api/prisma/migrations/**/*.sql
+# Бэкапы БД
+backups/*.sql
+backups/*.sql.gz
+backups/*.dump
 *.dump
+!api/prisma/migrations/**/*.sql
 
 # Prisma — не коммитим SQLite
 *.db

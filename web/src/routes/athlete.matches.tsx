@@ -6,12 +6,13 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { Activity, Bell, Calendar, LayoutDashboard, Search, Swords, Trophy, User } from "lucide-react";
+import { Calendar, Search, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
 export const Route = createFileRoute("/athlete/matches")({
   head: () => ({ meta: [{ title: "Жекпе-жектер — Judo-Arena" }] }),
@@ -21,15 +22,6 @@ export const Route = createFileRoute("/athlete/matches")({
     </ProtectedRoute>
   ),
 });
-
-const nav = [
-  { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
-  { to: "/athlete/profile", label: "Профиль", icon: User },
-  { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
-  { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
-  { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 type StatusFilter = "all" | "PENDING" | "IN_PROGRESS" | "COMPLETED";
 

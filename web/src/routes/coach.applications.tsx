@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { AlertTriangle, Building2, CheckCircle2, Clock3, LayoutDashboard, Users, ClipboardList, Trophy, Bell } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, Clock3 } from "lucide-react";
+import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -15,14 +16,6 @@ export const Route = createFileRoute("/coach/applications")({
   ),
 });
 
-const nav = [
-  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
-  { to: "/coach/club", label: "Клуб", icon: Building2 },
-  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
-  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
-  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function CoachApplicationsRoute() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });

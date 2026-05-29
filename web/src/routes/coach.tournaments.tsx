@@ -3,19 +3,16 @@ import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/da
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   Building2,
   Calendar,
   CheckCircle2,
   ClipboardList,
   Clock,
   GitBranch,
-  LayoutDashboard,
   MapPin,
   Plus,
-  Trophy,
-  Users,
 } from "lucide-react";
+import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -29,14 +26,6 @@ export const Route = createFileRoute("/coach/tournaments")({
   ),
 });
 
-const nav = [
-  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
-  { to: "/coach/club", label: "Клуб", icon: Building2 },
-  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
-  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
-  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function CoachTournamentsRoute() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });

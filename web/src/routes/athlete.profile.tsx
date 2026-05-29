@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell, Panel } from "@/components/dashboard/DashboardShell";
-import { Activity, Bell, LayoutDashboard, Loader2, Save, Trophy, User, X, Swords } from "lucide-react";
+import { Building2, CheckCircle2, Clock, Loader2, Save, Search, Upload, X, XCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, type InputHTMLAttributes } from "react";
+import { api, ApiError, mediaUrl } from "@/lib/api";
+import { toast } from "sonner";
+import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
 export const Route = createFileRoute("/athlete/profile")({
   head: () => ({ meta: [{ title: "Профиль — Judo-Arena" }] }),
@@ -15,15 +17,6 @@ export const Route = createFileRoute("/athlete/profile")({
     </ProtectedRoute>
   ),
 });
-
-const nav = [
-  { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
-  { to: "/athlete/profile", label: "Профиль", icon: User },
-  { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
-  { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
-  { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function Profile() {
   const { user, refreshMe } = useAuth();
@@ -62,8 +55,19 @@ function Profile() {
       setError("");
       await refreshMe();
       setEditing(false);
+      toast.success("Профиль сақталды");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Профиль сақталмады"),
+    onError: (e: any) => {
+      const msg = e instanceof ApiError ? e.message : "Профиль сақталмады";
+      setError(msg);
+      toast.error(msg);
+    },
+  });
+
+  const uploadAvatar = useMutation({
+    mutationFn: (file: File) => api.uploads.image(file),
+    onSuccess: ({ url }) => setForm((current) => ({ ...current, avatarUrl: url })),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Сурет жүктелмеді"),
   });
 
   if (!user) return null;
@@ -120,7 +124,30 @@ function Profile() {
               <Input label="Салмақ, кг" type="number" step="0.1" min="1" max="300" value={form.weightKg} onChange={(v) => setForm({ ...form, weightKg: v })} />
               <Input label="Белбеу" value={form.beltRank} onChange={(v) => setForm({ ...form, beltRank: v })} placeholder="мысалы 3 kyu" />
               <Input label="Телефон" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
-              <Input label="Аватар URL" type="url" value={form.avatarUrl} onChange={(v) => setForm({ ...form, avatarUrl: v })} placeholder="https://..." />
+              <div>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">Аватар</label>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    value={form.avatarUrl}
+                    onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
+                    placeholder="/uploads/... немесе https://..."
+                    className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+                  />
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                    {uploadAvatar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadAvatar.mutate(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={saveProfile.isPending}
@@ -144,30 +171,154 @@ function Profile() {
           )}
         </Panel>
 
-        <Panel title="Клуб және баптаулар">
-          <div className="space-y-3">
-            {user.avatarUrl && (
-              <img src={user.avatarUrl} alt="" className="h-24 w-24 rounded-full border border-gold/30 object-cover" />
+        <div className="space-y-4">
+          <Panel title="Клуб">
+            {user.club ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold">{localizeName(user.club.name)}</p>
+                    <p className="text-xs text-muted-foreground">{user.club.city}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <ClubJoinSection userId={user.id} />
             )}
-            <Field label="Клуб" value={user.club ? localizeName(user.club.name) : "Клубта жоқ"} />
-            <Field label="Қала" value={user.club?.city ?? "—"} />
-            <Field label="Тіл" value={localeLabel(user.preferredLocale)} />
-            <Field label="Тіркелген" value={new Date(user.createdAt).toLocaleDateString("kk-KZ")} />
-            <Field label="Аккаунт күйі" value={user.isActive ? "Белсенді" : "Тоқтатылған"} />
+          </Panel>
 
-            <div className="mt-6 border-t border-border/30 pt-6">
-              <p className="text-xs text-muted-foreground">
-                Email және парольді ауыстыру бөлек қауіпсіздік экраны ретінде қосылады. Спорттық деректерді осы жерден жаңарта аласыз.
-              </p>
+          <Panel title="Баптаулар">
+            <div className="space-y-3">
+              {user.avatarUrl && (
+                <img src={mediaUrl(user.avatarUrl)} alt="" className="h-20 w-20 rounded-full border border-gold/30 object-cover" />
+              )}
+              <Field label="Тіл" value={localeLabel(user.preferredLocale)} />
+              <Field label="Тіркелген" value={new Date(user.createdAt).toLocaleDateString("kk-KZ")} />
+              <Field label="Аккаунт күйі" value={user.isActive ? "Белсенді" : "Тоқтатылған"} />
             </div>
-          </div>
-        </Panel>
+          </Panel>
+        </div>
       </div>
     </DashboardShell>
   );
 }
 
-function Input({ label, value, onChange, ...rest }: any) {
+function ClubJoinSection({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [clubError, setClubError] = useState("");
+
+  const requestsQuery = useQuery({
+    queryKey: ["my-join-requests"],
+    queryFn: () => api.joinRequests.myList(),
+  });
+
+  const clubsQuery = useQuery({
+    queryKey: ["clubs-search", search],
+    queryFn: () => api.clubs.list({ search }),
+    enabled: search.length >= 2,
+  });
+
+  const sendRequest = useMutation({
+    mutationFn: (clubId: string) => api.clubs.joinRequest(clubId),
+    onSuccess: () => { setClubError(""); qc.invalidateQueries({ queryKey: ["my-join-requests"] }); },
+    onError: (e: any) => setClubError(e instanceof ApiError ? e.message : "Қате орын алды"),
+  });
+
+  const cancelRequest = useMutation({
+    mutationFn: (id: string) => api.joinRequests.cancel(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-join-requests"] }),
+  });
+
+  const pending = (requestsQuery.data ?? []).filter((r: any) => r.status === "PENDING");
+
+  return (
+    <div className="space-y-4">
+      {/* Pending requests */}
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Жіберілген өтінімдер</p>
+          {pending.map((r: any) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gold shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">{localizeName(r.club?.name)}</p>
+                  <p className="text-xs text-muted-foreground">{r.club?.city} · күтілуде</p>
+                </div>
+              </div>
+              <button
+                onClick={() => cancelRequest.mutate(r.id)}
+                disabled={cancelRequest.isPending}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Club search */}
+      <div>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Клуб іздеу</p>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Клуб атын енгізіңіз..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-md border border-border bg-input pl-9 pr-3 py-2 text-sm outline-none focus:border-gold"
+          />
+        </div>
+        {clubError && <p className="mt-1.5 text-xs text-destructive">{clubError}</p>}
+      </div>
+
+      {search.length >= 2 && (
+        <div className="space-y-1.5">
+          {clubsQuery.isLoading && <p className="text-xs text-muted-foreground">Іздеу...</p>}
+          {(clubsQuery.data?.items ?? []).length === 0 && !clubsQuery.isLoading && search.length >= 2 && (
+            <p className="text-xs text-muted-foreground">Клуб табылмады</p>
+          )}
+          {(clubsQuery.data?.items ?? []).map((club: any) => {
+            const alreadySent = (requestsQuery.data ?? []).some((r: any) => r.clubId === club.id && r.status === "PENDING");
+            return (
+              <div key={club.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-input/40 p-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{localizeName(club.name)}</p>
+                    <p className="text-xs text-muted-foreground">{club.city}</p>
+                  </div>
+                </div>
+                {alreadySent ? (
+                  <span className="text-xs text-gold">Жіберілді</span>
+                ) : (
+                  <button
+                    onClick={() => sendRequest.mutate(club.id)}
+                    disabled={sendRequest.isPending}
+                    className="text-xs bg-gradient-gold text-gold-foreground px-3 py-1.5 rounded-md shadow-gold disabled:opacity-50"
+                  >
+                    Өтінім беру
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> & {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+function Input({ label, value, onChange, ...rest }: InputProps) {
   return (
     <div>
       <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>

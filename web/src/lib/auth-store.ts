@@ -30,6 +30,7 @@ export interface User {
   avatarUrl?: string | null;
   phone?: string | null;
   clubId?: string | null;
+  clubRole?: "OWNER" | "COACH" | null;
   club?: { id: string; name: any; shortName?: string; city: string } | null;
   isActive: boolean;
   createdAt: string;
@@ -158,4 +159,9 @@ setOnUnauthorized(() => {
 
 export function getCurrentUser(): User | null {
   return state.user;
+}
+
+export function isAthleteProfileComplete(user: User | null): boolean {
+  if (!user || user.role !== "ATHLETE") return true;
+  return Boolean(user.name && user.surname && user.dateOfBirth && user.gender && user.weightKg);
 }

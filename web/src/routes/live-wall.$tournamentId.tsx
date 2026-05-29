@@ -50,6 +50,7 @@ function LiveWall() {
     "match:osaekomiStart": invalidate,
     "match:osaekomiEnd": invalidate,
     "tatami:queueUpdate": invalidate,
+    "bracket:update": invalidate,
   });
 
   const tournament = tournamentQuery.data;
@@ -63,6 +64,79 @@ function LiveWall() {
       document.documentElement.requestFullscreen();
     }
   };
+
+  /* ════════════════════════════════════════════
+     COMPLETED — Final results screen
+     ════════════════════════════════════════════ */
+  if (tournament?.status === "COMPLETED") {
+    // Build winner per bracket from completed matches
+    const bracketMap = new Map<string, { catLabel: string; gender: string; winner: any; second: any; bronze: any[] }>();
+    for (const m of matches) {
+      const catId = m.bracket?.categoryId ?? m.bracket?.category?.id;
+      if (!catId) continue;
+      const cat = m.bracket?.category;
+      const gender = cat?.gender === "MALE" ? "Ер" : "Қыз";
+      const wMax = cat?.weightMax >= 200 ? `+${cat?.weightMin}` : `-${cat?.weightMax}`;
+      const catLabel = `${gender} ${wMax} кг`;
+      if (!bracketMap.has(catId)) bracketMap.set(catId, { catLabel, gender: cat?.gender, winner: null, second: null, bronze: [] });
+      const entry = bracketMap.get(catId)!;
+      if (m.bracketSection === "final" && m.status === "COMPLETED" && m.winnerId) {
+        entry.winner = m.winnerId === m.redAthlete?.id ? m.redAthlete : m.blueAthlete;
+        entry.second = m.winnerId === m.redAthlete?.id ? m.blueAthlete : m.redAthlete;
+      }
+      if ((m.bracketSection === "bronze1" || m.bracketSection === "bronze2") && m.status === "COMPLETED" && m.winnerId) {
+        const b = m.winnerId === m.redAthlete?.id ? m.redAthlete : m.blueAthlete;
+        if (b && !entry.bronze.find((x: any) => x?.id === b?.id)) entry.bronze.push(b);
+      }
+    }
+    const categories = Array.from(bracketMap.values()).filter(c => c.winner);
+    const surnameOnly = (a: any) => a ? `${a.surname ?? ""} ${(a.name ?? "")[0] ?? ""}.`.trim() : "—";
+    const tName = typeof tournament.name === "object" ? (tournament.name as any)?.kk ?? (tournament.name as any)?.ru ?? "" : tournament.name ?? "";
+
+    return (
+      <main style={{ minHeight: "100dvh", background: "#0B1426", fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif", color: "#fff", overflowY: "auto" }}>
+        {/* Header */}
+        <div style={{ borderBottom: "2px solid #D4AF37", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ color: "#D4AF37", fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: "uppercase", marginBottom: 4 }}>Жарыс нәтижелері</div>
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 1 }}>{tName}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ background: "#D4AF37", color: "#0B1426", borderRadius: 6, padding: "6px 18px", fontWeight: 900, fontSize: 13, letterSpacing: 3 }}>АЯҚТАЛДЫ</div>
+            <button onClick={goFull} style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 14px", fontSize: 13, color: "#ccc", background: "none", cursor: "pointer" }}>
+              ⛶ Толық экран
+            </button>
+          </div>
+        </div>
+
+        {/* Results grid */}
+        <div style={{ padding: "32px 40px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
+          {categories.length === 0 ? (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: "rgba(255,255,255,0.4)", paddingTop: 60, fontSize: 18 }}>Нәтижелер жоқ</div>
+          ) : categories.map((cat, i) => (
+            <div key={i} style={{ border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+              <div style={{ background: "rgba(212,175,55,0.12)", padding: "10px 16px", borderBottom: "1px solid rgba(212,175,55,0.2)", color: "#D4AF37", fontWeight: 700, fontSize: 13, letterSpacing: 2, textTransform: "uppercase" }}>
+                {cat.catLabel}
+              </div>
+              <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { label: "🥇 1-орын", athlete: cat.winner, bg: "rgba(212,175,55,0.15)", color: "#D4AF37" },
+                  { label: "🥈 2-орын", athlete: cat.second, bg: "rgba(255,255,255,0.05)", color: "#9CA3AF" },
+                  ...(cat.bronze ?? []).slice(0, 2).map((b: any, bi: number) => ({ label: `🥉 3-орын`, athlete: b, bg: "rgba(180,120,60,0.1)", color: "#CD7F32" })),
+                ].map((row, ri) => row.athlete ? (
+                  <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, background: row.bg, borderRadius: 8, padding: "8px 12px" }}>
+                    <span style={{ fontSize: 11, color: row.color, fontWeight: 700, minWidth: 54 }}>{row.label}</span>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>{surnameOnly(row.athlete)}</span>
+                    {row.athlete.club && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginLeft: "auto" }}>{typeof row.athlete.club.name === "object" ? (row.athlete.club.name as any)?.kk ?? (row.athlete.club.name as any)?.ru : row.athlete.club.name}</span>}
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    );
+  }
 
   /* ════════════════════════════════════════════
      SINGLE TATAMI — IJF TV Scoreboard (light)
@@ -227,7 +301,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           textTransform: "uppercase",
           flexShrink: 0,
         }}>
-          НӘТИЖЕНІ УТВЕРДІҢІЗ: {pendingResult.winnerSide === "RED" ? surname(whiteA) : surname(blueA)}
+          НӘТИЖЕНІ РАСТАҢЫЗ: {pendingResult.winnerSide === "RED" ? surname(whiteA) : surname(blueA)}
         </div>
       )}
 
@@ -245,7 +319,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           flexShrink: 0,
         }}>
           <Trophy style={{ display: "inline", verticalAlign: "middle", width: 36, height: 36, marginRight: 16 }} />
-          WINNER: {winnerId === whiteA?.id ? surname(whiteA) : surname(blueA)}
+          ЖЕҢІМПАЗ: {winnerId === whiteA?.id ? surname(whiteA) : surname(blueA)}
         </div>
       )}
 
@@ -372,11 +446,11 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
         )}
       </div>
 
-      {/* Score cells */}
+      {/* Score cells: IPPON · WAZA-ARI · YUKO */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", flexShrink: 0 }}>
         <ScoreBox label="IPPON" value={ippon} active={ippon > 0} dark={!isWhite} />
         <ScoreBox label="WAZA-ARI" value={wazaari} active={wazaari > 0} dark={!isWhite} />
-        <ScoreBox label="YUKO" value={yuko} active={yuko > 0} dark={!isWhite} />
+        <ScoreBox label="YUKO" value={yuko} active={yuko > 0} dark={!isWhite} isYuko />
       </div>
 
       {/* Shido */}
@@ -435,12 +509,12 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
 
 /* ─── Score Box ─── */
 
-function ScoreBox({ label, value, active, dark }: {
-  label: string; value: number; active: boolean; dark: boolean;
+function ScoreBox({ label, value, active, dark, isYuko }: {
+  label: string; value: number; active: boolean; dark: boolean; isYuko?: boolean;
 }) {
-  const bgActive = "#fbbf24";
+  const bgActive = isYuko ? "#16a34a" : "#fbbf24";
   const bgInactive = dark ? "rgba(255,255,255,0.08)" : "#f3f4f6";
-  const borderActive = "#f59e0b";
+  const borderActive = isYuko ? "#15803d" : "#f59e0b";
   const borderInactive = dark ? "rgba(255,255,255,0.15)" : "#d1d5db";
 
   return (
@@ -459,7 +533,7 @@ function ScoreBox({ label, value, active, dark }: {
         fontSize: 13,
         fontWeight: 800,
         letterSpacing: 2,
-        color: active ? "#92400e" : (dark ? "rgba(255,255,255,0.4)" : "#999"),
+        color: active ? (isYuko ? "#dcfce7" : "#92400e") : (dark ? "rgba(255,255,255,0.4)" : "#999"),
       }}>
         {label}
       </span>
@@ -467,7 +541,7 @@ function ScoreBox({ label, value, active, dark }: {
         fontSize: 64,
         fontWeight: 900,
         lineHeight: 1,
-        color: active ? "#111" : (dark ? "rgba(255,255,255,0.25)" : "#ccc"),
+        color: active ? (isYuko ? "#fff" : "#111") : (dark ? "rgba(255,255,255,0.25)" : "#ccc"),
       }}>
         {value}
       </span>
@@ -694,7 +768,7 @@ function CompactScoreRow({ side, athlete, score }: { side: "white" | "blue"; ath
       </div>
       <MiniScore label="I" value={score?.ippon ?? 0} dark={!isWhite} />
       <MiniScore label="W" value={score?.wazaari ?? 0} dark={!isWhite} />
-      <MiniScore label="Y" value={score?.yuko ?? 0} dark={!isWhite} />
+      <MiniScore label="Y" value={score?.yuko ?? 0} dark={!isWhite} isYuko />
       <div className="flex w-24 justify-center gap-1">
         {[1, 2, 3].map((n) => (
           <span key={n} className={`h-7 w-4 rounded-sm border-2 ${
@@ -708,10 +782,14 @@ function CompactScoreRow({ side, athlete, score }: { side: "white" | "blue"; ath
   );
 }
 
-function MiniScore({ label, value, dark }: { label: string; value: number; dark: boolean }) {
+function MiniScore({ label, value, dark, isYuko }: { label: string; value: number; dark: boolean; isYuko?: boolean }) {
   return (
     <div className={`mx-1 flex h-14 w-14 flex-col items-center justify-center rounded border-2 ${
-      value > 0 ? "border-amber-400 bg-amber-300 text-black" : dark ? "border-white/20 bg-white/10 text-white/40" : "border-[#d1d5db] bg-[#f3f4f6] text-[#c7c7c7]"
+      value > 0
+        ? isYuko ? "border-green-600 bg-green-600 text-white"
+                 : "border-amber-400 bg-amber-300 text-black"
+        : dark ? "border-white/20 bg-white/10 text-white/40"
+               : "border-[#d1d5db] bg-[#f3f4f6] text-[#c7c7c7]"
     }`}>
       <span className="text-[9px] font-black tracking-widest">{label}</span>
       <span className="font-display text-2xl font-black leading-none">{value}</span>

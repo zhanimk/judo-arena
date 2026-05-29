@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
-import { Activity, Bell, Calendar, LayoutDashboard, Swords, Trophy, User } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Calendar } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useRealtime } from "@/lib/socket";
+import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
 export const Route = createFileRoute("/athlete/matches/$id")({
   head: () => ({ meta: [{ title: "Жекпе-жек — Judo-Arena" }] }),
@@ -15,27 +17,35 @@ export const Route = createFileRoute("/athlete/matches/$id")({
   ),
 });
 
-const nav = [
-  { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
-  { to: "/athlete/profile", label: "Профиль", icon: User },
-  { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
-  { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
-  { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
-];
-
 function AthleteMatchDetails() {
   const { id } = Route.useParams();
   const { user } = useAuth();
   const athleteId = user?.id ?? "";
+  const qc = useQueryClient();
 
   const matchQuery = useQuery({
     queryKey: ["athlete-match", id],
     queryFn: () => api.matches.get(id),
     enabled: !!id,
+    // 10 s fallback poll when socket is unavailable during live match
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? 10_000 : false),
   });
 
   const match = matchQuery.data;
+  const tournamentId = match?.tournament?.id;
+  const isLive = match?.status === "IN_PROGRESS";
+
+  // Socket.IO: instant updates during live match
+  useRealtime(
+    tournamentId ? [`tournament:${tournamentId}`] : [],
+    {
+      "match:scoreUpdate":   () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+      "match:finished":      () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+      "match:started":       () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+      "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+    },
+  );
+
   const isMyMatch = !!match && (match.redAthlete?.id === athleteId || match.blueAthlete?.id === athleteId);
   const mySide = match?.redAthlete?.id === athleteId ? "red" : match?.blueAthlete?.id === athleteId ? "blue" : null;
   const opponent = mySide === "red" ? match?.blueAthlete : mySide === "blue" ? match?.redAthlete : null;
@@ -47,10 +57,18 @@ function AthleteMatchDetails() {
   return (
     <DashboardShell role="Спортшы" navItems={nav} accentTitle="Жекпе-жек">
       <div className="mb-4">
-        <Link to="/athlete/results" className="text-sm text-muted-foreground hover:text-gold">
-          ← Нәтижелерге қайту
+        <Link to="/athlete/matches" className="text-sm text-muted-foreground hover:text-gold">
+          ← Жекпе-жектер тізіміне қайту
         </Link>
       </div>
+
+      {/* Live badge */}
+      {isLive && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-400/40 bg-blue-400/5 px-4 py-2.5 text-sm text-blue-300">
+          <span className="inline-block h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+          Матч қазір жүруде — нәтиже нақты уақытта жаңарып тұрады
+        </div>
+      )}
 
       {matchQuery.isLoading ? (
         <LoadingState />

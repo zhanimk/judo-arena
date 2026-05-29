@@ -40,6 +40,29 @@ services:
       - "1025:1025"   # SMTP — сюда шлёт бэкенд
       - "8025:8025"   # Web UI — http://localhost:8025
 
+  # Ежедневный backup PostgreSQL в ./backups/
+  # Запускать вручную: docker compose run --rm backup
+  # Или добавить в cron: 0 2 * * * docker compose -f /path/docker-compose.yml run --rm backup
+  backup:
+    image: postgres:16-alpine
+    container_name: judo-backup
+    profiles: [backup]   # не стартует с основными сервисами: docker compose --profile backup up
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://judo:judo_dev_password@postgres:5432/judo_arena
+      BACKUP_DIR: /backups
+      BACKUP_RETAIN_DAYS: 30
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache gzip && sh /backup.sh"]
+
 volumes:
   judo_pgdata:
   judo_redisdata:

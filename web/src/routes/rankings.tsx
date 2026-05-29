@@ -86,13 +86,33 @@ function Rankings() {
 
       {/* ── Compact header ── */}
       <div className="border-b border-border/40 bg-card/30">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="font-display text-3xl font-bold">
-            Спортшылар <span className="text-gradient-gold">рейтингі</span>
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground max-w-xl">
-            Турнир нәтижелері бекітілген сайын автоматты жаңарады
-          </p>
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="font-display text-3xl font-bold">
+                Спортшылар <span className="text-gradient-gold">рейтингі</span>
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground max-w-xl">
+                Турнир нәтижелері бекітілген сайын автоматты жаңарады
+              </p>
+            </div>
+            {/* ── Points legend ── */}
+            <div className="flex items-center gap-1.5 rounded-xl border border-border/50 bg-card/60 px-3 py-2">
+              <span className="mr-1.5 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Ұпай:</span>
+              {([
+                { p: 100, l: "1", c: "bg-yellow-400/20 text-yellow-500 border-yellow-400/40" },
+                { p: 80,  l: "2", c: "bg-zinc-300/20 text-zinc-400 border-zinc-300/40" },
+                { p: 50,  l: "3", c: "bg-amber-700/20 text-amber-600 border-amber-700/40" },
+                { p: 30,  l: "5", c: "bg-muted text-muted-foreground border-border/50" },
+                { p: 15,  l: "7", c: "bg-muted text-muted-foreground border-border/50" },
+              ]).map((s) => (
+                <div key={s.l} className={`flex items-center gap-1 rounded-md border px-2 py-1 ${s.c}`}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">{s.l}·</span>
+                  <span className="font-display text-sm font-bold tabular-nums">{s.p}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

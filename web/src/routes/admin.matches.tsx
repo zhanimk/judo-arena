@@ -58,6 +58,13 @@ export function TournamentScoreboardPanel({
   const [wallCopied, setWallCopied] = useState(false);
   const [copiedTatamiSessionId, setCopiedTatamiSessionId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [overrideDialog, setOverrideDialog] = useState<{
+    matchId: string;
+    redName: string;
+    blueName: string;
+    side: "RED" | "BLUE" | null;
+    reason: string;
+  } | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ["admin-scoreboard-tournaments"],
@@ -99,6 +106,7 @@ export function TournamentScoreboardPanel({
     "match:osaekomiStart": invalidateBoard,
     "match:osaekomiEnd": invalidateBoard,
     "tatami:queueUpdate": invalidateBoard,
+    "bracket:update": invalidateBoard,
   });
 
   const matchesQuery = useQuery({
@@ -208,9 +216,31 @@ export function TournamentScoreboardPanel({
     window.setTimeout(() => setCopiedTatamiSessionId(null), 1400);
   };
 
+  const isTournamentCompleted = selectedTournament?.status === "COMPLETED";
+
   return (
     <>
       {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
+      {/* Completed tournament banner */}
+      {isTournamentCompleted && (
+        <div className="mb-4 flex items-center gap-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+          <div className="text-3xl">🏆</div>
+          <div>
+            <div className="font-display text-lg font-bold text-emerald-300">ЖАРЫС АЯҚТАЛДЫ</div>
+            <div className="text-sm text-muted-foreground">
+              {localizeName(selectedTournament?.name)} — барлық матчтар аяқталды.{" "}
+              <Link to="/admin/tournaments/$id" params={{ id: selectedTournamentId }} className="text-gold hover:underline">
+                Нәтижелерді қарау →
+              </Link>
+            </div>
+          </div>
+          <div className="ml-auto text-right">
+            <div className="font-display text-2xl font-bold text-emerald-300">{completed.length}</div>
+            <div className="text-xs text-muted-foreground">аяқталған матч</div>
+          </div>
+        </div>
+      )}
 
       <Panel
         title="Жалпы басқару панелі"
@@ -283,8 +313,8 @@ export function TournamentScoreboardPanel({
                     compact
                     onDragStart={() => setDraggedMatchId(m.id)}
                     onDragEnd={() => setDraggedMatchId(null)}
-                    onReset={() => resetMatchMutation.mutate(m.id)}
-                    onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
+                    onReset={() => { if (window.confirm("Матчты қайта бастайсыз ба?")) resetMatchMutation.mutate(m.id); }}
+                    onOverride={(side) => setOverrideDialog({ matchId: m.id, redName: athleteName(m.redAthlete), blueName: athleteName(m.blueAthlete), side, reason: "" })}
                   />
                 ))}
               </div>
@@ -352,8 +382,8 @@ export function TournamentScoreboardPanel({
                           onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
                           onMoveUp={() => reorderQueue.mutate({ matchId: m.id, direction: "up" })}
                           onMoveDown={() => reorderQueue.mutate({ matchId: m.id, direction: "down" })}
-                          onReset={() => resetMatchMutation.mutate(m.id)}
-                          onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
+                          onReset={() => { if (window.confirm("Матчты қайта бастайсыз ба?")) resetMatchMutation.mutate(m.id); }}
+                          onOverride={(side) => setOverrideDialog({ matchId: m.id, redName: athleteName(m.redAthlete), blueName: athleteName(m.blueAthlete), side, reason: "" })}
                         />
                       ))}
                     </div>
@@ -387,8 +417,8 @@ export function TournamentScoreboardPanel({
                                 onDragStart={() => setDraggedMatchId(m.id)}
                                 onDragEnd={() => setDraggedMatchId(null)}
                                 onUnassign={() => assignTatami.mutate({ matchId: m.id, tatamiNumber: null })}
-                                onReset={() => resetMatchMutation.mutate(m.id)}
-                                onOverride={(side) => overrideMatch.mutate({ matchId: m.id, winnerSide: side, reason: "Нәтижені түзету" })}
+                                onReset={() => { if (window.confirm("Матчты қайта бастайсыз ба?")) resetMatchMutation.mutate(m.id); }}
+                                onOverride={(side) => setOverrideDialog({ matchId: m.id, redName: athleteName(m.redAthlete), blueName: athleteName(m.blueAthlete), side, reason: "" })}
                               />
                             </div>
                           );
@@ -427,19 +457,39 @@ export function TournamentScoreboardPanel({
                         {m.bracketSection && <span className="opacity-60">{m.bracketSection}</span>}
                         {finishedAt && <span className="opacity-50">{finishedAt}</span>}
                       </div>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`"${athleteName(m.redAthlete)} vs ${athleteName(m.blueAthlete)}" матчын қайта бастайсыз ба? Нәтиже өшіріледі.`)) {
-                            resetMatchMutation.mutate(m.id);
-                          }
-                        }}
-                        disabled={resetMatchMutation.isPending}
-                        className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-500 hover:bg-amber-500/20 disabled:opacity-40"
-                        title="Матчты қайта бастау — нәтиже өшіріліп, спортшылар алдыңғы орнына оралады"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Қайтару
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Override: change winner */}
+                        {m.redAthlete && m.blueAthlete && (
+                          <div className="inline-flex overflow-hidden rounded-md border border-sky-500/40">
+                            <button
+                              onClick={() => setOverrideDialog({ matchId: m.id, redName: athleteName(m.redAthlete), blueName: athleteName(m.blueAthlete), side: "RED", reason: "" })}
+                              disabled={m.winnerId === m.redAthlete?.id}
+                              className="px-2 py-1 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
+                              title="АҚ жеңді деп белгілеу"
+                            >АҚ</button>
+                            <button
+                              onClick={() => setOverrideDialog({ matchId: m.id, redName: athleteName(m.redAthlete), blueName: athleteName(m.blueAthlete), side: "BLUE", reason: "" })}
+                              disabled={m.winnerId === m.blueAthlete?.id}
+                              className="border-l border-sky-500/40 px-2 py-1 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
+                              title="КӨК жеңді деп белгілеу"
+                            >КӨК</button>
+                          </div>
+                        )}
+                        {/* Reset */}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`"${athleteName(m.redAthlete)} vs ${athleteName(m.blueAthlete)}" матчын қайта бастайсыз ба? Нәтиже өшіріледі.`)) {
+                              resetMatchMutation.mutate(m.id);
+                            }
+                          }}
+                          disabled={resetMatchMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-500 hover:bg-amber-500/20 disabled:opacity-40"
+                          title="Матчты қайта бастау — нәтиже өшіріліп, спортшылар алдыңғы орнына оралады"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Қайтару
+                        </button>
+                      </div>
                     </div>
                     {/* Scores */}
                     <div className="grid grid-cols-2 gap-2">
@@ -471,6 +521,51 @@ export function TournamentScoreboardPanel({
       </div>
 
       {/* Татами сессиясы модалы */}
+      {/* Override диалогы — жеңімпазды өзгерту */}
+      {overrideDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur"
+          onClick={() => setOverrideDialog(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-1 font-display text-lg font-bold">Нәтижені өзгерту</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Жеңімпаз: <b className={overrideDialog.side === "RED" ? "text-foreground" : "text-sky-400"}>
+                {overrideDialog.side === "RED" ? overrideDialog.redName : overrideDialog.blueName}
+              </b>
+            </p>
+            <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-widest">Себебі *</div>
+            <textarea
+              autoFocus
+              value={overrideDialog.reason}
+              onChange={(e) => setOverrideDialog({ ...overrideDialog, reason: e.target.value })}
+              placeholder="Мысалы: судья қатесі, видео қайта қарау..."
+              rows={3}
+              className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold resize-none"
+            />
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => setOverrideDialog(null)}
+                className="flex-1 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted/60"
+              >Болдырмау</button>
+              <button
+                disabled={overrideDialog.reason.trim().length < 3 || overrideMatch.isPending}
+                onClick={() => {
+                  if (!overrideDialog.side) return;
+                  overrideMatch.mutate(
+                    { matchId: overrideDialog.matchId, winnerSide: overrideDialog.side, reason: overrideDialog.reason.trim() },
+                    { onSuccess: () => setOverrideDialog(null) },
+                  );
+                }}
+                className="flex-1 rounded-lg bg-sky-500/20 py-2 text-sm font-semibold text-sky-400 hover:bg-sky-500/30 disabled:opacity-40"
+              >
+                {overrideMatch.isPending ? "Сақталуда..." : "Растау"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tatamiSessionFor && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur"
@@ -768,7 +863,7 @@ function ScoreSide({ side, athlete, score, isWinner }: { side: "RED" | "BLUE"; a
         {isWinner && <span className="ml-1 text-gold">★</span>}
       </div>
       <div className="truncate text-sm font-medium">{athleteName(athlete)}</div>
-      <div className="mt-1 text-xs">I:{score?.ippon ?? 0} W:{score?.wazaari ?? 0} S:{score?.shido ?? 0}</div>
+      <div className="mt-1 text-xs">I:{score?.ippon ?? 0} W:{score?.wazaari ?? 0} Y:{score?.yuko ?? 0} S:{score?.shido ?? 0}</div>
     </div>
   );
 }

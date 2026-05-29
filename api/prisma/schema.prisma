@@ -21,6 +21,11 @@ enum UserRole {
   // JUDGE не хранится здесь — у судьи временная сессия без аккаунта
 }
 
+enum ClubRole {
+  OWNER
+  COACH
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -55,6 +60,15 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
+enum WeighInStatus {
+  PENDING
+  PASSED
+  FAILED_WEIGHT
+  FAILED_DOCUMENTS
+  ABSENT
+  WITHDRAWN
+}
+
 enum MatchStatus {
   PENDING
   IN_PROGRESS
@@ -74,6 +88,8 @@ enum MatchEventType {
   GOLDEN_SCORE     // Переход в Golden Score
   REPLAY           // Видеоповтор/пересмотр
   END
+  OSAEKOMI         // Начало удержания
+  TOKETA           // Конец удержания
 }
 
 enum MatchSide {
@@ -107,11 +123,15 @@ model User {
 
   clubId          String?
   club            Club?     @relation(fields: [clubId], references: [id])
+  clubRole        ClubRole?
 
   // Связи
   createdClubs       Club[]            @relation("ClubCreator")
   createdTournaments Tournament[]      @relation("TournamentCreator")
   applicationEntries ApplicationEntry[]
+  weighedEntries     ApplicationEntry[] @relation("WeighInReviewer")
+  clubJoinRequests   ClubJoinRequest[]
+  coachClubJoinRequests CoachClubJoinRequest[] @relation("CoachClubJoinRequests")
   bluematches        Match[]           @relation("BlueAthlete")
   redmatches         Match[]           @relation("RedAthlete")
   wonMatches         Match[]           @relation("WinnerAthlete")
@@ -145,6 +165,8 @@ model Club {
   members     User[]
   groups      ClubGroup[]
   applications Application[]
+  joinRequests ClubJoinRequest[]
+  coachJoinRequests CoachClubJoinRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -220,7 +242,7 @@ model Category {
   matchDurationSec Int           @default(240)   // 4 минуты по умолчанию
   goldenScoreSec   Int           @default(0)     // 0 = без лимита
   format           BracketFormat @default(SE_IJF)
-  allowYuko        Boolean       @default(false) // Включить старое правило Yuko
+  allowYuko        Boolean       @default(true)  // Юко оценка (по умолчанию включена)
 
   applicationEntries ApplicationEntry[]
   brackets         Bracket[]
@@ -265,9 +287,17 @@ model ApplicationEntry {
   athlete       User   @relation(fields: [athleteId], references: [id])
   categoryId    String
   category      Category @relation(fields: [categoryId], references: [id])
+  weighInStatus WeighInStatus @default(PENDING)
+  actualWeightKg Float?
+  weighInNotes   String?
+  weighedAt      DateTime?
+  weighedById    String?
+  weighedBy      User? @relation("WeighInReviewer", fields: [weighedById], references: [id])
 
   @@unique([applicationId, athleteId, categoryId])
   @@index([categoryId])
+  @@index([weighInStatus])
+  @@index([weighedById])
 }
 
 // ============================================================
@@ -320,6 +350,8 @@ model Match {
 
   startedAt       DateTime?
   finishedAt      DateTime?
+
+  version         Int         @default(0)  // Optimistic locking
 
   judgeSessions   JudgeSession[]
   events          MatchEvent[]
@@ -442,4 +474,39 @@ model SystemConfig {
   value     Json
   updatedAt DateTime @updatedAt
   updatedBy String?
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ClubJoinRequest {
+  id        String            @id @default(cuid())
+  athleteId String
+  athlete   User              @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  clubId    String
+  club      Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  status    JoinRequestStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([athleteId, clubId])
+  @@index([clubId, status])
+}
+
+model CoachClubJoinRequest {
+  id        String            @id @default(cuid())
+  coachId   String
+  coach     User              @relation("CoachClubJoinRequests", fields: [coachId], references: [id], onDelete: Cascade)
+  clubId    String
+  club      Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  status    JoinRequestStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([coachId, clubId])
+  @@index([clubId, status])
+  @@index([coachId, status])
 }

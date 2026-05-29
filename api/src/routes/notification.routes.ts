@@ -76,7 +76,12 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/", { preHandler: [authenticate] }, async (request) => {
-    return listForUser(request.user!.sub);
+    const qs = request.query as Record<string, string>;
+    return listForUser(request.user!.sub, {
+      type: qs.type,
+      unreadOnly: qs.unreadOnly === "true",
+      limit: qs.limit ? parseInt(qs.limit, 10) : undefined,
+    });
   });
 
   app.get("/unread-count", { preHandler: [authenticate] }, async (request) => {

@@ -1,17 +1,24 @@
 /**
  * Judo-Arena API — entry point
- *
- * Fastify сервер с минимальной обвязкой: CORS, JWT, rate limit, health-check.
- * Бизнес-логика будет добавлена по этапам (дни 3–11 по PLAN.md).
  */
 
+// Sentry must be initialised before all other imports
+import { initSentry, Sentry } from "./lib/sentry.js";
+initSentry();
+
+import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
+import multipart from "@fastify/multipart";
+import swagger from "@fastify/swagger";
+import swaggerUI from "@fastify/swagger-ui";
 import { env } from "./lib/env.js";
+import { requestContextStorage } from "./lib/request-context.js";
 import { prisma } from "./lib/prisma.js";
+import { redis } from "./lib/redis.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { clubRoutes, clubAdjacentRoutes } from "./routes/club.routes.js";
 import { tournamentRoutes, tournamentAdjacentRoutes } from "./routes/tournament.routes.js";
@@ -19,10 +26,14 @@ import { bracketTournamentRoutes, bracketDirectRoutes } from "./routes/bracket.r
 import { matchRoutes, judgeAdjacentRoutes } from "./routes/match.routes.js";
 import { adminRoutes, ratingRoutes, pdfRoutes, adminApplicationRoutes } from "./routes/admin.routes.js";
 import { notificationRoutes } from "./routes/notification.routes.js";
+import { uploadRoutes } from "./routes/upload.routes.js";
 import { attachSocketIO } from "./sockets/io.js";
+import { restoreActiveTimers } from "./services/osaekomi-timer.service.js";
 
 async function buildServer() {
   const app = Fastify({
+    // Attach unique request ID to every log line
+    genReqId: () => randomUUID(),
     logger: {
       level: env.NODE_ENV === "production" ? "info" : "debug",
       transport:
@@ -32,27 +43,66 @@ async function buildServer() {
               target: "pino-pretty",
               options: { colorize: true, translateTime: "HH:MM:ss" },
             },
+      // Serialise request with id + method + url for structured logging
+      serializers: {
+        req(req) {
+          return {
+            id: req.id,
+            method: req.method,
+            url: req.url,
+            remoteAddress: req.socket?.remoteAddress,
+          };
+        },
+      },
     },
+  });
+
+  // Populate AsyncLocalStorage with IP/UA/requestId for every request
+  app.addHook("onRequest", (req, _reply, done) => {
+    requestContextStorage.run(
+      {
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"] ?? undefined,
+        requestId: req.id as string,
+      },
+      done,
+    );
+  });
+
+  // Log request-ID on every response for tracing
+  app.addHook("onResponse", (req, reply, done) => {
+    app.log.info(
+      { reqId: req.id, statusCode: reply.statusCode, responseTime: reply.elapsedTime },
+      "request completed",
+    );
+    done();
+  });
+
+  // Report unhandled errors to Sentry
+  app.addHook("onError", (req, _reply, error, done) => {
+    if (env.SENTRY_DSN) {
+      Sentry.withScope((scope) => {
+        scope.setTag("requestId", req.id as string);
+        scope.setExtra("url", req.url);
+        scope.setExtra("method", req.method);
+        Sentry.captureException(error);
+      });
+    }
+    done();
   });
 
   // Безопасность
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie, { secret: env.JWT_ACCESS_SECRET });
-  // CORS: в dev разрешаем любой localhost (любой порт)
-  //       в prod — только из CORS_ORIGIN
+  // CORS: dev — любой localhost; prod — белый список из CORS_ORIGIN
   await app.register(cors, {
     origin: (origin, cb) => {
-      // SSR / curl запросы без Origin — разрешаем
       if (!origin) return cb(null, true);
-
       if (env.NODE_ENV === "development") {
-        // В dev: любой localhost:* и 127.0.0.1:* разрешён
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return cb(null, true);
         }
       }
-
-      // Иначе — белый список из ENV
       const allowed = env.CORS_ORIGIN.split(",").map((o) => o.trim());
       if (allowed.includes(origin)) return cb(null, true);
       return cb(new Error("CORS blocked: " + origin), false);
@@ -63,30 +113,60 @@ async function buildServer() {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
   });
+  await app.register(multipart, {
+    limits: {
+      fileSize: env.MAX_FILE_SIZE,
+    },
+  });
+
+  // OpenAPI docs — only in non-production
+  if (env.NODE_ENV !== "production") {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: "Judo-Arena API",
+          description: "REST API для управления дзюдо-турнирами, матчами и судейством",
+          version: "0.1.0",
+        },
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: "http",
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
+          },
+        },
+      },
+    });
+    await app.register(swaggerUI, {
+      routePrefix: "/docs",
+      uiConfig: { docExpansion: "list", deepLinking: true },
+    });
+  }
 
   // Health-check
   app.get("/health", async () => {
-    const dbOk = await prisma.$queryRaw`SELECT 1`
-      .then(() => true)
-      .catch(() => false);
+    const [dbOk, redisOk] = await Promise.all([
+      prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
+      redis.ping().then((r) => r === "PONG").catch(() => false),
+    ]);
+    const status = dbOk && redisOk ? "ok" : "degraded";
     return {
-      status: dbOk ? "ok" : "degraded",
+      status,
       service: "judo-arena-api",
+      version: "1.0.0",
       timestamp: new Date().toISOString(),
       db: dbOk ? "connected" : "disconnected",
+      redis: redisOk ? "connected" : "disconnected",
     };
   });
 
   app.get("/", async () => ({
     service: "Judo-Arena API",
     version: "0.1.0",
-    docs: "/health",
-    endpoints: {
-      auth: "/api/auth/*",
-      clubs: "/api/clubs/*",
-      groups: "/api/club-groups/:id",
-      athletes: "/api/athletes/:id",
-    },
+    docs: env.NODE_ENV !== "production" ? "/docs" : undefined,
+    health: "/health",
   }));
 
   // ---- API routes ----
@@ -104,18 +184,19 @@ async function buildServer() {
   await app.register(ratingRoutes, { prefix: "/api/ratings" });
   await app.register(pdfRoutes, { prefix: "/api/pdf" });
   await app.register(notificationRoutes, { prefix: "/api/notifications" });
+  await app.register(uploadRoutes, { prefix: "/api/upload" });
 
   // ---- Socket.IO ----
-  // Прикрепляем после ready, чтобы HTTP-сервер уже был создан
   await app.ready();
   await attachSocketIO(app);
 
-  // TODO (по плану дни 10-11):
-  // await app.register(ratingRoutes, { prefix: "/api/ratings" });
+  // Восстановить серверные osaekomi-таймеры после рестарта
+  restoreActiveTimers().catch((err) => app.log.error(err, "Failed to restore osaekomi timers"));
 
   // Graceful shutdown
   const close = async () => {
     app.log.info("Shutting down gracefully...");
+    if (env.SENTRY_DSN) await Sentry.close(2000);
     await app.close();
     await prisma.$disconnect();
     process.exit(0);

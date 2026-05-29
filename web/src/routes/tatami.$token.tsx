@@ -32,7 +32,8 @@ function TatamiJudgePanel() {
   const tatamiQuery = useQuery({
     queryKey: ["tatami-session", token],
     queryFn: () => api.tatamiSession.get(token),
-    refetchInterval: 3000,
+    // Socket.IO handles real-time updates; 10 s poll is just a safety net
+    refetchInterval: 10_000,
     retry: false,
   });
 
@@ -52,6 +53,7 @@ function TatamiJudgePanel() {
       "match:osaekomiStart": () => qc.invalidateQueries({ queryKey: ["tatami-session", token] }),
       "match:osaekomiEnd":   () => qc.invalidateQueries({ queryKey: ["tatami-session", token] }),
       "tatami:queueUpdate":  () => qc.invalidateQueries({ queryKey: ["tatami-session", token] }),
+      "bracket:update":      () => qc.invalidateQueries({ queryKey: ["tatami-session", token] }),
     },
   );
 
@@ -122,13 +124,40 @@ function TatamiJudgePanel() {
 
   /* ─── All done ─── */
   if (!currentMatch) {
+    const isTournamentCompleted = tournament?.status === "COMPLETED";
     return (
       <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1a1a2e", padding: 24 }}>
         <div style={{ textAlign: "center" }}>
-          <Trophy style={{ width: 80, height: 80, color: "#fbbf24", margin: "0 auto 16px" }} />
-          <div style={{ fontWeight: 900, fontSize: 36, color: "#fbbf24", letterSpacing: 4, textTransform: "uppercase" }}>Барлығы аяқталды!</div>
-          <div style={{ color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 16 }}>Татами #{session?.tatamiNumber}</div>
-          {stats && <div style={{ marginTop: 12, color: "#fbbf24", opacity: 0.7 }}>{stats.completed} / {stats.total} матч</div>}
+          <Trophy style={{ width: 96, height: 96, color: "#fbbf24", margin: "0 auto 20px" }} />
+          {isTournamentCompleted ? (
+            <>
+              <div style={{ fontWeight: 900, fontSize: 42, color: "#fbbf24", letterSpacing: 4, textTransform: "uppercase" }}>
+                ЖАРЫС АЯҚТАЛДЫ 🏆
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.6)", marginTop: 12, fontSize: 18 }}>
+                {typeof tournament?.name === "object"
+                  ? (tournament.name as any)?.kk ?? (tournament.name as any)?.ru ?? ""
+                  : tournament?.name ?? ""}
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.4)", marginTop: 8, fontSize: 14 }}>
+                Барлық матчтар аяқталды
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontWeight: 900, fontSize: 36, color: "#fbbf24", letterSpacing: 4, textTransform: "uppercase" }}>
+                Барлығы аяқталды!
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 16 }}>
+                Татами #{session?.tatamiNumber}
+              </div>
+              {stats && (
+                <div style={{ marginTop: 12, color: "#fbbf24", opacity: 0.7 }}>
+                  {stats.completed} / {stats.total} матч
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
@@ -154,8 +183,9 @@ function TatamiJudgePanel() {
   const matchDurationSec = cat?.matchDurationSec ?? 240;
   const weightLabel = cat ? `${cat.gender === "MALE" ? "Ер" : "Қыз"} ${cat.weightMin}-${cat.weightMax} кг` : "";
   const tName = tournament?.name?.kk ?? tournament?.name?.ru ?? "Жарыс";
+  const allowYuko = Boolean(cat?.allowYuko);
 
-  const canScore = isClockRunning && !pendingResult;
+  const canScore = isClockRunning && !pendingResult && !scoreAction.isPending;
   const redIpponScored  = (redS.ippon  ?? 0) >= 1;
   const blueIpponScored = (blueS.ippon ?? 0) >= 1;
 
@@ -200,6 +230,7 @@ function TatamiJudgePanel() {
           onSHIDO={() => scoreAction.mutate({ type: "SHIDO",    side: "RED" })}
           onOsaekomi={() => osaekomiSide === "RED" && Boolean(score_.osaekomi) ? toketaAct.mutate() : osaekomiAct.mutate("RED")}
           canOsaekomi={(isClockRunning || (Boolean(score_.osaekomi) && osaekomiSide === "RED")) && !pendingResult}
+          allowYuko={allowYuko}
         />
 
         {/* Timer */}
@@ -222,6 +253,7 @@ function TatamiJudgePanel() {
           onSHIDO={() => scoreAction.mutate({ type: "SHIDO",    side: "BLUE" })}
           onOsaekomi={() => osaekomiSide === "BLUE" && Boolean(score_.osaekomi) ? toketaAct.mutate() : osaekomiAct.mutate("BLUE")}
           canOsaekomi={(isClockRunning || (Boolean(score_.osaekomi) && osaekomiSide === "BLUE")) && !pendingResult}
+          allowYuko={allowYuko}
         />
       </div>
 
@@ -316,13 +348,13 @@ function TatamiJudgePanel() {
    ══════════════════════════════════════════════════════════════════ */
 
 function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
-  canScore, ipponScored, isOsaekomiActive, onIPPON, onWAZA, onYUKO, onSHIDO, onOsaekomi, canOsaekomi,
+  canScore, ipponScored, isOsaekomiActive, onIPPON, onWAZA, onYUKO, onSHIDO, onOsaekomi, canOsaekomi, allowYuko,
 }: {
   side: "white" | "blue"; athlete: any; score: any;
   isWinner: boolean; isLoser: boolean; compact: boolean;
   canScore: boolean; ipponScored: boolean; isOsaekomiActive: boolean;
   onIPPON: () => void; onWAZA: () => void; onYUKO: () => void; onSHIDO: () => void;
-  onOsaekomi: () => void; canOsaekomi: boolean;
+  onOsaekomi: () => void; canOsaekomi: boolean; allowYuko: boolean;
 }) {
   const isWhite  = side === "white";
   const ippon    = score?.ippon   ?? 0;
@@ -382,7 +414,7 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
           <div style={{ display: "flex", gap: compact ? 4 : 8, flexShrink: 0 }}>
             <TapCell label="IPPON"    value={ippon}   active={ippon > 0}   dark={!isWhite} compact={compact} onClick={onIPPON}  disabled={!canScore || ipponScored} />
             <TapCell label="WAZA-ARI" value={wazaari} active={wazaari > 0} dark={!isWhite} compact={compact} onClick={onWAZA}   disabled={!canScore || ipponScored} />
-            <TapCell label="YUKO"     value={yuko}    active={yuko > 0}    dark={!isWhite} compact={compact} onClick={onYUKO}   disabled={!canScore} />
+            <TapCell label="YUKO"     value={yuko}    active={yuko > 0}    dark={!isWhite} compact={compact} onClick={onYUKO}   disabled={!canScore || ipponScored} isYuko />
             <TapCell label="SHIDO"    value={shido}   active={shido > 0}   dark={!isWhite} compact={compact} onClick={onSHIDO}  disabled={!canScore} isShido />
           </div>
 
@@ -418,16 +450,16 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
 }
 
 /* ─── TapCell — нажимаемая ячейка очка ─── */
-function TapCell({ label, value, active, dark, compact, onClick, disabled, isShido }: {
+function TapCell({ label, value, active, dark, compact, onClick, disabled, isShido, isYuko }: {
   label: string; value: number; active: boolean; dark: boolean;
-  compact: boolean; onClick: () => void; disabled: boolean; isShido?: boolean;
+  compact: boolean; onClick: () => void; disabled: boolean; isShido?: boolean; isYuko?: boolean;
 }) {
   const w = compact ? 52 : 90;
   const h = compact ? 56 : 90;
 
-  const activeBg     = isShido ? "#dc2626" : "#fbbf24";
-  const activeBorder = isShido ? "#b91c1c" : "#f59e0b";
-  const activeText   = isShido ? "#fff"    : "#111";
+  const activeBg     = isShido ? "#dc2626" : isYuko ? "#16a34a" : "#fbbf24";
+  const activeBorder = isShido ? "#b91c1c" : isYuko ? "#15803d" : "#f59e0b";
+  const activeText   = isShido ? "#fff"    : isYuko ? "#fff"    : "#111";
   const inactiveBg   = dark ? "rgba(255,255,255,0.1)" : "#f3f4f6";
   const inactiveBdr  = dark ? "rgba(255,255,255,0.2)" : "#d1d5db";
   const inactiveTxt  = dark ? "rgba(255,255,255,0.3)" : "#ccc";

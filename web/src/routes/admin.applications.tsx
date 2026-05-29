@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import { DashboardShell, Panel, LoadingState, EmptyState, TableSkeleton } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings, ClipboardList, GitBranch } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/applications")({
   head: () => ({ meta: [{ title: "Өтінімдер — Әкімші" }] }),
@@ -28,30 +29,49 @@ function AdminApplications() {
 
   const tQuery = useQuery({ queryKey: ["admin-tournaments-for-apps"], queryFn: () => api.tournaments.list() });
 
+  // Один запрос вместо N запросов (решение N+1 проблемы)
   const appsQuery = useQuery({
-    queryKey: ["admin-all-applications", (tQuery.data?.items ?? []).map((t: any) => t.id).join(",")],
+    queryKey: ["admin-all-applications"],
     queryFn: async () => {
-      const all: any[] = [];
-      for (const t of tQuery.data?.items ?? []) {
-        try {
-          const apps = await api.tournaments.applications(t.id);
-          for (const a of apps) all.push({ ...a, tournamentName: localizeName(t.name), tournamentId: t.id });
-        } catch { /* ignore */ }
-      }
-      return all;
+      const apps = await api.admin.allApplications();
+      return apps.map((a: any) => ({
+        ...a,
+        tournamentName: localizeName(a.tournament?.name),
+        tournamentId: a.tournament?.id ?? a.tournamentId,
+      }));
     },
-    enabled: (tQuery.data?.items ?? []).length > 0,
   });
 
   const approve = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => api.applications.approve(id, notes),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-all-applications"] }); setModal(null); setComment(""); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-all-applications"] });
+      setModal(null); setComment("");
+      toast.success("Өтінім бекітілді ✓");
+    },
+    onError: (e: any) => { const m = e instanceof ApiError ? e.message : "Қате"; setError(m); toast.error(m); },
   });
   const reject = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => api.applications.reject(id, notes),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-all-applications"] }); setModal(null); setComment(""); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-all-applications"] });
+      setModal(null); setComment("");
+      toast.success("Өтінім қайтарылды");
+    },
+    onError: (e: any) => { const m = e instanceof ApiError ? e.message : "Қате"; setError(m); toast.error(m); },
+  });
+  const bulkApprove = useMutation({
+    mutationFn: (tournamentId: string) => api.tournaments.bulkApprove(tournamentId),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["admin-all-applications"] });
+      setError("");
+      if (data.approved === 0) {
+        toast.warning("Бекітуге болатын өтінімдер жоқ");
+      } else {
+        toast.success(`${data.approved} өтінім бекітілді ✓`);
+      }
+    },
+    onError: (e: any) => { const m = e instanceof ApiError ? e.message : "Қате"; setError(m); toast.error(m); },
   });
 
   const filtered = useMemo(() => {
@@ -86,6 +106,21 @@ function AdminApplications() {
                 <option key={t.id} value={t.id}>{localizeName(t.name)}</option>
               ))}
             </select>
+            {tournamentFilter && (
+              <button
+                onClick={() => {
+                  const submittedCount = (appsQuery.data ?? []).filter((a: any) => a.tournamentId === tournamentFilter && a.status === "SUBMITTED").length;
+                  if (submittedCount === 0) { setError("Бекітуге болатын өтінімдер жоқ"); return; }
+                  if (window.confirm(`${submittedCount} өтінімді бекітесіз бе? Тренерлерге хабарландыру жіберіледі.`)) {
+                    bulkApprove.mutate(tournamentFilter);
+                  }
+                }}
+                disabled={bulkApprove.isPending}
+                className="text-sm px-3 py-1.5 rounded bg-gold/15 text-gold border border-gold/30 hover:bg-gold/25 disabled:opacity-50 font-medium"
+              >
+                {bulkApprove.isPending ? "Жүктелуде..." : "✓ Барлығын бекіту"}
+              </button>
+            )}
           </div>
         }
       >

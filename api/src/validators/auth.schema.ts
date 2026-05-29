@@ -5,6 +5,11 @@
 
 import { z } from "zod";
 
+const imageUrlSchema = z.string().refine(
+  (value) => value.startsWith("/uploads/") || z.string().url().safeParse(value).success,
+  "Невалидный URL изображения",
+);
+
 export const registerSchema = z
   .object({
     email: z.string().email("Невалидный email"),
@@ -24,7 +29,7 @@ export const registerSchema = z
     weightKg: z.coerce.number().positive().max(300).optional(),
     beltRank: z.string().max(20).optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).default("kk"),
-    phone: z.string().max(20).optional(),
+    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
     // Опционально: спортсмен может сразу указать клуб (если знает id)
     clubId: z.string().optional(),
   })
@@ -48,3 +53,17 @@ export const updateLocaleSchema = z
   .strict();
 
 export type UpdateLocaleInput = z.infer<typeof updateLocaleSchema>;
+
+export const updateMeProfileSchema = z
+  .object({
+    name: z.string().min(1).max(64).optional(),
+    surname: z.string().min(1).max(64).optional(),
+    nameLatin: z.string().max(64).nullable().optional(),
+    surnameLatin: z.string().max(64).nullable().optional(),
+    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").nullable().optional(),
+    avatarUrl: imageUrlSchema.nullable().optional(),
+    preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
+  })
+  .strict();
+
+export type UpdateMeProfileInput = z.infer<typeof updateMeProfileSchema>;

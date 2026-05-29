@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { LayoutDashboard, User, Trophy, Activity, Bell, Swords } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
 export const Route = createFileRoute("/athlete/results")({
   head: () => ({ meta: [{ title: "Нәтижелер — Judo-Arena" }] }),
@@ -14,15 +14,6 @@ export const Route = createFileRoute("/athlete/results")({
     </ProtectedRoute>
   ),
 });
-
-const nav = [
-  { to: "/athlete", label: "Шолу", icon: LayoutDashboard },
-  { to: "/athlete/profile", label: "Профиль", icon: User },
-  { to: "/athlete/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/athlete/matches", label: "Жекпе-жектер", icon: Swords },
-  { to: "/athlete/results", label: "Нәтижелер", icon: Activity },
-  { to: "/athlete/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function Results() {
   const { user } = useAuth();
@@ -82,10 +73,14 @@ function Results() {
                       <Link to="/athlete/matches/$id" params={{ id: m.id }} className="font-medium hover:text-gold">
                         vs {opp?.name ?? "TBD"} {opp?.surname ?? ""}
                       </Link>
-                      <div className="text-xs text-muted-foreground">Round {m.round}</div>
+                      <div className="text-xs text-muted-foreground">{m.round}-тур</div>
                     </div>
                     <span className={`text-xs ${won ? "text-gold" : m.status === "COMPLETED" ? "text-destructive" : "text-muted-foreground"}`}>
-                      {m.status === "COMPLETED" ? (won ? "Жеңіс" : "Жеңіліс") : m.status}
+                      {m.status === "COMPLETED" ? (won ? "Жеңіс" : "Жеңіліс")
+                        : m.status === "IN_PROGRESS" ? "Жүріп жатыр"
+                        : m.status === "PENDING" ? "Күтуде"
+                        : m.status === "CANCELLED" ? "Болдырылмады"
+                        : m.status}
                     </span>
                   </li>
                 );

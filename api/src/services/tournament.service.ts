@@ -48,6 +48,8 @@ export async function listTournaments(q: ListTournamentsQuery) {
       { location: { contains: q.search, mode: "insensitive" } },
     ];
   }
+  // Hide archived tournaments unless explicitly requested (admin only)
+  if (!q.includeArchived) where.isArchived = false;
 
   const [items, total] = await Promise.all([
     prisma.tournament.findMany({
@@ -217,6 +219,9 @@ export async function deleteTournament(tournamentId: string) {
       });
     }
     await tx.application.deleteMany({ where: { tournamentId } });
+
+    // TatamiSession — нет каскада, нужно удалить явно
+    await tx.tatamiSession.deleteMany({ where: { tournamentId } });
 
     // MatchEvent және JudgeSession Bracket -> Match cascade арқылы өшеді.
     await tx.bracket.deleteMany({ where: { tournamentId } });

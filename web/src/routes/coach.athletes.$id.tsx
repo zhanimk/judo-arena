@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
-import { Bell, Building2, ClipboardList, LayoutDashboard, Loader2, Trash2, Trophy, Users } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
+import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
@@ -16,14 +17,6 @@ export const Route = createFileRoute("/coach/athletes/$id")({
   ),
 });
 
-const nav = [
-  { to: "/coach", label: "Шолу", icon: LayoutDashboard },
-  { to: "/coach/club", label: "Клуб", icon: Building2 },
-  { to: "/coach/athletes", label: "Спортшылар", icon: Users },
-  { to: "/coach/applications", label: "Өтінімдер", icon: ClipboardList },
-  { to: "/coach/tournaments", label: "Жарыстар", icon: Trophy },
-  { to: "/coach/notifications", label: "Хабарландырулар", icon: Bell },
-];
 
 function CoachAthleteDetails() {
   const { id } = Route.useParams();

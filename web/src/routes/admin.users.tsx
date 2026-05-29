@@ -221,6 +221,7 @@ function AdminUsers() {
           )}
         </Panel>
       </div>
+
     </DashboardShell>
   );
 }

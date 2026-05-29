@@ -11,11 +11,33 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+// Convert draft-07 boolean exclusiveMinimum/Maximum to numeric form (AJV 8 compatible)
+function toSchema(s: Parameters<typeof zodToJsonSchema>[0]): Record<string, unknown> {
+  function fix(node: unknown): unknown {
+    if (!node || typeof node !== "object") return node;
+    if (Array.isArray(node)) return node.map(fix);
+    const obj = { ...(node as Record<string, unknown>) };
+    for (const k of Object.keys(obj)) obj[k] = fix(obj[k]);
+    if (obj["exclusiveMinimum"] === true && "minimum" in obj) {
+      obj["exclusiveMinimum"] = obj["minimum"];
+      delete obj["minimum"];
+    }
+    if (obj["exclusiveMaximum"] === true && "maximum" in obj) {
+      obj["exclusiveMaximum"] = obj["maximum"];
+      delete obj["maximum"];
+    }
+    return obj;
+  }
+  return fix(zodToJsonSchema(s, { target: "openApi3" })) as Record<string, unknown>;
+}
 import {
   registerSchema,
   loginSchema,
   updateLocaleSchema,
+  updateMeProfileSchema,
 } from "../validators/auth.schema.js";
 import {
   register,
@@ -23,12 +45,18 @@ import {
   refresh,
   logout,
   updateLocale,
+  updateMeProfile,
   publicUser,
   AuthError,
 } from "../services/auth.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { parseTTLToSeconds, verifyRefreshToken } from "../lib/jwt.js";
 import { env } from "../lib/env.js";
+import { redis } from "../lib/redis.js";
+import { sendEmail, passwordResetHtml } from "../services/email.service.js";
+import { prisma } from "../lib/prisma.js";
+import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 const REFRESH_COOKIE = "refreshToken";
 const REFRESH_COOKIE_TTL_SEC = parseTTLToSeconds(env.JWT_REFRESH_TTL);
@@ -42,7 +70,7 @@ const cookieOptions = {
 };
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  // Универсальный error handler для AuthError и ZodError
+  // Универсальный error handler для AuthError, ZodError и Fastify AJV validation errors
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof AuthError) {
       return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
@@ -54,32 +82,80 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
       });
     }
+    // Fastify AJV schema validation errors
+    if ((err as any).statusCode === 400 && (err as any).validation) {
+      return reply.code(400).send({
+        error: "VALIDATION_ERROR",
+        message: err.message,
+        issues: (err as any).validation,
+      });
+    }
     if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     app.log.error(err);
     return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
   });
 
-  // ---- POST /register ----
-  app.post("/register", async (request, reply) => {
-    const input = registerSchema.parse(request.body);
-    const { user, tokens } = await register(input);
-    reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
-    return reply.code(201).send({
-      user: publicUser(user),
-      accessToken: tokens.accessToken,
-    });
-  });
+  // ---- POST /register — 5 попыток / 15 минут на IP ----
+  app.post(
+    "/register",
+    {
+      config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+      schema: {
+        tags: ["auth"],
+        summary: "Регистрация нового пользователя (ATHLETE или COACH)",
+        body: toSchema(registerSchema),
+        response: {
+          201: {
+            type: "object",
+            properties: {
+              accessToken: { type: "string" },
+              user: { type: "object", additionalProperties: true },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const input = registerSchema.parse(request.body);
+      const { user, tokens } = await register(input);
+      reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
+      return reply.code(201).send({
+        user: publicUser(user),
+        accessToken: tokens.accessToken,
+      });
+    },
+  );
 
-  // ---- POST /login ----
-  app.post("/login", async (request, reply) => {
-    const input = loginSchema.parse(request.body);
-    const { user, tokens } = await login(input);
-    reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
-    return reply.send({
-      user: publicUser(user),
-      accessToken: tokens.accessToken,
-    });
-  });
+  // ---- POST /login — 50 попыток / минуту на IP ----
+  app.post(
+    "/login",
+    {
+      config: { rateLimit: { max: 50, timeWindow: "1 minute" } },
+      schema: {
+        tags: ["auth"],
+        summary: "Вход по email + пароль",
+        body: toSchema(loginSchema),
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              accessToken: { type: "string" },
+              user: { type: "object", additionalProperties: true },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const input = loginSchema.parse(request.body);
+      const { user, tokens } = await login(input);
+      reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
+      return reply.send({
+        user: publicUser(user),
+        accessToken: tokens.accessToken,
+      });
+    },
+  );
 
   // ---- POST /refresh ----
   app.post("/refresh", async (request, reply) => {
@@ -134,5 +210,51 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { locale } = updateLocaleSchema.parse(request.body);
     await updateLocale(request.user!.sub, locale);
     return reply.send({ ok: true, locale });
+  });
+
+  // ---- PATCH /me/profile ----
+  app.patch("/me/profile", { preHandler: [authenticate] }, async (request, reply) => {
+    const input = updateMeProfileSchema.parse(request.body);
+    const user = await updateMeProfile(request.user!.sub, input);
+    return reply.send({ user: publicUser(user) });
+  });
+
+  // ---- POST /forgot-password — 3 попытки / час на IP ----
+  app.post("/forgot-password", { config: { rateLimit: { max: 3, timeWindow: "1 hour" } } }, async (request, reply) => {
+    const { email } = z.object({ email: z.string().email() }).parse(request.body);
+    const user = await prisma.user.findUnique({ where: { email } });
+    // Always return 200 to avoid user enumeration
+    if (!user) return reply.send({ ok: true });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await redis.set(`pwd_reset:${token}`, user.id, "EX", 3600);
+
+    const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
+    await sendEmail({
+      to: email,
+      subject: "Judo-Arena: Құпиясөзді қалпына келтіру",
+      html: passwordResetHtml(resetUrl),
+    });
+
+    return reply.send({ ok: true });
+  });
+
+  // ---- POST /reset-password ----
+  app.post("/reset-password", async (request, reply) => {
+    const { token, password } = z.object({
+      token: z.string().min(1),
+      password: z.string().min(8, "Құпиясөз кемінде 8 таңба болуы керек"),
+    }).parse(request.body);
+
+    const userId = await redis.get(`pwd_reset:${token}`);
+    if (!userId) {
+      return reply.code(400).send({ error: "INVALID_TOKEN", message: "Сілтеме жарамсыз немесе мерзімі өткен" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await redis.del(`pwd_reset:${token}`);
+
+    return reply.send({ ok: true });
   });
 }

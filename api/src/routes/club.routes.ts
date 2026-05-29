@@ -22,7 +22,25 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
+import {
+  requestJoinClub,
+  listPendingRequests,
+  reviewJoinRequest,
+  listMyJoinRequests,
+  cancelJoinRequest,
+  JoinRequestError,
+} from "../services/club-join.service.js";
+import {
+  requestJoinClubAsCoach,
+  listMyCoachJoinRequests,
+  cancelCoachJoinRequest,
+  listPendingCoachRequests,
+  reviewCoachJoinRequest,
+  removeCoachFromClub,
+  transferClubOwnership,
+  CoachClubJoinRequestError,
+} from "../services/coach-club-join.service.js";
 import {
   createClubSchema,
   updateClubSchema,
@@ -44,6 +62,7 @@ import {
   deleteClubGroup,
   listClubMembers,
   createAthleteByCoach,
+  bulkImportAthletes,
   updateAthlete,
   detachAthleteFromClub,
   ClubError,
@@ -144,6 +163,20 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(201).send(athlete);
     },
   );
+
+  // ---- POST /:id/athletes/bulk-import — до 200 спортсменов за раз ----
+  app.post<{ Params: { id: string } }>(
+    "/:id/athletes/bulk-import",
+    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const body = request.body as any;
+      if (!Array.isArray(body?.rows)) {
+        return reply.code(400).send({ error: "INVALID_BODY", message: "rows должен быть массивом" });
+      }
+      const result = await bulkImportAthletes(request.user!.sub, request.params.id, body.rows);
+      return reply.code(207).send(result);
+    },
+  );
 }
 
 // ============================================================
@@ -153,7 +186,7 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
 
 export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
   app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof ClubError) {
+    if (err instanceof ClubError || err instanceof JoinRequestError || err instanceof CoachClubJoinRequestError) {
       return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
     }
     if (err instanceof ZodError) {
@@ -203,6 +236,108 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await detachAthleteFromClub(request.user!.sub, request.params.id);
       return reply.code(204).send();
+    },
+  );
+
+  // ── Клубқа өтінімдер (ClubJoinRequest) ──
+
+  // Спортсмен: отправить заявку в клуб
+  app.post<{ Params: { id: string } }>(
+    "/clubs/:id/join-request",
+    { preHandler: [authenticate, authorize("ATHLETE")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await requestJoinClub(request.user!.sub, request.params.id);
+      return reply.code(201).send(result);
+    },
+  );
+
+  // Спортсмен: посмотреть свои заявки
+  app.get(
+    "/athlete/join-requests",
+    { preHandler: [authenticate, authorize("ATHLETE")] },
+    async (request) => listMyJoinRequests(request.user!.sub),
+  );
+
+  // Спортсмен: отозвать заявку
+  app.delete<{ Params: { id: string } }>(
+    "/athlete/join-requests/:id",
+    { preHandler: [authenticate, authorize("ATHLETE")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await cancelJoinRequest(request.user!.sub, request.params.id);
+      return reply.send(result);
+    },
+  );
+
+  // Тренер: посмотреть входящие PENDING заявки своего клуба
+  app.get(
+    "/coach/join-requests",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request) => listPendingRequests(request.user!.sub),
+  );
+
+  // Тренер: одобрить или отклонить заявку
+  app.post<{ Params: { id: string } }>(
+    "/coach/join-requests/:id/review",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { approve } = z.object({ approve: z.boolean() }).parse(request.body);
+      return reviewJoinRequest(request.user!.sub, request.params.id, approve);
+    },
+  );
+
+  // ── Тренерлердің клубқа кіру өтінімдері ──
+
+  app.post<{ Params: { id: string } }>(
+    "/clubs/:id/coach-join-request",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await requestJoinClubAsCoach(request.user!.sub, request.params.id);
+      return reply.code(201).send(result);
+    },
+  );
+
+  app.get(
+    "/coach/club-join-requests",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request) => listMyCoachJoinRequests(request.user!.sub),
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/coach/club-join-requests/:id",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return cancelCoachJoinRequest(request.user!.sub, request.params.id);
+    },
+  );
+
+  app.get(
+    "/coach/club-join-requests/incoming",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request) => listPendingCoachRequests(request.user!.sub),
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/coach/club-join-requests/:id/review",
+    { preHandler: [authenticate, authorize("COACH")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { approve } = z.object({ approve: z.boolean() }).parse(request.body);
+      return reviewCoachJoinRequest(request.user!.sub, request.params.id, approve);
+    },
+  );
+
+  app.delete<{ Params: { clubId: string; coachId: string } }>(
+    "/clubs/:clubId/coaches/:coachId",
+    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    async (request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>) => {
+      return removeCoachFromClub(request.user!.sub, request.params.clubId, request.params.coachId);
+    },
+  );
+
+  app.post<{ Params: { clubId: string; coachId: string } }>(
+    "/clubs/:clubId/coaches/:coachId/transfer-owner",
+    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    async (request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>) => {
+      return transferClubOwnership(request.user!.sub, request.params.clubId, request.params.coachId);
     },
   );
 }

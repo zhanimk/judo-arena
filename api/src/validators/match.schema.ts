@@ -40,6 +40,7 @@ export const scoreEventSchema = z
       "HANSOKU_MAKE",
     ]),
     side: z.enum(["RED", "BLUE"]),
+    version: z.number().int().nonnegative().optional(),
   })
   .strict();
 export type ScoreEventInput = z.infer<typeof scoreEventSchema>;
@@ -56,6 +57,7 @@ export type MatchControlInput = z.infer<typeof matchControlSchema>;
 export const startOsaekomiSchema = z
   .object({
     side: z.enum(["RED", "BLUE"]),
+    version: z.number().int().nonnegative().optional(),
   })
   .strict();
 export type StartOsaekomiInput = z.infer<typeof startOsaekomiSchema>;
@@ -64,6 +66,7 @@ export type StartOsaekomiInput = z.infer<typeof startOsaekomiSchema>;
 export const endOsaekomiSchema = z
   .object({
     reason: z.enum(["TOKETA", "TIME_LIMIT"]).default("TOKETA"),
+    version: z.number().int().nonnegative().optional(),
   })
   .strict();
 export type EndOsaekomiInput = z.infer<typeof endOsaekomiSchema>;
@@ -73,6 +76,7 @@ export const finishMatchSchema = z
   .object({
     winnerSide: z.enum(["RED", "BLUE"]),
     reason: z.string().max(200).optional(),
+    version: z.number().int().nonnegative().optional(),
   })
   .strict();
 export type FinishMatchInput = z.infer<typeof finishMatchSchema>;

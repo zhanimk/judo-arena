@@ -16,11 +16,15 @@
 import { prisma } from "../lib/prisma.js";
 import {
   ApplicationStatus,
+  ClubRole,
   TournamentStatus,
   UserRole,
   type User,
   type Category,
 } from "@prisma/client";
+import { sendEmail, applicationApprovedHtml, applicationRejectedHtml } from "./email.service.js";
+import { logAudit } from "./audit.service.js";
+import { emitToUser } from "../sockets/io.js";
 
 export class ApplicationError extends Error {
   constructor(public code: string, message: string, public httpStatus = 400) {
@@ -44,6 +48,9 @@ export async function createOrGetDraftApplication(
   }
   if (!coach.clubId) {
     throw new ApplicationError("NO_CLUB", "Тренер не привязан к клубу", 409);
+  }
+  if (coach.clubRole !== ClubRole.OWNER) {
+    throw new ApplicationError("CLUB_OWNER_REQUIRED", "Турнирге ресми өтінімді тек клуб иесі бере алады", 403);
   }
 
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
@@ -99,10 +106,34 @@ export async function listApplicationsForTournament(actorUserId: string, tournam
           id: true,
           athleteId: true,
           categoryId: true,
+          weighInStatus: true,
+          actualWeightKg: true,
+          weighInNotes: true,
+          weighedAt: true,
           athlete: { select: { id: true, name: true, surname: true, gender: true, dateOfBirth: true, weightKg: true } },
           category: { select: { id: true, name: true, gender: true, ageMin: true, ageMax: true, weightMin: true, weightMax: true, format: true } },
         },
       },
+      _count: { select: { entries: true } },
+    },
+  });
+}
+
+/** ADMIN-only: все заявки по всем турнирам за один запрос. */
+export async function listAllApplicationsAdmin(
+  status?: string,
+  tournamentId?: string,
+) {
+  const where: any = {};
+  if (status) where.status = status;
+  if (tournamentId) where.tournamentId = tournamentId;
+
+  return prisma.application.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: {
+      tournament: { select: { id: true, name: true, startDate: true } },
+      club: { select: { id: true, name: true, shortName: true, city: true } },
       _count: { select: { entries: true } },
     },
   });
@@ -135,6 +166,7 @@ export async function getApplication(actorUserId: string, applicationId: string)
             },
           },
           category: true,
+          weighedBy: { select: { id: true, name: true, surname: true, role: true } },
         },
       },
     },
@@ -187,6 +219,7 @@ export async function listAthleteApplicationEntries(actorUserId: string) {
     orderBy: { id: "desc" },
     include: {
       category: true,
+      weighedBy: { select: { id: true, name: true, surname: true, role: true } },
       application: {
         select: {
           id: true,
@@ -373,10 +406,18 @@ export async function submit(actorUserId: string, applicationId: string) {
   assertApplicationDeadlineOpen(app.tournament.applicationDeadline ?? app.tournament.startDate);
   await assertCanManageApplication(actorUserId, app.clubId);
 
-  return prisma.application.update({
+  const updated = await prisma.application.update({
     where: { id: applicationId },
     data: { status: ApplicationStatus.SUBMITTED, submittedAt: new Date() },
   });
+  await logAudit({
+    actorUserId,
+    action: "application.submit",
+    targetEntity: "Application",
+    targetId: applicationId,
+    after: { status: "SUBMITTED" },
+  });
+  return updated;
 }
 
 export async function approve(actorUserId: string, applicationId: string, reviewerNotes?: string) {
@@ -401,6 +442,13 @@ export async function approve(actorUserId: string, applicationId: string, review
     },
   });
   await notifyCoachesOfApplicationReview(app, ApplicationStatus.APPROVED, reviewerNotes);
+  await logAudit({
+    actorUserId,
+    action: "application.approve",
+    targetEntity: "Application",
+    targetId: applicationId,
+    after: { status: "APPROVED", reviewerNotes: reviewerNotes ?? null },
+  });
   return updated;
 }
 
@@ -426,7 +474,64 @@ export async function reject(actorUserId: string, applicationId: string, reviewe
     },
   });
   await notifyCoachesOfApplicationReview(app, ApplicationStatus.REJECTED, reviewerNotes);
+  await logAudit({
+    actorUserId,
+    action: "application.reject",
+    targetEntity: "Application",
+    targetId: applicationId,
+    after: { status: "REJECTED", reviewerNotes: reviewerNotes ?? null },
+  });
   return updated;
+}
+
+/**
+ * AD1: Одобрить все SUBMITTED заявки в турнире за одну операцию.
+ * Возвращает количество одобренных.
+ */
+export async function bulkApprove(
+  actorUserId: string,
+  tournamentId: string,
+  reviewerNotes?: string,
+): Promise<{ approved: number }> {
+  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
+  if (!actor || actor.role !== UserRole.ADMIN) {
+    throw new ApplicationError("FORBIDDEN", "Только админ может одобрять заявки", 403);
+  }
+
+  const submitted = await prisma.application.findMany({
+    where: { tournamentId, status: ApplicationStatus.SUBMITTED },
+    include: { tournament: { select: { id: true, name: true } } },
+  });
+
+  if (submitted.length === 0) return { approved: 0 };
+
+  await prisma.application.updateMany({
+    where: { tournamentId, status: ApplicationStatus.SUBMITTED },
+    data: { status: ApplicationStatus.APPROVED, reviewedAt: new Date(), reviewerNotes: reviewerNotes ?? null },
+  });
+
+  await Promise.all(
+    submitted.map((app) =>
+      logAudit({
+        actorUserId,
+        action: "application.bulkApprove",
+        targetEntity: "Application",
+        targetId: app.id,
+        before: { status: "SUBMITTED" },
+        after: { status: "APPROVED", reviewerNotes: reviewerNotes ?? null },
+        metadata: { tournamentId },
+      }),
+    ),
+  );
+
+  // Уведомления для каждого клуба
+  await Promise.all(
+    submitted.map((app) =>
+      notifyCoachesOfApplicationReview(app, ApplicationStatus.APPROVED, reviewerNotes),
+    ),
+  );
+
+  return { approved: submitted.length };
 }
 
 export async function withdraw(actorUserId: string, applicationId: string) {
@@ -440,10 +545,18 @@ export async function withdraw(actorUserId: string, applicationId: string) {
     );
   }
   await assertCanManageApplication(actorUserId, app.clubId);
-  return prisma.application.update({
+  const updated = await prisma.application.update({
     where: { id: applicationId },
     data: { status: ApplicationStatus.WITHDRAWN },
   });
+  await logAudit({
+    actorUserId,
+    action: "application.withdraw",
+    targetEntity: "Application",
+    targetId: applicationId,
+    after: { status: "WITHDRAWN" },
+  });
+  return updated;
 }
 
 // ============================================================
@@ -495,10 +608,10 @@ async function assertCanManageApplication(actorUserId: string, clubId: string): 
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor) throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
   if (actor.role === UserRole.ADMIN) return;
-  if (actor.role === UserRole.COACH && actor.clubId === clubId) return;
+  if (actor.role === UserRole.COACH && actor.clubId === clubId && actor.clubRole === ClubRole.OWNER) return;
   throw new ApplicationError(
     "FORBIDDEN",
-    "Управлять заявкой может только тренер клуба или админ",
+    "Управлять официальной заявкой может только владелец клуба или админ",
     403,
   );
 }
@@ -515,6 +628,19 @@ async function assertCanViewApplication(actorUserId: string, clubId: string): Pr
   );
 }
 
+const notificationText = {
+  approved: {
+    kk: { title: "Өтінім бекітілді", body: (t: string, notes?: string) => `${t}: клуб өтінімі бекітілді.${notes ? ` Ескерту: ${notes}` : ""}` },
+    ru: { title: "Заявка одобрена",  body: (t: string, notes?: string) => `${t}: заявка клуба одобрена.${notes ? ` Примечание: ${notes}` : ""}` },
+    en: { title: "Application Approved", body: (t: string, notes?: string) => `${t}: club application approved.${notes ? ` Note: ${notes}` : ""}` },
+  },
+  rejected: {
+    kk: { title: "Өтінім қайтарылды", body: (t: string, notes?: string) => `${t}: өтінімде түзету керек.${notes ? ` Себебі: ${notes}` : ""}` },
+    ru: { title: "Заявка возвращена",   body: (t: string, notes?: string) => `${t}: требуется исправление заявки.${notes ? ` Причина: ${notes}` : ""}` },
+    en: { title: "Application Rejected", body: (t: string, notes?: string) => `${t}: application requires correction.${notes ? ` Reason: ${notes}` : ""}` },
+  },
+};
+
 async function notifyCoachesOfApplicationReview(
   app: { id: string; clubId: string; tournamentId: string; tournament?: { name: any } | null },
   status: ApplicationStatus,
@@ -522,32 +648,59 @@ async function notifyCoachesOfApplicationReview(
 ) {
   const coaches = await prisma.user.findMany({
     where: { clubId: app.clubId, role: UserRole.COACH, isActive: true },
-    select: { id: true },
+    select: { id: true, email: true, preferredLocale: true },
   });
   if (coaches.length === 0) return;
 
   const tournamentName = localizeName(app.tournament?.name) || "турнир";
   const isApproved = status === ApplicationStatus.APPROVED;
-  const title = isApproved ? "Өтінім бекітілді" : "Өтінім қайтарылды";
-  const body = isApproved
-    ? `${tournamentName}: клуб өтінімі бекітілді.${reviewerNotes ? ` Ескерту: ${reviewerNotes}` : ""}`
-    : `${tournamentName}: өтінімде түзету керек.${reviewerNotes ? ` Себебі: ${reviewerNotes}` : ""}`;
+  const templateGroup = isApproved ? notificationText.approved : notificationText.rejected;
 
+  // In-app уведомления — каждый тренер получает на своём языке
   await prisma.notification.createMany({
-    data: coaches.map((coach) => ({
-      userId: coach.id,
-      type: isApproved ? "application_approved" : "application_rejected",
-      titleKey: title,
-      bodyKey: body,
-      payload: {
-        applicationId: app.id,
-        tournamentId: app.tournamentId,
-        status,
-        reviewerNotes: reviewerNotes ?? null,
-      },
-      locale: "kk",
-    })),
+    data: coaches.map((coach) => {
+      const locale = (coach.preferredLocale ?? "kk") as "kk" | "ru" | "en";
+      const tmpl = templateGroup[locale] ?? templateGroup.kk;
+      return {
+        userId: coach.id,
+        type: isApproved ? "application_approved" : "application_rejected",
+        titleKey: tmpl.title,
+        bodyKey: tmpl.body(tournamentName, reviewerNotes),
+        payload: {
+          applicationId: app.id,
+          tournamentId: app.tournamentId,
+          status,
+          reviewerNotes: reviewerNotes ?? null,
+        },
+        locale,
+      };
+    }),
   });
+
+  // N2: Socket.IO push в личную комнату тренера
+  for (const coach of coaches) {
+    const locale = (coach.preferredLocale ?? "kk") as "kk" | "ru" | "en";
+    const tmpl = templateGroup[locale] ?? templateGroup.kk;
+    emitToUser(coach.id, "notification:new", {
+      type: isApproved ? "application_approved" : "application_rejected",
+      title: tmpl.title,
+      body: tmpl.body(tournamentName, reviewerNotes),
+    });
+  }
+
+  // AP1 / N1: Email-уведомления тренерам
+  const emailHtml = isApproved
+    ? applicationApprovedHtml(tournamentName, reviewerNotes)
+    : applicationRejectedHtml(tournamentName, reviewerNotes);
+  const emailSubject = isApproved
+    ? `✅ Өтінім бекітілді — ${tournamentName}`
+    : `❌ Өтінімде түзету керек — ${tournamentName}`;
+
+  await Promise.all(
+    coaches.map((coach) =>
+      sendEmail({ to: coach.email, subject: emailSubject, html: emailHtml }),
+    ),
+  );
 }
 
 function localizeName(value: any): string {

@@ -2,27 +2,30 @@
  * Маршруты турниров, категорий и заявок.
  *
  *   Турниры:
- *     GET    /api/tournaments                   — список (public, фильтры)
- *     GET    /api/tournaments/:id               — детали (public)
- *     POST   /api/tournaments                   — создать (ADMIN)
- *     PATCH  /api/tournaments/:id               — изменить (ADMIN)
- *     DELETE /api/tournaments/:id               — удалить (ADMIN, только DRAFT/CANCELLED)
- *     POST   /api/tournaments/:id/status        — сменить статус (ADMIN, lifecycle)
+ *     GET    /api/tournaments                                        — список (public)
+ *     GET    /api/tournaments/:id                                    — детали (public)
+ *     POST   /api/tournaments                                        — создать (ADMIN)
+ *     PATCH  /api/tournaments/:id                                    — изменить (ADMIN)
+ *     DELETE /api/tournaments/:id                                    — удалить (ADMIN)
+ *     POST   /api/tournaments/:id/status                            — сменить статус (ADMIN)
+ *     POST   /api/tournaments/:id/applications/bulk-approve         — массовое одобрение (ADMIN)
  *
  *   Категории:
  *     GET    /api/tournaments/:id/categories    — список (public)
- *     POST   /api/tournaments/:id/categories    — создать (ADMIN, только DRAFT)
- *     PATCH  /api/categories/:id                — изменить (ADMIN, только DRAFT)
- *     DELETE /api/categories/:id                — удалить (ADMIN, только DRAFT)
+ *     POST   /api/tournaments/:id/categories    — создать (ADMIN)
+ *     PATCH  /api/categories/:id                — изменить (ADMIN)
+ *     DELETE /api/categories/:id                — удалить (ADMIN)
  *
  *   Заявки:
- *     GET    /api/tournaments/:id/applications  — список (COACH своего клуба или ADMIN)
+ *     GET    /api/tournaments/:id/applications  — список (COACH / ADMIN)
  *     POST   /api/tournaments/:id/applications  — создать/получить DRAFT (COACH)
- *     GET    /api/athlete/applications          — заявки текущего спортсмена
+ *     GET    /api/coach/applications            — заявки тренера
+ *     GET    /api/athlete/applications          — заявки спортсмена
  *     GET    /api/applications/:id              — детали
- *     POST   /api/applications/:id/entries      — добавить спортсмена
+ *     GET    /api/applications/:id/history      — история (COACH / ADMIN)
+ *     POST   /api/applications/:id/entries      — добавить запись
  *     DELETE /api/applications/:id/entries/:entryId
- *     POST   /api/applications/:id/submit       — отправить
+ *     POST   /api/applications/:id/submit       — отправить на рассмотрение
  *     POST   /api/applications/:id/approve      — одобрить (ADMIN)
  *     POST   /api/applications/:id/reject       — отклонить (ADMIN)
  *     POST   /api/applications/:id/withdraw     — отозвать (COACH)
@@ -68,10 +71,12 @@ import {
   approve,
   reject,
   withdraw,
+  bulkApprove,
   ApplicationError,
 } from "../services/application.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
+import { getApplicationHistory } from "../services/audit.service.js";
 
 function attachErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
@@ -149,6 +154,47 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     return listCategories(request.params.id);
   });
 
+  // Публичный список участников по категории — аналог IJF draw list
+  // GET /api/tournaments/:id/categories/:categoryId/participants
+  app.get<{ Params: { id: string; categoryId: string } }>(
+    "/:id/categories/:categoryId/participants",
+    async (request: FastifyRequest<{ Params: { id: string; categoryId: string } }>) => {
+      const { id: tournamentId, categoryId } = request.params;
+      const entries = await import("../lib/prisma.js").then(({ prisma }) =>
+        prisma.applicationEntry.findMany({
+          where: {
+            categoryId,
+            application: { tournamentId, status: "APPROVED" },
+          },
+          select: {
+            id: true,
+            weighInStatus: true,
+            athlete: {
+              select: {
+                id: true,
+                name: true,
+                surname: true,
+                nameLatin: true,
+                surnameLatin: true,
+                gender: true,
+                weightKg: true,
+                beltRank: true,
+                avatarUrl: true,
+                club: { select: { id: true, name: true, city: true } },
+              },
+            },
+          },
+          orderBy: { id: "asc" },
+        }),
+      );
+      return entries.map((e) => ({
+        entryId: e.id,
+        weighInStatus: e.weighInStatus,
+        athlete: e.athlete,
+      }));
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     "/:id/categories",
     { preHandler: [authenticate, authorize("ADMIN")] },
@@ -175,6 +221,17 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
       const { notes } = createApplicationSchema.parse(request.body ?? {});
       const app2 = await createOrGetDraftApplication(request.user!.sub, request.params.id, notes);
       return reply.code(201).send(app2);
+    },
+  );
+
+  // AD1: Bulk-одобрение — все SUBMITTED заявки турнира
+  // POST /api/tournaments/:id/applications/bulk-approve
+  app.post<{ Params: { id: string } }>(
+    "/:id/applications/bulk-approve",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const { reviewerNotes } = reviewApplicationSchema.parse(request.body ?? {});
+      return bulkApprove(request.user!.sub, request.params.id, reviewerNotes);
     },
   );
 }
@@ -280,6 +337,15 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return withdraw(request.user!.sub, request.params.id);
+    },
+  );
+
+  // AP2: История изменений заявки
+  app.get<{ Params: { id: string } }>(
+    "/applications/:id/history",
+    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getApplicationHistory(request.params.id);
     },
   );
 }

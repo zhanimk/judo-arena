@@ -1,15 +1,20 @@
 /**
- * Admin маршруты: Override, Rollback, AuditLog, рейтинг, PDF.
+ * Admin маршруты: Override, Finalize, AuditLog, рейтинг, PDF.
  *
- *   POST   /api/admin/matches/:id/override   — переопределить результат
- *   POST   /api/admin/tournaments/:id/finalize — закрыть турнир + начислить рейтинг
- *   GET    /api/admin/audit-logs             — лог действий
+ *   POST   /api/admin/matches/:id/override        — переопределить результат
+ *   POST   /api/admin/tournaments/:id/finalize    — закрыть турнир + начислить рейтинг
+ *   GET    /api/admin/audit-logs                  — лог действий
+ *   GET    /api/admin/applications                — все заявки (один запрос)
+ *   GET    /api/admin/tournaments/:id/weigh-in    — таразылау листа
+ *   PATCH  /api/admin/application-entries/:id/weigh-in — обновить статус таразылауа
  *
- *   GET    /api/ratings/athletes/:id         — рейтинг спортсмена
- *   GET    /api/ratings/leaderboard          — топ
+ *   GET    /api/ratings/athletes/:id              — рейтинг спортсмена
+ *   GET    /api/ratings/leaderboard               — топ спортсменов
+ *   GET    /api/ratings/clubs                     — топ клубов
  *
- *   GET    /api/pdf/diploma?athleteId=&tournamentId=&categoryId= — диплом
- *   GET    /api/pdf/protocol?tournamentId=                       — протокол
+ *   GET    /api/pdf/bracket?bracketId=            — PDF одной сетки
+ *   GET    /api/pdf/tournament-brackets?tournamentId= — PDF всех сеток (один файл)
+ *   GET    /api/pdf/protocol?tournamentId=        — итоговый протокол PDF
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
@@ -49,18 +54,26 @@ import {
   createGroupByAdmin,
   updateGroupByAdmin,
   deleteGroupByAdmin,
+  deleteUserByAdmin,
   AdminManagementError,
 } from "../services/admin-management.service.js";
 import {
   generateBracketPdf,
+  generateAllBracketsPdf,
   generateTournamentProtocolPdf,
-  generateDiplomaPdf,
   PdfError,
 } from "../services/pdf.service.js";
 import {
   adminForceRemoveEntry,
   adminForceMoveEntry,
+  listAllApplicationsAdmin,
 } from "../services/application.service.js";
+import {
+  getTournamentWeighIn,
+  updateEntryWeighIn,
+  WeighInError,
+} from "../services/weigh-in.service.js";
+import { updateWeighInSchema } from "../validators/application.schema.js";
 
 const overrideSchema = z
   .object({
@@ -84,6 +97,7 @@ const createUserSchema = z.object({
   phone: z.string().optional(),
   preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
   clubId: z.string().optional(),
+  clubRole: z.enum(["OWNER", "COACH"]).optional(),
 });
 
 const updateUserSchema = z.object({
@@ -147,15 +161,13 @@ const pdfProtocolQuerySchema = z.object({
   tournamentId: z.string(),
 });
 
-const pdfDiplomaQuerySchema = z.object({
-  athleteId: z.string(),
+const pdfAllBracketsQuerySchema = z.object({
   tournamentId: z.string(),
-  categoryId: z.string(),
 });
 
 function attachErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError || err instanceof AdminManagementError) {
+    if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError || err instanceof AdminManagementError || err instanceof WeighInError) {
       return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
     }
     if (err instanceof ZodError) {
@@ -177,6 +189,16 @@ function attachErrorHandler(app: FastifyInstance) {
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
+  // GET /api/admin/applications?status=...&tournamentId=...
+  app.get(
+    "/applications",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request) => {
+      const q = request.query as { status?: string; tournamentId?: string };
+      return listAllApplicationsAdmin(q.status, q.tournamentId);
+    },
+  );
+
   app.post<{ Params: { id: string } }>(
     "/matches/:id/override",
     { preHandler: [authenticate, authorize("ADMIN")] },
@@ -191,6 +213,23 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return finalizeTournament(request.user!.sub, request.params.id);
+    },
+  );
+
+  app.get<{ Params: { id: string } }>(
+    "/tournaments/:id/weigh-in",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getTournamentWeighIn(request.user!.sub, request.params.id);
+    },
+  );
+
+  app.patch<{ Params: { entryId: string } }>(
+    "/application-entries/:entryId/weigh-in",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { entryId: string } }>) => {
+      const input = updateWeighInSchema.parse(request.body);
+      return updateEntryWeighIn(request.user!.sub, request.params.entryId, input);
     },
   );
 
@@ -316,13 +355,22 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
+  app.get<{
+    Querystring: {
+      role?: string;
+      search?: string;
+      clubId?: string;
+      isActive?: string;
+      limit?: string;
+      offset?: string;
+    };
+  }>(
     "/users",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request) => {
-      const q = request.query as any;
+      const q = request.query;
       return listAllUsers({
-        role: q.role,
+        role: q.role as import("@prisma/client").UserRole | undefined,
         search: q.search,
         clubId: q.clubId,
         isActive: q.isActive === "true" ? true : q.isActive === "false" ? false : undefined,
@@ -345,6 +393,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string }; Body: { active: boolean } }>) => {
       return toggleUserBlock(request.user!.sub, request.params.id, request.body.active);
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/users/:id",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      await deleteUserByAdmin(request.user!.sub, request.params.id);
+      return reply.code(204).send();
     },
   );
 
@@ -464,7 +521,8 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
   // PDF сетки — расписание матчей до начала турнира
-  app.get("/bracket", async (request, reply) => {
+  // Тесный rate-limit: PDF-генерация — CPU-intensive операция
+  app.get("/bracket", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const q = pdfBracketQuerySchema.parse(request.query);
     const buffer = await generateBracketPdf(q.bracketId);
     return reply
@@ -474,7 +532,7 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // PDF итогового протокола — после COMPLETED
-  app.get("/protocol", async (request, reply) => {
+  app.get("/protocol", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const q = pdfProtocolQuerySchema.parse(request.query);
     const buffer = await generateTournamentProtocolPdf(q.tournamentId);
     return reply
@@ -483,13 +541,15 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
       .send(buffer);
   });
 
-  // PDF диплома — после COMPLETED
-  app.get("/diploma", async (request, reply) => {
-    const q = pdfDiplomaQuerySchema.parse(request.query);
-    const buffer = await generateDiplomaPdf(q.athleteId, q.tournamentId, q.categoryId);
+  // PDF всех сеток турнира — один файл с обложкой + все категории
+  app.get("/tournament-brackets", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const q = pdfAllBracketsQuerySchema.parse(request.query);
+    const buffer = await generateAllBracketsPdf(q.tournamentId);
     return reply
       .type("application/pdf")
-      .header("Content-Disposition", `attachment; filename="diploma-${q.athleteId}.pdf"`)
+      .header("Content-Disposition", `attachment; filename="brackets-${q.tournamentId}.pdf"`)
       .send(buffer);
   });
+
+  // Участников PDF и Диплом PDF удалены по требованию ТЗ
 }

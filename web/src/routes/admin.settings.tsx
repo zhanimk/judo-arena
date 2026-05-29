@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({ meta: [{ title: "Баптаулар — Әкімші" }] }),
@@ -57,8 +58,12 @@ function AdminSettings() {
       setError("");
       qc.invalidateQueries({ queryKey: ["system-config", "ratingPoints"] });
       setTimeout(() => setSuccess(""), 3000);
+      toast.success("Рейтинг баптаулары сақталды ✓");
     },
-    onError: (e: any) => { setError(e instanceof ApiError ? e.message : "Қате"); setSuccess(""); },
+    onError: (e: any) => {
+      const m = e instanceof ApiError ? e.message : "Қате";
+      setError(m); setSuccess(""); toast.error(m);
+    },
   });
 
   return (

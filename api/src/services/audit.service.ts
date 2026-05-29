@@ -10,6 +10,7 @@
  */
 
 import { prisma } from "../lib/prisma.js";
+import { getRequestContext } from "../lib/request-context.js";
 
 export interface AuditContext {
   actorUserId: string | null;
@@ -24,6 +25,7 @@ export interface AuditContext {
 }
 
 export async function logAudit(ctx: AuditContext): Promise<void> {
+  const reqCtx = getRequestContext();
   await prisma.auditLog.create({
     data: {
       actorUserId: ctx.actorUserId,
@@ -33,8 +35,18 @@ export async function logAudit(ctx: AuditContext): Promise<void> {
       before: (ctx.before ?? null) as any,
       after: (ctx.after ?? null) as any,
       metadata: (ctx.metadata ?? null) as any,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
+      ipAddress: ctx.ipAddress ?? reqCtx.ipAddress,
+      userAgent: ctx.userAgent ?? reqCtx.userAgent,
+    },
+  });
+}
+
+export async function getApplicationHistory(applicationId: string) {
+  return prisma.auditLog.findMany({
+    where: { targetEntity: "Application", targetId: applicationId },
+    orderBy: { createdAt: "asc" },
+    include: {
+      actor: { select: { id: true, name: true, surname: true, role: true } },
     },
   });
 }

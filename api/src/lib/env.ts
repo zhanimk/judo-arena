@@ -34,10 +34,23 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Judo-Arena <noreply@judo-arena.kz>"),
 
   UPLOADS_DIR: z.string().default("./uploads"),
+  MAX_FILE_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
   BCRYPT_ROUNDS: z.coerce.number().int().positive().default(12),
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW: z.string().default("1 minute"),
+
+  APP_URL: z.string().default("http://localhost:3000"),
+
+  SENTRY_DSN: z.string().url().optional(),
+
+  // S3-совместимое хранилище (опционально, иначе — локальная папка)
+  S3_BUCKET: z.string().optional(),
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_PUBLIC_URL: z.string().url().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_DEFAULT_REGION: z.string().default("us-east-1"),
 });
 
 const parsed = schema.safeParse(process.env);

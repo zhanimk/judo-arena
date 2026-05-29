@@ -20,6 +20,7 @@ import { prisma } from "../lib/prisma.js";
 import { MatchStatus, BracketFormat, UserRole, type Match } from "@prisma/client";
 import { propagateResult } from "./bracket-engine/single-elimination.js";
 import { logAudit } from "./audit.service.js";
+import { emitMatchEvent, emitToBracket, emitToTournament } from "../sockets/io.js";
 
 export class OverrideError extends Error {
   constructor(public code: string, message: string, public httpStatus = 400) {
@@ -112,6 +113,29 @@ export async function overrideMatchResult(
     after: { winnerId: newWinnerId, isReplay: true, replayReason: reason },
     metadata: { rolledBackCount: rolledBack.length, reason },
   });
+
+  // ---- Реалтайм: обновить табло и сетку у всех подключённых клиентов ----
+  emitMatchEvent(updated, "match:finished", {
+    matchId: updated.id,
+    winnerId: newWinnerId,
+    overridden: true,
+    reason,
+  });
+  emitToBracket(match.bracketId, "bracket:update", {
+    bracketId: match.bracketId,
+    overriddenMatchId: matchId,
+  });
+  emitToTournament(match.tournamentId, "bracket:update", {
+    bracketId: match.bracketId,
+    overriddenMatchId: matchId,
+  });
+  // Если матч был на татами — обновить очередь
+  if (match.tatamiNumber !== null) {
+    emitMatchEvent(updated, "tatami:queueUpdate", {
+      matchId: updated.id,
+      tatamiNumber: match.tatamiNumber,
+    });
+  }
 
   return { updated, rolledBack };
 }
