@@ -78,18 +78,29 @@ async function buildServer() {
     done();
   });
 
-  // Report unhandled errors to Sentry
+  // Report unhandled errors to Sentry with full request context
   app.addHook("onError", (req, _reply, error, done) => {
     if (env.SENTRY_DSN) {
       Sentry.withScope((scope) => {
         scope.setTag("requestId", req.id as string);
         scope.setExtra("url", req.url);
         scope.setExtra("method", req.method);
+        scope.setExtra("ip", req.ip);
+        // Attach authenticated user if available
+        const user = (req as any).user;
+        if (user?.sub) {
+          scope.setUser({ id: user.sub, email: user.email, role: user.role });
+        }
         Sentry.captureException(error);
       });
     }
     done();
   });
+
+  // Attach Fastify instrumentation for automatic transaction/performance tracking
+  if (env.SENTRY_DSN) {
+    Sentry.setupFastifyErrorHandler(app as any);
+  }
 
   // Безопасность
   await app.register(helmet, { contentSecurityPolicy: false });

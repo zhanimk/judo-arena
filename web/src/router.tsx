@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "@/lib/api";
+import { sentryTrackNavigation } from "@/lib/sentry";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -29,6 +30,11 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+  });
+
+  // Track route navigations in Sentry as breadcrumbs
+  router.subscribe("onResolved", (event) => {
+    sentryTrackNavigation(event.toLocation.pathname);
   });
 
   return router;

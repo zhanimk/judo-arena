@@ -15,8 +15,24 @@ export function initSentry(): void {
   Sentry.init({
     dsn: env.SENTRY_DSN,
     environment: env.NODE_ENV,
-    tracesSampleRate: env.NODE_ENV === "production" ? 0.2 : 1.0,
+    release: process.env.RELEASE ?? process.env.npm_package_version ?? "unknown",
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1.0,
     enabled: env.NODE_ENV !== "test",
+    // Automatic Node.js instrumentation (http, pg, redis, etc.)
+    integrations: [
+      Sentry.postgresIntegration(),
+      Sentry.redisIntegration(),
+    ],
+    // Scrub sensitive fields from payloads
+    beforeSend(event) {
+      if (event.request?.data) {
+        const data = event.request.data as Record<string, unknown>;
+        if (data.password) data.password = "[FILTERED]";
+        if (data.passwordHash) data.passwordHash = "[FILTERED]";
+        if (data.token) data.token = "[FILTERED]";
+      }
+      return event;
+    },
   });
 }
 

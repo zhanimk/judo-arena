@@ -11,6 +11,7 @@
 
 import { useSyncExternalStore } from "react";
 import { api, setAccessToken, setOnUnauthorized } from "./api";
+import { Sentry } from "./sentry";
 
 export type UserRole = "ATHLETE" | "COACH" | "ADMIN" | "JUDGE";
 
@@ -52,6 +53,20 @@ function emit() {
 
 function setState(patch: Partial<AuthState>) {
   state = { ...state, ...patch };
+  // Sync Sentry user context whenever auth state changes
+  if (patch.user !== undefined) {
+    if (patch.user) {
+      Sentry.setUser({
+        id: patch.user.id,
+        email: patch.user.email,
+        username: `${patch.user.name} ${patch.user.surname}`,
+        // extra fields shown in Sentry UI
+        role: patch.user.role,
+      } as Parameters<typeof Sentry.setUser>[0]);
+    } else {
+      Sentry.setUser(null);
+    }
+  }
   emit();
 }
 
