@@ -2,8 +2,11 @@ import { Link } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import { ArrowUpRight, Instagram, Mail, MapPin, Radio, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function SiteFooter() {
+  const { t } = useTranslation();
+
   return (
     <footer className="relative mt-0 overflow-hidden border-t border-gold/20 bg-navy-deep">
       <img src={teamLineup} alt="" className="absolute inset-0 h-full w-full object-cover opacity-12" />
@@ -18,11 +21,11 @@ export function SiteFooter() {
             </span>
             <div>
               <div className="text-[10px] uppercase tracking-[0.28em] text-gold">live arena</div>
-              <div className="font-display text-lg font-semibold">Жарыстар, сетка, протокол — бір жерде</div>
+              <div className="font-display text-lg font-semibold">{t("footer.tagline")}</div>
             </div>
           </div>
           <Link to="/tournaments" className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
-            Жарыстарды ашу <ArrowUpRight className="h-4 w-4" />
+            {t("footer.tournaments")} <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -40,36 +43,37 @@ export function SiteFooter() {
               </div>
             </div>
             <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Командалар тіркеледі, қатысушылар санатқа бөлінеді, сетка құрылады және финалдан кейін ресми хаттама дайын болады.
+              {t("footer.tagline")}
             </p>
           </div>
 
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">Навигация</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gold">{t("footer.platform")}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/tournaments" className="hover:text-gold">Жарыстар</Link></li>
-              <li><Link to="/rankings" className="hover:text-gold">Дәреже</Link></li>
-              <li><Link to="/protocol" className="hover:text-gold">Хаттамалар</Link></li>
+              <li><Link to="/tournaments" className="hover:text-gold">{t("footer.tournaments")}</Link></li>
+              <li><Link to="/rankings" className="hover:text-gold">{t("footer.rankings")}</Link></li>
+              <li><Link to="/protocol" className="hover:text-gold">{t("footer.protocol")}</Link></li>
+              <li><Link to="/about" className="hover:text-gold">{t("footer.about")}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">Кіру</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gold">{t("nav.login")}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/login" className="hover:text-gold">Жаттықтырушы</Link></li>
-              <li><Link to="/login" className="hover:text-gold">Спортшы</Link></li>
-              <li><Link to="/login" className="hover:text-gold">Қызметтік кіру</Link></li>
+              <li><Link to="/login" className="hover:text-gold">{t("roles.coach")}</Link></li>
+              <li><Link to="/login" className="hover:text-gold">{t("roles.athlete")}</Link></li>
+              <li><Link to="/login" className="hover:text-gold">{t("roles.admin")}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">Байланыс</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gold">{t("footer.contact")}</h4>
             <div className="space-y-3 text-sm text-muted-foreground">
               <a href="mailto:support@ajl.kz" className="flex items-center gap-2 hover:text-gold">
                 <Mail className="h-4 w-4 text-gold" /> support@ajl.kz
               </a>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-gold" /> Астана, Қазақстан
+                <MapPin className="h-4 w-4 text-gold" /> Astana, Kazakhstan
               </div>
               <a
                 href="https://www.instagram.com/judochildleague"
@@ -86,10 +90,10 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <div>© 2026 Judo Child League. Барлық құқықтары қорғалған.</div>
+          <div>© 2026 Judo Child League. {t("footer.rights")}</div>
           <div className="flex items-center gap-2">
             <Trophy className="h-3.5 w-3.5 text-gold" />
-            Made for judo tournaments in Kazakhstan
+            {t("footer.built_with")}
           </div>
         </div>
       </div>

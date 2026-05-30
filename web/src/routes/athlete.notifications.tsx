@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { toast } from "sonner";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/notifications")({
   head: () => ({ meta: [{ title: "Хабарландырулар — Judo-Arena" }] }),
@@ -17,18 +18,19 @@ export const Route = createFileRoute("/athlete/notifications")({
   ),
 });
 
-const FILTER_LABELS: Record<string, string> = {
-  all: "Барлығы",
-  unread: "Оқылмаған",
-  application_approved: "Бекітілген",
-  match_scheduled: "Матч",
-  tournament_update: "Жарыс",
-  announcement: "Хабарлама",
-};
-
 function AthleteNotifications() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
+
+  const filterLabels: Record<string, string> = {
+    all: t("notification.all"),
+    unread: t("notification.unread"),
+    application_approved: t("notification.types.application_approved"),
+    match_scheduled: t("notification.types.match_scheduled"),
+    tournament_update: t("notification.types.tournament_update"),
+    announcement: t("notification.types.announcement"),
+  };
 
   const query = useQuery({
     queryKey: ["my-notifications", filter],
@@ -43,36 +45,33 @@ function AthleteNotifications() {
     mutationFn: () => api.notifications.markAllRead(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-notifications"] });
-      toast.success("Барлығы оқылды деп белгіленді ✓");
+      toast.success(t("notification.mark_all_read") + " ✓");
     },
-    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const markOne = useMutation({
     mutationFn: (id: string) => api.notifications.markRead(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-notifications"] });
-    },
-    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : "Қате"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-notifications"] }),
+    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const items = query.data ?? [];
   const unread = items.filter((n: any) => !n.read).length;
 
   return (
-    <DashboardShell role="Спортшы" navItems={nav} accentTitle={`Хабарландырулар${unread > 0 ? ` (${unread})` : ""}`}>
+    <DashboardShell role={t("athlete.role_label")} navItems={nav} accentTitle={`${t("dashboard.notifications")}${unread > 0 ? ` (${unread})` : ""}`}>
       <Panel
-        title={`${items.length} хабарландыру`}
+        title={`${items.length} ${t("dashboard.notifications").toLowerCase()}`}
         action={unread > 0 && (
           <button onClick={() => markAll.mutate()} disabled={markAll.isPending}
             className="text-sm text-gold hover:underline inline-flex items-center gap-1">
             {markAll.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-            Бәрін оқылды деп белгілеу
+            {t("notification.mark_all_read")}
           </button>
         )}
       >
-        {/* Фильтр */}
         <div className="mb-4 flex flex-wrap gap-2">
-          {Object.entries(FILTER_LABELS).map(([key, label]) => (
+          {Object.entries(filterLabels).map(([key, label]) => (
             <button key={key} onClick={() => setFilter(key)}
               className={`px-3 py-1 rounded-full text-xs border transition-colors ${
                 filter === key
@@ -86,7 +85,7 @@ function AthleteNotifications() {
 
         {query.isLoading ? <LoadingState /> :
           items.length === 0 ? (
-            <EmptyState title="Әзірге хабарландыру жоқ" hint="Жарыс басталғанда немесе өтінім бекітілгенде хабарлама келеді" />
+            <EmptyState title={t("notification.empty")} hint={t("notification.empty_hint")} />
           ) : (
             <ul className="space-y-2">
               {items.map((n: any) => (
@@ -96,13 +95,13 @@ function AthleteNotifications() {
                     <div className="font-medium text-sm">{n.titleKey}</div>
                     <div className="text-xs text-muted-foreground mt-1">{n.bodyKey}</div>
                     <div className="text-[10px] text-muted-foreground mt-2">
-                      {new Date(n.createdAt).toLocaleString("kk-KZ")}
+                      {new Date(n.createdAt).toLocaleString()}
                     </div>
                   </div>
                   {!n.read && (
                     <button onClick={() => markOne.mutate(n.id)}
                       className="text-xs text-gold hover:bg-gold/10 px-2 py-1 rounded inline-flex items-center gap-1 shrink-0">
-                      <Check className="h-3 w-3" /> Оқылды
+                      <Check className="h-3 w-3" /> {t("notification.mark_read")}
                     </button>
                   )}
                 </li>

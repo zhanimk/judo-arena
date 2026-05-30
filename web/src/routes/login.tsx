@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { RedirectIfAuthenticated } from "@/lib/protected-route";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Кіру — Judo-Arena" }] }),
@@ -25,12 +26,6 @@ export const Route = createFileRoute("/login")({
 
 type Mode = "login" | "register";
 
-const FEATURES = [
-  { icon: Trophy, text: "Жарыс кестесі мен нәтижелер онлайн" },
-  { icon: Zap,    text: "Жарты финал сеткасы автоматты" },
-  { icon: Shield, text: "Татами судьясы үшін арнайы панель" },
-];
-
 const INPUT_CLS =
   "w-full bg-input border border-border rounded-xl px-4 py-3 pl-11 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-gold focus:ring-2 focus:ring-gold/20 focus:outline-none transition-all";
 
@@ -43,6 +38,7 @@ function InputIcon({ children }: { children: React.ReactNode }) {
 }
 
 function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { login, register } = useAuth();
@@ -58,9 +54,15 @@ function Login() {
   const [error,    setError]    = useState("");
   const [leaving,  setLeaving]  = useState(false);
 
+  const features = [
+    { icon: Trophy, textKey: "home.feature_live_title" },
+    { icon: Zap, textKey: "home.feature_bracket_title" },
+    { icon: Shield, textKey: "home.feature_tatami_title" },
+  ];
+
   const switchMode = (m: Mode) => { setMode(m); setError(""); };
 
-  const redirectToDashboard = (userRole: "ATHLETE" | "COACH" | "ADMIN", isNew = false) => {
+  const redirectToDashboard = (userRole: "ATHLETE" | "COACH" | "ADMIN") => {
     setLeaving(true);
     setTimeout(() => {
       if (userRole === "ADMIN") navigate({ to: "/admin" });
@@ -76,15 +78,15 @@ function Login() {
     try {
       if (mode === "login") {
         const user = await login(email, password);
-        toast.success(`Сәлем, ${user.name}! 👋`);
+        toast.success(`${t("auth.welcome_back")} ${user.name} 👋`);
         redirectToDashboard(user.role);
       } else {
         const user = await register({ email, password, role, name, surname, preferredLocale: "kk" });
-        toast.success("Аккаунт сәтті жасалды! Қош келдіңіз 🎉");
-        redirectToDashboard(user.role, true);
+        toast.success(t("auth.welcome_back") + " 🎉");
+        redirectToDashboard(user.role);
       }
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Қате орын алды. Қайталап көріңіз.";
+      const msg = err instanceof ApiError ? err.message : t("error.generic");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -105,23 +107,12 @@ function Login() {
       className={`min-h-screen grid lg:grid-cols-[1fr_480px] xl:grid-cols-[1fr_520px] transition-opacity duration-400 ${leaving ? "opacity-0 scale-[0.99]" : "opacity-100 scale-100"}`}
       style={{ transition: "opacity 0.42s ease, transform 0.42s ease" }}
     >
-
-      {/* ── LEFT PANEL — always dark hero ── */}
+      {/* ── LEFT PANEL ── */}
       <div className="relative hidden lg:flex flex-col overflow-hidden" style={{ background: "#09090f" }}>
-        <img src={heroImg} alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center"
-          style={{ opacity: 0.45 }}
-        />
-        {/* gradient overlay — always dark regardless of theme */}
-        <div className="absolute inset-0"
-          style={{ background: "linear-gradient(135deg, rgba(9,9,15,0.92) 0%, rgba(9,9,15,0.65) 60%, rgba(9,9,15,0.40) 100%)" }}
-        />
-        {/* gold glow accents */}
-        <div className="absolute bottom-1/4 right-0 w-80 h-80 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(212,160,55,0.18) 0%, transparent 70%)", filter: "blur(50px)" }}
-        />
+        <img src={heroImg} alt="" className="absolute inset-0 h-full w-full object-cover object-center" style={{ opacity: 0.45 }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,15,0.92) 0%, rgba(9,9,15,0.65) 60%, rgba(9,9,15,0.40) 100%)" }} />
+        <div className="absolute bottom-1/4 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(212,160,55,0.18) 0%, transparent 70%)", filter: "blur(50px)" }} />
 
-        {/* Top logo */}
         <div className="relative px-12 pt-10">
           <Link to="/" className="inline-flex items-center gap-3" style={{ textDecoration: "none" }}>
             <img src={emblem} alt="" className="h-10 w-10 rounded-xl shadow-lg" />
@@ -131,35 +122,33 @@ function Login() {
           </Link>
         </div>
 
-        {/* Centre */}
         <div className="relative flex-1 flex flex-col justify-center px-12 pb-20">
           <div className="inline-flex items-center gap-2 mb-6" style={{ color: "#d4a037", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
             <span style={{ height: 1, width: 32, background: "#d4a037", opacity: 0.6 }} />
-            Қазақстандық дзюдо платформасы
+            {t("app.tagline")}
           </div>
           <h2 style={{ fontFamily: "'Sora','Inter',sans-serif", fontSize: 52, fontWeight: 800, lineHeight: 1.12, margin: "0 0 20px", color: "#fff" }}>
-            Дзюдоның<br />
+            {t("app.name")}<br />
             <span style={{ background: "linear-gradient(135deg,#f0c56d,#c48b1a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontStyle: "italic" }}>
-              цифрлық аренасы
+              {t("app.tagline")}
             </span>
           </h2>
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, lineHeight: 1.75, maxWidth: 380, marginBottom: 36 }}>
-            Жарыстарды ұйымдастыру, өтінімдерді бекіту және нәтижелерді жариялау — бәрі бір жерде.
+            {t("home.hero_subtitle")}
           </p>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-            {FEATURES.map(({ icon: Icon, text }) => (
-              <li key={text} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {features.map(({ icon: Icon, textKey }) => (
+              <li key={textKey} style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 32, width: 32, borderRadius: 8, background: "rgba(212,160,55,0.14)", border: "1px solid rgba(212,160,55,0.25)", flexShrink: 0 }}>
                   <Icon className="h-3.5 w-3.5" style={{ color: "#d4a037" }} />
                 </span>
-                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.68)" }}>{text}</span>
+                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.68)" }}>{t(textKey)}</span>
               </li>
             ))}
           </ul>
 
-          {/* Stats */}
           <div style={{ display: "flex", gap: 36, marginTop: 44 }}>
-            {[["500+", "Спортшы"], ["50+", "Турнир"], ["3", "Демо рөл"]].map(([val, label]) => (
+            {[["500+", t("home.stats_athletes")], ["50+", t("home.stats_tournaments")], ["3", t("common.role")]].map(([val, label]) => (
               <div key={label}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: "#d4a037", fontFamily: "'Sora','Inter',sans-serif" }}>{val}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{label}</div>
@@ -169,35 +158,30 @@ function Login() {
         </div>
 
         <div className="relative px-12 pb-8" style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
-          © 2026 Judo-Arena · Казахстандық дзюдо платформасы
+          © 2026 Judo-Arena · {t("app.tagline")}
         </div>
       </div>
 
-      {/* ── RIGHT PANEL — fully theme-aware ── */}
+      {/* ── RIGHT PANEL ── */}
       <div className="flex items-center justify-center bg-background p-6 lg:p-10 lg:border-l lg:border-border/40 min-h-screen">
         <div className="w-full max-w-sm">
 
-          {/* Mobile logo */}
           <Link to="/" className="lg:hidden inline-flex items-center gap-2.5 mb-8">
             <img src={emblem} alt="" className="h-9 w-9 rounded-lg" />
             <span className="font-display text-xl font-bold">JUDO·ARENA</span>
           </Link>
 
-          {/* Heading */}
           <div className="mb-7">
             <h1 className="font-display text-2xl font-bold text-foreground">
-              {mode === "login" ? "Жүйеге кіру" : "Жаңа аккаунт"}
+              {mode === "login" ? t("auth.login_title") : t("auth.register_title")}
             </h1>
             <p className="text-muted-foreground text-sm mt-1.5">
-              {mode === "login"
-                ? "Деректерді енгізіп, жүйеге кіріңіз."
-                : "Аккаунт жасап, жарыстарға қатысыңыз."}
+              {mode === "login" ? t("auth.login_subtitle") : t("auth.register_subtitle")}
             </p>
           </div>
 
-          {/* Mode tabs */}
           <div className="flex gap-1 p-1.5 rounded-2xl bg-muted/60 border border-border/60 mb-7">
-            {([["login", Lock, "Кіру"], ["register", UserPlus, "Тіркелу"]] as const).map(([m, Icon, label]) => (
+            {([["login", Lock, "auth.login_title"], ["register", UserPlus, "auth.register_title"]] as const).map(([m, Icon, labelKey]) => (
               <button
                 key={m}
                 type="button"
@@ -209,34 +193,31 @@ function Login() {
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-
-            {/* Register-only fields */}
             {mode === "register" && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <InputIcon><User className="h-4 w-4" /></InputIcon>
-                    <input type="text" required placeholder="Аты" value={name}
+                    <input type="text" required placeholder={t("auth.first_name")} value={name}
                       onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />
                   </div>
                   <div className="relative">
                     <InputIcon><User className="h-4 w-4" /></InputIcon>
-                    <input type="text" required placeholder="Тегі" value={surname}
+                    <input type="text" required placeholder={t("auth.last_name")} value={surname}
                       onChange={(e) => setSurname(e.target.value)} className={INPUT_CLS} />
                   </div>
                 </div>
 
-                {/* Role picker */}
                 <div className="grid grid-cols-2 gap-3">
                   {([
-                    ["ATHLETE", "Спортшы",      "🥋", "Жарыстарға қатысу"],
-                    ["COACH",   "Жаттықтырушы", "📋", "Клуб басқару"],
+                    ["ATHLETE", t("roles.athlete"), "🥋", t("athlete.register_cta")],
+                    ["COACH",   t("roles.coach"),   "📋", t("coach.club_title")],
                   ] as const).map(([k, label, emoji, hint]) => (
                     <button
                       key={k} type="button"
@@ -256,22 +237,20 @@ function Login() {
               </>
             )}
 
-            {/* Email */}
             <div className="relative">
               <InputIcon><Mail className="h-4 w-4" /></InputIcon>
-              <input type="email" required placeholder="Email" value={email}
+              <input type="email" required placeholder={t("common.email")} value={email}
                 onChange={(e) => setEmail(e.target.value)} autoComplete="email"
                 className={INPUT_CLS} />
             </div>
 
-            {/* Password */}
             <div>
               <div className="relative">
                 <InputIcon><KeyRound className="h-4 w-4" /></InputIcon>
                 <input
                   type={showPwd ? "text" : "password"}
                   required
-                  placeholder="Құпиясөз"
+                  placeholder={t("common.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={mode === "register" ? 8 : 1}
@@ -286,15 +265,14 @@ function Login() {
               {mode === "login" ? (
                 <div className="mt-2 text-right">
                   <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-gold transition-colors">
-                    Құпиясөзді ұмыттым?
+                    {t("auth.forgot_password")}
                   </Link>
                 </div>
               ) : (
-                <p className="mt-1.5 text-[11px] text-muted-foreground/70">Кемінде 8 таңба</p>
+                <p className="mt-1.5 text-[11px] text-muted-foreground/70">{t("auth.password_too_short")}</p>
               )}
             </div>
 
-            {/* Error */}
             {error && (
               <div className="flex items-start gap-2.5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3">
                 <span className="mt-0.5 shrink-0">⚠</span>
@@ -302,27 +280,28 @@ function Login() {
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-gold text-gold-foreground font-semibold py-3.5 rounded-xl shadow-gold hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2 mt-1"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Кіру" : "Аккаунт жасау"}
+              {loading
+                ? (mode === "login" ? t("auth.signing_in") : t("auth.registering"))
+                : (mode === "login" ? t("nav.login") : t("nav.register"))
+              }
             </button>
           </form>
 
-          {/* Demo accounts */}
           <div className="mt-7 pt-6 border-t border-border/60">
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground/60 text-center mb-3">
-              Демо аккаунттар
+              Demo
             </p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                ["admin",   "🛡️", "Әкімші"],
-                ["coach",   "📋", "Тренер"],
-                ["athlete", "🥋", "Спортшы"],
+                ["admin",   "🛡️", t("roles.admin")],
+                ["coach",   "📋", t("roles.coach")],
+                ["athlete", "🥋", t("roles.athlete")],
               ] as const).map(([k, emoji, label]) => (
                 <button
                   key={k}
@@ -335,7 +314,7 @@ function Login() {
               ))}
             </div>
             <p className="mt-2.5 text-center text-[10px] text-muted-foreground/50">
-              Барлығының құпиясөзі:{" "}
+              {t("common.password")}:{" "}
               <span className="font-mono text-gold/80">password123</span>
             </p>
           </div>
