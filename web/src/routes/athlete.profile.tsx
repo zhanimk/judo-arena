@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type InputHTMLAttributes } from "react";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import { Avatar } from "@/components/ui/avatar-image";
 import { toast } from "sonner";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 
@@ -191,7 +192,7 @@ function Profile() {
           <Panel title="Баптаулар">
             <div className="space-y-3">
               {user.avatarUrl && (
-                <img src={mediaUrl(user.avatarUrl)} alt="" className="h-20 w-20 rounded-full border border-gold/30 object-cover" />
+                <Avatar src={mediaUrl(user.avatarUrl)} name={`${user.name} ${user.surname}`} size={80} className="border border-gold/30" />
               )}
               <Field label="Тіл" value={localeLabel(user.preferredLocale)} />
               <Field label="Тіркелген" value={new Date(user.createdAt).toLocaleDateString("kk-KZ")} />

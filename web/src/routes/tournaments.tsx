@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { LazyImage } from "@/components/ui/avatar-image";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
@@ -112,7 +113,7 @@ function Tournaments() {
               className="group overflow-hidden rounded-2xl border border-gold/30 bg-card/80 shadow-2xl backdrop-blur transition hover:-translate-y-1 hover:border-gold/60"
             >
               <div className="relative h-44">
-                <img src={featured.posterUrl || teamLineup} alt="" className="h-full w-full object-cover" />
+                <LazyImage src={featured.posterUrl || teamLineup} alt="" className="h-full w-full object-cover" priority />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
                 <span className={`absolute left-4 top-4 rounded-full border px-3 py-1 text-[10px] uppercase tracking-widest ${statusColor(featured.status)}`}>
                   {statusLabel[featured.status as Status] ?? featured.status}
@@ -201,7 +202,7 @@ function Tournaments() {
                 className="group relative overflow-hidden rounded-2xl border border-border bg-card/70 transition-all hover:-translate-y-1 hover:border-gold/50"
               >
                 <div className="relative h-40 overflow-hidden">
-                  <img src={t.posterUrl || tournamentImages[index % tournamentImages.length]} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <LazyImage src={t.posterUrl || tournamentImages[index % tournamentImages.length]!} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
                   <span className={`absolute left-4 top-4 text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusColor(t.status)} shrink-0`}>
                     {statusLabel[t.status as Status] ?? t.status}

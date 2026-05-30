@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import { DashboardShell, EmptyState, LoadingState, Panel } from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import { Avatar, LazyImage } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -581,7 +582,7 @@ function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
     <div className="overflow-hidden rounded-md border border-border/60 bg-background/30">
       <div className="flex aspect-[16/9] items-center justify-center bg-muted/30">
         {logo ? (
-          <img src={mediaUrl(logo)} alt="" className="h-full w-full object-cover" />
+          <LazyImage src={mediaUrl(logo)} alt="" className="h-full w-full object-cover" />
         ) : (
           <ImageIcon className="h-12 w-12 text-muted-foreground" />
         )}
@@ -764,13 +765,11 @@ function ClubCoaches({
     <div className="space-y-2">
       {unique.map((coach) => (
         <div key={coach.id} className="flex items-center gap-3 rounded-md border border-border/60 bg-background/30 p-3">
-          {coach.avatarUrl ? (
-            <img src={mediaUrl(coach.avatarUrl)} alt="" className="h-9 w-9 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold/15 text-xs font-bold text-gold">
-              {coach.name?.[0]}{coach.surname?.[0]}
-            </div>
-          )}
+          <Avatar
+            src={coach.avatarUrl ? mediaUrl(coach.avatarUrl) : null}
+            name={`${coach.name ?? ""} ${coach.surname ?? ""}`}
+            size={36}
+          />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-1.5">
               <div className="truncate text-sm font-semibold">{coach.name} {coach.surname}</div>

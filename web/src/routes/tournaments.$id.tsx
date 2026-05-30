@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { Avatar } from "@/components/ui/avatar-image";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { api, mediaUrl } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
@@ -340,7 +341,7 @@ function TournamentDetail() {
                       <div className="text-sm font-bold text-muted-foreground tabular-nums">{i + 1}</div>
                       <div className="flex items-center gap-3 min-w-0">
                         {a.avatarUrl ? (
-                          <img src={mediaUrl(a.avatarUrl)} alt="" className="h-9 w-9 rounded-full object-cover border border-border/40 shrink-0" />
+                          <Avatar src={mediaUrl(a.avatarUrl)} name={`${a.name} ${a.surname}`} size={36} className="border border-border/40" />
                         ) : (
                           <div className="h-9 w-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
                             <User className="h-4 w-4 text-gold/60" />

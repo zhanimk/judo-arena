@@ -5,6 +5,7 @@ import { useState, type InputHTMLAttributes } from "react";
 import { DashboardShell, Panel } from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import { Avatar } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { toast } from "sonner";
@@ -126,7 +127,7 @@ function CoachProfile() {
         <Panel title="Көрініс">
           <div className="flex flex-col items-center text-center">
             {form.avatarUrl ? (
-              <img src={mediaUrl(form.avatarUrl)} alt="" className="h-24 w-24 rounded-full border border-gold/30 object-cover" />
+              <Avatar src={mediaUrl(form.avatarUrl)} name={`${form.name} ${form.surname}`} size={96} className="border border-gold/30" fetchpriority="high" />
             ) : (
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gold/15 text-xl font-bold text-gold">
                 {form.name[0]}{form.surname[0]}
