@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { LazyImage } from "@/components/ui/avatar-image";
 import heroImg from "@/assets/hero-judo.jpg";
 import emblem from "@/assets/jcl-logo.jpeg";
 import judoka3d from "@/assets/technique-kyu.jpg";
@@ -504,7 +505,7 @@ function Home() {
                   key={c.name}
                   className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}
                 >
-                  <img
+                  <LazyImage
                     src={c.image}
                     alt=""
                     className="absolute inset-0 h-full w-full object-cover opacity-12 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-18"
@@ -590,7 +591,7 @@ function Home() {
                       </div>
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded-full border border-gold/30 bg-gradient-gold shrink-0">
-                          <img src={a.image} alt="" className="h-full w-full object-cover" />
+                          <LazyImage src={a.image} alt="" className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0">
                           <div className="truncate font-semibold group-hover:text-gold transition-colors">{a.name}</div>
@@ -703,7 +704,7 @@ function Home() {
             params={{ id: featuredTournament.id }}
             className="group relative min-h-[29rem] overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50"
           >
-            <img src={featuredTournament.posterUrl || teamLineup} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-105" />
+            <LazyImage src={featuredTournament.posterUrl || teamLineup} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-destructive/20 to-gold/10 via-background/80" />
             <div className="absolute inset-0 grid-bg opacity-30" />
             <div className="relative flex h-full flex-col justify-between p-5 sm:p-7">
@@ -1165,7 +1166,7 @@ function Home() {
                       }`}
                     >
                       <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
-                        <img src={video.image} alt="" className="h-full w-full object-cover opacity-80 transition-transform group-hover:scale-105" />
+                        <LazyImage src={video.image} alt="" className="h-full w-full object-cover opacity-80 transition-transform group-hover:scale-105" />
                         <span className="absolute inset-0 bg-background/20" />
                         <span className="absolute inset-0 flex items-center justify-center">
                           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold text-gold-foreground">
@@ -1263,14 +1264,14 @@ function Home() {
               key={p.name}
               className="group relative h-[25rem] w-[18rem] shrink-0 overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50 sm:w-[21rem]"
             >
-              <img
+              <LazyImage
                 src={p.image}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
               />
               <div className={`absolute inset-0 bg-gradient-to-t ${p.accent} via-background/70 to-background/10`} />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                <img src={p.logo} alt="" className="h-12 w-12 rounded-xl border border-white/20 bg-white object-cover shadow-gold" />
+                <LazyImage src={p.logo} alt="" className="h-12 w-12 rounded-xl border border-white/20 bg-white object-cover shadow-gold" />
                 <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
                   {p.type}
                 </span>
@@ -1330,7 +1331,7 @@ function Home() {
       {/* TOURNAMENT DAY FINALE */}
       <section className="container mx-auto px-4 pb-16 sm:pb-24">
         <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-navy-deep shadow-elegant">
-          <img
+          <LazyImage
             src={heroKazakhstan}
             alt=""
             className="absolute inset-0 h-full w-full object-cover object-center opacity-55"
