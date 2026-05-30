@@ -6,6 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { VitePWA } from "vite-plugin-pwa";
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
@@ -36,6 +37,53 @@ export default defineConfig({
       sourcemap: true,
     },
     plugins: [
+      // PWA: offline support + installable app.
+      // Critical for tatami judges with poor Wi-Fi at competitions.
+      VitePWA({
+        registerType: "autoUpdate",
+        // Don't inject service worker in dev (causes caching confusion)
+        devOptions: { enabled: false },
+        manifest: false, // We have our own public/manifest.webmanifest
+        workbox: {
+          // Cache the app shell and all static assets
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+          // Navigation fallback: serve the SPA shell for unknown routes
+          // (lets the client-side router handle them after offline load)
+          navigateFallback: null, // SSR app — don't intercept navigations
+          // Runtime caching strategies
+          runtimeCaching: [
+            // API GET requests: network first, fall back to cache (30s timeout)
+            {
+              urlPattern: /^https?:\/\/.*\/api\/(matches|tournaments|brackets|ratings)/,
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "api-cache",
+                networkTimeoutSeconds: 5,
+                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 2 }, // 2h
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            // Static assets: cache first (long-lived)
+            {
+              urlPattern: /\.(?:js|css|woff2?)$/,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "static-assets",
+                expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30d
+              },
+            },
+            // Google Fonts: stale while revalidate
+            {
+              urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
+              handler: "StaleWhileRevalidate",
+              options: {
+                cacheName: "google-fonts",
+                expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 }, // 1y
+              },
+            },
+          ],
+        },
+      }),
       // Upload source maps to Sentry on production build.
       // Requires SENTRY_AUTH_TOKEN env var (CI secret).
       // Only activates when VITE_SENTRY_DSN is set to avoid slowing local builds.

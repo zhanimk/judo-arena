@@ -9,6 +9,7 @@ import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
 import { initSentry, Sentry } from "@/lib/sentry";
+import { usePWA } from "@/hooks/usePWA";
 
 // Initialise Sentry as early as possible
 initSentry();
@@ -68,12 +69,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png" },
       { name: "twitter:card", content: "summary_large_image" },
+      // PWA / mobile
+      { name: "theme-color", content: "#C9A84C" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Judo-Arena" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" },
+      // PWA
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -91,12 +102,29 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PWAUpdateBanner() {
+  const { needRefresh, updateServiceWorker } = usePWA();
+  if (!needRefresh) return null;
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border border-border rounded-lg px-4 py-3 shadow-lg text-sm">
+      <span>Жаңа нұсқа қол жетімді</span>
+      <button
+        onClick={updateServiceWorker}
+        className="bg-gradient-gold text-gold-foreground px-3 py-1 rounded font-medium text-xs"
+      >
+        Жаңарту
+      </button>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthBootstrap />
       <Outlet />
+      <ClientOnly><PWAUpdateBanner /></ClientOnly>
       <ClientOnly>
         <Toaster
           position="top-right"
