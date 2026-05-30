@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "JUDO-ARENA",
-    "tagline": "Digital arena of judo"
+    "tagline": "The digital arena for judo"
   },
   "nav": {
     "home": "Home",
@@ -10,8 +10,8 @@
     "clubs": "Clubs",
     "protocol": "Protocols",
     "about": "About",
-    "login": "Sign in",
-    "logout": "Sign out",
+    "login": "Log in",
+    "logout": "Log out",
     "register": "Register"
   },
   "roles": {
@@ -30,10 +30,13 @@
     "tournaments": "Tournaments",
     "clubs": "Clubs",
     "users": "Users",
-    "audit": "Audit",
+    "audit": "Audit log",
     "settings": "Settings",
     "notifications": "Notifications",
-    "live_matches": "Live matches"
+    "live_matches": "Live matches",
+    "ratings": "Ratings",
+    "reports": "Reports",
+    "broadcast": "Broadcast"
   },
   "status": {
     "DRAFT": "Draft",
@@ -42,10 +45,13 @@
     "IN_PROGRESS": "LIVE",
     "COMPLETED": "Completed",
     "CANCELLED": "Cancelled",
-    "SUBMITTED": "Under review",
+    "SUBMITTED": "Submitted",
     "APPROVED": "Approved",
     "REJECTED": "Rejected",
-    "WITHDRAWN": "Withdrawn"
+    "WITHDRAWN": "Withdrawn",
+    "PENDING": "Pending",
+    "PASSED": "Passed",
+    "FAILED": "Failed"
   },
   "common": {
     "loading": "Loading...",
@@ -65,8 +71,8 @@
     "search": "Search",
     "city": "City",
     "date": "Date",
-    "name": "Name",
-    "surname": "Surname",
+    "name": "First name",
+    "surname": "Last name",
     "email": "Email",
     "password": "Password",
     "gender": "Gender",
@@ -82,15 +88,39 @@
     "points": "Points",
     "winner": "Winner",
     "no_data": "No data",
-    "role": "Role"
+    "role": "Role",
+    "all": "All",
+    "unread": "Unread",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "download": "Download",
+    "upload": "Upload",
+    "export": "Export",
+    "import": "Import",
+    "filter": "Filter",
+    "total": "Total",
+    "actions": "Actions",
+    "status": "Status",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No",
+    "required": "Required field",
+    "optional": "Optional",
+    "per_page": "per page",
+    "showing": "Showing"
   },
   "auth": {
     "login_title": "Sign in",
-    "register_title": "New account",
+    "register_title": "Create account",
     "login_subtitle": "Enter your email and password.",
     "register_subtitle": "Register as an athlete or coach.",
     "no_account": "Don't have an account?",
-    "has_account": "Already have an account?"
+    "has_account": "Already have an account?",
+    "forgot_password": "Forgot password?",
+    "reset_password": "Reset password",
+    "invalid_credentials": "Invalid email or password",
+    "account_inactive": "Account is inactive"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -106,5 +136,62 @@
     "place_1": "🥇 1st place · Gold",
     "place_2": "🥈 2nd place · Silver",
     "place_3": "🥉 3rd place · Bronze"
+  },
+  "error": {
+    "generic": "Something went wrong",
+    "reload": "Try again",
+    "not_found": "Page not found",
+    "not_found_desc": "Looks like this tatami doesn't exist.",
+    "go_home": "Go home",
+    "network": "Network error. Check your internet connection.",
+    "unauthorized": "Access denied",
+    "forbidden": "You don't have permission to view this page",
+    "server": "Server error. Please try again later."
+  },
+  "pwa": {
+    "update_available": "New version available",
+    "update_action": "Update",
+    "offline": "You're offline",
+    "offline_desc": "Data is being served from cache"
+  },
+  "bracket": {
+    "format_SE": "Olympic (SE)",
+    "format_RR": "Round Robin",
+    "format_MIXED": "Mixed (Groups + Playoff)",
+    "group": "Group",
+    "playoff": "Playoff",
+    "playoff_pending": "Playoff begins after all group matches are completed",
+    "standing_wins": "Wins",
+    "standing_losses": "Losses",
+    "standing_played": "Played",
+    "advances_to_playoff": "→ playoff",
+    "bye": "BYE",
+    "tbd": "TBD",
+    "group_stage": "Group stage",
+    "knockout_stage": "Knockout stage",
+    "generate": "Generate bracket",
+    "regenerate": "Regenerate",
+    "delete": "Delete bracket"
+  },
+  "notification": {
+    "all": "All",
+    "unread": "Unread",
+    "mark_read": "Mark as read",
+    "mark_all_read": "Mark all as read",
+    "empty": "No notifications",
+    "types": {
+      "application_approved": "Application approved",
+      "application_rejected": "Application rejected",
+      "match_scheduled": "Match scheduled",
+      "tournament_update": "Tournament updated",
+      "announcement": "Announcement"
+    }
+  },
+  "weigh_in": {
+    "title": "Weigh-in",
+    "passed": "Passed",
+    "failed": "Failed",
+    "pending": "Pending",
+    "weight_recorded": "Recorded weight"
   }
 }

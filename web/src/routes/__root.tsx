@@ -10,6 +10,7 @@ import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
 import { initSentry, Sentry } from "@/lib/sentry";
 import { usePWA } from "@/hooks/usePWA";
+import { useTranslation } from "react-i18next";
 
 // Initialise Sentry as early as possible
 initSentry();
@@ -22,14 +23,15 @@ function ClientOnly({ children }: { children: React.ReactNode }) {
 }
 
 function NotFoundComponent() {
+  const { t } = useTranslation();
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-gradient-hero">
       <div className="max-w-md text-center">
         <h1 className="font-display text-8xl font-bold text-gradient-gold">404</h1>
-        <h2 className="mt-4 text-xl font-semibold">Бет табылмады</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Залда мұндай татами жоқ сияқты.</p>
+        <h2 className="mt-4 text-xl font-semibold">{t("error.not_found")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t("error.not_found_desc")}</p>
         <Link to="/" className="mt-6 inline-flex bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium shadow-gold">
-          Басты бетке
+          {t("error.go_home")}
         </Link>
       </div>
     </div>
@@ -38,17 +40,18 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   console.error(error);
   Sentry.captureException(error);
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
-        <h1 className="font-display text-2xl font-semibold">Бірдеңе дұрыс болмады</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Бетті қайта жүктеп көріңіз.</p>
+        <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         <button
           onClick={() => { router.invalidate(); reset(); }}
           className="mt-6 bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium"
-        >Қайталау</button>
+        >{t("error.reload")}</button>
       </div>
     </div>
   );
@@ -104,15 +107,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function PWAUpdateBanner() {
   const { needRefresh, updateServiceWorker } = usePWA();
+  const { t } = useTranslation();
   if (!needRefresh) return null;
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border border-border rounded-lg px-4 py-3 shadow-lg text-sm">
-      <span>Жаңа нұсқа қол жетімді</span>
+      <span>{t("pwa.update_available")}</span>
       <button
         onClick={updateServiceWorker}
         className="bg-gradient-gold text-gold-foreground px-3 py-1 rounded font-medium text-xs"
       >
-        Жаңарту
+        {t("pwa.update_action")}
       </button>
     </div>
   );

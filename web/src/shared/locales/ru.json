@@ -33,7 +33,10 @@
     "audit": "Аудит",
     "settings": "Настройки",
     "notifications": "Уведомления",
-    "live_matches": "Live матчи"
+    "live_matches": "Live матчи",
+    "ratings": "Рейтинг",
+    "reports": "Отчёты",
+    "broadcast": "Рассылка"
   },
   "status": {
     "DRAFT": "Черновик",
@@ -45,7 +48,10 @@
     "SUBMITTED": "На рассмотрении",
     "APPROVED": "Одобрено",
     "REJECTED": "Отклонено",
-    "WITHDRAWN": "Отозвано"
+    "WITHDRAWN": "Отозвано",
+    "PENDING": "Ожидание",
+    "PASSED": "Прошёл",
+    "FAILED": "Не прошёл"
   },
   "common": {
     "loading": "Загрузка...",
@@ -82,7 +88,27 @@
     "points": "Очки",
     "winner": "Победитель",
     "no_data": "Нет данных",
-    "role": "Роль"
+    "role": "Роль",
+    "all": "Все",
+    "unread": "Непрочитанные",
+    "refresh": "Обновить",
+    "retry": "Повторить",
+    "confirm": "Подтвердить",
+    "download": "Скачать",
+    "upload": "Загрузить",
+    "export": "Экспорт",
+    "import": "Импорт",
+    "filter": "Фильтр",
+    "total": "Всего",
+    "actions": "Действия",
+    "status": "Статус",
+    "unknown": "Неизвестно",
+    "yes": "Да",
+    "no": "Нет",
+    "required": "Обязательное поле",
+    "optional": "Необязательно",
+    "per_page": "на страницу",
+    "showing": "Показано"
   },
   "auth": {
     "login_title": "Вход в систему",
@@ -90,7 +116,11 @@
     "login_subtitle": "Введите email и пароль.",
     "register_subtitle": "Зарегистрируйтесь как спортсмен или тренер.",
     "no_account": "Нет аккаунта?",
-    "has_account": "Уже есть аккаунт?"
+    "has_account": "Уже есть аккаунт?",
+    "forgot_password": "Забыли пароль?",
+    "reset_password": "Восстановление пароля",
+    "invalid_credentials": "Неверный email или пароль",
+    "account_inactive": "Аккаунт неактивен"
   },
   "scoring": {
     "ippon": "Иппон",
@@ -106,5 +136,62 @@
     "place_1": "🥇 1 место · Золото",
     "place_2": "🥈 2 место · Серебро",
     "place_3": "🥉 3 место · Бронза"
+  },
+  "error": {
+    "generic": "Произошла ошибка",
+    "reload": "Повторить",
+    "not_found": "Страница не найдена",
+    "not_found_desc": "Такого татами в зале нет.",
+    "go_home": "На главную",
+    "network": "Ошибка сети. Проверьте подключение к интернету.",
+    "unauthorized": "Нет доступа",
+    "forbidden": "Доступ к этой странице запрещён",
+    "server": "Ошибка сервера. Попробуйте позже."
+  },
+  "pwa": {
+    "update_available": "Доступна новая версия",
+    "update_action": "Обновить",
+    "offline": "Нет интернета",
+    "offline_desc": "Данные загружаются из кеша"
+  },
+  "bracket": {
+    "format_SE": "Олимпийская (SE)",
+    "format_RR": "Круговая",
+    "format_MIXED": "Смешанная (Группы + Плей-офф)",
+    "group": "Группа",
+    "playoff": "Плей-офф",
+    "playoff_pending": "Плей-офф начнётся после завершения всех групповых матчей",
+    "standing_wins": "Победы",
+    "standing_losses": "Поражения",
+    "standing_played": "Игры",
+    "advances_to_playoff": "→ плей-офф",
+    "bye": "BYE",
+    "tbd": "TBD",
+    "group_stage": "Групповой этап",
+    "knockout_stage": "Плей-офф этап",
+    "generate": "Сгенерировать сетку",
+    "regenerate": "Перегенерировать",
+    "delete": "Удалить сетку"
+  },
+  "notification": {
+    "all": "Все",
+    "unread": "Непрочитанные",
+    "mark_read": "Отметить прочитанным",
+    "mark_all_read": "Отметить все прочитанными",
+    "empty": "Уведомлений нет",
+    "types": {
+      "application_approved": "Заявка одобрена",
+      "application_rejected": "Заявка отклонена",
+      "match_scheduled": "Матч запланирован",
+      "tournament_update": "Турнир обновлён",
+      "announcement": "Объявление"
+    }
+  },
+  "weigh_in": {
+    "title": "Взвешивание",
+    "passed": "Прошёл",
+    "failed": "Не прошёл",
+    "pending": "Ожидание",
+    "weight_recorded": "Фактический вес"
   }
 }

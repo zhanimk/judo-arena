@@ -33,7 +33,10 @@
     "audit": "Аудит",
     "settings": "Баптаулар",
     "notifications": "Хабарландырулар",
-    "live_matches": "Live матчтар"
+    "live_matches": "Live матчтар",
+    "ratings": "Рейтинг",
+    "reports": "Есептер",
+    "broadcast": "Хабарлама жіберу"
   },
   "status": {
     "DRAFT": "Жоба",
@@ -45,7 +48,10 @@
     "SUBMITTED": "Қарауда",
     "APPROVED": "Бекітілді",
     "REJECTED": "Қайтарылды",
-    "WITHDRAWN": "Алынды"
+    "WITHDRAWN": "Алынды",
+    "PENDING": "Күтуде",
+    "PASSED": "Өтті",
+    "FAILED": "Өтпеді"
   },
   "common": {
     "loading": "Жүктелуде...",
@@ -82,7 +88,27 @@
     "points": "Ұпай",
     "winner": "Жеңімпаз",
     "no_data": "Деректер жоқ",
-    "role": "Рөл"
+    "role": "Рөл",
+    "all": "Барлығы",
+    "unread": "Оқылмаған",
+    "refresh": "Жаңарту",
+    "retry": "Қайталау",
+    "confirm": "Растау",
+    "download": "Жүктеу",
+    "upload": "Жүктеп салу",
+    "export": "Экспорт",
+    "import": "Импорт",
+    "filter": "Сүзгі",
+    "total": "Барлығы",
+    "actions": "Әрекеттер",
+    "status": "Мәртебе",
+    "unknown": "Белгісіз",
+    "yes": "Иә",
+    "no": "Жоқ",
+    "required": "Міндетті өріс",
+    "optional": "Міндетті емес",
+    "per_page": "бет бойынша",
+    "showing": "Көрсетілуде"
   },
   "auth": {
     "login_title": "Жүйеге кіру",
@@ -90,7 +116,11 @@
     "login_subtitle": "Email мен құпиясөзіңізді енгізіңіз.",
     "register_subtitle": "Спортшы немесе жаттықтырушы ретінде тіркеліңіз.",
     "no_account": "Аккаунтыңыз жоқ па?",
-    "has_account": "Аккаунтыңыз бар ма?"
+    "has_account": "Аккаунтыңыз бар ма?",
+    "forgot_password": "Құпиясөзді ұмыттыңыз ба?",
+    "reset_password": "Құпиясөзді қалпына келтіру",
+    "invalid_credentials": "Email немесе құпиясөз қате",
+    "account_inactive": "Аккаунт белсенді емес"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -106,5 +136,62 @@
     "place_1": "🥇 1-орын · Алтын",
     "place_2": "🥈 2-орын · Күміс",
     "place_3": "🥉 3-орын · Қола"
+  },
+  "error": {
+    "generic": "Қате орын алды",
+    "reload": "Қайталау",
+    "not_found": "Бет табылмады",
+    "not_found_desc": "Залда мұндай татами жоқ сияқты.",
+    "go_home": "Басты бетке",
+    "network": "Желі қатесі. Интернетке қосылуыңызды тексеріңіз.",
+    "unauthorized": "Кіру рұқсаты жоқ",
+    "forbidden": "Бұл бетке кіруге тыйым салынған",
+    "server": "Сервер қатесі. Кейінірек қайталаңыз."
+  },
+  "pwa": {
+    "update_available": "Жаңа нұсқа қол жетімді",
+    "update_action": "Жаңарту",
+    "offline": "Интернет жоқ",
+    "offline_desc": "Деректер кэштен жүктелуде"
+  },
+  "bracket": {
+    "format_SE": "Олимпиялық (SE)",
+    "format_RR": "Дөңгелек",
+    "format_MIXED": "Аралас (Топ + Плей-офф)",
+    "group": "Топ",
+    "playoff": "Плей-офф",
+    "playoff_pending": "Плей-офф барлық топ матчтары аяқталғаннан кейін басталады",
+    "standing_wins": "Жеңіс",
+    "standing_losses": "Жеңіліс",
+    "standing_played": "Ойын",
+    "advances_to_playoff": "→ плей-офф",
+    "bye": "BYE",
+    "tbd": "TBD",
+    "group_stage": "Топ кезеңі",
+    "knockout_stage": "Плей-офф кезеңі",
+    "generate": "Тор жасау",
+    "regenerate": "Торды қайта жасау",
+    "delete": "Торды жою"
+  },
+  "notification": {
+    "all": "Барлығы",
+    "unread": "Оқылмаған",
+    "mark_read": "Оқылды деп белгілеу",
+    "mark_all_read": "Барлығын оқылды деп белгілеу",
+    "empty": "Хабарландырулар жоқ",
+    "types": {
+      "application_approved": "Өтінім бекітілді",
+      "application_rejected": "Өтінім қайтарылды",
+      "match_scheduled": "Жекпе-жек жоспарланды",
+      "tournament_update": "Жарыс жаңартылды",
+      "announcement": "Хабарлама"
+    }
+  },
+  "weigh_in": {
+    "title": "Салмақ өлшеу",
+    "passed": "Өтті",
+    "failed": "Өтпеді",
+    "pending": "Күтуде",
+    "weight_recorded": "Нақты салмақ"
   }
 }
