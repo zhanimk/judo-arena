@@ -757,7 +757,7 @@ function pdfDrawSEFinalsVisualPage(
     .text(`Judo-Arena · ${catLabel}`, M, PH - 14, { width: PW - 2 * M, align: "right", lineBreak: false });
 }
 
-function drawBracketPage(
+function _drawBracketPage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
   bracket: any,
@@ -1481,7 +1481,7 @@ function pdfDrawTinyCard(
   y: number,
   w: number,
   h: number,
-  locale: Locale,
+  _locale: Locale,
 ) {
   const rowH = Math.floor((h - 1) / 2);
   const red = match.redAthlete;
@@ -1556,7 +1556,7 @@ function pdfFormatScore(s: any): string | undefined {
   return undefined;
 }
 
-function pdfFormatScoreShort(s: any): string | undefined {
+function _pdfFormatScoreShort(s: any): string | undefined {
   if (!s) return undefined;
   if (s.ippon > 0) return "IPP";
   if (s.wazaari >= 2) return "W2";

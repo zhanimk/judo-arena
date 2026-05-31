@@ -412,13 +412,13 @@ export async function advanceGroupWinnersIfComplete(
 
   // Place top-2 into playoff round-1 slots
   const { playoffSlotForGroup } = await import("./bracket-engine/mixed.js");
-  const numGroups = metadata.groups.length;
+  const _numGroups = metadata.groups.length;
   // playoffSize is the bracket size (stored in bracket.size)
-  const playoffSize = bracket.size;
+  const _playoffSize = bracket.size;
 
   for (const standing of top2) {
     const place = standing.place as 1 | 2;
-    const { position, slot } = playoffSlotForGroup(groupIdx, place, playoffSize);
+    const { position, slot } = playoffSlotForGroup(groupIdx, place, _playoffSize);
 
     const playoffMatch = await prisma.match.findFirst({
       where: { bracketId, bracketSection: "playoff", round: 1, position },
@@ -434,14 +434,14 @@ export async function advanceGroupWinnersIfComplete(
 
   // After filling slots, check for BYEs in playoff round 1
   // (if advancers < playoffSize some slots remain null)
-  await resolvePlayoffByes(bracketId, metadata.groups.length * 2, playoffSize);
+  await resolvePlayoffByes(bracketId, metadata.groups.length * 2, _playoffSize);
 }
 
 /** Auto-complete playoff round-1 matches that have exactly 1 athlete (BYE). */
 async function resolvePlayoffByes(
   bracketId: string,
-  totalAdvancers: number,
-  playoffSize: number,
+  _totalAdvancers: number,
+  _playoffSize: number,
 ): Promise<void> {
   // We need ALL groups done before processing BYEs (some slots still TBD)
   const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
@@ -470,7 +470,7 @@ async function resolvePlayoffByes(
 
     // One athlete, no opponent — BYE
     const winnerId = (m.redAthleteId ?? m.blueAthleteId)!;
-    const updated = await prisma.match.update({
+    const _updated = await prisma.match.update({
       where: { id: m.id },
       data: {
         status: MatchStatus.COMPLETED,

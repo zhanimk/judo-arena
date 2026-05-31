@@ -19,7 +19,6 @@ import {
   markAsRead,
   markAllAsRead,
   unreadCount,
-  NotificationError,
 } from "../services/notification.service.js";
 
 const broadcastSchema = z.discriminatedUnion("kind", [

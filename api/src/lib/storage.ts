@@ -18,11 +18,11 @@ import { env } from "./env.js";
 // Lazy-import S3 client to avoid overhead when not configured
 let s3Client: import("@aws-sdk/client-s3").S3Client | null = null;
 
-function getS3(): import("@aws-sdk/client-s3").S3Client | null {
+async function getS3(): Promise<import("@aws-sdk/client-s3").S3Client | null> {
   if (!env.S3_BUCKET) return null;
   if (s3Client) return s3Client;
 
-  const { S3Client } = require("@aws-sdk/client-s3") as typeof import("@aws-sdk/client-s3");
+  const { S3Client } = await import("@aws-sdk/client-s3");
   s3Client = new S3Client({
     region: env.AWS_DEFAULT_REGION,
     endpoint: env.S3_ENDPOINT,
@@ -48,7 +48,7 @@ export async function storeFile(
   buffer: Buffer,
   mimeType: string,
 ): Promise<string> {
-  const client = getS3();
+  const client = await getS3();
   if (client) {
     return storeS3(client, subPath, buffer, mimeType);
   }

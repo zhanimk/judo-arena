@@ -72,13 +72,12 @@ async function triggerAutoEndOsaekomi(matchId: string): Promise<void> {
   try {
     // Lazy import to avoid circular dependency (match.service imports this module)
     const { endOsaekomi } = await import("./match.service.js");
-    const { getIO } = await import("../sockets/io.js");
 
     const result = await endOsaekomi(matchId, "TIME_LIMIT");
 
     // Emit real-time update
     try {
-      const io = getIO();
+      
       const match = result.match as any;
       emitMatchEvent(
         {

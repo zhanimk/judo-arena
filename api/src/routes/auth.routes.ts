@@ -48,7 +48,6 @@ import {
   updateLocale,
   updateMeProfile,
   publicUser,
-  AuthError,
 } from "../services/auth.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { parseTTLToSeconds, verifyRefreshToken } from "../lib/jwt.js";

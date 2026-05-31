@@ -24,14 +24,12 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import {
   overrideMatchResult,
-  OverrideError,
 } from "../services/admin-override.service.js";
 import {
   finalizeTournament,
   getAthleteRating,
   getLeaderboard,
   getClubLeaderboard,
-  RatingError,
 } from "../services/rating.service.js";
 import { listAuditLogs } from "../services/audit.service.js";
 import {
@@ -56,13 +54,11 @@ import {
   updateGroupByAdmin,
   deleteGroupByAdmin,
   deleteUserByAdmin,
-  AdminManagementError,
 } from "../services/admin-management.service.js";
 import {
   generateBracketPdf,
   generateAllBracketsPdf,
   generateTournamentProtocolPdf,
-  PdfError,
 } from "../services/pdf.service.js";
 import {
   adminForceRemoveEntry,
@@ -72,7 +68,6 @@ import {
 import {
   getTournamentWeighIn,
   updateEntryWeighIn,
-  WeighInError,
 } from "../services/weigh-in.service.js";
 import { updateWeighInSchema } from "../validators/application.schema.js";
 

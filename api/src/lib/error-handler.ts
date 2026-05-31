@@ -14,18 +14,24 @@ import type { FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 
 /** Любая доменная ошибка с httpStatus + code */
-interface DomainError {
+interface DomainError extends Error {
   httpStatus: number;
   code: string;
-  message: string;
 }
 
 function isDomainError(err: unknown): err is DomainError {
   return (
     err instanceof Error &&
-    typeof (err as any).httpStatus === "number" &&
-    typeof (err as any).code === "string"
+    typeof (err as DomainError).httpStatus === "number" &&
+    typeof (err as DomainError).code === "string"
   );
+}
+
+/** Fastify/AJV validation error shape */
+interface FastifyValidationError {
+  statusCode?: number;
+  validation?: unknown[];
+  message: string;
 }
 
 export function attachErrorHandler(app: FastifyInstance): void {
@@ -45,16 +51,17 @@ export function attachErrorHandler(app: FastifyInstance): void {
     }
 
     // Fastify AJV schema validation
-    if ((err as any).statusCode === 400 && (err as any).validation) {
+    const fastifyErr = err as FastifyValidationError;
+    if (fastifyErr.statusCode === 400 && fastifyErr.validation) {
       return reply.code(400).send({
         error: "VALIDATION_ERROR",
         message: err.message,
-        issues: (err as any).validation,
+        issues: fastifyErr.validation,
       });
     }
 
     // Rate limit
-    if ((err as any).statusCode === 429) {
+    if (fastifyErr.statusCode === 429) {
       return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     }
 

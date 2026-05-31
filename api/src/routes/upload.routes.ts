@@ -18,7 +18,6 @@ function hasValidMagicBytes(buf: Buffer, mime: string): boolean {
 
 // Max dimensions for uploaded images (prevent storing huge files)
 const MAX_WIDTH = 2048;
-const MAX_HEIGHT = 2048;
 // Max avatar size — smaller limit for profile pictures
 const AVATAR_MAX = 512;
 

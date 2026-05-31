@@ -30,7 +30,6 @@ import {
   reviewJoinRequest,
   listMyJoinRequests,
   cancelJoinRequest,
-  JoinRequestError,
 } from "../services/club-join.service.js";
 import {
   requestJoinClubAsCoach,
@@ -40,7 +39,6 @@ import {
   reviewCoachJoinRequest,
   removeCoachFromClub,
   transferClubOwnership,
-  CoachClubJoinRequestError,
 } from "../services/coach-club-join.service.js";
 import {
   createClubSchema,
@@ -66,7 +64,6 @@ import {
   bulkImportAthletes,
   updateAthlete,
   detachAthleteFromClub,
-  ClubError,
 } from "../services/club.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";

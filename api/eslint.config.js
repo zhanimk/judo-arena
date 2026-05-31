@@ -12,8 +12,17 @@ export default tseslint.config(
       globals: globals.node,
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      // `any` is intentional in Prisma JSON fields (scoreSnapshot, etc.)
+      "@typescript-eslint/no-explicit-any": "off",
+      // Allow underscore-prefixed unused vars/args
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+        destructuredArrayIgnorePattern: "^_",
+      }],
+      // Require-style imports allowed for lazy loading
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 );

@@ -17,7 +17,6 @@ import {
   listBracketsForTournament,
   prepareTournamentDraw,
   deleteBracket,
-  BracketError,
 } from "../services/bracket.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";

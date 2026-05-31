@@ -57,7 +57,6 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  TournamentError,
 } from "../services/tournament.service.js";
 import {
   createOrGetDraftApplication,
@@ -72,7 +71,6 @@ import {
   reject,
   withdraw,
   bulkApprove,
-  ApplicationError,
 } from "../services/application.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";

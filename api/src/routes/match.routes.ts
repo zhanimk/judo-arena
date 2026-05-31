@@ -49,7 +49,6 @@ import {
   getTatamiQueue,
   startOsaekomi,
   endOsaekomi,
-  MatchError,
 } from "../services/match.service.js";
 import {
   createJudgeSession,
