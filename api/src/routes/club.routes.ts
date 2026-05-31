@@ -22,7 +22,8 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ZodError, z } from "zod";
+import { z } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import {
   requestJoinClub,
   listPendingRequests,
@@ -71,21 +72,7 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 
 export async function clubRoutes(app: FastifyInstance): Promise<void> {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof ClubError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
+  attachErrorHandler(app);
 
   // ============================================================
   // КЛУБЫ
@@ -185,21 +172,7 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
 // ============================================================
 
 export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof ClubError || err instanceof JoinRequestError || err instanceof CoachClubJoinRequestError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
+  attachErrorHandler(app);
 
   // Группы
   app.patch<{ Params: { id: string } }>(

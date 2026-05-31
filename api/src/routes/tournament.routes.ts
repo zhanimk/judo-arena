@@ -32,7 +32,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ZodError } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import {
   createTournamentSchema,
   updateTournamentSchema,
@@ -78,23 +78,6 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { getApplicationHistory } from "../services/audit.service.js";
 
-function attachErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof TournamentError || err instanceof ApplicationError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
-}
 
 // ============================================================
 // /api/tournaments/*

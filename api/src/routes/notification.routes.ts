@@ -9,7 +9,8 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { z, ZodError } from "zod";
+import { z } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import {
@@ -59,21 +60,7 @@ const broadcastSchema = z.discriminatedUnion("kind", [
 ]);
 
 export async function notificationRoutes(app: FastifyInstance): Promise<void> {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof NotificationError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR" });
-  });
+  attachErrorHandler(app);
 
   app.get("/", { preHandler: [authenticate] }, async (request) => {
     const qs = request.query as Record<string, string>;

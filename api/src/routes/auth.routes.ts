@@ -11,7 +11,8 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { ZodError, z } from "zod";
+import { z } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Convert draft-07 boolean exclusiveMinimum/Maximum to numeric form (AJV 8 compatible)
@@ -71,30 +72,7 @@ const cookieOptions = {
 };
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  // Универсальный error handler для AuthError, ZodError и Fastify AJV validation errors
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof AuthError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    // Fastify AJV schema validation errors
-    if ((err as any).statusCode === 400 && (err as any).validation) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: err.message,
-        issues: (err as any).validation,
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
+  attachErrorHandler(app);
 
   // ---- POST /register — 5 попыток / 15 минут на IP ----
   app.post(

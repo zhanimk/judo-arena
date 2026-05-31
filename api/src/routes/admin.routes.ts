@@ -18,7 +18,8 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { z, ZodError } from "zod";
+import { z } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import {
@@ -170,23 +171,6 @@ const pdfAllBracketsQuerySchema = z.object({
   tournamentId: z.string(),
 });
 
-function attachErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof OverrideError || err instanceof RatingError || err instanceof PdfError || err instanceof AdminManagementError || err instanceof WeighInError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
-}
 
 // ============================================================
 // /api/admin/*
@@ -253,9 +237,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     "/clubs",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest) => {
+    async (request: FastifyRequest, reply) => {
       const input = createClubSchema.parse(request.body);
-      return createClubByAdmin(request.user!.sub, input);
+      const club = await createClubByAdmin(request.user!.sub, input);
+      return reply.code(201).send(club);
     },
   );
 
@@ -327,9 +312,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     "/users",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest) => {
+    async (request: FastifyRequest, reply) => {
       const input = createUserSchema.parse(request.body);
-      return createUserByAdmin(request.user!.sub, input);
+      const user = await createUserByAdmin(request.user!.sub, input);
+      return reply.code(201).send(user);
     },
   );
 

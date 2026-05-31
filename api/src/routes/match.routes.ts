@@ -21,7 +21,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { ZodError } from "zod";
+import { attachErrorHandler } from "../lib/error-handler.js";
 import {
   createJudgeSessionSchema,
   scoreEventSchema,
@@ -70,23 +70,6 @@ import { emitMatchEvent, emitToBracket, emitToTournament } from "../sockets/io.j
 import { logAudit } from "../services/audit.service.js";
 import { prisma } from "../lib/prisma.js";
 
-function attachErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err, _req, reply) => {
-    if (err instanceof MatchError || err instanceof JudgeSessionError || err instanceof TatamiSessionError) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
-    }
-    if (err instanceof ZodError) {
-      return reply.code(400).send({
-        error: "VALIDATION_ERROR",
-        message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      });
-    }
-    if ((err as any).statusCode === 429) return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
-    app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
-  });
-}
 
 /**
  * Проверка авторизации: ADMIN, X-Judge-Token (per-match) или X-Tatami-Token (per-tatami).
@@ -475,7 +458,7 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
         rateLimit: {
           max: 30,
           timeWindow: "1 minute",
-          keyGenerator: (req: any) => `judge-token:${req.ip}`,
+          keyGenerator: (req: FastifyRequest) => `judge-token:${req.ip}`,
         },
       },
     },
@@ -533,7 +516,7 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
         rateLimit: {
           max: 30,
           timeWindow: "1 minute",
-          keyGenerator: (req: any) => `tatami-token:${req.ip}`,
+          keyGenerator: (req: FastifyRequest) => `tatami-token:${req.ip}`,
         },
       },
     },
