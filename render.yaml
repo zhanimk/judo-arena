@@ -1,8 +1,9 @@
 services:
+  # ── API (Node.js) ─────────────────────────────────────────
   - type: web
     name: judo-arena-api
     runtime: node
-    region: frankfurt         # ближайший к Казахстану
+    region: frankfurt
     plan: free
 
     rootDir: api
@@ -15,57 +16,36 @@ services:
       - key: NODE_ENV
         value: production
 
-      # ── База данных ──────────────────────────────────────────
       - key: DATABASE_URL
         fromDatabase:
           name: judo-arena-db
           property: connectionString
 
-      # ── Redis ────────────────────────────────────────────────
       - key: REDIS_URL
         fromService:
           name: judo-arena-redis
           type: redis
           property: connectionString
 
-      # ── JWT (замени на свои из раздела "Секреты" ниже) ───────
       - key: JWT_ACCESS_SECRET
-        sync: false   # вводишь вручную в Render Dashboard
+        sync: false
       - key: JWT_REFRESH_SECRET
         sync: false
-
       - key: JWT_ACCESS_TTL
         value: 15m
       - key: JWT_REFRESH_TTL
         value: 7d
 
-      # ── CORS / APP URL ───────────────────────────────────────
       - key: CORS_ORIGIN
-        sync: false   # твой Cloudflare Pages URL, напр. https://judo-arena.pages.dev
+        sync: false
       - key: APP_URL
-        sync: false   # то же самое
+        sync: false
 
-      # ── Email (Resend) ───────────────────────────────────────
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         value: "Judo-Arena <onboarding@resend.dev>"
 
-      # ── Загрузка файлов (Cloudflare R2 — опционально) ────────
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_ENDPOINT
-        sync: false
-      - key: S3_PUBLIC_URL
-        sync: false
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: AWS_DEFAULT_REGION
-        value: auto
-
-      # ── Прочее ───────────────────────────────────────────────
       - key: BCRYPT_ROUNDS
         value: "12"
       - key: RATE_LIMIT_MAX
@@ -75,18 +55,15 @@ services:
       - key: UPLOADS_DIR
         value: ./uploads
 
-  # ── PostgreSQL ───────────────────────────────────────────────
-  - type: pserv
-    name: judo-arena-db
-    runtime: postgres
-    region: frankfurt
-    plan: free
-    databaseName: judo_arena
-    databaseUser: judo
-
-  # ── Redis ────────────────────────────────────────────────────
+  # ── Redis ─────────────────────────────────────────────────
   - type: redis
     name: judo-arena-redis
     region: frankfurt
     plan: free
     maxmemoryPolicy: noeviction
+
+# ── PostgreSQL ─────────────────────────────────────────────
+databases:
+  - name: judo-arena-db
+    region: frankfurt
+    plan: free
