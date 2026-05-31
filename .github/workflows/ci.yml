@@ -11,41 +11,32 @@ jobs:
   api-lint:
     name: API — Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run lint -- --max-warnings 0
+      - run: npm run lint -w @judo-arena/api -- --max-warnings 0
 
   api-typecheck:
     name: API — Type Check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npx --prefix api tsc --noEmit
 
   api-test:
     name: API — Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
 
     services:
       postgres:
@@ -88,54 +79,50 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
       - name: Run migrations
+        working-directory: api
         run: npx prisma migrate deploy
       - name: Run tests
+        working-directory: api
         run: npm test -- --reporter=verbose
 
   api-build:
     name: API — Build
     runs-on: ubuntu-latest
     needs: [api-lint, api-typecheck]
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run build
+      - run: npm run build -w @judo-arena/api
 
   # ─── WEB ───────────────────────────────────────────────────────────────────
   web-typecheck:
     name: Web — Type Check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npx --prefix web tsc --noEmit
 
   web-build:
     name: Web — Build
     runs-on: ubuntu-latest
     needs: [web-typecheck]
-    defaults:
-      run:
-        working-directory: web
     env:
       VITE_API_URL: https://api.judo-arena.kz
       VITE_WS_URL: wss://api.judo-arena.kz
@@ -145,9 +132,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run build
+      - run: npm run build -w tanstack_start_ts
       - uses: actions/upload-artifact@v4
         with:
           name: web-dist

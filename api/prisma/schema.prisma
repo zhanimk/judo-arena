@@ -185,8 +185,6 @@ model ClubGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  createdAt DateTime @default(now())
-
   @@index([clubId])
 }
 
