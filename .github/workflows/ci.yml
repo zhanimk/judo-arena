@@ -32,7 +32,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx --prefix api tsc --noEmit
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
+      - name: TypeScript check
+        working-directory: api
+        run: npx tsc --noEmit
 
   api-test:
     name: API — Tests
@@ -117,7 +122,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx --prefix web tsc --noEmit
+      - name: TypeScript check
+        working-directory: web
+        run: npx tsc --noEmit
 
   web-build:
     name: Web — Build
