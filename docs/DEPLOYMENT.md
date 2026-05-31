@@ -1,194 +1,169 @@
 # Deployment Runbook — Judo-Arena
 
-## Архитектура
+## Architecture
 
 ```
-Cloudflare Pages (web)  ←→  Render (api)  ←→  Render PostgreSQL + Redis
-                                  ↓
-                           Sentry (errors)
+Browser → Cloudflare Pages (web) → Render (API) → Render PostgreSQL + Redis
+                                         ↓
+                                    Resend (email)
+                                    Sentry (errors)
+                                    S3/R2 (file storage, optional)
 ```
 
 ---
 
-## Переменные окружения
+## First Deploy
 
-### Backend (`api/`) — Render
+### Step 1 — Backend on Render
 
-| Переменная | Обязательно | Описание |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `REDIS_URL` | ✅ | Redis connection string |
-| `JWT_ACCESS_SECRET` | ✅ | Минимум 32 символа. `openssl rand -hex 48` |
-| `JWT_REFRESH_SECRET` | ✅ | Другой ключ, тоже ≥32 символов |
-| `JWT_ACCESS_TTL` | — | Default: `15m` |
-| `JWT_REFRESH_TTL` | — | Default: `7d` |
-| `API_PORT` | — | Default: `4000` (Render управляет через `PORT`) |
-| `API_HOST` | — | Default: `0.0.0.0` |
-| `NODE_ENV` | ✅ | `production` |
-| `CORS_ORIGIN` | ✅ | URL фронтенда: `https://judo-arena.pages.dev` |
-| `APP_URL` | ✅ | То же, что `CORS_ORIGIN` |
-| `SMTP_HOST` | ✅ | Например, `smtp.sendgrid.net` |
-| `SMTP_PORT` | — | Default: `587` |
-| `SMTP_USER` | ✅ | SMTP логин |
-| `SMTP_PASS` | ✅ | SMTP пароль |
-| `EMAIL_FROM` | — | Default: `Judo-Arena <noreply@judo-arena.kz>` |
-| `UPLOADS_DIR` | — | Default: `./uploads` |
-| `SENTRY_DSN` | — | Sentry DSN (sentry.io) |
+1. Open [render.com](https://render.com) → Sign in with GitHub
+2. **New +** → **Blueprint** → select repo `judo-arena`
+3. Render reads `render.yaml` → creates: API + PostgreSQL + Redis automatically
+4. Fill in secrets (see table below) → **Apply**
 
-### Frontend (`web/`) — Cloudflare Pages
+**Secrets to fill manually:**
 
-| Переменная | Описание |
+| Variable | How to get |
 |---|---|
-| `VITE_API_URL` | URL backend: `https://api.judo-arena.kz` |
-| `VITE_WS_URL` | WebSocket: `wss://api.judo-arena.kz` |
-| `VITE_SENTRY_DSN` | Sentry DSN для React-проекта |
+| `JWT_ACCESS_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `JWT_REFRESH_SECRET` | Same command, different output |
+| `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys |
+| `CORS_ORIGIN` | Fill after step 2 |
+| `APP_URL` | Same as CORS_ORIGIN |
+
+> `DATABASE_URL` and `REDIS_URL` are auto-injected — do NOT set manually.
+
+API URL after deploy: `https://judo-arena-api.onrender.com`
 
 ---
 
-## Первый деплой
+### Step 2 — Frontend on Cloudflare Pages
 
-### 1. Render (Backend)
+1. [pages.cloudflare.com](https://pages.cloudflare.com) → **Create project** → **Connect to Git**
+2. Build settings:
+   - Build command: `cd web && npm ci && npm run build`
+   - Output directory: `web/dist`
+3. Environment variables:
+   - `VITE_API_URL` = `https://judo-arena-api.onrender.com`
+   - `VITE_WS_URL` = `https://judo-arena-api.onrender.com`
+4. **Save and Deploy**
 
-```bash
-# 1. Создай сервис на render.com → Web Service → Deploy from GitHub
-# 2. Build Command:
-cd api && npm ci && npm run build && npx prisma migrate deploy
-
-# 3. Start Command:
-node api/dist/server.js
-
-# 4. Добавь все переменные из таблицы выше
-```
-
-### 2. Cloudflare Pages (Frontend)
-
-```bash
-# 1. Создай проект на pages.cloudflare.com → Connect to Git
-# 2. Build settings:
-#    Framework preset: None
-#    Build command: cd web && npm ci && npm run build
-#    Build output: web/dist
-#    Root directory: / (корень репо)
-# 3. Добавь переменные окружения VITE_* в настройках Pages
-```
-
-### 3. Seed начальных данных
-
-```bash
-# Создать первого администратора (запустить после первой миграции):
-cd api && npx tsx prisma/seed.ts
-
-# Или вручную через Prisma Studio:
-cd api && npx prisma studio
-```
+Frontend URL: `https://judo-arena.pages.dev`
 
 ---
 
-## Обновление (zero-downtime)
+### Step 3 — Update CORS on Render
+
+Render → API service → Environment:
+- `CORS_ORIGIN` = `https://judo-arena.pages.dev`
+- `APP_URL` = `https://judo-arena.pages.dev`
+
+→ **Save Changes** (auto-restart)
+
+---
+
+## Subsequent Deploys (automatic)
+
+```
+git push origin main
+  → CI (lint + typecheck + test + build)
+  → If ALL pass → deploy.yml triggers
+  → Render redeployed via webhook
+  → Cloudflare Pages redeployed
+```
+
+Broken code cannot reach production — deploy is blocked if CI fails.
+
+---
+
+## Environment Variables
+
+### Backend (Render)
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `NODE_ENV` | ✅ | — | `production` |
+| `DATABASE_URL` | ✅ | auto | PostgreSQL (auto from render.yaml) |
+| `REDIS_URL` | ✅ | auto | Redis (auto from render.yaml) |
+| `JWT_ACCESS_SECRET` | ✅ | — | ≥32 chars |
+| `JWT_REFRESH_SECRET` | ✅ | — | Different ≥32 chars |
+| `JWT_ACCESS_TTL` | — | `15m` | Access token lifetime |
+| `JWT_REFRESH_TTL` | — | `7d` | Refresh token lifetime |
+| `CORS_ORIGIN` | ✅ | — | Frontend URL |
+| `APP_URL` | ✅ | — | Same as CORS_ORIGIN (used in email links) |
+| `RESEND_API_KEY` | ✅ | — | Email sending via Resend |
+| `EMAIL_FROM` | — | `Judo-Arena <onboarding@resend.dev>` | Sender |
+| `BCRYPT_ROUNDS` | — | `12` | Password hashing rounds |
+| `RATE_LIMIT_MAX` | — | `100` | Requests per window per IP |
+| `SENTRY_DSN` | — | — | Error tracking (optional) |
+| `S3_BUCKET` | — | — | File storage (optional, local if blank) |
+| `S3_ENDPOINT` | — | — | R2/MinIO endpoint |
+| `S3_PUBLIC_URL` | — | — | CDN base URL |
+| `AWS_ACCESS_KEY_ID` | — | — | S3 credentials |
+| `AWS_SECRET_ACCESS_KEY` | — | — | S3 credentials |
+
+### Frontend (Cloudflare Pages)
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | ✅ | Backend URL |
+| `VITE_WS_URL` | ✅ | WebSocket URL (same as API) |
+| `VITE_SENTRY_DSN` | — | Frontend Sentry DSN |
+
+---
+
+## Health Check
+
+```
+GET /health
+→ { "status": "ok", "db": "connected", "redis": "connected" }
+```
+
+If DB or Redis is down: `"status": "degraded"`.
+
+---
+
+## Backups
+
+### Manual
 
 ```bash
-# GitHub Actions автоматически запускает деплой при пуше в main.
-# Ручной запуск:
-
-# 1. Миграции (Render запустит в build command):
-cd api && npx prisma migrate deploy
-
-# 2. Если миграция не применилась автоматически:
-curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+docker compose --profile backup run --rm backup
+# → ./backups/backup_YYYYMMDD_HHMMSS.sql.gz
 ```
+
+### Restore
+
+```bash
+./scripts/restore.sh ./backups/backup_20260531_100000.sql.gz
+```
+
+### Automated (S3)
+
+Set `BACKUP_S3_BUCKET` + AWS credentials → backup.sh uploads to S3 after each run.
 
 ---
 
 ## Rollback
 
-### Быстрый откат кода
+**Frontend:** Cloudflare Pages → Deployments → find previous → Rollback
 
+**Backend:**
 ```bash
-# 1. Найти нужный коммит:
-git log --oneline -10
-
-# 2. Создать rollback ветку:
-git checkout -b rollback/v1.2.3 <commit-sha>
-git push origin rollback/v1.2.3
-
-# 3. На Render — переключить деплой на rollback-ветку
-# 4. На Cloudflare Pages — выбрать предыдущий деплой → Rollback
+git revert HEAD && git push origin main
+# CI runs → auto-deploys
 ```
 
-### Откат миграции БД
-
-```bash
-# ⚠️ Prisma не поддерживает автоматический rollback миграций!
-# Нужно вручную написать reverse-SQL.
-
-# 1. Найти SQL файл миграции в api/prisma/migrations/
-# 2. Написать обратные изменения (например: DROP COLUMN вместо ADD COLUMN)
-# 3. Применить через psql:
-psql $DATABASE_URL -f rollback.sql
-
-# 4. Удалить запись из таблицы _prisma_migrations:
-psql $DATABASE_URL -c "DELETE FROM \"_prisma_migrations\" WHERE migration_name = '20260525_add_match_version';"
-```
+Or Render dashboard → Deploys → previous deploy → **Redeploy**
 
 ---
 
-## Backup / Restore
+## Free Tier Limits (Render)
 
-### Ручной backup
+| Resource | Limit |
+|---|---|
+| Web service | Spins down after 15 min idle; 30-60s cold start |
+| PostgreSQL | 1 GB storage, 90-day auto-expiry |
+| Redis | 25 MB, no persistence |
 
-```bash
-./scripts/backup.sh
-# Файл появится в ./backups/backup_YYYYMMDD_HHMMSS.sql.gz
-```
-
-### Restore из backup
-
-```bash
-./scripts/restore.sh ./backups/backup_20260525_020000.sql.gz
-```
-
-### Автоматический backup (cron)
-
-```bash
-# Добавить в crontab (sudo crontab -e):
-# Каждый день в 02:00:
-0 2 * * * cd /opt/judo-arena && ./scripts/backup.sh >> /var/log/judo-backup.log 2>&1
-```
-
----
-
-## Мониторинг
-
-### Логи
-
-```bash
-# Render: Dashboard → Logs (real-time streaming)
-# Каждая строка содержит reqId для трассировки ошибок
-```
-
-### Sentry
-
-```
-https://sentry.io → Ваш проект → Issues
-```
-
-Настроить алерты: `Alerts → Create Alert Rule → When error count > 5 in 1 hour → Send email`
-
-### Health check
-
-```bash
-curl https://api.judo-arena.kz/health
-# → {"status":"ok","db":"connected","timestamp":"..."}
-```
-
----
-
-## Частые проблемы
-
-| Проблема | Причина | Решение |
-|---|---|---|
-| `DATABASE_URL invalid` | Неверный connection string | Проверь `?schema=public` в конце |
-| `JWT_ACCESS_SECRET too short` | Секрет < 32 символов | `openssl rand -hex 48` |
-| Миграции не применились | Build command не включает migrate | Добавить `npx prisma migrate deploy` в build |
-| CORS ошибка | `CORS_ORIGIN` не совпадает с URL фронта | Указать точный origin без trailing slash |
-| Socket.IO не подключается | Разные origins у API и WS | `VITE_WS_URL` должен совпадать с `VITE_API_URL` (без `/api`) |
+For production: upgrade to Render Starter (~$7/month/service).
