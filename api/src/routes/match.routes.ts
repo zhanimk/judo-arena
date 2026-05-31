@@ -496,8 +496,12 @@ export async function judgeAdjacentRoutes(app: FastifyInstance): Promise<void> {
   // ---- Tatami queue (public) ----
   app.get<{ Params: { tournamentId: string; n: string } }>(
     "/tatami/:tournamentId/:n/queue",
-    async (request: FastifyRequest<{ Params: { tournamentId: string; n: string } }>) => {
-      return getTatamiQueue(request.params.tournamentId, parseInt(request.params.n, 10));
+    async (request: FastifyRequest<{ Params: { tournamentId: string; n: string } }>, reply) => {
+      const n = parseInt(request.params.n, 10);
+      if (!Number.isInteger(n) || n < 1 || n > 20) {
+        return reply.code(400).send({ error: "INVALID_TATAMI", message: "Татами номері 1–20 аралығында болуы керек" });
+      }
+      return getTatamiQueue(request.params.tournamentId, n);
     },
   );
 

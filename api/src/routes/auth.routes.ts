@@ -55,6 +55,7 @@ import { env } from "../lib/env.js";
 import { redis } from "../lib/redis.js";
 import { sendEmail, passwordResetHtml } from "../services/email.service.js";
 import { prisma } from "../lib/prisma.js";
+import { revokeAllUserTokens } from "../lib/refresh-store.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 
@@ -239,11 +240,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ ok: true });
   });
 
-  // ---- POST /reset-password ----
-  app.post("/reset-password", async (request, reply) => {
+  // ---- POST /reset-password — 5 попыток / час на IP ----
+  app.post("/reset-password", { config: { rateLimit: { max: 5, timeWindow: "1 hour" } } }, async (request, reply) => {
     const { token, password } = z.object({
       token: z.string().min(1),
-      password: z.string().min(8, "Құпиясөз кемінде 8 таңба болуы керек"),
+      password: z.string().min(8, "Құпиясөз кемінде 8 таңба болуы керек").max(128)
+        .regex(/[A-Z]/, "Кем дегенде бір бас әріп болуы керек")
+        .regex(/[a-z]/, "Кем дегенде бір кіші әріп болуы керек")
+        .regex(/[0-9]/, "Кем дегенде бір цифр болуы керек"),
     }).parse(request.body);
 
     const userId = await redis.get(`pwd_reset:${token}`);
@@ -254,6 +258,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
     await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
     await redis.del(`pwd_reset:${token}`);
+    // Invalidate all active sessions so old tokens cannot be reused after password change
+    await revokeAllUserTokens(userId);
 
     return reply.send({ ok: true });
   });

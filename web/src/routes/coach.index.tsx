@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DashboardShell, StatCard, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import { DashboardShell, StatCard, StatCardSkeleton, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import {
   AlertTriangle,
@@ -10,12 +10,12 @@ import {
   Clock,
   MapPin,
   Plus,
-  Users,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/")({
   head: () => ({ meta: [{ title: "Жаттықтырушы — Judo-Arena" }] }),
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/coach/")({
 
 
 function CoachOverview() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const clubId = user?.clubId;
 
@@ -53,7 +54,6 @@ function CoachOverview() {
   const openTournaments = tournamentsQuery.data?.items ?? [];
   const myApps = myAppsQuery.data ?? [];
 
-  // Собираем карту tournamentId → application для быстрого lookup
   const appByTournament = new Map(myApps.map((a: any) => [a.tournamentId, a]));
 
   const pendingApps = myApps.filter((a: any) => a.status === "SUBMITTED").length;
@@ -63,71 +63,75 @@ function CoachOverview() {
   const clubName = clubQuery.data ? localizeName(clubQuery.data.name) : "—";
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle={clubName ? `«${clubName}» клубы` : "Менің клубым"}>
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Спортшылар" value={membersQuery.isLoading ? "…" : String(membersQuery.data?.length ?? 0)} accent />
-        <StatCard label="Ашық жарыстар" value={tournamentsQuery.isLoading ? "…" : String(openTournaments.length)} hint="тіркеу ашық" />
-        <StatCard label="Қаралуда" value={myAppsQuery.isLoading ? "…" : String(pendingApps)} hint="өтінімдер" />
-        <StatCard label="Бекітілді" value={myAppsQuery.isLoading ? "…" : String(approvedApps)} hint="өтінімдер" />
+    <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={clubName ? `«${clubName}» ${t("common.club").toLowerCase()}` : t("dashboard.my_club")}>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {(membersQuery.isLoading || tournamentsQuery.isLoading || myAppsQuery.isLoading)
+          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : <>
+            <StatCard label={t("coach.stat_athletes")} value={String(membersQuery.data?.length ?? 0)} accent />
+            <StatCard label={t("coach.open_tournaments")} value={String(openTournaments.length)} hint={String(t("status.REGISTRATION_OPEN"))} />
+            <StatCard label={t("coach.stat_pending")} value={String(pendingApps)} hint={t("dashboard.applications").toLowerCase()} />
+            <StatCard label={t("coach.stat_approved")} value={String(approvedApps)} hint={t("dashboard.applications").toLowerCase()} />
+          </>
+        }
       </div>
 
       {rejectedApps > 0 && (
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
           <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
           <div className="flex-1">
-            <span className="font-medium text-destructive">{rejectedApps} өтінім қайтарылды</span>
-            <span className="ml-2 text-muted-foreground">— себебін тексеріп, түзетіңіз.</span>
+            <span className="font-medium text-destructive">{t("coach.rejected_apps", { count: rejectedApps })}</span>
+            <span className="ml-2 text-muted-foreground">— {t("coach.rejected_apps_hint")}</span>
           </div>
           <Link to="/coach/applications" className="shrink-0 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
-            Өтінімдерге өту
+            {t("coach.go_to_applications")}
           </Link>
         </div>
       )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
-        {/* Ашық жарыстар */}
         <Panel
-          title="Ашық жарыстар — өтінім беруге болады"
+          title={t("coach.open_tournaments_title")}
           action={
             <Link to="/coach/tournaments" className="text-xs text-gold hover:underline">
-              Барлығы →
+              {t("common.all")} →
             </Link>
           }
         >
           {tournamentsQuery.isLoading ? (
             <LoadingState />
           ) : openTournaments.length === 0 ? (
-            <EmptyState title="Ашық жарыс жоқ" hint="Тіркеу ашылғанда осында шығады" />
+            <EmptyState title={t("coach.no_open_tournaments")} hint={t("coach.no_open_tournaments_hint")} />
           ) : (
             <div className="space-y-3">
-              {openTournaments.slice(0, 5).map((t: any) => {
-                const deadline = t.applicationDeadline ?? t.startDate;
+              {openTournaments.slice(0, 5).map((tournament: any) => {
+                const deadline = tournament.applicationDeadline ?? tournament.startDate;
                 const deadlinePassed = new Date(deadline).getTime() < Date.now();
-                const existingApp = appByTournament.get(t.id);
+                const existingApp = appByTournament.get(tournament.id);
 
                 return (
-                  <div key={t.id} className="glass rounded-xl border border-border/60 p-4">
+                  <div key={tournament.id} className="glass rounded-xl border border-border/60 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link
                           to="/coach/tournaments/$id"
-                          params={{ id: t.id }}
+                          params={{ id: tournament.id }}
                           className="font-semibold hover:text-gold"
                         >
-                          {localizeName(t.name)}
+                          {localizeName(tournament.name)}
                         </Link>
                         <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-gold/60" />
-                            {dateRange(t.startDate, t.endDate)}
+                            {dateRange(tournament.startDate, tournament.endDate)}
                           </span>
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5 text-gold/60" />
-                            {t.city}
+                            {tournament.city}
                           </span>
                           <span className={`inline-flex items-center gap-1 ${deadlinePassed ? "text-destructive" : ""}`}>
                             <Clock className="h-3.5 w-3.5 text-gold/60" />
-                            Дедлайн: {new Date(deadline).toLocaleDateString("kk-KZ")}
+                            {t("common.deadline")}: {new Date(deadline).toLocaleDateString("kk-KZ")}
                           </span>
                         </div>
                       </div>
@@ -140,19 +144,19 @@ function CoachOverview() {
                             className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/15"
                           >
                             <ApplicationStatusIcon status={existingApp.status} />
-                            {appStatusLabel(existingApp.status)}
+                            {String(t(`status.${existingApp.status}`, existingApp.status))}
                             <ArrowRight className="h-3 w-3" />
                           </Link>
                         ) : deadlinePassed ? (
-                          <span className="rounded border border-destructive/30 px-3 py-1.5 text-xs text-destructive">Дедлайн өтті</span>
+                          <span className="rounded border border-destructive/30 px-3 py-1.5 text-xs text-destructive">{t("coach.deadline_passed")}</span>
                         ) : (
                           <Link
                             to="/coach/tournaments/$id"
-                            params={{ id: t.id }}
+                            params={{ id: tournament.id }}
                             className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-xs font-medium text-gold-foreground shadow-gold"
                           >
                             <Plus className="h-3.5 w-3.5" />
-                            Өтінім беру
+                            {t("coach.apply_tournament")}
                           </Link>
                         )}
                       </div>
@@ -165,19 +169,18 @@ function CoachOverview() {
         </Panel>
 
         <div className="space-y-6">
-          {/* Менің спортшыларым */}
           <Panel
-            title="Менің спортшыларым"
+            title={t("coach.my_athletes")}
             action={
               <Link to="/coach/athletes" className="text-xs text-gold hover:underline">
-                Барлығы →
+                {t("common.all")} →
               </Link>
             }
           >
             {membersQuery.isLoading ? (
               <LoadingState />
             ) : (membersQuery.data ?? []).length === 0 ? (
-              <EmptyState title="Спортшылар жоқ" hint="«Спортшылар» бөлімінен қосуға болады" />
+              <EmptyState title={t("coach.no_athletes")} hint={t("coach.no_athletes_hint")} />
             ) : (
               <div className="space-y-2">
                 {(membersQuery.data ?? []).slice(0, 5).map((a: any) => (
@@ -200,19 +203,18 @@ function CoachOverview() {
             )}
           </Panel>
 
-          {/* Соңғы өтінімдер */}
           <Panel
-            title="Соңғы өтінімдер"
+            title={t("coach.recent_applications")}
             action={
               <Link to="/coach/applications" className="text-xs text-gold hover:underline">
-                Барлығы →
+                {t("common.all")} →
               </Link>
             }
           >
             {myAppsQuery.isLoading ? (
               <LoadingState />
             ) : myApps.length === 0 ? (
-              <EmptyState title="Өтінімдер жоқ" hint="Ашық жарыстан өтінім бере аласыз" />
+              <EmptyState title={t("applications.no_applications")} hint={t("coach.apply_hint")} />
             ) : (
               <div className="space-y-2">
                 {myApps.slice(0, 4).map((a: any) => (
@@ -224,7 +226,7 @@ function CoachOverview() {
                   >
                     <div className="min-w-0">
                       <div className="truncate font-medium text-sm">{localizeName(a.tournament?.name)}</div>
-                      <div className="text-xs text-muted-foreground">{a._count?.entries ?? 0} спортшы</div>
+                      <div className="text-xs text-muted-foreground">{t("common.athletes_count", { count: a._count?.entries ?? 0 })}</div>
                     </div>
                     <AppStatusBadge status={a.status} />
                   </Link>
@@ -245,26 +247,16 @@ function ApplicationStatusIcon({ status }: { status: string }) {
 }
 
 function AppStatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қаралуда" },
-    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
-    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/30", l: "Қайтарылды" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Алынды" },
+  const { t } = useTranslation();
+  const colors: Record<string, string> = {
+    DRAFT: "bg-muted text-muted-foreground",
+    SUBMITTED: "bg-gold/15 text-gold border border-gold/30",
+    APPROVED: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    REJECTED: "bg-destructive/15 text-destructive border border-destructive/30",
+    WITHDRAWN: "bg-muted text-muted-foreground",
   };
-  const x = m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${x.c}`}>{x.l}</span>;
-}
-
-function appStatusLabel(status: string): string {
-  const m: Record<string, string> = {
-    DRAFT: "Жоба",
-    SUBMITTED: "Қаралуда",
-    APPROVED: "Бекітілді",
-    REJECTED: "Қайтарылды",
-    WITHDRAWN: "Алынды",
-  };
-  return m[status] ?? status;
+  const color = colors[status] ?? "bg-muted text-muted-foreground";
+  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${color}`}>{t(`status.${status}`, status)}</span>;
 }
 
 function localizeName(n: any): string { if (!n) return ""; if (typeof n === "string") return n; return n.kk || n.ru || n.en || ""; }

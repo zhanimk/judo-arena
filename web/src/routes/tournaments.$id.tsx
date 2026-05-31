@@ -20,6 +20,7 @@ import { Avatar } from "@/components/ui/avatar-image";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { api, mediaUrl } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс — Judo-Arena" }] }),
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/tournaments/$id")({
 });
 
 function TournamentDetail() {
+  const { t } = useTranslation();
   const { id } = useParams({ from: "/tournaments/$id" });
   const { categoryId: urlCategoryId } = Route.useSearch();
   const navigate = useNavigate({ from: "/tournaments/$id" });
@@ -37,10 +39,9 @@ function TournamentDetail() {
   const [selectedCategoryId, setSelectedCategoryIdRaw] = useState<string | null>(urlCategoryId ?? null);
   const [activeTab, setActiveTab] = useState<"overview" | "categories" | "protocol" | "results">("overview");
 
-  // Синхронизируем selectedCategoryId с URL для sharable links
-  function setSelectedCategoryId(id: string | null) {
-    setSelectedCategoryIdRaw(id);
-    navigate({ search: (prev) => ({ ...prev, categoryId: id ?? undefined }), replace: true });
+  function setSelectedCategoryId(catId: string | null) {
+    setSelectedCategoryIdRaw(catId);
+    navigate({ search: (prev) => ({ ...prev, categoryId: catId ?? undefined }), replace: true });
   }
 
   const tQuery = useQuery({ queryKey: ["tournament", id], queryFn: () => api.tournaments.get(id) });
@@ -55,7 +56,6 @@ function TournamentDetail() {
     enabled: Boolean(id),
   });
 
-  // Список участников выбранной категории (lazy — только когда категория выбрана)
   const participantsQuery = useQuery({
     queryKey: ["category-participants", id, selectedCategoryId],
     queryFn: () => api.tournaments.categoryParticipants(id, selectedCategoryId!),
@@ -63,7 +63,7 @@ function TournamentDetail() {
     staleTime: 30_000,
   });
 
-  const t = tQuery.data;
+  const tourney = tQuery.data;
   const brackets = bracketsQuery.data ?? [];
   const matches = matchesQuery.data ?? [];
 
@@ -76,7 +76,7 @@ function TournamentDetail() {
   }, []);
 
   const categoryRows = useMemo(() => {
-    return (t?.categories ?? []).map((category: any) => {
+    return (tourney?.categories ?? []).map((category: any) => {
       const bracket = brackets.find((b: any) => b.categoryId === category.id);
       const categoryMatches = matches.filter((m: any) => m.bracket?.categoryId === category.id || m.bracketId === bracket?.id);
       const participants = new Set<string>();
@@ -86,7 +86,7 @@ function TournamentDetail() {
       }
       return { category, bracket, matches: categoryMatches.length, participants: participants.size };
     });
-  }, [brackets, matches, t?.categories]);
+  }, [brackets, matches, tourney?.categories]);
 
   if (tQuery.isLoading) {
     return (
@@ -96,15 +96,15 @@ function TournamentDetail() {
     );
   }
 
-  if (tQuery.error || !t) {
+  if (tQuery.error || !tourney) {
     return (
       <div className="min-h-screen flex flex-col">
         <SiteHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="font-display text-2xl text-destructive">Жарыс табылмады</div>
+            <div className="font-display text-2xl text-destructive">{t("tournament.not_found")}</div>
             <Link to="/tournaments" className="mt-4 inline-block text-gold underline">
-              Жарыстарға қайту
+              {t("tournaments_page.back_link")}
             </Link>
           </div>
         </div>
@@ -113,8 +113,8 @@ function TournamentDetail() {
     );
   }
 
-  const name = localizeName(t.name);
-  const desc = localizeName(t.description);
+  const name = localizeName(tourney.name);
+  const desc = localizeName(tourney.description);
   const completedMatches = matches.filter((m: any) => m.status === "COMPLETED").length;
   const inProgressMatches = matches.filter((m: any) => m.status === "IN_PROGRESS").length;
   const selectedBracket =
@@ -131,12 +131,12 @@ function TournamentDetail() {
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="container relative mx-auto px-4 py-12 sm:py-16">
           <Link to="/tournaments" className="mb-5 inline-flex text-sm text-muted-foreground hover:text-gold">
-            Барлық жарыстарға қайту
+            {t("tournaments_page.back_to_all")}
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge status={t.status} />
+            <StatusBadge status={tourney.status} />
             <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs text-gold">
-              Бір жарыс ішінде барлық ақпарат
+              {t("tournament.all_info_badge")}
             </span>
           </div>
           <h1 className="mt-4 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-6xl">
@@ -145,11 +145,11 @@ function TournamentDetail() {
           {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Metric icon={Calendar} label="Күні" value={dateRange(t.startDate, t.endDate)} />
-            <Metric icon={Clock} label="Басталуы" value={timeText(t.startDate)} />
-            <Metric icon={MapPin} label="Өтетін жері" value={`${t.location}, ${t.city}`} />
-            <Metric icon={Users} label="Өтінім" value={String(t._count?.applications ?? 0)} />
-            <Metric icon={Radio} label="Татами" value={String(t.tatamiCount ?? 1)} />
+            <Metric icon={Calendar} label={t("tournament.metric_date")} value={dateRange(tourney.startDate, tourney.endDate)} />
+            <Metric icon={Clock} label={t("tournament.metric_start")} value={timeText(tourney.startDate)} />
+            <Metric icon={MapPin} label={t("tournament.metric_location")} value={`${tourney.location}, ${tourney.city}`} />
+            <Metric icon={Users} label={t("tournament.metric_applications")} value={String(tourney._count?.applications ?? 0)} />
+            <Metric icon={Radio} label={t("tournament.metric_tatami")} value={String(tourney.tatamiCount ?? 1)} />
           </div>
         </div>
       </section>
@@ -157,10 +157,10 @@ function TournamentDetail() {
       <div className="sticky top-24 z-40 mx-auto -mt-5 w-full max-w-6xl px-4">
         <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-gold/25 bg-background/90 p-2 shadow-elegant backdrop-blur-xl [scrollbar-width:none]">
           {([
-            { id: "overview" as const, label: "1 · Толық ақпарат" },
-            { id: "categories" as const, label: "2 · Санаттар" },
-            { id: "protocol" as const, label: "3 · Live-тор" },
-            ...(t?.status === "COMPLETED" ? [{ id: "results" as const, label: "4 · Нәтижелер" }] : []),
+            { id: "overview" as const, label: t("tournament.tab_overview") },
+            { id: "categories" as const, label: t("tournament.tab_categories") },
+            { id: "protocol" as const, label: t("tournament.tab_live") },
+            ...(tourney?.status === "COMPLETED" ? [{ id: "results" as const, label: t("tournament.tab_results") }] : []),
           ] as const).map((item) => (
             <button
               key={item.id}
@@ -182,50 +182,50 @@ function TournamentDetail() {
         <section id="overview-detail" className="container mx-auto px-4 py-12">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold">Толық ақпарат</div>
-              <h2 className="mt-3 font-display text-3xl font-bold">Жарыс туралы</h2>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.full_info")}</div>
+              <h2 className="mt-3 font-display text-3xl font-bold">{t("tournament.about")}</h2>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                {desc || "Бұл жерде жарыстың толық сипаттамасы, тіркеу уақыты, өлшеу және өтетін орны көрсетіледі."}
+                {desc || t("tournament.no_desc")}
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoCard label="Өтінім дедлайны" value={deadlineText(t)} />
-                <InfoCard label="Өлшеу уақыты" value={weighInText(t)} />
-                <InfoCard label="Өлшеу орны" value={t.weighInLocation || t.location || "Кейін хабарланады"} />
-                <InfoCard label="Негізгі тіл" value={t.primaryLocale || "kk"} />
-                <InfoCard label="Қала" value={t.city || "Көрсетілмеген"} />
-                <InfoCard label="Татами саны" value={String(t.tatamiCount ?? 1)} />
+                <InfoCard label={t("tournament.deadline")} value={deadlineText(tourney)} />
+                <InfoCard label={t("tournament.weigh_in_time")} value={weighInText(tourney, t("tournament.tbd_later"))} />
+                <InfoCard label={t("tournament.weigh_in_location")} value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")} />
+                <InfoCard label={t("tournament.primary_locale")} value={tourney.primaryLocale || "kk"} />
+                <InfoCard label={t("tournament.city_label")} value={tourney.city || t("tournament.not_specified")} />
+                <InfoCard label={t("tournament.tatami_count")} value={String(tourney.tatamiCount ?? 1)} />
               </div>
               <div className="mt-6 flex flex-wrap gap-2 border-t border-border/40 pt-5">
-                {t.posterUrl && (
+                {tourney.posterUrl && (
                   <a
-                    href={t.posterUrl}
+                    href={tourney.posterUrl}
                     target="_blank"
                     rel="noopener"
                     className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                   >
-                    <FileText className="h-4 w-4" /> Ереже / файл
+                    <FileText className="h-4 w-4" /> {t("tournament.rules_file")}
                   </a>
                 )}
-                {t.mapUrl && (
+                {tourney.mapUrl && (
                   <a
-                    href={t.mapUrl}
+                    href={tourney.mapUrl}
                     target="_blank"
                     rel="noopener"
                     className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:border-gold/50 hover:text-gold"
                   >
-                    <MapPin className="h-4 w-4" /> Карта сілтемесі
+                    <MapPin className="h-4 w-4" /> {t("tournament.map_link")}
                   </a>
                 )}
               </div>
             </div>
             <div className="rounded-2xl border border-border/60 bg-card/55 p-6 shadow-elegant backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold">Ашық дэшборд</div>
-              <h3 className="mt-3 font-display text-2xl font-bold">Бір жерде көрінеді</h3>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.open_dashboard")}</div>
+              <h3 className="mt-3 font-display text-2xl font-bold">{t("tournament.visible_all")}</h3>
               <div className="mt-5 grid gap-3">
-                <InfoCard label="Санат" value={String(t.categories?.length ?? 0)} />
-                <InfoCard label="Өтінім" value={String(t._count?.applications ?? 0)} />
-                <InfoCard label="Live-тор" value={brackets.length ? "Дайын" : "Әлі жасалмаған"} />
-                <InfoCard label="Белдесу" value={String(matches.length)} />
+                <InfoCard label={t("tournament.stat_categories")} value={String(tourney.categories?.length ?? 0)} />
+                <InfoCard label={t("tournament.metric_applications")} value={String(tourney._count?.applications ?? 0)} />
+                <InfoCard label={t("tournament.tab_live")} value={brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")} />
+                <InfoCard label={t("tournament.stat_matches")} value={String(matches.length)} />
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
                 <button
@@ -233,14 +233,14 @@ function TournamentDetail() {
                   onClick={() => setActiveTab("categories")}
                   className="rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                 >
-                  Санаттарды көру
+                  {t("tournament.view_categories")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("protocol")}
                   className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold"
                 >
-                  Жарыс хаттамасы
+                  {t("tournament.protocol_btn")}
                 </button>
               </div>
             </div>
@@ -252,19 +252,19 @@ function TournamentDetail() {
       <section id="sanattar" className="container mx-auto px-4 py-12">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-gold">Қатысушылар және санаттар</div>
-            <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Жарыс құрамы</h2>
+            <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.categories_section")}</div>
+            <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">{t("tournament.composition")}</h2>
           </div>
           <Link
             to="/login"
             className="inline-flex items-center rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold"
           >
-            Тіркелу / өтінім беру
+            {t("tournament.register_link")}
           </Link>
         </div>
 
         {categoryRows.length === 0 ? (
-          <Empty text="Әзірше санаттар қосылмаған." />
+          <Empty text={t("tournament.no_categories")} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {categoryRows.map(({ category, bracket, matches: matchCount, participants }: { category: any; bracket: any; matches: number; participants: number }) => (
@@ -281,32 +281,31 @@ function TournamentDetail() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-display text-xl font-semibold group-hover:text-gold">
-                      {categoryTitle(category)}
+                      {categoryTitle(category, t)}
                     </h3>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {category.gender === "MALE" ? "Ұлдар / ерлер" : "Қыздар / әйелдер"} · {category.ageMin}-{category.ageMax} жас
+                      {category.gender === "MALE" ? t("tournament.gender_male_short") : t("tournament.gender_female_short")} · {category.ageMin}-{category.ageMax} {t("common.years_short")}
                     </div>
                   </div>
                   <FormatBadge format={category.format} />
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-2">
-                  <SmallMetric label="Қатысушы" value={participants || "—"} />
-                  <SmallMetric label="Белдесу" value={matchCount} />
-                  <SmallMetric label="Live-тор" value={bracket ? bracket.size : "—"} />
+                  <SmallMetric label={t("tournament.participants_label")} value={participants || "—"} />
+                  <SmallMetric label={t("tournament.stat_matches")} value={matchCount} />
+                  <SmallMetric label={t("tournament.tab_live")} value={bracket ? bracket.size : "—"} />
                 </div>
               </button>
             ))}
           </div>
         )}
 
-        {/* IJF-style Draw List — список участников выбранной категории */}
         {selectedCategoryId && (
           <div className="mt-8 rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur overflow-hidden">
             <div className="flex items-center justify-between border-b border-border/40 px-6 py-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Draw List</div>
                 <h3 className="font-display text-xl font-bold mt-0.5">
-                  {categoryTitle(categoryRows.find((r: { category: any; bracket: any; matches: number; participants: number }) => r.category.id === selectedCategoryId)?.category)}
+                  {categoryTitle(categoryRows.find((r: { category: any; bracket: any; matches: number; participants: number }) => r.category.id === selectedCategoryId)?.category, t)}
                 </h3>
               </div>
               <Users className="h-5 w-5 text-gold/60" />
@@ -318,17 +317,16 @@ function TournamentDetail() {
               </div>
             ) : (participantsQuery.data ?? []).length === 0 ? (
               <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-                Бұл санатта бекітілген өтінімдер жоқ
+                {t("tournament.no_approved")}
               </div>
             ) : (
               <div className="divide-y divide-border/30">
-                {/* Header */}
                 <div className="hidden sm:grid grid-cols-[36px_1fr_1fr_80px_90px] gap-3 px-6 py-2.5 text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/20">
                   <div>#</div>
-                  <div>Спортшы</div>
-                  <div>Клуб</div>
-                  <div>Салмақ</div>
-                  <div>Белдік</div>
+                  <div>{t("tournament.col_athlete")}</div>
+                  <div>{t("tournament.col_club")}</div>
+                  <div>{t("tournament.col_weight")}</div>
+                  <div>{t("tournament.col_belt")}</div>
                 </div>
                 {(participantsQuery.data ?? []).map((entry, i) => {
                   const a = entry.athlete;
@@ -363,7 +361,7 @@ function TournamentDetail() {
                         {a.club?.city && <span className="text-xs opacity-60"> · {a.club.city}</span>}
                       </div>
                       <div className="text-sm">
-                        {a.weightKg ? `${a.weightKg} кг` : "—"}
+                        {a.weightKg ? `${a.weightKg} ${t("common.kg")}` : "—"}
                         {passed && <span className="ml-1.5 inline-flex rounded-full bg-emerald-500/15 px-1.5 py-px text-[9px] text-emerald-400">✓</span>}
                       </div>
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -388,18 +386,18 @@ function TournamentDetail() {
         <div className="container mx-auto px-4">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-gold">Жарыс хаттамасы</div>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.protocol_section")}</div>
               <h2 className="mt-3 font-display text-3xl font-bold sm:text-5xl">
-                Live-тор, белдесулер және ресми PDF
+                {t("tournament.live_title")}
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Бұл бір бөлім: санатты таңдаңыз, live-торды көріңіз, белдесулердің күйін бақылаңыз және жарыс аяқталған соң ресми хаттаманы жүктеңіз.
+                {t("tournament.live_desc")}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <SmallMetric label="Барлығы" value={matches.length} />
+              <SmallMetric label={t("tournament.total_label")} value={matches.length} />
               <SmallMetric label="LIVE" value={inProgressMatches} />
-              <SmallMetric label="Аяқталды" value={completedMatches} />
+              <SmallMetric label={t("tournament.completed_label")} value={completedMatches} />
             </div>
           </div>
 
@@ -407,8 +405,8 @@ function TournamentDetail() {
             <div className="rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur sm:p-6">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Live-тор</div>
-                  <h3 className="mt-1 font-display text-2xl font-bold">Санат бойынша жарыс жолы</h3>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("tournament.bracket_section")}</div>
+                  <h3 className="mt-1 font-display text-2xl font-bold">{t("tournament.bracket_by_category")}</h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {selectedBracket && (
@@ -418,7 +416,7 @@ function TournamentDetail() {
                       rel="noopener"
                       className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                     >
-                      <Download className="h-4 w-4" /> Live-тор PDF
+                      <Download className="h-4 w-4" /> {t("tournament.bracket_pdf")}
                     </a>
                   )}
                   {brackets.length > 0 && (
@@ -428,17 +426,16 @@ function TournamentDetail() {
                       rel="noopener"
                       className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:border-gold/40 hover:text-foreground"
                     >
-                      <FileText className="h-4 w-4" /> Барлық сеткалар PDF
+                      <FileText className="h-4 w-4" /> {t("tournament.all_brackets_pdf")}
                     </a>
                   )}
                 </div>
               </div>
 
               {brackets.length === 0 ? (
-                <Empty text="Live-тор әлі жасалмаған. Тіркеу жабылғаннан кейін жеребе осы жерде көрінеді." />
+                <Empty text={t("tournament.no_bracket")} />
               ) : (
                 <>
-                  {/* Category tabs grouped by gender */}
                   <div className="mb-4 space-y-2">
                     {(["MALE", "FEMALE"] as const).map((gender) => {
                       const genderBrackets = brackets.filter((b: any) => b.category?.gender === gender);
@@ -448,7 +445,7 @@ function TournamentDetail() {
                           <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
                             gender === "MALE" ? "bg-sky-500/15 text-sky-400" : "bg-rose-500/15 text-rose-400"
                           }`}>
-                            {gender === "MALE" ? "Ер" : "Қыз"}
+                            {gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")}
                           </span>
                           {genderBrackets
                             .slice()
@@ -457,8 +454,8 @@ function TournamentDetail() {
                               const active = (selectedCategoryId ?? selectedBracket?.categoryId) === bracket.categoryId;
                               const w = bracket.category;
                               const label = w
-                                ? (w.weightMax >= 200 ? `+${w.weightMin} кг` : `-${w.weightMax} кг`)
-                                : categoryTitle(bracket.category);
+                                ? (w.weightMax >= 200 ? `+${w.weightMin} ${t("common.kg")}` : `-${w.weightMax} ${t("common.kg")}`)
+                                : categoryTitle(bracket.category, t);
                               return (
                                 <button
                                   key={bracket.id}
@@ -487,8 +484,8 @@ function TournamentDetail() {
               <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/55 shadow-elegant backdrop-blur">
                 <div className="flex items-center justify-between border-b border-border/50 px-4 py-4">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Белдесулер</div>
-                    <h3 className="font-display text-xl font-bold">Кезек және нәтиже</h3>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("tournament.matches_section")}</div>
+                    <h3 className="font-display text-xl font-bold">{t("tournament.queue_result")}</h3>
                   </div>
                   <Radio className="h-5 w-5 text-destructive" />
                 </div>
@@ -498,7 +495,7 @@ function TournamentDetail() {
                   </div>
                 ) : matches.length === 0 ? (
                   <div className="p-6">
-                    <Empty text="Белдесулер live-тор дайындалғаннан кейін осы жерде көрінеді." />
+                    <Empty text={t("tournament.no_matches")} />
                   </div>
                 ) : (
                   <div className="divide-y divide-border/40">
@@ -514,7 +511,7 @@ function TournamentDetail() {
                             {athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {categoryTitle(match.bracket?.category)} · кезең {match.round} · татами #{match.tatamiNumber ?? "—"}
+                            {categoryTitle(match.bracket?.category, t)} · {t("tournament.round_label")} {match.round} · {t("tournament.metric_tatami")} #{match.tatamiNumber ?? "—"}
                           </div>
                         </div>
                         <StatusBadge status={match.status} />
@@ -526,22 +523,22 @@ function TournamentDetail() {
 
               <div className="rounded-2xl border border-gold/25 bg-card/65 p-6 text-center shadow-elegant backdrop-blur">
                 <FileText className="mx-auto mb-4 h-10 w-10 text-gold" />
-                <h3 className="font-display text-2xl font-bold">Ресми хаттама</h3>
+                <h3 className="font-display text-2xl font-bold">{t("tournament.official_protocol")}</h3>
                 <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-                  Жарыс аяқталғаннан кейін барлық белдесу, орын және ұпай осы PDF ішінде сақталады.
+                  {t("tournament.protocol_desc")}
                 </p>
-                {t.status === "COMPLETED" ? (
+                {tourney.status === "COMPLETED" ? (
                   <a
-                    href={api.admin.protocolPdfUrl(t.id)}
+                    href={api.admin.protocolPdfUrl(tourney.id)}
                     target="_blank"
                     rel="noopener"
                     className="mt-6 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
                   >
-                    <Download className="h-4 w-4" /> Ресми хаттаманы жүктеу
+                    <Download className="h-4 w-4" /> {t("tournament.download_protocol")}
                   </a>
                 ) : (
                   <div className="mt-6 inline-flex rounded-md border border-border/60 bg-background/45 px-5 py-3 text-sm text-muted-foreground">
-                    Хаттама жарыс аяқталғаннан кейін ашылады
+                    {t("tournament.protocol_pending")}
                   </div>
                 )}
               </div>
@@ -551,9 +548,9 @@ function TournamentDetail() {
       </section>
       )}
 
-      {activeTab === "results" && t?.status === "COMPLETED" && (
+      {activeTab === "results" && tourney?.status === "COMPLETED" && (
         <ResultsTab
-          categories={t.categories ?? []}
+          categories={tourney.categories ?? []}
           brackets={brackets}
           matches={matches}
           tournamentId={id}
@@ -566,7 +563,7 @@ function TournamentDetail() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Таб "Нәтижелер" — медальный подиум по каждой категории (IJF-style)
+// ResultsTab
 // ──────────────────────────────────────────────────────────────
 
 function ResultsTab({
@@ -580,6 +577,8 @@ function ResultsTab({
   matches: any[];
   tournamentId: string;
 }) {
+  const { t } = useTranslation();
+
   const results = useMemo(() => {
     return categories
       .map((cat: any) => {
@@ -588,7 +587,6 @@ function ResultsTab({
 
         const catMatches = matches.filter((m: any) => m.bracketId === bracket.id && m.status === "COMPLETED");
 
-        // Финальный матч — победитель = 🥇, проигравший = 🥈
         const finalMatch =
           catMatches.find((m: any) => m.bracketSection === "final") ??
           catMatches.filter((m: any) => m.bracketSection === "main").sort((a: any, b: any) => b.round - a.round)[0];
@@ -602,7 +600,6 @@ function ResultsTab({
             ? (finalMatch.redAthlete?.id === finalMatch.winnerId ? finalMatch.blueAthlete : finalMatch.redAthlete)
             : null;
 
-        // Бронзовые матчи
         const bronzeMatches = catMatches.filter(
           (m: any) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
         );
@@ -613,7 +610,6 @@ function ResultsTab({
           )
           .filter(Boolean);
 
-        // Если нет бронзовых матчей — проигравшие в полуфиналах
         const semis = catMatches.filter((m: any) => m.bracketSection === "main" && finalMatch && m.round === finalMatch.round - 1);
         const semifinalLosers =
           bronzeWinners.length === 0
@@ -635,17 +631,17 @@ function ResultsTab({
   return (
     <section id="natijeler" className="container mx-auto px-4 py-12">
       <div className="mb-8">
-        <div className="text-xs uppercase tracking-[0.3em] text-gold">Жарыс нәтижелері</div>
+        <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.results_header")}</div>
         <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-          Медаль кестесі
+          {t("tournament.medal_table")}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-          Санат бойынша алтын, күміс және қола медальдар
+          {t("tournament.medal_desc")}
         </p>
       </div>
 
       {results.length === 0 ? (
-        <Empty text="Нәтижелер әлі жоқ. Жарыс аяқталғаннан кейін медальдар осы жерде көрінеді." />
+        <Empty text={t("tournament.no_results")} />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {results.map((r: any) => (
@@ -653,27 +649,24 @@ function ResultsTab({
               key={r.category.id}
               className="rounded-2xl border border-border/60 bg-card/60 shadow-elegant backdrop-blur overflow-hidden"
             >
-              {/* Category header */}
               <div className="border-b border-border/40 px-5 py-4 flex items-center justify-between gap-3">
                 <div>
-                  <div className="font-display text-lg font-bold">{categoryTitle(r.category)}</div>
+                  <div className="font-display text-lg font-bold">{categoryTitle(r.category, t)}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {r.category.gender === "MALE" ? "Ер" : "Қыз"} · {r.category.ageMin}-{r.category.ageMax} жас
+                    {r.category.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} · {r.category.ageMin}-{r.category.ageMax} {t("common.years_short")}
                   </div>
                 </div>
                 <FormatBadge format={r.category.format} />
               </div>
 
-              {/* Podium */}
               <div className="p-5 space-y-2.5">
-                <PodiumRow place={1} athlete={r.gold} label="Алтын" color="text-yellow-400" bg="bg-yellow-400/10 border-yellow-400/25" />
-                <PodiumRow place={2} athlete={r.silver} label="Күміс" color="text-zinc-400" bg="bg-zinc-400/10 border-zinc-400/20" />
+                <PodiumRow place={1} athlete={r.gold} label={t("tournament.medal_gold")} color="text-yellow-400" bg="bg-yellow-400/10 border-yellow-400/25" />
+                <PodiumRow place={2} athlete={r.silver} label={t("tournament.medal_silver")} color="text-zinc-400" bg="bg-zinc-400/10 border-zinc-400/20" />
                 {r.bronze.map((a: any, i: number) => (
-                  <PodiumRow key={a?.id ?? i} place={3} athlete={a} label="Қола" color="text-amber-600" bg="bg-amber-600/10 border-amber-600/20" />
+                  <PodiumRow key={a?.id ?? i} place={3} athlete={a} label={t("tournament.medal_bronze")} color="text-amber-600" bg="bg-amber-600/10 border-amber-600/20" />
                 ))}
               </div>
 
-              {/* PDF link */}
               <div className="border-t border-border/30 px-5 py-3">
                 <a
                   href={`/api/pdf/bracket?bracketId=${r.bracket.id}`}
@@ -681,7 +674,7 @@ function ResultsTab({
                   rel="noopener"
                   className="inline-flex items-center gap-1.5 text-xs text-gold hover:underline"
                 >
-                  <Download className="h-3.5 w-3.5" /> Сетка PDF
+                  <Download className="h-3.5 w-3.5" /> {t("tournament.bracket_pdf_link")}
                 </a>
               </div>
             </div>
@@ -689,18 +682,17 @@ function ResultsTab({
         </div>
       )}
 
-      {/* Official protocol PDF */}
       <div className="mt-10 rounded-2xl border border-gold/25 bg-gold/5 p-6 text-center">
         <Trophy className="mx-auto mb-3 h-10 w-10 text-gold" />
-        <h3 className="font-display text-2xl font-bold">Ресми хаттама</h3>
-        <p className="mt-2 text-sm text-muted-foreground">Барлық санаттардың толық нәтижелері — PDF форматында</p>
+        <h3 className="font-display text-2xl font-bold">{t("tournament.official_protocol")}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{t("tournament.results_protocol_desc")}</p>
         <a
           href={`/api/pdf/protocol?tournamentId=${tournamentId}`}
           target="_blank"
           rel="noopener"
           className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
         >
-          <Download className="h-4 w-4" /> Хаттаманы жүктеу
+          <Download className="h-4 w-4" /> {t("tournament.download_results")}
         </a>
       </div>
     </section>
@@ -720,6 +712,7 @@ function PodiumRow({
   color: string;
   bg: string;
 }) {
+  const { t } = useTranslation();
   const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
   return (
     <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${bg}`}>
@@ -738,7 +731,7 @@ function PodiumRow({
             )}
           </>
         ) : (
-          <span className="text-sm text-muted-foreground/50 italic">Белгісіз</span>
+          <span className="text-sm text-muted-foreground/50 italic">{t("tournament.unknown_athlete")}</span>
         )}
       </div>
       <div className={`text-[10px] font-bold uppercase tracking-widest ${color}`}>{label}</div>
@@ -783,35 +776,34 @@ function Empty({ text }: { text: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    REGISTRATION_OPEN: { c: "bg-gold/15 text-gold border border-gold/30", l: "Тіркеу ашық" },
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Тіркеу жабық" },
-    IN_PROGRESS: { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
-    PENDING: { c: "bg-muted text-muted-foreground", l: "Кезекте" },
-    CANCELLED: { c: "bg-muted text-muted-foreground", l: "Болдырылмады" },
+  const { t } = useTranslation();
+  const m: Record<string, { c: string; key: string }> = {
+    DRAFT:                { c: "bg-muted text-muted-foreground",                                  key: "status.DRAFT" },
+    REGISTRATION_OPEN:    { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.REGISTRATION_OPEN" },
+    REGISTRATION_CLOSED:  { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",       key: "status.REGISTRATION_CLOSED" },
+    IN_PROGRESS:          { c: "bg-destructive/20 text-destructive border border-destructive/40", key: "status.IN_PROGRESS" },
+    COMPLETED:            { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.COMPLETED" },
+    PENDING:              { c: "bg-muted text-muted-foreground",                                  key: "status.PENDING" },
+    CANCELLED:            { c: "bg-muted text-muted-foreground",                                  key: "status.CANCELLED" },
   };
-  const x = m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${x.c}`}>{x.l}</span>;
+  const x = m[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${x.c}`}>{x.key ? String(t(x.key, status)) : status}</span>;
 }
 
 function FormatBadge({ format }: { format: string }) {
-  const m: Record<string, string> = {
-    SE_IJF: "IJF торы",
-    ROUND_ROBIN: "Айналмалы",
-    MIXED: "Аралас",
-  };
-  return <span className="rounded bg-gold/10 px-2 py-1 text-[10px] text-gold/90">{m[format] ?? format}</span>;
+  const { t } = useTranslation();
+  const key = `format.${format}`;
+  return <span className="rounded bg-gold/10 px-2 py-1 text-[10px] text-gold/90">{String(t(key, format))}</span>;
 }
 
-function categoryTitle(category: any): string {
-  if (!category) return "Санат";
-  return localizeName(category.name) || `${category.gender === "MALE" ? "Ерлер" : "Әйелдер"} · ${category.weightMin}-${category.weightMax} кг`;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function categoryTitle(category: any, t: any): string {
+  if (!category) return "";
+  return localizeName(category.name) || `${category.gender === "MALE" ? t("tournament.male_label") : t("tournament.female_label")} · ${category.weightMin}-${category.weightMax} ${t("common.kg")}`;
 }
 
 function athleteName(athlete: any): string {
-  return `${athlete?.name ?? ""} ${athlete?.surname ?? ""}`.trim() || "Спортшы";
+  return `${athlete?.name ?? ""} ${athlete?.surname ?? ""}`.trim() || "—";
 }
 
 function dateRange(start: string | Date, end: string | Date): string {
@@ -826,16 +818,16 @@ function timeText(start: string | Date): string {
   return new Intl.DateTimeFormat("kk-KZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(start));
 }
 
-function deadlineText(t: any): string {
-  const value = t.applicationDeadline ?? t.startDate;
+function deadlineText(tourney: any): string {
+  const value = tourney.applicationDeadline ?? tourney.startDate;
   return new Date(value).toLocaleString("kk-KZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function weighInText(t: any): string {
-  if (!t.weighInStart && !t.weighInEnd) return "Кейін хабарланады";
+function weighInText(tourney: any, tbdLabel: string): string {
+  if (!tourney.weighInStart && !tourney.weighInEnd) return tbdLabel;
   const fmt = new Intl.DateTimeFormat("kk-KZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-  const start = t.weighInStart ? fmt.format(new Date(t.weighInStart)) : "";
-  const end = t.weighInEnd ? fmt.format(new Date(t.weighInEnd)) : "";
+  const start = tourney.weighInStart ? fmt.format(new Date(tourney.weighInStart)) : "";
+  const end = tourney.weighInEnd ? fmt.format(new Date(tourney.weighInEnd)) : "";
   return start && end ? `${start} - ${end}` : start || end;
 }
 

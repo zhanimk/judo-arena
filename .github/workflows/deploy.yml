@@ -1,10 +1,12 @@
 name: Deploy
 
+# Деплой ТОЛЬКО после успешного CI на ветке main
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
-# Запускается только после успешного CI
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -14,8 +16,8 @@ jobs:
     name: Deploy API → Render
     runs-on: ubuntu-latest
     environment: production
-    # Зависит от успешного прохождения всех CI-джобов
-    needs: []
+    # Не деплоить если CI упал
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Trigger Render deploy
         if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
@@ -26,11 +28,14 @@ jobs:
     name: Deploy Web → Cloudflare Pages
     runs-on: ubuntu-latest
     environment: production
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20

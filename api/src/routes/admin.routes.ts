@@ -82,9 +82,14 @@ const overrideSchema = z
   })
   .strict();
 
+const strongPassword = z.string().min(8).max(128)
+  .regex(/[A-Z]/, "Пароль должен содержать заглавную букву")
+  .regex(/[a-z]/, "Пароль должен содержать строчную букву")
+  .regex(/[0-9]/, "Пароль должен содержать цифру");
+
 const createUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: strongPassword,
   role: z.enum(["ATHLETE", "COACH", "ADMIN"]),
   name: z.string().min(1),
   surname: z.string().min(1),
@@ -150,7 +155,7 @@ const auditQuerySchema = z.object({
 const leaderboardQuerySchema = z.object({
   categoryId: z.string().optional(),
   clubId: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(50),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
 const pdfBracketQuerySchema = z.object({
@@ -201,7 +206,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/matches/:id/override",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { winnerSide, reason } = overrideSchema.parse(request.body);
       return overrideMatchResult(request.user!.sub, request.params.id, winnerSide, reason);
@@ -210,7 +215,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/tournaments/:id/finalize",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return finalizeTournament(request.user!.sub, request.params.id);
     },
@@ -350,7 +355,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     "/users/:id/reset-password",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { password } = z.object({ password: z.string().min(6) }).parse(request.body);
+      const { password } = z.object({ password: strongPassword }).parse(request.body);
       return resetUserPassword(request.user!.sub, request.params.id, password);
     },
   );
@@ -374,8 +379,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         search: q.search,
         clubId: q.clubId,
         isActive: q.isActive === "true" ? true : q.isActive === "false" ? false : undefined,
-        limit: q.limit ? parseInt(q.limit, 10) : 50,
-        offset: q.offset ? parseInt(q.offset, 10) : 0,
+        limit: Math.min(q.limit ? parseInt(q.limit, 10) : 50, 200),
+        offset: Math.max(q.offset ? parseInt(q.offset, 10) : 0, 0),
       });
     },
   );
@@ -462,17 +467,18 @@ export async function ratingRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     "/athletes/:id",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return getAthleteRating(request.params.id);
     },
   );
 
-  app.get("/leaderboard", async (request) => {
+  app.get("/leaderboard", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
     const q = leaderboardQuerySchema.parse(request.query);
     return getLeaderboard(q);
   });
 
-  app.get("/clubs", async (request) => {
+  app.get("/clubs", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
     const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
     return getClubLeaderboard({ limit });
   });
@@ -522,7 +528,7 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
 
   // PDF сетки — расписание матчей до начала турнира
   // Тесный rate-limit: PDF-генерация — CPU-intensive операция
-  app.get("/bracket", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
+  app.get("/bracket", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const q = pdfBracketQuerySchema.parse(request.query);
     const buffer = await generateBracketPdf(q.bracketId);
     return reply
@@ -532,7 +538,7 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // PDF итогового протокола — после COMPLETED
-  app.get("/protocol", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
+  app.get("/protocol", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const q = pdfProtocolQuerySchema.parse(request.query);
     const buffer = await generateTournamentProtocolPdf(q.tournamentId);
     return reply
@@ -542,7 +548,7 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // PDF всех сеток турнира — один файл с обложкой + все категории
-  app.get("/tournament-brackets", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
+  app.get("/tournament-brackets", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
     const q = pdfAllBracketsQuerySchema.parse(request.query);
     const buffer = await generateAllBracketsPdf(q.tournamentId);
     return reply

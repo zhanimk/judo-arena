@@ -30,6 +30,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/applications/$id")({
   head: () => ({ meta: [{ title: "Өтінім — Judo-Arena" }] }),
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/coach/applications/$id")({
 
 
 function ApplicationDetail() {
+  const { t } = useTranslation();
   const { id } = useParams({ from: "/coach/applications/$id" });
   const { user } = useAuth();
   const canManageApplication = user?.clubRole === "OWNER";
@@ -84,26 +86,26 @@ function ApplicationDetail() {
       api.applications.addEntry(id, params.athleteId, params.categoryId),
     onMutate: (p) => { setAdding(p.athleteId); setError(""); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setAdding(null),
   });
 
   const submit = useMutation({
     mutationFn: () => api.applications.submit(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const removeEntry = useMutation({
     mutationFn: (entryId: string) => api.applications.removeEntry(id, entryId),
     onMutate: (entryId) => { setRemoving(entryId); setError(""); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setRemoving(null),
   });
   const withdraw = useMutation({
     mutationFn: () => api.applications.withdraw(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const moveEntry = useMutation({
     mutationFn: async ({ entryId, athleteId, newCategoryId }: { entryId: string; athleteId: string; newCategoryId: string }) => {
@@ -112,13 +114,13 @@ function ApplicationDetail() {
     },
     onMutate: ({ entryId }) => { setMovingEntry(entryId); setError(""); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["application", id] }); setShowMoveFor(null); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setMovingEntry(null),
   });
 
   if (appQuery.isLoading) {
     return (
-      <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Өтінім">
+      <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={t("common.loading")}>
         <LoadingState />
       </DashboardShell>
     );
@@ -127,8 +129,8 @@ function ApplicationDetail() {
   const app = appQuery.data;
   if (!app) {
     return (
-      <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Өтінім табылмады">
-        <Panel title="Қате"><EmptyState title="Өтінім жоқ" /></Panel>
+      <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={t("applications.not_found")}>
+        <Panel title={t("error.generic")}><EmptyState title={t("applications.not_found")} /></Panel>
       </DashboardShell>
     );
   }
@@ -161,12 +163,12 @@ function ApplicationDetail() {
 
   return (
     <DashboardShell
-      role="Жаттықтырушы"
+      role={t("coach.role_label")}
       navItems={nav}
-      accentTitle={localizeName(app.tournament?.name) || "Өтінім"}
+      accentTitle={localizeName(app.tournament?.name) || t("applications.title")}
     >
       <Link to="/coach/applications" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold mb-4">
-        <ArrowLeft className="h-4 w-4" /> Барлық өтінімдер
+        <ArrowLeft className="h-4 w-4" /> {t("applications.all_applications")}
       </Link>
 
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
@@ -175,10 +177,10 @@ function ApplicationDetail() {
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <div className="flex items-center gap-2 font-medium text-amber-300">
             <AlertTriangle className="h-4 w-4" />
-            Клубыңыз тіркелмеген
+            {t("coach.no_club_warning_title")}
           </div>
           <div className="mt-1 text-amber-100/80">
-            Спортшы қосу үшін клубқа тіркелу керек. Adminге хабарласып, аккаунтты клубқа байланыстырыңыз.
+            {t("applications.no_club_to_add_hint")}
           </div>
         </div>
       )}
@@ -187,7 +189,7 @@ function ApplicationDetail() {
         <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
           <div className="flex items-center gap-2 font-medium text-destructive">
             <AlertTriangle className="h-4 w-4" />
-            Өтінім қайтарылды, түзету керек
+            {t("applications.rejected_needs_fix")}
           </div>
           {app.reviewerNotes && <div className="mt-2 text-muted-foreground">{app.reviewerNotes}</div>}
         </div>
@@ -195,18 +197,18 @@ function ApplicationDetail() {
 
       {app.status === "APPROVED" && app.reviewerNotes && (
         <div className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-muted-foreground">
-          <span className="font-medium text-emerald-300">Админ ескертуі:</span> {app.reviewerNotes}
+          <span className="font-medium text-emerald-300">{t("coach.admin_note")}:</span> {app.reviewerNotes}
         </div>
       )}
 
       <div className="mb-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Panel title="Турнир туралы">
+        <Panel title={t("applications.tournament_info")}>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
-            <InfoItem icon={Trophy} label="Турнир" value={localizeName(app.tournament?.name) || "—"} />
-            <InfoItem icon={CalendarDays} label="Басталуы" value={app.tournament?.startDate ? new Date(app.tournament.startDate).toLocaleDateString("kk-KZ") : "—"} />
-            <InfoItem icon={Clock3} label="Өтінім дедлайны" value={deadline ? new Date(deadline).toLocaleString("kk-KZ") : "—"} />
-            <InfoItem icon={MapPin} label="Өтетін орны" value={app.tournament?.location ? `${app.tournament.location}, ${app.tournament.city}` : app.tournament?.status ?? "—"} />
-            <InfoItem icon={Users} label="Клуб спортшылары" value={String(entriesCount)} />
+            <InfoItem icon={Trophy} label={t("common.tournament")} value={localizeName(app.tournament?.name) || "—"} />
+            <InfoItem icon={CalendarDays} label={t("tournament.metric_start")} value={app.tournament?.startDate ? new Date(app.tournament.startDate).toLocaleDateString("kk-KZ") : "—"} />
+            <InfoItem icon={Clock3} label={t("tournament.deadline")} value={deadline ? new Date(deadline).toLocaleString("kk-KZ") : "—"} />
+            <InfoItem icon={MapPin} label={t("tournament.metric_location")} value={app.tournament?.location ? `${app.tournament.location}, ${app.tournament.city}` : app.tournament?.status ?? "—"} />
+            <InfoItem icon={Users} label={t("applications.club_athletes")} value={String(entriesCount)} />
           </div>
           {app.tournament?.posterUrl && (
             <a
@@ -216,28 +218,28 @@ function ApplicationDetail() {
               className="mt-4 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold hover:bg-gold/15"
             >
               <ClipboardList className="h-4 w-4" />
-              Турнир положение / фото ашу
+              {t("coach.tournament_regulations")}
             </a>
           )}
         </Panel>
 
         <Panel
-          title="Әрекеттер"
+          title={t("applications.actions")}
           action={<StatusBadge status={app.status} />}
         >
           <div className="space-y-3 text-sm text-muted-foreground">
             <div>
               {isEditable
-                ? "Жоба ашық: спортшыларды қосып/өшіріп, дайын болғанда жіберіңіз."
-                : `Өңдеуге болмайды. Ағымдағы мәртебе: ${statusLabel(app.status)}.`}
+                ? t("applications.draft_hint")
+                : t("applications.not_editable_hint", { status: String(t(`status.${app.status}`, app.status)) })}
             </div>
             {!canManageApplication && app.status === "DRAFT" && (
               <div className="rounded-md border border-border/60 bg-background/30 p-3">
-                Сіз бұл өтінімді қарау режимінде көріп тұрсыз. Ресми өзгерістерді тек клуб иесі жасай алады.
+                {t("coach.view_only_desc")}
               </div>
             )}
-            {app.submittedAt && <div>Жіберілген: {new Date(app.submittedAt).toLocaleString("kk-KZ")}</div>}
-            {app.reviewedAt && <div>Қаралған: {new Date(app.reviewedAt).toLocaleString("kk-KZ")}</div>}
+            {app.submittedAt && <div>{t("applications.submitted_at")}: {new Date(app.submittedAt).toLocaleString("kk-KZ")}</div>}
+            {app.reviewedAt && <div>{t("applications.reviewed_at")}: {new Date(app.reviewedAt).toLocaleString("kk-KZ")}</div>}
             {canManageApplication && (app.status === "DRAFT" || app.status === "SUBMITTED") && (
               <button
                 onClick={() => withdraw.mutate()}
@@ -245,7 +247,7 @@ function ApplicationDetail() {
                 className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
               >
                 {withdraw.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
-                Өтінімді қайтарып алу
+                {t("applications.withdraw")}
               </button>
             )}
           </div>
@@ -253,12 +255,12 @@ function ApplicationDetail() {
       </div>
 
       <Panel
-        title={`Өтінім · ${app.status}`}
+        title={`${t("applications.title")} · ${String(t(`status.${app.status}`, app.status))}`}
       >
         <div className="text-sm text-muted-foreground mb-4">
-          {entriesCount} спортшы өтінімде
-          {!isEditable && " · өңдеуге болмайды (мәртебесі: " + app.status + ")"}
-          {isEditable && deadlinePassed && " · дедлайн өтті, өзгертуге болмайды"}
+          {t("applications.entries_count", { count: entriesCount })}
+          {!isEditable && ` · ${t("applications.not_editable_short", { status: String(t(`status.${app.status}`, app.status)) })}`}
+          {isEditable && deadlinePassed && ` · ${t("coach.deadline_passed_msg")}`}
         </div>
 
         {/* Текущие entries */}
@@ -276,10 +278,10 @@ function ApplicationDetail() {
                         {e.athlete.name} {e.athlete.surname}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {e.athlete.weightKg ? `${e.athlete.weightKg} кг` : ""}
+                        {e.athlete.weightKg ? `${e.athlete.weightKg} ${t("common.kg")}` : ""}
                         {" · "}
-                        {e.category?.gender === "MALE" ? "Ер" : "Әйел"} {e.category?.weightMin}-{e.category?.weightMax} кг
-                        {e.category?.ageMin ? ` · ${e.category.ageMin}-${e.category.ageMax} жас` : ""}
+                        {e.category?.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} {e.category?.weightMin}-{e.category?.weightMax} {t("common.kg")}
+                        {e.category?.ageMin ? ` · ${e.category.ageMin}-${e.category.ageMax} ${t("common.years_short")}` : ""}
                       </div>
                     </div>
                     {canEditRoster && (
@@ -293,8 +295,8 @@ function ApplicationDetail() {
                                 ? "bg-gold/15 text-gold"
                                 : "text-muted-foreground hover:bg-gold/10 hover:text-gold"
                             }`}
-                            aria-label="Категориясын ауыстыру"
-                            title="Категориясын ауыстыру"
+                            aria-label={t("applications.move_category")}
+                            title={t("applications.move_category")}
                           >
                             <ArrowRightLeft className="h-4 w-4" />
                           </button>
@@ -303,7 +305,7 @@ function ApplicationDetail() {
                           onClick={() => { setShowMoveFor(null); removeEntry.mutate(e.id); }}
                           disabled={removing === e.id || movingEntry === e.id}
                           className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                          aria-label="Өшіру"
+                          aria-label={t("common.delete")}
                         >
                           {removing === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </button>
@@ -312,7 +314,7 @@ function ApplicationDetail() {
                   </div>
                   {canEditRoster && showMoveFor === e.id && (
                     <div className="mt-2 border-t border-border/40 pt-2">
-                      <div className="text-xs text-muted-foreground mb-1.5">Басқа категорияға ауыстыру:</div>
+                      <div className="text-xs text-muted-foreground mb-1.5">{t("applications.move_to_category")}:</div>
                       <div className="flex flex-wrap gap-1.5">
                         {moveCategories.map((c: any) => (
                           <button
@@ -322,8 +324,8 @@ function ApplicationDetail() {
                             className="text-xs px-2 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 inline-flex items-center gap-1"
                           >
                             {movingEntry === e.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowRightLeft className="h-3 w-3" />}
-                            {c.gender === "MALE" ? "Ер" : "Әйел"} {c.weightMin}-{c.weightMax} кг
-                            <span className="text-gold/70">{c.ageMin}-{c.ageMax} жас</span>
+                            {c.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} {c.weightMin}-{c.weightMax} {t("common.kg")}
+                            <span className="text-gold/70">{c.ageMin}-{c.ageMax} {t("common.years_short")}</span>
                           </button>
                         ))}
                       </div>
@@ -339,7 +341,7 @@ function ApplicationDetail() {
         {canEditRoster && categoriesQuery.data && membersQuery.data && (
           <div>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h4 className="font-medium text-sm">Спортшы қосу</h4>
+              <h4 className="font-medium text-sm">{t("applications.add_athlete")}</h4>
               <div className="text-xs text-muted-foreground">
                 {filteredAthletes.length} / {(membersQuery.data ?? []).length} көрсетілді
               </div>
@@ -348,7 +350,7 @@ function ApplicationDetail() {
               <input
                 value={athleteSearch}
                 onChange={(e) => setAthleteSearch(e.target.value)}
-                placeholder="Аты-жөні бойынша іздеу"
+                placeholder={t("applications.search_by_name")}
                 className="rounded-md border border-border bg-background/70 px-3 py-2 text-sm outline-none focus:border-gold/60"
               />
               <select
@@ -356,32 +358,32 @@ function ApplicationDetail() {
                 onChange={(e) => setGenderFilter(e.target.value as "ALL" | "MALE" | "FEMALE")}
                 className="rounded-md border border-border bg-background/70 px-3 py-2 text-sm outline-none focus:border-gold/60"
               >
-                <option value="ALL">Бәрі</option>
-                <option value="MALE">Ер</option>
-                <option value="FEMALE">Әйел</option>
+                <option value="ALL">{t("common.all")}</option>
+                <option value="MALE">{t("tournament.gender_male_abbr")}</option>
+                <option value="FEMALE">{t("tournament.gender_female_abbr")}</option>
               </select>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="rounded-md border border-border bg-background/70 px-3 py-2 text-sm outline-none focus:border-gold/60"
               >
-                <option value="ALL">Барлық категория</option>
+                <option value="ALL">{t("applications.all_categories")}</option>
                 {categories.map((category: any) => (
-                  <option key={category.id} value={category.id}>{categoryLabel(category)}</option>
+                  <option key={category.id} value={category.id}>{categoryLabel(category, t)}</option>
                 ))}
               </select>
               <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
                 <input type="checkbox" checked={onlyEligible} onChange={(e) => setOnlyEligible(e.target.checked)} className="accent-gold" />
-                Тек сәйкес
+                {t("applications.only_eligible")}
               </label>
             </div>
             {(categoriesQuery.data ?? []).length === 0 ? (
               <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">
-                Бұл турнирде категориялар әлі енгізілмеген. Админ алдымен жас/салмақ/жыныс категорияларын қосуы керек.
+                {t("applications.no_categories_hint")}
               </div>
             ) : (membersQuery.data ?? []).length === 0 ? (
               <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">
-                Клубта спортшылар жоқ. Алдымен «Спортшылар» бөлімінен оқушыларды қосыңыз.
+                {t("applications.no_club_athletes_hint")}
               </div>
             ) : (
               <div className="space-y-2">
@@ -391,7 +393,7 @@ function ApplicationDetail() {
                   ? categoriesQuery.data!
                   : categoriesQuery.data!.filter((category: any) => category.id === categoryFilter);
                 const matching = relevantCategories.filter((c: any) => fitsCategory(athlete, c));
-                const issues = athleteEligibilityIssues(athlete, relevantCategories);
+                const issues = athleteEligibilityIssues(athlete, relevantCategories, t);
 
                 return (
                   <div key={athlete.id} className={`glass rounded-md p-3 ${alreadyIn ? "border-emerald-500/25" : matching.length === 0 ? "opacity-80" : ""}`}>
@@ -399,13 +401,13 @@ function ApplicationDetail() {
                       <div>
                         <div className="font-medium text-sm">{athlete.name} {athlete.surname}</div>
                         <div className="text-xs text-muted-foreground">
-                          {athleteMeta(athlete)}
+                          {athleteMeta(athlete, t)}
                         </div>
                       </div>
                       {alreadyIn && <StatusPill value="APPROVED" />}
                     </div>
                     {alreadyIn ? (
-                      <div className="mt-2 text-xs text-emerald-300">Бұл спортшы өтінімге қосылған.</div>
+                      <div className="mt-2 text-xs text-emerald-300">{t("applications.athlete_already_added")}</div>
                     ) : matching.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {matching.map((c: any) => (
@@ -417,14 +419,14 @@ function ApplicationDetail() {
                             className="text-xs px-2 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 inline-flex items-center gap-1"
                           >
                             <Plus className="h-3 w-3" />
-                            {c.gender === "MALE" ? "Ер" : "Әйел"} {c.weightMin}-{c.weightMax} кг
-                            <span className="text-gold/70">{c.ageMin}-{c.ageMax} жас</span>
+                            {c.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} {c.weightMin}-{c.weightMax} {t("common.kg")}
+                            <span className="text-gold/70">{c.ageMin}-{c.ageMax} {t("common.years_short")}</span>
                           </button>
                         ))}
                       </div>
                     ) : (
                       <div className="mt-2 rounded border border-border/40 bg-background/30 px-3 py-2 text-xs text-muted-foreground">
-                        Қосу мүмкін емес: {issues.join("; ")}
+                        {t("applications.cannot_add")}: {issues.join("; ")}
                       </div>
                     )}
                   </div>
@@ -445,8 +447,7 @@ function ApplicationDetail() {
                 className="mt-1 h-4 w-4 accent-gold"
               />
               <span className="text-muted-foreground">
-                Мен өтінімдегі спортшылардың медициналық рұқсаты, салмағы, жасы және құжаттары дұрыс екенін растаймын.
-                Жарысқа қатысу жауапкершілігін клуб/жаттықтырушы өз мойнына алады.
+                {t("coach.responsibility_text")}
               </span>
             </label>
             <button
@@ -455,16 +456,16 @@ function ApplicationDetail() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
               {submit.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Send className="h-4 w-4" /> Өтінімді жіберу
+              <Send className="h-4 w-4" /> {t("coach.submit_application")}
             </button>
-            {entriesCount === 0 && <div className="mt-2 text-xs text-muted-foreground">Алдымен кемінде бір спортшы қосыңыз.</div>}
-            {deadlinePassed && <div className="mt-2 text-xs text-destructive">Өтінім дедлайны өтті.</div>}
-            {!responsibilityAccepted && entriesCount > 0 && <div className="mt-2 text-xs text-muted-foreground">Жіберу үшін жауапкершілік келісімін белгілеңіз.</div>}
+            {entriesCount === 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.add_athlete_first")}</div>}
+            {deadlinePassed && <div className="mt-2 text-xs text-destructive">{t("coach.deadline_passed_msg")}</div>}
+            {!responsibilityAccepted && entriesCount > 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.accept_responsibility_first")}</div>}
           </div>
         )}
         {isEditable && !canManageApplication && (
           <div className="mt-6 rounded-md border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
-            Өтінімді жіберу үшін клуб иесі аккаунтымен кіріңіз немесе клуб иесіне хабарласыңыз.
+            {t("applications.contact_owner_hint")}
           </div>
         )}
       </Panel>
@@ -474,21 +475,21 @@ function ApplicationDetail() {
       </div>
 
       <div className="mt-6">
-        <Panel title={`Клуб матчтарының кестесі ${clubMatches.length}`}>
+        <Panel title={`${t("applications.club_matches_table")} ${clubMatches.length}`}>
           {matchesQuery.isLoading ? (
             <LoadingState />
           ) : clubMatches.length === 0 ? (
-            <EmptyState title="Матч кестесі әлі жоқ" hint="Сетка жасалғаннан кейін клуб спортшыларының матчтары осында шығады" />
+            <EmptyState title={t("applications.no_match_schedule")} hint={t("applications.no_match_schedule_hint")} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border/40 text-left text-[10px] uppercase tracking-widest text-muted-foreground">
                   <tr>
-                    <th className="py-2">Татами</th>
-                    <th>Раунд</th>
-                    <th>Қызыл</th>
-                    <th>Көк</th>
-                    <th>Мәртебе</th>
+                    <th className="py-2">{t("tournament.metric_tatami")}</th>
+                    <th>{t("tournament.round_label")}</th>
+                    <th>{t("matches.side_red")}</th>
+                    <th>{t("matches.side_blue")}</th>
+                    <th>{t("common.status")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
@@ -512,6 +513,7 @@ function ApplicationDetail() {
 }
 
 function ApplicationHistory({ applicationId }: { applicationId: string }) {
+  const { t } = useTranslation();
   const q = useQuery({
     queryKey: ["application-history", applicationId],
     queryFn: () => api.applications.history(applicationId),
@@ -519,20 +521,20 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
   });
 
   const actionMeta: Record<string, { label: string; icon: any; color: string }> = {
-    "application.submit":   { label: "Жіберілді",    icon: Send,          color: "text-gold border-gold/40 bg-gold/10" },
-    "application.approve":  { label: "Бекітілді",    icon: CheckCircle2,  color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
-    "application.reject":   { label: "Қайтарылды",   icon: XCircle,       color: "text-destructive border-destructive/40 bg-destructive/10" },
-    "application.withdraw": { label: "Алынды",        icon: Undo2,         color: "text-muted-foreground border-border bg-muted/20" },
+    "application.submit":   { label: t("status.SUBMITTED"),  icon: Send,          color: "text-gold border-gold/40 bg-gold/10" },
+    "application.approve":  { label: t("status.APPROVED"),   icon: CheckCircle2,  color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
+    "application.reject":   { label: t("status.REJECTED"),   icon: XCircle,       color: "text-destructive border-destructive/40 bg-destructive/10" },
+    "application.withdraw": { label: t("status.WITHDRAWN"),  icon: Undo2,         color: "text-muted-foreground border-border bg-muted/20" },
   };
 
   const items = q.data ?? [];
 
   return (
-    <Panel title="Өтінім тарихы" action={<History className="h-4 w-4 text-muted-foreground" />}>
+    <Panel title={t("applications.history")} action={<History className="h-4 w-4 text-muted-foreground" />}>
       {q.isLoading ? (
         <LoadingState />
       ) : items.length === 0 ? (
-        <EmptyState title="Тарих жоқ" hint="Өтінімге жасалған өзгерістер осында шығады" />
+        <EmptyState title={t("applications.no_history")} hint={t("applications.no_history_hint")} />
       ) : (
         <ol className="relative border-l border-border/40 ml-3 space-y-4">
           {items.map((log: any) => {
@@ -555,7 +557,7 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
                   {actor && (
                     <div className="mt-1 text-xs text-muted-foreground">
                       {actor.name} {actor.surname}
-                      {actor.role === "ADMIN" && " · Әкімші"}
+                      {actor.role === "ADMIN" && ` · ${t("admin.role_label")}`}
                     </div>
                   )}
                   {notes && (
@@ -586,31 +588,29 @@ function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; valu
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const x = statusMap(status);
-  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${x.c}`}>{x.l}</span>;
+  const { t } = useTranslation();
+  const c = statusClass(status);
+  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${c}`}>{String(t(`status.${status}`, status))}</span>;
 }
 
 function StatusPill({ value }: { value: string }) {
-  const x = statusMap(value);
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] ${x.c}`}>{x.l}</span>;
+  const { t } = useTranslation();
+  const c = statusClass(value);
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] ${c}`}>{String(t(`status.${value}`, value))}</span>;
 }
 
-function statusMap(status: string): { c: string; l: string } {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
-    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
-    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/40", l: "Қайтарылды" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Алынды" },
-    PENDING: { c: "bg-muted text-muted-foreground", l: "Күтіп тұр" },
-    IN_PROGRESS: { c: "bg-gold/15 text-gold border border-gold/30", l: "Жүріп жатыр" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
+function statusClass(status: string): string {
+  const m: Record<string, string> = {
+    DRAFT:      "bg-muted text-muted-foreground",
+    SUBMITTED:  "bg-gold/15 text-gold border border-gold/30",
+    APPROVED:   "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    REJECTED:   "bg-destructive/15 text-destructive border border-destructive/40",
+    WITHDRAWN:  "bg-muted text-muted-foreground",
+    PENDING:    "bg-muted text-muted-foreground",
+    IN_PROGRESS: "bg-gold/15 text-gold border border-gold/30",
+    COMPLETED:  "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
   };
-  return m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-}
-
-function statusLabel(status: string): string {
-  return statusMap(status).l;
+  return m[status] ?? "bg-muted text-muted-foreground";
 }
 
 function athleteName(a: any): string {
@@ -629,35 +629,35 @@ function fitsCategory(athlete: any, category: any): boolean {
     athlete.weightKg <= category.weightMax;
 }
 
-function athleteEligibilityIssues(athlete: any, categories: any[]): string[] {
+function athleteEligibilityIssues(athlete: any, categories: any[], t: any): string[] {
   const issues: string[] = [];
-  if (!athlete.gender) issues.push("жыныс көрсетілмеген");
-  if (!athlete.dateOfBirth) issues.push("туған күні жоқ");
-  if (!athlete.weightKg) issues.push("салмақ жоқ");
+  if (!athlete.gender) issues.push(t("coach.mismatch_no_gender"));
+  if (!athlete.dateOfBirth) issues.push(t("coach.mismatch_no_dob"));
+  if (!athlete.weightKg) issues.push(t("coach.mismatch_no_weight"));
   if (issues.length > 0) return issues;
 
   const sameGender = categories.filter((category: any) => category.gender === athlete.gender);
-  if (sameGender.length === 0) return ["осы жынысқа категория жоқ"];
+  if (sameGender.length === 0) return [t("applications.no_gender_category")];
 
   const age = getAge(athlete.dateOfBirth);
   const ageMatches = sameGender.filter((category: any) => age >= category.ageMin && age <= category.ageMax);
-  if (ageMatches.length === 0) return [`жасы ${age}, категория жасына сәйкес емес`];
+  if (ageMatches.length === 0) return [t("applications.age_mismatch", { age })];
 
   const weightMatches = ageMatches.filter((category: any) => athlete.weightKg > category.weightMin && athlete.weightKg <= category.weightMax);
-  if (weightMatches.length === 0) return [`салмағы ${athlete.weightKg} кг, категория салмағына сәйкес емес`];
+  if (weightMatches.length === 0) return [t("applications.weight_mismatch", { weight: athlete.weightKg })];
 
-  return ["сәйкес категория табылмады"];
+  return [t("applications.no_matching_category")];
 }
 
-function athleteMeta(athlete: any): string {
-  const gender = athlete.gender === "MALE" ? "Ер" : athlete.gender === "FEMALE" ? "Әйел" : "Жыныс жоқ";
-  const weight = athlete.weightKg ? `${athlete.weightKg} кг` : "салмақ жоқ";
-  const age = athlete.dateOfBirth ? `${getAge(athlete.dateOfBirth)} жас` : "туған күні жоқ";
+function athleteMeta(athlete: any, t: any): string {
+  const gender = athlete.gender === "MALE" ? t("tournament.gender_male_abbr") : athlete.gender === "FEMALE" ? t("tournament.gender_female_abbr") : t("coach.mismatch_no_gender");
+  const weight = athlete.weightKg ? `${athlete.weightKg} ${t("common.kg")}` : t("coach.mismatch_no_weight");
+  const age = athlete.dateOfBirth ? `${getAge(athlete.dateOfBirth)} ${t("common.years_short")}` : t("coach.mismatch_no_dob");
   return `${gender} · ${weight} · ${age}`;
 }
 
-function categoryLabel(category: any): string {
-  return `${category.gender === "MALE" ? "Ер" : "Әйел"} ${category.ageMin}-${category.ageMax} жас ${category.weightMin}-${category.weightMax} кг`;
+function categoryLabel(category: any, t: any): string {
+  return `${category.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} ${category.ageMin}-${category.ageMax} ${t("common.years_short")} ${category.weightMin}-${category.weightMax} ${t("common.kg")}`;
 }
 
 function getAge(dob: string): number {

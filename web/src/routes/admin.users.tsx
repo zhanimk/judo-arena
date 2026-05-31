@@ -5,7 +5,8 @@ import { Search, Lock, Unlock, Star } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useState } from "react";
+import { useState, useDeferredValue } from "react";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Спортшылар — Әкімші" }] }),
@@ -19,18 +20,20 @@ export const Route = createFileRoute("/admin/users")({
 
 
 function AdminUsers() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [role, setRole] = useState<string>("ATHLETE");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search); // debounce — query only fires after render settles
   const [activeOnly, setActiveOnly] = useState<string>("");
   const [clubFilter, setClubFilter] = useState("");
   const [error, setError] = useState("");
 
   const query = useQuery({
-    queryKey: ["admin-users", role, search, activeOnly, clubFilter],
+    queryKey: ["admin-users", role, deferredSearch, activeOnly, clubFilter],
     queryFn: () => api.admin.listUsers({
       role: role || undefined,
-      search: search || undefined,
+      search: deferredSearch || undefined,
       clubId: clubFilter || undefined,
       isActive: activeOnly || undefined,
       limit: 100,
@@ -57,24 +60,26 @@ function AdminUsers() {
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => api.admin.toggleUserActive(id, active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
+  const roleTabs: [string, string][] = [
+    ["ATHLETE", t("admin.users_athletes")],
+    ["COACH", t("admin.users_coaches")],
+    ["ADMIN", t("admin.users_admins")],
+    ["", t("admin.users_all")],
+  ];
+
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Спортшылар және рейтинг">
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.users_title")}>
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
 
       <Panel
-        title={`${query.data?.total ?? 0} ${roleLabel(role).toLowerCase()}`}
+        title={`${query.data?.total ?? 0} ${(role === "ATHLETE" ? t("admin.users_athletes") : role === "COACH" ? t("admin.users_coaches") : role === "ADMIN" ? t("admin.users_admins") : t("admin.users_all")).toLowerCase()}`}
         action={
           <div className="flex flex-wrap gap-2">
             <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5">
-              {[
-                ["ATHLETE", "Спортшылар"],
-                ["COACH", "Тренерлер"],
-                ["ADMIN", "Админдер"],
-                ["", "Барлығы"],
-              ].map(([value, label]) => (
+              {roleTabs.map(([value, label]) => (
                 <button
                   key={value || "all"}
                   onClick={() => setRole(value)}
@@ -86,41 +91,39 @@ function AdminUsers() {
             </div>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Іздеу..."
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("common.search_placeholder")}
                 className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none" />
             </div>
             <select value={clubFilter} onChange={(e) => setClubFilter(e.target.value)}
               className="text-sm bg-input border border-border rounded px-2 py-1.5">
-              <option value="">Барлық клубтар</option>
+              <option value="">{t("common.all_clubs")}</option>
               {(clubsQuery.data?.items ?? []).map((c: any) => (
                 <option key={c.id} value={c.id}>{localizeName(c.name)}</option>
               ))}
             </select>
             <select value={activeOnly} onChange={(e) => setActiveOnly(e.target.value)}
               className="text-sm bg-input border border-border rounded px-2 py-1.5">
-              <option value="">Барлығы</option>
-              <option value="true">Белсенді</option>
-              <option value="false">Блок</option>
+              <option value="">{t("common.all")}</option>
+              <option value="true">{t("common.active")}</option>
+              <option value="false">{t("common.blocked")}</option>
             </select>
           </div>
         }
       >
         {query.isLoading ? <LoadingState /> :
-          query.isError ? <EmptyState title="Пайдаланушылар жүктелмеді" hint={(query.error as any)?.message ?? "API қатесі"} /> :
+          query.isError ? <EmptyState title={t("admin.users_load_error")} hint={(query.error as any)?.message ?? t("error.api")} /> :
           (query.data?.items ?? []).length === 0 ? (
             <div className="py-8 text-center">
-              <div className="text-sm font-medium">{roleLabel(role)} табылмады</div>
+              <div className="text-sm font-medium">{t("admin.user_not_found", { role: role === "COACH" ? t("admin.users_coaches") : t("admin.users_athletes") })}</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {role === "COACH"
-                  ? "Бұл клубтарда тренер аккаунттары байланыспаған болуы мүмкін. Спортшылар вкладкасын ашып көріңіз."
-                  : "Іздеу немесе фильтрді өзгертіп көріңіз."}
+                {role === "COACH" ? t("admin.users_coach_hint") : t("admin.users_search_hint")}
               </div>
               {role !== "ATHLETE" && (
                 <button
                   onClick={() => setRole("ATHLETE")}
                   className="mt-4 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold"
                 >
-                  Спортшыларды көрсету
+                  {t("admin.users_show_athletes")}
                 </button>
               )}
             </div>
@@ -128,7 +131,14 @@ function AdminUsers() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40">
-                  <tr><th className="py-2">Аты-жөні</th><th>Email</th><th>Рөл</th><th>Клуб</th><th>Күй</th><th></th></tr>
+                  <tr>
+                    <th className="py-2">{t("common.full_name")}</th>
+                    <th>Email</th>
+                    <th>{t("common.role")}</th>
+                    <th>{t("common.club")}</th>
+                    <th>{t("common.status")}</th>
+                    <th></th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {(query.data?.items ?? []).map((u: any) => (
@@ -147,13 +157,15 @@ function AdminUsers() {
                       </td>
                       <td>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
-                          {u.isActive ? "Белсенді" : "Блок"}
+                          {u.isActive ? t("common.active") : t("common.blocked")}
                         </span>
                       </td>
                       <td>
                         <button onClick={() => toggle.mutate({ id: u.id, active: !u.isActive })}
                           className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1">
-                          {u.isActive ? <><Lock className="h-3 w-3" /> Блок</> : <><Unlock className="h-3 w-3" /> Ашу</>}
+                          {u.isActive
+                            ? <><Lock className="h-3 w-3" /> {t("admin.block_user")}</>
+                            : <><Unlock className="h-3 w-3" /> {t("admin.unblock_user")}</>}
                         </button>
                       </td>
                     </tr>
@@ -165,16 +177,21 @@ function AdminUsers() {
       </Panel>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
-        <Panel title="Спортшылар рейтингі">
+        <Panel title={t("admin.ratings_title")}>
           {leaderboard.isLoading ? <LoadingState /> :
-            leaderboard.isError ? <EmptyState title="Рейтинг жүктелмеді" hint={(leaderboard.error as any)?.message ?? "API қатесі"} /> :
+            leaderboard.isError ? <EmptyState title={t("admin.ratings_load_error")} hint={(leaderboard.error as any)?.message ?? t("error.api")} /> :
             (leaderboard.data ?? []).length === 0 ? (
-              <EmptyState title="Әзірше рейтинг бос" hint="Жарыс финалдан кейін ұпайлар осы жерде көрінеді" />
+              <EmptyState title={t("admin.ratings_empty")} hint={t("admin.ratings_empty_hint")} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="border-b border-border/40 text-left text-[10px] uppercase tracking-widest text-muted-foreground">
-                    <tr><th className="py-2">Орын</th><th>Спортшы</th><th>Клуб</th><th className="text-right">Ұпай</th></tr>
+                    <tr>
+                      <th className="py-2">{t("rankings.place")}</th>
+                      <th>{t("rankings.athlete")}</th>
+                      <th>{t("common.club")}</th>
+                      <th className="text-right">{t("common.points")}</th>
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
                     {(leaderboard.data ?? []).map((row: any) => (
@@ -198,9 +215,9 @@ function AdminUsers() {
             )}
         </Panel>
 
-        <Panel title="Клуб бойынша қысқаша">
+        <Panel title={t("admin.clubs_summary")}>
           {(clubsQuery.data?.items ?? []).length === 0 ? (
-            <EmptyState title="Клубтар жоқ" />
+            <EmptyState title={t("admin.clubs_no")} />
           ) : (
             <div className="space-y-2">
               {(clubsQuery.data?.items ?? []).slice(0, 8).map((c: any) => (
@@ -239,13 +256,6 @@ function roleCount(data: any, role: string) {
   if (!data) return "";
   const key = role || "ALL";
   return `(${data[key] ?? 0})`;
-}
-
-function roleLabel(role: string) {
-  if (role === "ATHLETE") return "Спортшы";
-  if (role === "COACH") return "Тренер";
-  if (role === "ADMIN") return "Админ";
-  return "Адам";
 }
 
 function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }

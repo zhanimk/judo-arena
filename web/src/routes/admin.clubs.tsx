@@ -9,6 +9,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 
 export const Route = createFileRoute("/admin/clubs")({
   head: () => ({ meta: [{ title: "Пайдаланушылар — Әкімші" }] }),
@@ -31,16 +33,17 @@ function AdminClubsRoute() {
 type Tab = "clubs" | "users" | "ratings";
 
 function AdminClubsPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("clubs");
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Пайдаланушылар">
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.clubs_title")}>
       {/* Tab switcher */}
       <div className="mb-6 flex gap-2 rounded-xl border border-border/60 bg-card/40 p-1.5 w-fit overflow-x-auto max-w-full">
         {([
-          { id: "clubs" as Tab, label: "Клубтар", icon: Building2 },
-          { id: "users" as Tab, label: "Спортшылар", icon: Users },
-          { id: "ratings" as Tab, label: "Рейтинг", icon: Star },
+          { id: "clubs" as Tab, label: t("admin.clubs_title"), icon: Building2 },
+          { id: "users" as Tab, label: t("admin.users_athletes"), icon: Users },
+          { id: "ratings" as Tab, label: t("admin.ratings_title"), icon: Star },
         ] as { id: Tab; label: string; icon: any }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -68,6 +71,7 @@ function AdminClubsPage() {
 // TAB: КЛУБТАР
 // ============================================================
 function ClubsTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [blockModal, setBlockModal] = useState<{ id: string; name: string } | null>(null);
@@ -82,13 +86,13 @@ function ClubsTab() {
     mutationFn: ({ id, blocked, reason }: { id: string; blocked: boolean; reason?: string }) =>
       api.admin.blockClub(id, blocked, reason),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-clubs"] }); setBlockModal(null); setReason(""); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteClubMut = useMutation({
     mutationFn: (id: string) => api.admin.deleteClub(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-clubs"] }); setDeleteClubModal(null); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const createMut = useMutation({
@@ -103,27 +107,29 @@ function ClubsTab() {
       setShowCreate(false);
       setForm({ nameRu: "", nameKk: "", city: "", country: "KZ", shortName: "" });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const fi = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [field]: e.target.value }));
+
+  const INPUT = "mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none";
 
   return (
     <>
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
 
       <Panel
-        title={`${query.data?.total ?? 0} клуб`}
+        title={`${query.data?.total ?? 0} ${t("admin.clubs_title").toLowerCase()}`}
         action={
           <button onClick={() => { setShowCreate(true); setError(""); }}
             className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded bg-gradient-gold text-gold-foreground shadow-gold">
-            <Plus className="h-4 w-4" /> Клуб қосу
+            <Plus className="h-4 w-4" /> {t("admin.clubs_new")}
           </button>
         }
       >
         {query.isLoading ? <LoadingState /> :
-          (query.data?.items ?? []).length === 0 ? <EmptyState title="Клубтар жоқ" hint="«Клуб қосу» батырмасын басыңыз" /> : (
+          (query.data?.items ?? []).length === 0 ? <EmptyState title={t("admin.clubs_no")} hint={t("admin.add_btn_hint")} /> : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {query.data!.items.map((c: any) => (
                 <div key={c.id} className={`glass rounded-xl p-5 ${c.isBlocked ? "border-destructive/40" : ""}`}>
@@ -133,7 +139,7 @@ function ClubsTab() {
                       {localizeName(c.name)}
                     </Link>
                     {c.isBlocked && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">Блок</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">{t("admin.blocked_status")}</span>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">{c.city}{c.country ? `, ${c.country}` : ""}</div>
@@ -144,23 +150,23 @@ function ClubsTab() {
                   )}
                   <div className="mt-3 flex justify-between items-center">
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Спортшы: </span>
+                      <span className="text-muted-foreground">{t("dashboard.athletes")}: </span>
                       <span className="text-gold font-display text-lg">{c._count?.members ?? 0}</span>
                     </div>
                     <div className="flex gap-1.5">
                       <Link to="/admin/clubs/$id" params={{ id: c.id }}
                         className="text-xs px-2.5 py-1 rounded glass border border-border hover:border-gold/40">
-                        Толық
+                        {t("common.details")}
                       </Link>
                       {c.isBlocked ? (
                         <button onClick={() => blockMut.mutate({ id: c.id, blocked: false })}
                           className="text-xs px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
-                          <Unlock className="h-3 w-3" /> Ашу
+                          <Unlock className="h-3 w-3" /> {t("admin.unblock_club")}
                         </button>
                       ) : (
                         <button onClick={() => { setBlockModal({ id: c.id, name: localizeName(c.name) }); setError(""); }}
                           className="text-xs px-2.5 py-1 rounded bg-destructive/15 text-destructive border border-destructive/30 inline-flex items-center gap-1">
-                          <Lock className="h-3 w-3" /> Блок
+                          <Lock className="h-3 w-3" /> {t("admin.block_club")}
                         </button>
                       )}
                       <button onClick={() => { setDeleteClubModal({ id: c.id, name: localizeName(c.name) }); setError(""); }}
@@ -175,108 +181,103 @@ function ClubsTab() {
           )}
       </Panel>
 
-      {/* Модал: создание клуба */}
+      {/* Create club modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setShowCreate(false)}>
           <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold mb-4">Жаңа клуб қосу</h3>
+            <h3 className="font-display text-lg font-semibold mb-4">{t("admin.clubs_new")}</h3>
             {createMut.error && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(createMut.error as any)?.message ?? "Қате"}
+                {(createMut.error as any)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Атауы (орысша) *</label>
-                <input value={form.nameRu} onChange={fi("nameRu")} required
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="Алматы Дзюдо" />
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.club_name_ru")} *</label>
+                <input value={form.nameRu} onChange={fi("nameRu")} required className={INPUT} placeholder="Алматы Дзюдо" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Атауы (қазақша)</label>
-                <input value={form.nameKk} onChange={fi("nameKk")}
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="Алматы Дзюдо" />
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.club_name_kk")}</label>
+                <input value={form.nameKk} onChange={fi("nameKk")} className={INPUT} placeholder="Алматы Дзюдо" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Қала *</label>
-                  <input value={form.city} onChange={fi("city")} required
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="Алматы" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.club_city")} *</label>
+                  <input value={form.city} onChange={fi("city")} required className={INPUT} placeholder="Алматы" />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Ел</label>
-                  <input value={form.country} onChange={fi("country")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="KZ" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.club_country")}</label>
+                  <input value={form.country} onChange={fi("country")} className={INPUT} placeholder="KZ" />
                 </div>
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Қысқаша атауы</label>
-                <input value={form.shortName} onChange={fi("shortName")}
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="АДС" />
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.club_short_name")}</label>
+                <input value={form.shortName} onChange={fi("shortName")} className={INPUT} placeholder="АДС" />
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)}
-                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+              <button onClick={() => setShowCreate(false)} className="text-sm px-4 py-2 rounded glass border border-border">
+                {t("common.cancel")}
+              </button>
               <button onClick={() => createMut.mutate()} disabled={createMut.isPending || !form.nameRu || !form.city}
                 className="text-sm px-4 py-2 rounded bg-gradient-gold text-gold-foreground shadow-gold disabled:opacity-50">
-                {createMut.isPending ? "Сақтауда..." : "Қосу"}
+                {createMut.isPending ? t("common.saving") : t("common.add")}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модал: блокировка клуба */}
+      {/* Block club modal */}
       {blockModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setBlockModal(null)}>
           <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold mb-3">«{blockModal.name}» клубын блоктау</h3>
-            <p className="text-xs text-muted-foreground mb-4">Блокталған клуб жаңа өтінімдер жібере алмайды.</p>
-            <label className="text-xs uppercase tracking-widest text-muted-foreground">Себебі</label>
+            <h3 className="font-display text-lg font-semibold mb-3">
+              {t("admin.delete_club_confirm", { name: blockModal.name })}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">{t("admin.block_club_hint")}</p>
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.block_reason")}</label>
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
               className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-              placeholder="Блоктау себебі..." />
+              placeholder={t("admin.block_reason_placeholder")} />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setBlockModal(null); setReason(""); }}
-                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+                className="text-sm px-4 py-2 rounded glass border border-border">{t("common.cancel")}</button>
               <button onClick={() => blockMut.mutate({ id: blockModal.id, blocked: true, reason })}
                 disabled={blockMut.isPending}
                 className="text-sm px-4 py-2 rounded bg-destructive/20 text-destructive border border-destructive/40 disabled:opacity-50">
-                Блоктау
+                {t("admin.block_club")}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модал: удаление клуба */}
+      {/* Delete club modal */}
       {deleteClubModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setDeleteClubModal(null)}>
           <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">«{deleteClubModal.name}» клубын жою</h3>
-            <p className="text-sm text-muted-foreground mb-1">Клубты жою үшін алдымен барлық мүшелерді шығарыңыз.</p>
-            <p className="text-xs text-destructive/80 mb-4">Бұл әрекетті кері қайтаруға болмайды.</p>
+            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">
+              {t("admin.delete_club_confirm", { name: deleteClubModal.name })}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-1">{t("admin.delete_club_warning")}</p>
+            <p className="text-xs text-destructive/80 mb-4">{t("common.irreversible")}</p>
             {deleteClubMut.error && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(deleteClubMut.error as any)?.message ?? "Қате"}
+                {(deleteClubMut.error as any)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteClubModal(null)}
-                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+                className="text-sm px-4 py-2 rounded glass border border-border">{t("common.cancel")}</button>
               <button onClick={() => deleteClubMut.mutate(deleteClubModal.id)}
                 disabled={deleteClubMut.isPending}
                 className="text-sm px-4 py-2 rounded bg-destructive text-white disabled:opacity-50 inline-flex items-center gap-1.5">
                 <Trash2 className="h-4 w-4" />
-                {deleteClubMut.isPending ? "Жойылуда..." : "Жою"}
+                {deleteClubMut.isPending ? t("common.saving") : t("common.delete")}
               </button>
             </div>
           </div>
@@ -297,6 +298,7 @@ const EMPTY_USER_FORM = {
 };
 
 function UsersTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [role, setRole] = useState<string>("ATHLETE");
   const [search, setSearch] = useState("");
@@ -334,7 +336,7 @@ function UsersTab() {
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => api.admin.toggleUserActive(id, active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteUserMut = useMutation({
@@ -344,7 +346,7 @@ function UsersTab() {
       qc.invalidateQueries({ queryKey: ["admin-users-role-counts"] });
       setDeleteUserModal(null);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const createMut = useMutation({
@@ -369,30 +371,39 @@ function UsersTab() {
       setShowCreate(false);
       setUform(EMPTY_USER_FORM);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const ufi = (f: keyof typeof EMPTY_USER_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setUform((p) => ({ ...p, [f]: e.target.value }));
+
+  const INPUT = "mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none";
+
+  const roleLabelT = (r: string) => {
+    if (r === "ATHLETE") return t("admin.users_athletes");
+    if (r === "COACH") return t("admin.users_coaches");
+    if (r === "ADMIN") return t("admin.users_admins");
+    return t("admin.users_all");
+  };
 
   return (
     <>
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
 
       <Panel
-        title={`${query.data?.total ?? 0} ${roleLabel(role).toLowerCase()}`}
+        title={`${query.data?.total ?? 0} ${roleLabelT(role).toLowerCase()}`}
         action={
           <div className="flex flex-wrap gap-2">
             <button onClick={() => { setShowCreate(true); setError(""); }}
               className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded bg-gradient-gold text-gold-foreground shadow-gold">
-              <Plus className="h-4 w-4" /> Пайдаланушы қосу
+              <Plus className="h-4 w-4" /> {t("admin.users_title")}
             </button>
             <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5">
               {([
-                ["ATHLETE", "Спортшылар"],
-                ["COACH", "Тренерлер"],
-                ["ADMIN", "Админдер"],
-                ["", "Барлығы"],
+                ["ATHLETE", t("admin.users_athletes")],
+                ["COACH", t("admin.users_coaches")],
+                ["ADMIN", t("admin.users_admins")],
+                ["", t("admin.users_all")],
               ] as [string, string][]).map(([value, label]) => (
                 <button
                   key={value || "all"}
@@ -405,34 +416,34 @@ function UsersTab() {
             </div>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Іздеу..."
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`${t("common.search")}...`}
                 className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none" />
             </div>
             <select value={clubFilter} onChange={(e) => setClubFilter(e.target.value)}
               className="text-sm bg-input border border-border rounded px-2 py-1.5">
-              <option value="">Барлық клубтар</option>
+              <option value="">{t("admin.clubs_title")}</option>
               {(clubsQuery.data?.items ?? []).map((c: any) => (
                 <option key={c.id} value={c.id}>{localizeName(c.name)}</option>
               ))}
             </select>
             <select value={activeOnly} onChange={(e) => setActiveOnly(e.target.value)}
               className="text-sm bg-input border border-border rounded px-2 py-1.5">
-              <option value="">Барлығы</option>
-              <option value="true">Белсенді</option>
-              <option value="false">Блок</option>
+              <option value="">{t("admin.users_all")}</option>
+              <option value="true">{t("admin.active")}</option>
+              <option value="false">{t("admin.blocked_status")}</option>
             </select>
           </div>
         }
       >
         {query.isLoading ? <LoadingState /> :
-          query.isError ? <EmptyState title="Пайдаланушылар жүктелмеді" hint={(query.error as any)?.message ?? "API қатесі"} /> :
+          query.isError ? <EmptyState title={t("admin.users_load_error")} hint={(query.error as any)?.message ?? t("error.api")} /> :
           (query.data?.items ?? []).length === 0 ? (
             <div className="py-8 text-center">
-              <div className="text-sm font-medium">{roleLabel(role)} табылмады</div>
+              <div className="text-sm font-medium">{roleLabelT(role)} {t("common.not_found").toLowerCase()}</div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {role === "COACH"
-                  ? "Бұл клубтарда тренер аккаунттары байланыспаған болуы мүмкін."
-                  : "Іздеу немесе фильтрді өзгертіп көріңіз."}
+                  ? t("admin.users_coach_hint")
+                  : t("admin.users_search_hint")}
               </div>
             </div>
           ) : (
@@ -440,11 +451,11 @@ function UsersTab() {
               <table className="w-full text-sm">
                 <thead className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40">
                   <tr>
-                    <th className="py-2">Аты-жөні</th>
+                    <th className="py-2">{t("admin.field_fullname")}</th>
                     <th>Email</th>
-                    <th>Рөл</th>
-                    <th>Клуб</th>
-                    <th>Күй</th>
+                    <th>{t("common.role")}</th>
+                    <th>{t("admin.field_club")}</th>
+                    <th>{t("common.status")}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -461,14 +472,16 @@ function UsersTab() {
                       <td className="text-xs text-muted-foreground">{u.club ? localizeName(u.club.name) : "—"}</td>
                       <td>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
-                          {u.isActive ? "Белсенді" : "Блок"}
+                          {u.isActive ? t("admin.active") : t("admin.blocked_status")}
                         </span>
                       </td>
                       <td>
                         <div className="flex items-center gap-1">
                           <button onClick={() => toggle.mutate({ id: u.id, active: !u.isActive })}
                             className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1">
-                            {u.isActive ? <><Lock className="h-3 w-3" /> Блок</> : <><Unlock className="h-3 w-3" /> Ашу</>}
+                            {u.isActive
+                              ? <><Lock className="h-3 w-3" /> {t("admin.block_user")}</>
+                              : <><Unlock className="h-3 w-3" /> {t("admin.unblock_user")}</>}
                           </button>
                           <button onClick={() => setDeleteUserModal({ id: u.id, name: `${u.name} ${u.surname}` })}
                             className="text-xs p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20">
@@ -484,132 +497,113 @@ function UsersTab() {
           )}
       </Panel>
 
-      {/* Модал: удаление пользователя */}
+      {/* Delete user modal */}
       {deleteUserModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setDeleteUserModal(null)}>
           <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">«{deleteUserModal.name}» жою</h3>
-            <p className="text-sm text-muted-foreground mb-1">Пайдаланушы деректері толығымен жойылады.</p>
-            <p className="text-xs text-destructive/80 mb-4">Бұл әрекетті кері қайтаруға болмайды.</p>
+            <h3 className="font-display text-lg font-semibold mb-2 text-destructive">
+              {t("admin.delete_user_confirm", { name: deleteUserModal.name })}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-1">{t("admin.delete_user_desc")}</p>
+            <p className="text-xs text-destructive/80 mb-4">{t("common.irreversible")}</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteUserModal(null)}
-                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+                className="text-sm px-4 py-2 rounded glass border border-border">{t("common.cancel")}</button>
               <button onClick={() => deleteUserMut.mutate(deleteUserModal.id)}
                 disabled={deleteUserMut.isPending}
                 className="text-sm px-4 py-2 rounded bg-destructive text-white disabled:opacity-50 inline-flex items-center gap-1.5">
                 <Trash2 className="h-4 w-4" />
-                {deleteUserMut.isPending ? "Жойылуда..." : "Жою"}
+                {deleteUserMut.isPending ? t("common.saving") : t("common.delete")}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Модал: создание пользователя */}
+      {/* Create user modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setShowCreate(false)}>
           <div className="glass rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-semibold mb-4">Жаңа пайдаланушы қосу</h3>
+            <h3 className="font-display text-lg font-semibold mb-4">{t("admin.create_user_title")}</h3>
             {createMut.error && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(createMut.error as any)?.message ?? "Қате"}
+                {(createMut.error as any)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Аты *</label>
-                  <input value={uform.name} onChange={ufi("name")} required
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="Асылхан" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.first_name")} *</label>
+                  <input value={uform.name} onChange={ufi("name")} required className={INPUT} placeholder="Асылхан" />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Тегі *</label>
-                  <input value={uform.surname} onChange={ufi("surname")} required
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="Бекжанов" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.last_name")} *</label>
+                  <input value={uform.surname} onChange={ufi("surname")} required className={INPUT} placeholder="Бекжанов" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Аты (лат.)</label>
-                  <input value={uform.nameLatin} onChange={ufi("nameLatin")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="Assylkhan" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.first_name_latin")}</label>
+                  <input value={uform.nameLatin} onChange={ufi("nameLatin")} className={INPUT} placeholder="Assylkhan" />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Тегі (лат.)</label>
-                  <input value={uform.surnameLatin} onChange={ufi("surnameLatin")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="Bekzhanov" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.last_name_latin")}</label>
+                  <input value={uform.surnameLatin} onChange={ufi("surnameLatin")} className={INPUT} placeholder="Bekzhanov" />
                 </div>
               </div>
               <div>
                 <label className="text-xs uppercase tracking-widest text-muted-foreground">Email *</label>
-                <input type="email" value={uform.email} onChange={ufi("email")} required
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="user@example.com" />
+                <input type="email" value={uform.email} onChange={ufi("email")} required className={INPUT} placeholder="user@example.com" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Құпия сөз *</label>
-                <input type="password" value={uform.password} onChange={ufi("password")} required
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="кемінде 6 таңба" />
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.password_label")} *</label>
+                <input type="password" value={uform.password} onChange={ufi("password")} required className={INPUT} placeholder={t("admin.password_min_hint")} />
+                <PasswordStrength password={uform.password} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Рөл *</label>
-                  <select value={uform.role} onChange={ufi("role")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
-                    <option value="ATHLETE">Спортшы</option>
-                    <option value="COACH">Тренер</option>
-                    <option value="ADMIN">Админ</option>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.role")} *</label>
+                  <select value={uform.role} onChange={ufi("role")} className={INPUT}>
+                    <option value="ATHLETE">{t("admin.users_athletes")}</option>
+                    <option value="COACH">{t("admin.users_coaches")}</option>
+                    <option value="ADMIN">{t("admin.users_admins")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Жынысы</label>
-                  <select value={uform.gender} onChange={ufi("gender")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_gender")}</label>
+                  <select value={uform.gender} onChange={ufi("gender")} className={INPUT}>
                     <option value="">—</option>
-                    <option value="MALE">Ер</option>
-                    <option value="FEMALE">Әйел</option>
+                    <option value="MALE">{t("common.male")}</option>
+                    <option value="FEMALE">{t("common.female")}</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Туған күн</label>
-                  <input type="date" value={uform.dateOfBirth} onChange={ufi("dateOfBirth")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_dob")}</label>
+                  <input type="date" value={uform.dateOfBirth} onChange={ufi("dateOfBirth")} className={INPUT} />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Салмақ (кг)</label>
-                  <input type="number" step="0.1" value={uform.weightKg} onChange={ufi("weightKg")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="73.0" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_weight_kg")}</label>
+                  <input type="number" step="0.1" value={uform.weightKg} onChange={ufi("weightKg")} className={INPUT} placeholder="73.0" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Белбеу</label>
-                  <input value={uform.beltRank} onChange={ufi("beltRank")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="1 dan" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_belt")}</label>
+                  <input value={uform.beltRank} onChange={ufi("beltRank")} className={INPUT} placeholder="1 dan" />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Телефон</label>
-                  <input value={uform.phone} onChange={ufi("phone")}
-                    className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                    placeholder="+7 700 000 00 00" />
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_phone")}</label>
+                  <input value={uform.phone} onChange={ufi("phone")} className={INPUT} placeholder="+7 700 000 00 00" />
                 </div>
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Клуб</label>
-                <select value={uform.clubId} onChange={ufi("clubId")}
-                  className="mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
-                  <option value="">— клубсыз —</option>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_club")}</label>
+                <select value={uform.clubId} onChange={ufi("clubId")} className={INPUT}>
+                  <option value="">— {t("admin.no_club")} —</option>
                   {(clubsQuery.data?.items ?? []).map((c: any) => (
                     <option key={c.id} value={c.id}>{localizeName(c.name)} ({c.city})</option>
                   ))}
@@ -617,12 +611,13 @@ function UsersTab() {
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)}
-                className="text-sm px-4 py-2 rounded glass border border-border">Болдырмау</button>
+              <button onClick={() => setShowCreate(false)} className="text-sm px-4 py-2 rounded glass border border-border">
+                {t("common.cancel")}
+              </button>
               <button onClick={() => createMut.mutate()}
-                disabled={createMut.isPending || !uform.name || !uform.surname || !uform.email || !uform.password}
+                disabled={createMut.isPending || !uform.name || !uform.surname || !uform.email || !isPasswordStrong(uform.password)}
                 className="text-sm px-4 py-2 rounded bg-gradient-gold text-gold-foreground shadow-gold disabled:opacity-50">
-                {createMut.isPending ? "Сақтауда..." : "Қосу"}
+                {createMut.isPending ? t("common.saving") : t("common.add")}
               </button>
             </div>
           </div>
@@ -636,6 +631,7 @@ function UsersTab() {
 // TAB: РЕЙТИНГ
 // ============================================================
 function RatingsTab() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [clubId, setClubId] = useState("");
   const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
@@ -681,19 +677,19 @@ function RatingsTab() {
   return (
     <>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard label="Рейтингтегі спортшылар" value={String(totalAthletes)} accent />
-        <StatCard label="Клубтар" value={String(clubsQuery.data?.total ?? "…")} />
-        <StatCard label="Жетекші ұпай" value={topPoints ? String(Math.round(topPoints)) : "—"} hint="1-орын" />
+        <StatCard label={t("admin.ratings_title")} value={String(totalAthletes)} accent />
+        <StatCard label={t("admin.clubs_title")} value={String(clubsQuery.data?.total ?? "…")} />
+        <StatCard label={t("admin.ratings_top_points")} value={topPoints ? String(Math.round(topPoints)) : "—"} hint={t("admin.place_n", { n: 1 })} />
         <StatCard
-          label={activeClubName ? `Клуб: ${activeClubName}` : "Клуб рейтингі"}
+          label={activeClubName ? `${t("admin.field_club")}: ${activeClubName}` : t("admin.ratings_club_rating")}
           value={String(clubLeaderboardQuery.data?.length ?? "…")}
-          hint="клуб"
+          hint={t("admin.clubs_title").toLowerCase()}
         />
       </div>
 
       {/* Top-3 athletes */}
       {!leaderboardQuery.isLoading && top3.length > 0 && (
-        <Panel title="Топ-3 спортшылар">
+        <Panel title={t("admin.ratings_top3")}>
           <div className="grid gap-4 sm:grid-cols-3">
             {top3.map((row, i) => {
               const a = row.athlete;
@@ -717,7 +713,7 @@ function RatingsTab() {
                   <div className="mt-3 font-display text-2xl font-bold text-gradient-gold">
                     {Math.round(row.totalPoints)}
                   </div>
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">ұпай</div>
+                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{t("admin.stat_rating").toLowerCase()}</div>
                 </div>
               );
             })}
@@ -728,16 +724,16 @@ function RatingsTab() {
       {/* Top clubs */}
       {!clubLeaderboardQuery.isLoading && (clubLeaderboardQuery.data ?? []).length > 0 && (
         <div className="mt-6">
-          <Panel title="Клуб рейтингі">
+          <Panel title={t("admin.ratings_club_rating")}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border/40 text-left text-[10px] uppercase tracking-widest text-muted-foreground">
                   <tr>
-                    <th className="py-2 w-16">Орын</th>
-                    <th>Клуб</th>
-                    <th>Қала</th>
-                    <th className="text-center">Спортшылар</th>
-                    <th className="text-right">Ұпай</th>
+                    <th className="py-2 w-16">{t("common.place")}</th>
+                    <th>{t("admin.field_club")}</th>
+                    <th>{t("admin.club_city")}</th>
+                    <th className="text-center">{t("dashboard.athletes")}</th>
+                    <th className="text-right">{t("admin.stat_rating")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
@@ -773,13 +769,12 @@ function RatingsTab() {
         </div>
       )}
 
-      {/* Athlete leaderboard */}
       {/* Gender filter */}
       <div className="mt-6 mb-3 flex gap-1.5 rounded-xl border border-border/60 bg-card/40 p-1 w-fit">
         {([
-          { value: "ALL",    label: "Барлығы" },
-          { value: "MALE",   label: "Ер балалар" },
-          { value: "FEMALE", label: "Қыз балалар" },
+          { value: "ALL",    label: t("admin.users_all") },
+          { value: "MALE",   label: t("admin.gender_male_filter") },
+          { value: "FEMALE", label: t("admin.gender_female_filter") },
         ] as { value: "ALL" | "MALE" | "FEMALE"; label: string }[]).map(({ value, label }) => (
           <button
             key={value}
@@ -805,7 +800,7 @@ function RatingsTab() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Спортшы, клуб, қала немесе салмақ іздеу..."
+            placeholder={t("admin.ratings_search_hint")}
             className="w-full rounded-xl border border-border/60 bg-card/70 py-3 pl-11 pr-4 outline-none transition-colors focus:border-gold"
           />
         </label>
@@ -814,7 +809,7 @@ function RatingsTab() {
           onChange={(e) => setClubId(e.target.value)}
           className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 outline-none transition-colors focus:border-gold"
         >
-          <option value="">Барлық клубтар</option>
+          <option value="">{t("admin.clubs_title")}</option>
           {(clubsQuery.data?.items ?? []).map((club: any) => (
             <option key={club.id} value={club.id}>{localizeName(club.name)}</option>
           ))}
@@ -824,13 +819,13 @@ function RatingsTab() {
       {leaderboardQuery.isLoading ? (
         <LoadingState />
       ) : filtered.length === 0 ? (
-        <EmptyState title="Рейтинг жазбалары жоқ" hint="Жарыс аяқталғаннан кейін рейтинг автоматты есептеледі." />
+        <EmptyState title={t("admin.ratings_empty")} hint={t("admin.ratings_empty_hint")} />
       ) : (
         <div className="glass rounded-2xl border border-gold/20 overflow-hidden">
           <div className="hidden sm:grid grid-cols-[72px_1fr_1fr_90px_90px_110px_36px] gap-3 px-6 py-4 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40 bg-background/30">
-            <div>Орын</div><div>Спортшы</div><div>Клуб</div>
-            <div>Жынысы</div><div>Салмақ</div>
-            <div className="text-right">Ұпай</div><div />
+            <div>{t("common.place")}</div><div>{t("admin.field_fullname")}</div><div>{t("admin.field_club")}</div>
+            <div>{t("admin.field_gender")}</div><div>{t("admin.field_weight")}</div>
+            <div className="text-right">{t("admin.stat_rating")}</div><div />
           </div>
           <div className="divide-y divide-border/40">
             {filtered.map((row, idx) => {
@@ -871,10 +866,10 @@ function RatingsTab() {
                       {a.club?.city && <span className="text-xs"> · {a.club.city}</span>}
                     </div>
                     <div className="hidden sm:block text-sm text-muted-foreground">
-                      {a.gender === "MALE" ? "Ер" : a.gender === "FEMALE" ? "Әйел" : "—"}
+                      {a.gender === "MALE" ? t("common.male") : a.gender === "FEMALE" ? t("common.female") : "—"}
                     </div>
                     <div className="hidden sm:block text-sm text-muted-foreground">
-                      {a.weightKg ? `−${a.weightKg} кг` : "—"}
+                      {a.weightKg ? `−${a.weightKg} ${t("common.kg")}` : "—"}
                     </div>
                     <div className="text-right font-display text-xl font-bold text-gradient-gold tabular-nums">
                       {Math.round(row.totalPoints)}
@@ -892,9 +887,9 @@ function RatingsTab() {
       )}
 
       <div className="mt-4 text-xs text-muted-foreground text-right">
-        Барлығы: {filtered.length} спортшы
-        {gender !== "ALL" && <> · {gender === "MALE" ? "Ер балалар" : "Қыз балалар"}</>}
-        {search && ` (іздеу: "${search}")`}
+        {t("common.total")}: {filtered.length} {t("dashboard.athletes").toLowerCase()}
+        {gender !== "ALL" && <> · {gender === "MALE" ? t("admin.gender_male_filter") : t("admin.gender_female_filter")}</>}
+        {search && ` (${t("common.search").toLowerCase()}: "${search}")`}
       </div>
     </>
   );
@@ -904,6 +899,7 @@ function RatingsTab() {
 // Athlete tournament history (expand row)
 // ============================================================
 function AthleteHistory({ athleteId }: { athleteId: string }) {
+  const { t } = useTranslation();
   const q = useQuery({
     queryKey: ["admin-athlete-rating", athleteId],
     queryFn: () => api.ratings.athlete(athleteId),
@@ -917,14 +913,14 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
   if (entries.length === 0) {
     return (
       <div className="px-6 py-4 bg-background/30 border-t border-border/30 text-sm text-muted-foreground">
-        Аяқталған жарыстар жоқ.
+        {t("admin.no_tournament_results")}
       </div>
     );
   }
 
   return (
     <div className="px-4 sm:px-8 py-4 bg-background/30 border-t border-border/30">
-      <div className="text-[11px] uppercase tracking-widest text-gold mb-3">Жарыс тарихы</div>
+      <div className="text-[11px] uppercase tracking-widest text-gold mb-3">{t("admin.tournament_results")}</div>
       <div className="space-y-2">
         {entries.map((e: any) => (
           <div key={e.id} className="flex items-center justify-between gap-4 text-sm rounded-lg glass px-4 py-2.5">
@@ -936,21 +932,21 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
                 </Link>
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {categoryTitle(e.category)}
+                {categoryTitle(e.category, t)}
                 {e.tournament?.startDate && (
                   <> · {new Date(e.tournament.startDate).toLocaleDateString("kk-KZ", { day: "numeric", month: "long", year: "numeric" })}</>
                 )}
               </div>
             </div>
             <div className="shrink-0 text-right">
-              <div className="text-xs text-muted-foreground">{placeLabel(e.place)}</div>
-              <div className="font-display font-bold text-gradient-gold">{Math.round(e.points)} ұпай</div>
+              <div className="text-xs text-muted-foreground">{placeLabel(e.place, t)}</div>
+              <div className="font-display font-bold text-gradient-gold">{Math.round(e.points)} {t("admin.stat_rating").toLowerCase()}</div>
             </div>
           </div>
         ))}
       </div>
       <div className="mt-3 text-right text-xs text-muted-foreground">
-        Жалпы: <span className="font-bold text-gold">{Math.round(q.data?.totalPoints ?? 0)}</span> ұпай
+        {t("common.total")}: <span className="font-bold text-gold">{Math.round(q.data?.totalPoints ?? 0)}</span> {t("admin.stat_rating").toLowerCase()}
       </div>
     </div>
   );
@@ -973,26 +969,22 @@ function roleCount(data: any, role: string) {
   return `(${data[role || "ALL"] ?? 0})`;
 }
 
-function roleLabel(role: string) {
-  if (role === "ATHLETE") return "Спортшы";
-  if (role === "COACH") return "Тренер";
-  if (role === "ADMIN") return "Админ";
-  return "Адам";
+function placeLabel(place: number, t: any): string {
+  const label = t("admin.place_n", { n: place });
+  if (place === 1) return `🥇 ${label}`;
+  if (place === 2) return `🥈 ${label}`;
+  if (place === 3) return `🥉 ${label}`;
+  if (place === 99) return t("common.participant");
+  return label;
 }
 
-function placeLabel(place: number): string {
-  if (place === 1) return "🥇 1-орын";
-  if (place === 2) return "🥈 2-орын";
-  if (place === 3) return "🥉 3-орын";
-  if (place === 99) return "Қатысушы";
-  return `${place}-орын`;
-}
-
-function categoryTitle(cat: any): string {
+function categoryTitle(cat: any, t: any): string {
   if (!cat) return "—";
   const name = localizeName(cat.name);
-  const weight = cat.weightMin != null && cat.weightMax != null ? `${cat.weightMin}–${cat.weightMax} кг` : "";
-  const gender = cat.gender === "MALE" ? "Ер" : cat.gender === "FEMALE" ? "Әйел" : "";
+  const weight = cat.weightMin != null && cat.weightMax != null
+    ? `${cat.weightMin}–${cat.weightMax} ${t("common.kg")}`
+    : "";
+  const gender = cat.gender === "MALE" ? t("common.male") : cat.gender === "FEMALE" ? t("common.female") : "";
   return [name, gender, weight].filter(Boolean).join(" · ");
 }
 

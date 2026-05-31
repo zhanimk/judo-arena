@@ -7,6 +7,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/athletes/$id")({
   head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/coach/athletes/$id")({
 
 
 function CoachAthleteDetails() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const { user } = useAuth();
   const clubId = user?.clubId;
@@ -52,39 +54,39 @@ function CoachAthleteDetails() {
       navigate({ to: "/coach/athletes" });
     },
     onError: (error: unknown) => {
-      setDetachError(error instanceof ApiError ? error.message : "Спортшыны клубтан шығару мүмкін болмады.");
+      setDetachError(error instanceof ApiError ? error.message : t("coach.detach_error"));
     },
   });
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle={athlete ? `${athlete.name} ${athlete.surname}` : "Спортшы"}>
+    <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={athlete ? `${athlete.name} ${athlete.surname}` : t("roles.athlete")}>
       <div className="mb-4">
         <Link to="/coach/athletes" className="text-sm text-muted-foreground hover:text-gold">
-          ← Спортшылар тізіміне қайту
+          ← {t("coach.back_to_athletes")}
         </Link>
       </div>
 
       {membersQuery.isLoading ? (
         <LoadingState />
       ) : !athlete ? (
-        <EmptyState title="Спортшы табылмады" hint="Бұл спортшы сіздің клуб тізімінде жоқ." />
+        <EmptyState title={t("coach.athlete_not_found")} hint={t("coach.athlete_not_in_club")} />
       ) : (
         <>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Жасы" value={athlete.dateOfBirth ? String(getAge(athlete.dateOfBirth)) : "—"} hint={athlete.gender === "MALE" ? "Ер" : "Әйел"} />
-            <StatCard label="Салмақ" value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} hint={athlete.beltRank ?? "Белбеу көрсетілмеген"} />
-            <StatCard label="Жеңіс" value={`${wins} / ${completed.length}`} hint={upcoming > 0 ? `${upcoming} алдағы жекпе-жек` : "аяқталған жекпе-жектер"} accent />
-            <StatCard label="Email" value={athlete.email ?? "—"} hint={athlete.isActive ? "белсенді" : "бұғатталған"} />
+            <StatCard label={t("common.age")} value={athlete.dateOfBirth ? String(getAge(athlete.dateOfBirth)) : "—"} hint={athlete.gender === "MALE" ? t("common.male") : t("common.female")} />
+            <StatCard label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} hint={athlete.beltRank ?? t("coach.no_belt")} />
+            <StatCard label={t("matches.win")} value={`${wins} / ${completed.length}`} hint={upcoming > 0 ? t("common.athletes_count", { count: upcoming }) : t("coach.all_completed")} accent />
+            <StatCard label="Email" value={athlete.email ?? "—"} hint={athlete.isActive ? t("common.active") : t("common.blocked")} />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-            <Panel title="Профиль">
+            <Panel title={t("dashboard.profile")}>
               <dl className="grid gap-3 text-sm">
-                <Info label="Аты-жөні" value={`${athlete.name} ${athlete.surname}`} />
-                <Info label="Туған күні" value={athlete.dateOfBirth ? new Date(athlete.dateOfBirth).toLocaleDateString("kk-KZ") : "—"} />
-                <Info label="Жыныс" value={athlete.gender === "MALE" ? "Ер" : "Әйел"} />
-                <Info label="Салмақ" value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} />
-                <Info label="Белбеу" value={athlete.beltRank ?? "—"} />
+                <Info label={t("common.full_name")} value={`${athlete.name} ${athlete.surname}`} />
+                <Info label={t("auth.date_of_birth")} value={athlete.dateOfBirth ? new Date(athlete.dateOfBirth).toLocaleDateString("kk-KZ") : "—"} />
+                <Info label={t("common.gender")} value={athlete.gender === "MALE" ? t("common.male") : t("common.female")} />
+                <Info label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} />
+                <Info label={t("common.belt")} value={athlete.beltRank ?? "—"} />
               </dl>
 
               <div className="mt-5 border-t border-border/40 pt-4">
@@ -98,13 +100,13 @@ function CoachAthleteDetails() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-destructive/30 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Клубтан шығару
+                    {t("coach.remove_from_club")}
                   </button>
                 ) : (
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                    <p className="text-sm font-medium text-destructive">Спортшы клуб құрамынан шығарылады.</p>
+                    <p className="text-sm font-medium text-destructive">{t("coach.detach_confirm_title")}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Оның аккаунты сақталады, бірақ клуб тізімінде көрінбейді.
+                      {t("coach.detach_confirm_hint")}
                     </p>
                     {detachError && <p className="mt-2 text-xs text-destructive">{detachError}</p>}
                     <div className="mt-3 grid grid-cols-2 gap-2">
@@ -114,7 +116,7 @@ function CoachAthleteDetails() {
                         disabled={detachMutation.isPending}
                         className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40 disabled:opacity-50"
                       >
-                        Болдырмау
+                        {t("common.cancel")}
                       </button>
                       <button
                         type="button"
@@ -123,7 +125,7 @@ function CoachAthleteDetails() {
                         className="inline-flex items-center justify-center gap-2 rounded-md bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground disabled:opacity-50"
                       >
                         {detachMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Шығару
+                        {t("coach.detach_confirm_btn")}
                       </button>
                     </div>
                   </div>
@@ -131,11 +133,11 @@ function CoachAthleteDetails() {
               </div>
             </Panel>
 
-            <Panel title={`Жекпе-жектер: ${matches.length}`}>
+            <Panel title={`${t("dashboard.matches")}: ${matches.length}`}>
               {matchesQuery.isLoading ? (
                 <LoadingState />
               ) : matches.length === 0 ? (
-                <EmptyState title="Жекпе-жектер жоқ" hint="Өтінім мақұлданып, сетка дайындалғанда осында көрінеді." />
+                <EmptyState title={t("athlete.no_matches")} hint={t("coach.matches_hint")} />
               ) : (
                 <ul className="space-y-2 text-sm">
                   {matches.map((match: any) => {
@@ -147,11 +149,11 @@ function CoachAthleteDetails() {
                         <div>
                           <div className="font-medium">vs {opponent ? `${opponent.name} ${opponent.surname}` : "TBD"}</div>
                           <div className="text-xs text-muted-foreground">
-                            {localizeName(match.tournament?.name) ?? "Турнир"} · {categoryTitle(match.bracket?.category)} · Раунд {match.round}
+                            {localizeName(match.tournament?.name) ?? t("common.tournament")} · {categoryTitle(match.bracket?.category, t)} · {t("matches.round")} {match.round}
                           </div>
                         </div>
                         <span className={`text-xs ${isCompleted ? (won ? "text-gold" : "text-destructive") : "text-muted-foreground"}`}>
-                          {isCompleted ? (won ? "Жеңіс" : "Жеңіліс") : statusLabel(match.status)}
+                          {isCompleted ? (won ? t("matches.win") : t("matches.loss")) : String(t(`status.${match.status}`, match.status))}
                         </span>
                       </li>
                     );
@@ -175,9 +177,9 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function categoryTitle(category: any): string {
-  if (!category) return "Санат";
-  const gender = category.gender === "MALE" ? "Ер" : "Әйел";
+function categoryTitle(category: any, t: (key: string) => string): string {
+  if (!category) return t("common.category");
+  const gender = category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
   return `${gender} ${category.ageMin}-${category.ageMax}, ${category.weightMin}-${category.weightMax} кг`;
 }
 
@@ -185,15 +187,6 @@ function localizeName(value: any): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || null;
-}
-
-function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    PENDING: "Күтуде",
-    IN_PROGRESS: "LIVE",
-    CANCELLED: "Болмады",
-  };
-  return labels[status] ?? status;
 }
 
 function getAge(dob: string): number {

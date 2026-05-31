@@ -7,6 +7,7 @@
 
 import { memo, useState } from "react";
 import { Play, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const COUNTRY_FLAGS: Record<string, string> = {
   KZ: "🇰🇿", RU: "🇷🇺", US: "🇺🇸", USA: "🇺🇸", JP: "🇯🇵", FR: "🇫🇷",
@@ -183,6 +184,7 @@ function PooledSEView({
             width={layout.width}
             height={layout.height}
             aria-hidden
+            focusable="false"
           >
             <defs>
               <linearGradient id="poolLine" x1="0" x2="1">
@@ -292,6 +294,7 @@ function FinalsSection({
   totalRounds: number;
   semisRound: number;
 }) {
+  const { t } = useTranslation();
   const semis = matches
     .filter((m) => m.round === semisRound && m.bracketSection === "main")
     .sort((a, b) => a.position - b.position);
@@ -320,7 +323,7 @@ function FinalsSection({
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-gold/20" />
         <span className="text-xs font-semibold uppercase tracking-[0.3em] text-gold">
-          Финалдар
+          {t("bracket.finals_title")}
         </span>
         <div className="h-px flex-1 bg-gold/20" />
       </div>
@@ -329,7 +332,7 @@ function FinalsSection({
       {semis.length > 0 && (
         <div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
-            Жартылай финал
+            {t("bracket.semifinal")}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {semis.map((m, i) => (
@@ -348,7 +351,7 @@ function FinalsSection({
       {finalMatch && (
         <div className="max-w-xs mx-auto">
           <div className="text-[10px] uppercase tracking-widest text-gold mb-1.5 text-center font-semibold">
-            Финал
+            {t("bracket.final")}
           </div>
           <MatchCard match={finalMatch} final />
           {champion && (
@@ -373,13 +376,13 @@ function FinalsSection({
           {repechage.length > 0 && (
             <div>
               <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">
-                Жұбату (Repechage)
+                {t("bracket.repechage")}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {repechage.map((m) => (
                   <div key={m.id}>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
-                      Жұбату {m.position + 1}
+                      {t("bracket.repechage_n", { n: m.position + 1 })}
                     </div>
                     <MatchCard match={m} />
                   </div>
@@ -390,7 +393,7 @@ function FinalsSection({
           {bronze.length > 0 && (
             <div>
               <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3">
-                Қола медальдар
+                {t("bracket.bronze_matches")}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {bronze.map((m, i) => (
@@ -416,6 +419,7 @@ function FinalsSection({
 /* ─── Flat SE view (size ≤ 4) ────────────────────────────────────────────── */
 
 function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }) {
+  const { t } = useTranslation();
   const totalRounds = Math.round(Math.log2(Math.max(size, 2)));
 
   const mainRounds: BracketMatch[][] = [];
@@ -449,7 +453,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
       : finalMatch.blueAthlete
     : null;
 
-  const labels = ["1/32", "1/16", "1/8", "1/4", "Жартылай", "Финал"].slice(
+  const labels = ["1/32", "1/16", "1/8", "1/4", t("bracket.semifinal"), t("bracket.final")].slice(
     -mainRounds.length,
   );
   const layout = getMainBracketLayout(mainRounds);
@@ -577,13 +581,13 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
           {repechage.length > 0 && (
             <div className="mb-5">
               <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">
-                Жұбату (Repechage)
+                {t("bracket.repechage")}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {repechage.map((m) => (
                   <div key={m.id}>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
-                      Жұбату {m.position + 1}
+                      {t("bracket.repechage_n", { n: m.position + 1 })}
                     </div>
                     <MatchCard match={m} />
                   </div>
@@ -594,7 +598,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
           {bronze.length > 0 && (
             <div>
               <div className="text-xs uppercase tracking-[0.3em] text-amber-600 mb-3">
-                Қола медальдар
+                {t("bracket.bronze_matches")}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {bronze.map((m, i) => (
@@ -786,6 +790,7 @@ function AthleteRow({
 /* ─── MIXED view: Group stage tabs + Playoff SE ──────────────────────────── */
 
 function MixedView({ matches, size }: { matches: BracketMatch[]; size: number }) {
+  const { t } = useTranslation();
   // Separate group matches from playoff matches
   const groupSections = Array.from(
     new Set(matches.map((m) => m.bracketSection).filter((s) => s?.startsWith("group_")))
@@ -795,7 +800,7 @@ function MixedView({ matches, size }: { matches: BracketMatch[]; size: number })
 
   const [activeTab, setActiveTab] = useState<string>(groupSections[0] ?? "playoff");
 
-  const groupLabel = (s: string) => `Топ ${s.replace("group_", "")}`; // "group_A" → "Топ A"
+  const groupLabel = (s: string) => `${t("bracket.group")} ${s.replace("group_", "")}`; // "group_A" → "Group A"
 
   return (
     <div className="space-y-4">
@@ -851,6 +856,7 @@ function MixedView({ matches, size }: { matches: BracketMatch[]; size: number })
 }
 
 function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; groupLabel: string }) {
+  const { t } = useTranslation();
   // Collect unique athletes in this group
   const athleteMap = new Map<string, BracketAthlete>();
   for (const m of matches) {
@@ -883,17 +889,17 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
       {/* Standings table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <div className="px-4 py-2 bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between">
-          <span>Топ {groupLabel} — Кесте</span>
-          <span>{completedCount}/{totalCount} матч</span>
+          <span>{t("bracket.group_table", { label: groupLabel })}</span>
+          <span>{completedCount}/{totalCount} {t("tatami.match_word")}</span>
         </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left px-4 py-2 font-medium">#</th>
-              <th className="text-left px-4 py-2 font-medium">Спортшы</th>
-              <th className="text-center px-3 py-2 font-medium">Ж</th>
-              <th className="text-center px-3 py-2 font-medium">Ж</th>
-              <th className="text-center px-3 py-2 font-medium">М</th>
+              <th className="text-left px-4 py-2 font-medium">{t("tournament.athletes")}</th>
+              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_wins")}>W</th>
+              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_losses")}>L</th>
+              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_played")}>P</th>
             </tr>
           </thead>
           <tbody>
@@ -905,7 +911,7 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
                 <td className="px-4 py-2 font-medium">
                   {s.athlete ? `${s.athlete.name} ${s.athlete.surname}` : "—"}
                   {idx < 2 && (
-                    <span className="ml-2 text-xs text-green-500 font-normal">→ плей-офф</span>
+                    <span className="ml-2 text-xs text-green-500 font-normal">{t("bracket.advances_to_playoff")}</span>
                   )}
                 </td>
                 <td className="text-center px-3 py-2 text-green-500 font-semibold">{s.wins}</td>
@@ -919,7 +925,7 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
 
       {/* Match list */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Матчтар</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t("bracket.stat_matches")}</p>
         {matches.map((m) => (
           <MatchCard key={m.id} match={m} />
         ))}

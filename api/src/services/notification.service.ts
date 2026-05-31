@@ -127,7 +127,7 @@ export async function listForUser(
   return prisma.notification.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: opts.limit ?? 50,
+    take: Math.min(opts.limit ?? 50, 200),
   });
 }
 

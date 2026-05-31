@@ -9,6 +9,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Maximize2, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useRealtime } from "@/lib/socket";
 import { buildTatamiState, hasPendingResult, type TatamiState } from "@/lib/tatami-state";
@@ -18,13 +19,14 @@ type Match = any;
 export const Route = createFileRoute("/live-wall/$tournamentId")({
   head: () => ({ meta: [{ title: "Live Wall — Judo-Arena" }] }),
   validateSearch: (search: Record<string, unknown>): { tatami?: number } => {
-    const t = Number(search.tatami);
-    return { tatami: Number.isFinite(t) && t > 0 ? t : undefined };
+    const tv = Number(search.tatami);
+    return { tatami: Number.isFinite(tv) && tv > 0 ? tv : undefined };
   },
   component: LiveWall,
 });
 
 function LiveWall() {
+  const { t } = useTranslation();
   const { tournamentId } = Route.useParams();
   const { tatami: singleTatami } = Route.useSearch();
   const qc = useQueryClient();
@@ -57,7 +59,7 @@ function LiveWall() {
   const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
   const tatamiCount = Math.max(1, Number(tournament?.tatamiCount ?? 3));
   const allTatamis = useMemo(() => buildTatamiState(matches, tatamiCount), [matches, tatamiCount]);
-  const tatamis = singleTatami ? allTatamis.filter((t) => t.number === singleTatami) : allTatamis;
+  const tatamis = singleTatami ? allTatamis.filter((ts) => ts.number === singleTatami) : allTatamis;
 
   const goFull = () => {
     if (typeof document !== "undefined" && document.documentElement.requestFullscreen) {
@@ -69,15 +71,14 @@ function LiveWall() {
      COMPLETED — Final results screen
      ════════════════════════════════════════════ */
   if (tournament?.status === "COMPLETED") {
-    // Build winner per bracket from completed matches
     const bracketMap = new Map<string, { catLabel: string; gender: string; winner: any; second: any; bronze: any[] }>();
     for (const m of matches) {
       const catId = m.bracket?.categoryId ?? m.bracket?.category?.id;
       if (!catId) continue;
       const cat = m.bracket?.category;
-      const gender = cat?.gender === "MALE" ? "Ер" : "Қыз";
+      const gender = cat?.gender === "MALE" ? t("common.male") : t("tatami.female_short");
       const wMax = cat?.weightMax >= 200 ? `+${cat?.weightMin}` : `-${cat?.weightMax}`;
-      const catLabel = `${gender} ${wMax} кг`;
+      const catLabel = `${gender} ${wMax} ${t("common.kg")}`;
       if (!bracketMap.has(catId)) bracketMap.set(catId, { catLabel, gender: cat?.gender, winner: null, second: null, bronze: [] });
       const entry = bracketMap.get(catId)!;
       if (m.bracketSection === "final" && m.status === "COMPLETED" && m.winnerId) {
@@ -95,24 +96,22 @@ function LiveWall() {
 
     return (
       <main style={{ minHeight: "100dvh", background: "#0B1426", fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif", color: "#fff", overflowY: "auto" }}>
-        {/* Header */}
         <div style={{ borderBottom: "2px solid #D4AF37", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ color: "#D4AF37", fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: "uppercase", marginBottom: 4 }}>Жарыс нәтижелері</div>
+            <div style={{ color: "#D4AF37", fontSize: 11, fontWeight: 700, letterSpacing: 4, textTransform: "uppercase", marginBottom: 4 }}>{t("live_wall.results_title")}</div>
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 1 }}>{tName}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ background: "#D4AF37", color: "#0B1426", borderRadius: 6, padding: "6px 18px", fontWeight: 900, fontSize: 13, letterSpacing: 3 }}>АЯҚТАЛДЫ</div>
+            <div style={{ background: "#D4AF37", color: "#0B1426", borderRadius: 6, padding: "6px 18px", fontWeight: 900, fontSize: 13, letterSpacing: 3 }}>{t("status.COMPLETED")}</div>
             <button onClick={goFull} style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 14px", fontSize: 13, color: "#ccc", background: "none", cursor: "pointer" }}>
-              ⛶ Толық экран
+              ⛶ {t("live_wall.fullscreen")}
             </button>
           </div>
         </div>
 
-        {/* Results grid */}
         <div style={{ padding: "32px 40px", display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
           {categories.length === 0 ? (
-            <div style={{ gridColumn: "1/-1", textAlign: "center", color: "rgba(255,255,255,0.4)", paddingTop: 60, fontSize: 18 }}>Нәтижелер жоқ</div>
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: "rgba(255,255,255,0.4)", paddingTop: 60, fontSize: 18 }}>{t("live_wall.no_results")}</div>
           ) : categories.map((cat, i) => (
             <div key={i} style={{ border: "1px solid rgba(212,175,55,0.3)", borderRadius: 12, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
               <div style={{ background: "rgba(212,175,55,0.12)", padding: "10px 16px", borderBottom: "1px solid rgba(212,175,55,0.2)", color: "#D4AF37", fontWeight: 700, fontSize: 13, letterSpacing: 2, textTransform: "uppercase" }}>
@@ -120,9 +119,9 @@ function LiveWall() {
               </div>
               <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
-                  { label: "🥇 1-орын", athlete: cat.winner, bg: "rgba(212,175,55,0.15)", color: "#D4AF37" },
-                  { label: "🥈 2-орын", athlete: cat.second, bg: "rgba(255,255,255,0.05)", color: "#9CA3AF" },
-                  ...(cat.bronze ?? []).slice(0, 2).map((b: any, bi: number) => ({ label: `🥉 3-орын`, athlete: b, bg: "rgba(180,120,60,0.1)", color: "#CD7F32" })),
+                  { label: t("live_wall.place_1"), athlete: cat.winner, bg: "rgba(212,175,55,0.15)", color: "#D4AF37" },
+                  { label: t("live_wall.place_2"), athlete: cat.second, bg: "rgba(255,255,255,0.05)", color: "#9CA3AF" },
+                  ...(cat.bronze ?? []).slice(0, 2).map((b: any) => ({ label: t("live_wall.place_3"), athlete: b, bg: "rgba(180,120,60,0.1)", color: "#CD7F32" })),
                 ].map((row, ri) => row.athlete ? (
                   <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, background: row.bg, borderRadius: 8, padding: "8px 12px" }}>
                     <span style={{ fontSize: 11, color: row.color, fontWeight: 700, minWidth: 54 }}>{row.label}</span>
@@ -155,19 +154,18 @@ function LiveWall() {
         {current ? (
           <IjfBoard match={current} queue={queue} tatamiNumber={singleTatami} />
         ) : (
-          /* No active match — waiting screen */
           <div className="flex-1 flex flex-col items-center justify-center">
             <div style={{ fontSize: 80, fontWeight: 900, color: "#ccc", letterSpacing: 4 }}>
-              ТАТАМИ {singleTatami}
+              TATAMI {singleTatami}
             </div>
             <div style={{ fontSize: 28, color: "#999", marginTop: 16 }}>
               {queue.length > 0
-                ? `Келесi: ${surnameOnly(queue[0]?.redAthlete)} vs ${surnameOnly(queue[0]?.blueAthlete)}`
-                : "Матч жоқ"}
+                ? `${t("live_wall.next")}: ${surnameShort(queue[0]?.redAthlete)} vs ${surnameShort(queue[0]?.blueAthlete)}`
+                : t("live_wall.no_match")}
             </div>
             {queue.length > 0 && (
               <div style={{ fontSize: 20, color: "#bbb", marginTop: 8 }}>
-                {weightCat(queue[0]?.bracket?.category)}
+                {weightCat(queue[0]?.bracket?.category, t)}
               </div>
             )}
           </div>
@@ -183,17 +181,17 @@ function LiveWall() {
     <main className="min-h-screen bg-[#f0f2f5] text-[#111827]" style={{ fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif" }}>
       <header className="flex items-center justify-between border-b border-[#d8dce3] bg-[#1a1a2e] px-8 py-4 text-white">
         <div className="flex min-w-0 items-center gap-4">
-          <span className="truncate text-2xl font-black tracking-wide">{localizeName(tournament?.name)}</span>
+          <span className="truncate text-2xl font-black tracking-wide">{localizeName(tournament?.name, t)}</span>
           <span className="rounded bg-amber-400 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-black">
             LIVE WALL
           </span>
         </div>
         <button onClick={goFull} className="flex items-center gap-2 rounded border border-white/25 px-4 py-2 text-sm font-semibold hover:bg-white/10">
-          <Maximize2 className="h-4 w-4" /> Толық экран
+          <Maximize2 className="h-4 w-4" /> {t("live_wall.fullscreen")}
         </button>
       </header>
       <section className="grid gap-5 p-5 xl:grid-cols-3">
-        {tatamis.map((t) => <CompactTatami key={t.number} tatami={t} tournamentId={tournamentId} />)}
+        {tatamis.map((ts) => <CompactTatami key={ts.number} tatami={ts} tournamentId={tournamentId} />)}
       </section>
     </main>
   );
@@ -204,8 +202,9 @@ function LiveWall() {
    ═══════════════════════════════════════════════════════════ */
 
 function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]; tatamiNumber: number }) {
-  const whiteA = match.redAthlete;   // АҚ = "red" side in DB
-  const blueA = match.blueAthlete;   // КӨК
+  const { t } = useTranslation();
+  const whiteA = match.redAthlete;
+  const blueA = match.blueAthlete;
   const whiteS = match.scoreSnapshot?.red ?? {};
   const blueS = match.scoreSnapshot?.blue ?? {};
   const isGS = match.scoreSnapshot?.isGoldenScore || match.isGoldenScore;
@@ -229,11 +228,11 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
         fontSize: 22,
         flexShrink: 0,
       }}>
-        <span style={{ fontWeight: 800, letterSpacing: 3, fontSize: 26 }}>ТАТАМИ {tatamiNumber}</span>
+        <span style={{ fontWeight: 800, letterSpacing: 3, fontSize: 26 }}>TATAMI {tatamiNumber}</span>
         <span style={{ color: "#ccc", fontSize: 22 }}>
-          {weightCat(match.bracket?.category)}
+          {weightCat(match.bracket?.category, t)}
           {" · "}
-          {secLabel(match.bracketSection)} R{match.round}
+          {secLabel(match.bracketSection, t)} R{match.round}
         </span>
         {isGS && (
           <span style={{
@@ -250,7 +249,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
         )}
       </div>
 
-      {/* ─── Scoreboard body — fills all available space ─── */}
+      {/* ─── Scoreboard body ─── */}
       <div style={{
         flex: 1,
         display: "flex",
@@ -259,7 +258,6 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
         gap: 0,
         minHeight: 0,
       }}>
-        {/* White (АҚ) row — flex: 1 */}
         <AthleteRow
           side="white"
           athlete={whiteA}
@@ -268,7 +266,6 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           isLoser={isFinished && !!winnerId && winnerId !== whiteA?.id}
         />
 
-        {/* ─── TIMER ─── */}
         <TimerBar
           scoreSnapshot={match.scoreSnapshot}
           durationSec={duration}
@@ -278,7 +275,6 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           osaekomi={osaekomi}
         />
 
-        {/* Blue (КӨК) row — flex: 1 */}
         <AthleteRow
           side="blue"
           athlete={blueA}
@@ -288,7 +284,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
         />
       </div>
 
-      {/* ─── Winner banner ─── */}
+      {/* ─── Pending result banner ─── */}
       {pendingResult && (
         <div style={{
           background: "#f59e0b",
@@ -301,7 +297,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           textTransform: "uppercase",
           flexShrink: 0,
         }}>
-          НӘТИЖЕНІ РАСТАҢЫЗ: {pendingResult.winnerSide === "RED" ? surname(whiteA) : surname(blueA)}
+          {t("judge.confirm_btn")}: {pendingResult.winnerSide === "RED" ? surname(whiteA) : surname(blueA)}
         </div>
       )}
 
@@ -319,7 +315,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           flexShrink: 0,
         }}>
           <Trophy style={{ display: "inline", verticalAlign: "middle", width: 36, height: 36, marginRight: 16 }} />
-          ЖЕҢІМПАЗ: {winnerId === whiteA?.id ? surname(whiteA) : surname(blueA)}
+          {t("common.winner")}: {winnerId === whiteA?.id ? surname(whiteA) : surname(blueA)}
         </div>
       )}
 
@@ -335,7 +331,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
           overflowX: "auto",
           flexShrink: 0,
         }}>
-          <span style={{ fontSize: 16, fontWeight: 800, color: "#888", letterSpacing: 3, flexShrink: 0 }}>КЕЗЕК</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: "#888", letterSpacing: 3, flexShrink: 0 }}>{t("tatami.queue")}</span>
           {queue.slice(0, 6).map((m: any, i: number) => (
             <span key={m.id} style={{
               fontSize: 18,
@@ -348,7 +344,7 @@ function IjfBoard({ match, queue, tatamiNumber }: { match: Match; queue: Match[]
               border: i === 0 ? "2px solid #bbb" : "none",
             }}>
               {surname(m.redAthlete)} vs {surname(m.blueAthlete)}
-              <span style={{ fontSize: 14, color: "#999", marginLeft: 8 }}>{wShort(m.bracket?.category)}</span>
+              <span style={{ fontSize: 14, color: "#999", marginLeft: 8 }}>{wShort(m.bracket?.category, t)}</span>
             </span>
           ))}
         </div>
@@ -366,6 +362,7 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
   isWinner: boolean;
   isLoser: boolean;
 }) {
+  const { t } = useTranslation();
   const isWhite = side === "white";
   const ippon = score?.ippon ?? 0;
   const wazaari = score?.wazaari ?? 0;
@@ -373,13 +370,12 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
   const shido = score?.shido ?? 0;
   const isHansoku = shido >= 3;
 
-  // Row styling
   const bg = isWhite ? "#ffffff" : "#1e40af";
   const textColor = isWhite ? "#111" : "#fff";
   const subColor = isWhite ? "#777" : "rgba(255,255,255,0.65)";
   const borderColor = isWhite ? "#c8ccd4" : "#1e3a8a";
   const sideBarBg = isWhite ? "#d1d5db" : "#2563eb";
-  const labelText = isWhite ? "АҚ" : "КӨК";
+  const labelText = isWhite ? t("judge.side_red") : t("judge.side_blue");
 
   return (
     <div style={{
@@ -394,7 +390,6 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
       minHeight: 0,
       position: "relative",
     }}>
-      {/* Side color bar + label */}
       <div style={{
         width: 80,
         background: sideBarBg,
@@ -404,17 +399,11 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
         justifyContent: "center",
         flexShrink: 0,
       }}>
-        <span style={{
-          fontSize: 26,
-          fontWeight: 900,
-          color: isWhite ? "#444" : "#fff",
-          letterSpacing: 4,
-        }}>
+        <span style={{ fontSize: 26, fontWeight: 900, color: isWhite ? "#444" : "#fff", letterSpacing: 4 }}>
           {labelText}
         </span>
       </div>
 
-      {/* Name + club */}
       <div style={{
         flex: 1,
         display: "flex",
@@ -446,14 +435,12 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
         )}
       </div>
 
-      {/* Score cells: IPPON · WAZA-ARI · YUKO */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", flexShrink: 0 }}>
         <ScoreBox label="IPPON" value={ippon} active={ippon > 0} dark={!isWhite} />
         <ScoreBox label="WAZA-ARI" value={wazaari} active={wazaari > 0} dark={!isWhite} />
         <ScoreBox label="YUKO" value={yuko} active={yuko > 0} dark={!isWhite} isYuko />
       </div>
 
-      {/* Shido */}
       <div style={{
         display: "flex",
         flexDirection: "column",
@@ -482,22 +469,11 @@ function AthleteRow({ side, athlete, score, isWinner, isLoser }: {
         )}
       </div>
 
-      {/* Winner icon */}
       {isWinner && (
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "0 20px",
-          flexShrink: 0,
-        }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "0 20px", flexShrink: 0 }}>
           <div style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            background: "#22c55e",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            width: 64, height: 64, borderRadius: "50%", background: "#22c55e",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <Trophy style={{ width: 36, height: 36, color: "#fff" }} />
           </div>
@@ -519,28 +495,19 @@ function ScoreBox({ label, value, active, dark, isYuko }: {
 
   return (
     <div style={{
-      width: 110,
-      height: 120,
-      borderRadius: 10,
+      width: 110, height: 120, borderRadius: 10,
       border: `3px solid ${active ? borderActive : borderInactive}`,
       background: active ? bgActive : bgInactive,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     }}>
       <span style={{
-        fontSize: 13,
-        fontWeight: 800,
-        letterSpacing: 2,
+        fontSize: 13, fontWeight: 800, letterSpacing: 2,
         color: active ? (isYuko ? "#dcfce7" : "#92400e") : (dark ? "rgba(255,255,255,0.4)" : "#999"),
       }}>
         {label}
       </span>
       <span style={{
-        fontSize: 64,
-        fontWeight: 900,
-        lineHeight: 1,
+        fontSize: 64, fontWeight: 900, lineHeight: 1,
         color: active ? (isYuko ? "#fff" : "#111") : (dark ? "rgba(255,255,255,0.25)" : "#ccc"),
       }}>
         {value}
@@ -569,7 +536,6 @@ function TimerBar({ scoreSnapshot, durationSec, isRunning, isGoldenScore, isFini
     return () => clearInterval(id);
   }, [isClockRunning, clock?.runningStartedAt]);
 
-  // Calculate timer
   const elapsed = getClockElapsedSec(scoreSnapshot, now);
   let timerStr = isGoldenScore ? fmtTimer(elapsed) : fmtTimer(Math.max(0, durationSec - elapsed));
   let timerColor = "#111";
@@ -586,39 +552,24 @@ function TimerBar({ scoreSnapshot, durationSec, isRunning, isGoldenScore, isFini
       if (!isClockRunning && isRunning) { timerColor = "#6b7280"; pulse = false; }
     }
   }
-  if (isFinished) {
-    timerStr = "0:00";
-    timerColor = "#999";
-  }
+  if (isFinished) { timerStr = "0:00"; timerColor = "#999"; }
 
-  // Osaekomi bar
   const hasOsae = osaekomi && osaekomi.side && osaekomi.startedAt;
 
   return (
     <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 40,
-      padding: "20px 0",
-      position: "relative",
-      flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      gap: 40, padding: "20px 0", position: "relative", flexShrink: 0,
     }}>
-      {/* Timer */}
       <div style={{
-        fontSize: 130,
-        fontWeight: 900,
-        fontVariantNumeric: "tabular-nums",
-        color: timerColor,
-        lineHeight: 1,
+        fontSize: 130, fontWeight: 900, fontVariantNumeric: "tabular-nums",
+        color: timerColor, lineHeight: 1,
         animation: pulse ? "pulse 1s ease-in-out infinite" : "none",
-        fontFamily: "'Inter', monospace",
-        letterSpacing: 6,
+        fontFamily: "'Inter', monospace", letterSpacing: 6,
       }}>
         {timerStr}
       </div>
 
-      {/* Osaekomi overlay */}
       {hasOsae && <OsaekomiBar startedAt={osaekomi.startedAt} side={osaekomi.side} />}
 
       <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }`}</style>
@@ -643,6 +594,7 @@ function boardClockText(match: Match): string {
 }
 
 function OsaekomiBar({ startedAt, side }: { startedAt: string; side: string }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const s = new Date(startedAt).getTime();
@@ -652,19 +604,14 @@ function OsaekomiBar({ startedAt, side }: { startedAt: string; side: string }) {
 
   return (
     <div style={{
-      position: "absolute",
-      right: 40,
-      background: "#fbbf24",
-      borderRadius: 14,
-      padding: "12px 32px",
-      display: "flex",
-      alignItems: "center",
-      gap: 16,
+      position: "absolute", right: 40,
+      background: "#fbbf24", borderRadius: 14, padding: "12px 32px",
+      display: "flex", alignItems: "center", gap: 16,
       boxShadow: "0 6px 30px rgba(251,191,36,0.5)",
       animation: "pulse 1s ease-in-out infinite",
     }}>
       <span style={{ fontSize: 20, fontWeight: 900, color: "#111", letterSpacing: 3 }}>
-        OSAEKOMI {side === "RED" ? "АҚ" : "КӨК"}
+        OSAEKOMI {side === "RED" ? t("judge.side_red") : t("judge.side_blue")}
       </span>
       <span style={{ fontSize: 48, fontWeight: 900, color: "#111", fontVariantNumeric: "tabular-nums" }}>
         {elapsed}s
@@ -681,6 +628,7 @@ function CompactTatami({ tatami, tournamentId }: {
   tatami: TatamiState<Match>;
   tournamentId: string;
 }) {
+  const { t } = useTranslation();
   const c = tatami.current;
   const q = tatami.queue;
   const pending = hasPendingResult(c);
@@ -693,8 +641,8 @@ function CompactTatami({ tatami, tournamentId }: {
         <div className="flex items-center gap-2">
           <span className="text-4xl font-black tracking-wider text-amber-400">{tatami.number}</span>
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">
-            <div>ТАТАМИ</div>
-            <div>{q.length} кезекте</div>
+            <div>TATAMI</div>
+            <div>{t("live_wall.in_queue", { count: q.length })}</div>
           </div>
         </div>
         {c ? (
@@ -704,11 +652,11 @@ function CompactTatami({ tatami, tournamentId }: {
               <span className={`relative inline-flex h-2 w-2 rounded-full ${pending ? "bg-amber-300" : "bg-red-500"}`} />
             </span>
             <span className={`text-xs font-black uppercase tracking-[0.18em] ${pending ? "text-amber-300" : "text-red-400"}`}>
-              {pending ? "БЕКІТУ" : "LIVE"}
+              {pending ? t("tatami.confirm_short") : "LIVE"}
             </span>
           </div>
         ) : (
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/40">Күтуде</span>
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/40">{t("judge.waiting")}</span>
         )}
       </div>
 
@@ -722,20 +670,20 @@ function CompactTatami({ tatami, tournamentId }: {
           >
             <CompactScoreRow side="white" athlete={c.redAthlete} score={score?.red} />
             <div className="flex items-center justify-between border-y-2 border-[#d8dce3] bg-[#f0f2f5] px-4 py-2">
-              <span className="text-xs font-black uppercase tracking-[0.22em] text-[#6b7280]">{wShort(c.bracket?.category)}</span>
+              <span className="text-xs font-black uppercase tracking-[0.22em] text-[#6b7280]">{wShort(c.bracket?.category, t)}</span>
               <span className={`font-display text-4xl font-black tabular-nums ${pending ? "text-amber-500" : "text-[#6b7280]"}`}>{clockText}</span>
               {pending ? (
-                <span className="rounded bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black">Бекіту</span>
+                <span className="rounded bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black">{t("tatami.confirm_short")}</span>
               ) : (c.scoreSnapshot?.isGoldenScore || c.isGoldenScore) ? (
                 <span className="rounded bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black">GS</span>
               ) : (
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9ca3af]">Табло</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9ca3af]">{t("live_wall.scoreboard")}</span>
               )}
             </div>
             <CompactScoreRow side="blue" athlete={c.blueAthlete} score={score?.blue} />
           </Link>
         ) : (
-          <div className="flex h-44 items-center justify-center rounded-lg border-2 border-dashed border-[#d1d5db] text-xl font-black uppercase tracking-[0.2em] text-[#c8ccd4]">Матч жоқ</div>
+          <div className="flex h-44 items-center justify-center rounded-lg border-2 border-dashed border-[#d1d5db] text-xl font-black uppercase tracking-[0.2em] text-[#c8ccd4]">{t("live_wall.no_match")}</div>
         )}
 
         {q.length > 0 && (
@@ -746,7 +694,7 @@ function CompactTatami({ tatami, tournamentId }: {
               }`}>
                 <span className="w-4 font-black text-amber-500">{i + 1}</span>
                 <span className="truncate font-semibold">{surname(m.redAthlete)} vs {surname(m.blueAthlete)}</span>
-                <span className="ml-auto shrink-0 text-xs text-[#9ca3af]">{wShort(m.bracket?.category)}</span>
+                <span className="ml-auto shrink-0 text-xs text-[#9ca3af]">{wShort(m.bracket?.category, t)}</span>
               </div>
             ))}
           </div>
@@ -757,11 +705,12 @@ function CompactTatami({ tatami, tournamentId }: {
 }
 
 function CompactScoreRow({ side, athlete, score }: { side: "white" | "blue"; athlete: any; score: any }) {
+  const { t } = useTranslation();
   const isWhite = side === "white";
   return (
     <div className={`flex items-center ${isWhite ? "bg-white text-[#111827]" : "bg-[#1e40af] text-white"}`}>
       <div className={`flex h-20 w-16 items-center justify-center text-lg font-black tracking-widest ${isWhite ? "bg-[#d1d5db] text-[#444]" : "bg-[#2563eb] text-white"}`}>
-        {isWhite ? "АҚ" : "КӨК"}
+        {isWhite ? t("judge.side_red") : t("judge.side_blue")}
       </div>
       <div className="min-w-0 flex-1 px-4">
         <div className="truncate text-2xl font-black uppercase">{surname(athlete)}</div>
@@ -802,7 +751,7 @@ function MiniScore({ label, value, dark, isYuko }: { label: string; value: numbe
    ═══════════════════════════════════════════ */
 
 function surname(a: any): string { return a?.surname ?? "TBD"; }
-function surnameOnly(a: any): string { return a?.surname || a?.name || "TBD"; }
+function surnameShort(a: any): string { return a?.surname || a?.name || "TBD"; }
 
 function clubStr(club: any): string {
   if (!club) return "";
@@ -813,27 +762,33 @@ function clubStr(club: any): string {
   return n.kk ?? n.ru ?? n.en ?? "";
 }
 
-function localizeName(v: any) {
-  if (!v) return "Жарыс";
+function localizeName(v: any, t: any) {
+  if (!v) return t("common.tournament");
   if (typeof v === "string") return v;
   return v.kk ?? v.ru ?? v.en ?? "";
 }
 
-function weightCat(c: any): string {
+function weightCat(c: any, t: any): string {
   if (!c) return "";
-  const g = c.gender === "MALE" ? "Ер" : "Қыз";
-  return `${g} ${c.weightMin}-${c.weightMax} кг`;
+  const g = c.gender === "MALE" ? t("common.male") : t("tatami.female_short");
+  return `${g} ${c.weightMin}-${c.weightMax} ${t("common.kg")}`;
 }
 
-function wShort(c: any): string {
+function wShort(c: any, t: any): string {
   if (!c) return "";
-  const g = c.gender === "MALE" ? "Ер" : "Қыз";
+  const g = c.gender === "MALE" ? t("common.male") : t("tatami.female_short");
   const w = c.weightMax >= 200 ? `+${c.weightMin}` : `-${c.weightMax}`;
-  return `${g} ${w}кг`;
+  return `${g} ${w}${t("common.kg")}`;
 }
 
-function secLabel(s?: string | null): string {
-  const m: Record<string, string> = { main: "Негізгі", repechage: "Жұбату", bronze1: "Қола", bronze2: "Қола", final: "Финал" };
+function secLabel(s: string | null | undefined, t: any): string {
+  const m: Record<string, string> = {
+    main: t("live_wall.sec_main"),
+    repechage: t("live_wall.sec_repechage"),
+    bronze1: t("live_wall.sec_bronze"),
+    bronze2: t("live_wall.sec_bronze"),
+    final: t("bracket.final"),
+  };
   return s ? m[s] ?? s : "";
 }
 

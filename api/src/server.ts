@@ -29,11 +29,16 @@ import { notificationRoutes } from "./routes/notification.routes.js";
 import { uploadRoutes } from "./routes/upload.routes.js";
 import { attachSocketIO } from "./sockets/io.js";
 import { restoreActiveTimers } from "./services/osaekomi-timer.service.js";
+import { verifySmtpConnection } from "./services/email.service.js";
 
 async function buildServer() {
   const app = Fastify({
     // Attach unique request ID to every log line
     genReqId: () => randomUUID(),
+    bodyLimit: 1024 * 1024, // 1 MB JSON limit; multipart has its own limit
+    // Trust X-Forwarded-For from Cloudflare (1) + Render (1) = 2 hops
+    // Without this, req.ip returns internal proxy IP — breaks rate limiting & audit logs
+    trustProxy: env.NODE_ENV === "production" ? 2 : false,
     logger: {
       level: env.NODE_ENV === "production" ? "info" : "debug",
       transport:
@@ -103,7 +108,11 @@ async function buildServer() {
   }
 
   // Безопасность
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy: false,       // API-only — no HTML served
+    crossOriginEmbedderPolicy: false,   // allow embedding from trusted origins
+    referrerPolicy: { policy: "no-referrer" },
+  });
   await app.register(cookie, { secret: env.JWT_ACCESS_SECRET });
   // CORS: dev — любой localhost; prod — белый список из CORS_ORIGIN
   await app.register(cors, {
@@ -204,6 +213,9 @@ async function buildServer() {
   // Восстановить серверные osaekomi-таймеры после рестарта
   restoreActiveTimers().catch((err) => app.log.error(err, "Failed to restore osaekomi timers"));
 
+  // Проверить SMTP доступность (не блокирует старт)
+  verifySmtpConnection().catch(() => {});
+
   // Graceful shutdown
   const close = async () => {
     app.log.info("Shutting down gracefully...");
@@ -218,13 +230,24 @@ async function buildServer() {
   return app;
 }
 
+// Catch any synchronous throw or unhandled promise rejection that escapes
+// Fastify's error boundary — log it and exit so the process manager restarts cleanly.
+process.on("uncaughtException", (err) => {
+  process.stderr.write(`[uncaughtException] ${err.stack ?? err.message}\n`);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  process.stderr.write(`[unhandledRejection] ${reason}\n`);
+  process.exit(1);
+});
+
 async function start() {
   try {
     const app = await buildServer();
     await app.listen({ port: env.API_PORT, host: env.API_HOST });
     app.log.info(`🥋 Judo-Arena API listening on http://${env.API_HOST}:${env.API_PORT}`);
   } catch (err) {
-    console.error("❌ Failed to start server:", err);
+    process.stderr.write(`❌ Failed to start server: ${(err as Error).stack ?? err}\n`);
     process.exit(1);
   }
 }

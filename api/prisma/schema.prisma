@@ -360,6 +360,7 @@ model Match {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tournamentId])
   @@index([bracketId, round, position])
   @@index([status])
   @@index([tatamiNumber])

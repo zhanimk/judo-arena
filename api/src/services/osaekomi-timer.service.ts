@@ -62,7 +62,7 @@ export async function restoreActiveTimers(): Promise<void> {
   }
 
   if (restored > 0) {
-    console.log(`[osaekomi-timer] Restored ${restored} active timer(s) after restart`);
+    process.stdout.write(`[osaekomi-timer] Restored ${restored} active timer(s) after restart\n`);
   }
 }
 
@@ -95,6 +95,6 @@ async function triggerAutoEndOsaekomi(matchId: string): Promise<void> {
     }
   } catch (err: any) {
     // Match may have already ended or be in a bad state — safe to ignore
-    console.warn(`[osaekomi-timer] Auto-end failed for match ${matchId}: ${err?.message}`);
+    process.stderr.write(`[osaekomi-timer] Auto-end failed for match ${matchId}: ${err?.message}\n`);
   }
 }

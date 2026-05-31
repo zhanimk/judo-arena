@@ -155,6 +155,12 @@
 
 @layer base {
   * { border-color: var(--color-border); }
+  /* Keyboard focus ring — visible for keyboard users, hidden for mouse */
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
   html { scroll-behavior: smooth; }
   body {
     background-color: var(--color-background);
@@ -182,6 +188,8 @@
   .bg-gradient-gold { background: var(--gradient-gold); }
   .bg-gradient-navy { background: var(--gradient-navy); }
   .shadow-gold { box-shadow: var(--shadow-gold); }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .border-gold { border-color: var(--gold); }
   .glass {
@@ -350,4 +358,121 @@
             mask-composite: exclude;
     pointer-events: none;
   }
+
+  /* ── PREMIUM EFFECTS ─────────────────────────────────── */
+
+  /* 8. Custom gold scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, oklch(0.86 0.16 90 / 0.6), oklch(0.70 0.14 75 / 0.4));
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.86 0.16 90 / 0.9); }
+
+  /* 1. Animated conic border — runs on .card-glow-border:hover */
+  @keyframes border-spin { to { rotate: 360deg; } }
+  .card-glow-border {
+    position: relative;
+    isolation: isolate;
+  }
+  .card-glow-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0%,
+      oklch(0.86 0.16 90 / 0) 55%,
+      oklch(0.86 0.16 90 / 0.9) 70%,
+      oklch(0.86 0.16 90 / 0) 85%,
+      transparent 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    padding: 1px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .card-glow-border:hover::before {
+    opacity: 1;
+    animation: border-spin 2s linear infinite;
+  }
+
+  /* 2. Shimmer sweep */
+  @keyframes shimmer-sweep {
+    0%   { transform: translateX(-100%) skewX(-12deg); }
+    100% { transform: translateX(250%) skewX(-12deg); }
+  }
+  .shimmer-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 20%,
+      oklch(0.86 0.16 90 / 0.12) 40%,
+      oklch(0.86 0.16 90 / 0.22) 50%,
+      oklch(0.86 0.16 90 / 0.12) 60%,
+      transparent 80%
+    );
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .shimmer-card:hover::after {
+    opacity: 1;
+    animation: shimmer-sweep 0.7s ease forwards;
+  }
+
+  /* 3. Ripple */
+  .ripple-container { position: relative; overflow: hidden; }
+  @keyframes ripple-expand {
+    from { transform: scale(0); opacity: 0.5; }
+    to   { transform: scale(4); opacity: 0; }
+  }
+  .ripple-dot {
+    position: absolute;
+    border-radius: 50%;
+    background: oklch(0.86 0.16 90 / 0.35);
+    pointer-events: none;
+    animation: ripple-expand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    transform-origin: center;
+  }
+
+  /* 6. Blur-to-sharp reveal */
+  .blur-reveal {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(16px);
+    transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s ease;
+  }
+  .blur-reveal.visible {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+
+  /* 7. Split-flap flip number */
+  @keyframes flap-down {
+    0%   { transform: rotateX(0deg); }
+    100% { transform: rotateX(-90deg); }
+  }
+  @keyframes flap-up {
+    0%   { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+  .flap-top    { animation: flap-down 0.18s ease-in forwards; transform-origin: bottom; }
+  .flap-bottom { animation: flap-up   0.18s ease-out 0.18s forwards; transform-origin: top; }
+
+  /* Typewriter cursor blink */
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .typewriter-cursor { animation: blink 1s step-end infinite; }
 }

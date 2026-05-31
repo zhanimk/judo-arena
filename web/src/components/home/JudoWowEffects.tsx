@@ -9,6 +9,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Award, ChevronRight, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ─────────────────────────────────────────────────────────────
 // 1. BELT UNIVERSE — CSS 3D armillary sphere
@@ -24,6 +25,7 @@ const BELT_RINGS = [
 ] as const;
 
 export function BeltUniverse() {
+  const { t } = useTranslation();
   return (
     <section className="relative py-20 sm:py-28 border-y border-gold/20 bg-navy-deep/70 overflow-hidden">
       <div className="absolute inset-0 grid-bg opacity-15" />
@@ -35,31 +37,30 @@ export function BeltUniverse() {
           {/* Left — text */}
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-4">
-              Жеті пояс · бір жол
+              {t("home.belt_tagline")}
             </div>
             <h2 className="font-display text-4xl sm:text-5xl font-bold leading-tight">
-              Белдеу жолы —<br />
-              <span className="text-gradient-gold italic">шеберліктің символы</span>
+              {t("home.belt_title")}<br />
+              <span className="text-gradient-gold italic">{t("home.belt_title_accent")}</span>
             </h2>
             <p className="mt-5 text-muted-foreground leading-relaxed max-w-md">
-              Ақ белдеуден қара белдеуге дейін — бұл жол тәртіп, сабыр және
-              жеңістен тұрады. Judo Arena рейтинг арқылы осы жолды тіркейді.
+              {t("home.belt_desc")}
             </p>
 
             {/* Belt color chips */}
             <div className="mt-6 flex items-center gap-2 flex-wrap">
               {[
-                { label: "Ақ",      bg: "bg-white border border-zinc-300" },
-                { label: "Сары",    bg: "bg-yellow-400" },
-                { label: "Қызғылт",bg: "bg-orange-500" },
-                { label: "Жасыл",  bg: "bg-emerald-500" },
-                { label: "Көк",    bg: "bg-sky-500" },
-                { label: "Қоңыр",  bg: "bg-amber-800" },
-                { label: "Қара",   bg: "bg-zinc-900 border border-gold/40" },
+                { key: "home.belt_white",  bg: "bg-white border border-zinc-300" },
+                { key: "home.belt_yellow", bg: "bg-yellow-400" },
+                { key: "home.belt_orange", bg: "bg-orange-500" },
+                { key: "home.belt_green",  bg: "bg-emerald-500" },
+                { key: "home.belt_blue",   bg: "bg-sky-500" },
+                { key: "home.belt_brown",  bg: "bg-amber-800" },
+                { key: "home.belt_black",  bg: "bg-zinc-900 border border-gold/40" },
               ].map((b) => (
-                <div key={b.label} className="flex items-center gap-1.5">
+                <div key={b.key} className="flex items-center gap-1.5">
                   <div className={`w-4 h-4 rounded-sm shadow ${b.bg}`} />
-                  <span className="text-[10px] text-muted-foreground">{b.label}</span>
+                  <span className="text-[10px] text-muted-foreground">{t(b.key)}</span>
                 </div>
               ))}
             </div>
@@ -68,7 +69,7 @@ export function BeltUniverse() {
               to="/rankings"
               className="mt-8 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-5 py-2.5 text-sm text-gold hover:border-gold/60 transition-colors"
             >
-              Рейтингке өту <ChevronRight className="h-4 w-4" />
+              {t("home.belt_cta")} <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
 
@@ -133,6 +134,7 @@ export function BeltUniverse() {
 // ─────────────────────────────────────────────────────────────
 
 export function IPPONParticles() {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -244,13 +246,13 @@ export function IPPONParticles() {
 
       <div className="container mx-auto px-4 relative">
         <div className="text-center mb-10">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-3">Матч финалы</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-3">{t("home.particles_tagline")}</div>
           <h2 className="font-display text-3xl sm:text-4xl font-bold">
-            Бар нәрсе{" "}
-            <span className="text-gradient-gold italic">бір қимылда шешіледі</span>
+            {t("home.particles_title")}{" "}
+            <span className="text-gradient-gold italic">{t("home.particles_title_accent")}</span>
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Тышқанды қозғаңыз — бөлшектерді шашыратыңыз
+            {t("home.particles_hint")}
           </p>
         </div>
 
@@ -267,13 +269,13 @@ export function IPPONParticles() {
 
         <div className="mt-8 flex justify-center gap-8 text-center">
           {[
-            { label: "IPPON", desc: "Толық жеңіс" },
-            { label: "WAZA-ARI", desc: "Жарты ұпай" },
-            { label: "SHIDO", desc: "Ескерту" },
+            { label: "IPPON",    descKey: "home.ippon_score_victory" },
+            { label: "WAZA-ARI", descKey: "home.ippon_score_half" },
+            { label: "SHIDO",    descKey: "home.ippon_score_penalty" },
           ].map((s) => (
             <div key={s.label}>
               <div className="font-display text-sm font-bold text-gold">{s.label}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{s.desc}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{t(s.descKey)}</div>
             </div>
           ))}
         </div>
@@ -298,6 +300,7 @@ const SPARKS = Array.from({ length: 28 }, (_, i) => {
 });
 
 export function IPPONImpact() {
+  const { t } = useTranslation();
   return (
     <section className="relative py-24 border-y border-gold/25 bg-navy-deep overflow-hidden">
       <div className="absolute inset-0 grid-bg opacity-20" />
@@ -310,26 +313,25 @@ export function IPPONImpact() {
           {/* Left — text */}
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-4">
-              Жеңіс сезімі
+              {t("home.ippon_tagline")}
             </div>
             <h2 className="font-display text-4xl sm:text-5xl font-bold leading-tight">
-              Бір лақтыру —<br />
-              <span className="text-gradient-gold italic">Иппон!</span>
+              {t("home.ippon_title")}<br />
+              <span className="text-gradient-gold italic">{t("home.ippon_title_accent")}</span>
             </h2>
             <p className="mt-5 text-muted-foreground leading-relaxed max-w-md">
-              Нақты уақытта бекітілген нәтиже. Иппон, Вазаари, Шидо —
-              Judo Arena матч барысын секунд сайын тіркейді.
+              {t("home.ippon_desc")}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               {[
-                { icon: Zap, label: "Real-time", sub: "нәтижелер" },
-                { icon: Award, label: "Авто", sub: "рейтинг" },
-              ].map(({ icon: Icon, label, sub }) => (
+                { icon: Zap, label: "Real-time", subKey: "home.ippon_realtime_sub" },
+                { icon: Award, label: t("home.ippon_auto_label"), subKey: "home.ippon_auto_sub" },
+              ].map(({ icon: Icon, label, subKey }) => (
                 <div key={label} className="flex items-center gap-2 rounded-xl border border-gold/20 bg-card/50 px-4 py-2.5">
                   <Icon className="h-4 w-4 text-gold" />
                   <div>
                     <div className="text-sm font-semibold">{label}</div>
-                    <div className="text-[10px] text-muted-foreground">{sub}</div>
+                    <div className="text-[10px] text-muted-foreground">{t(subKey)}</div>
                   </div>
                 </div>
               ))}
@@ -373,7 +375,7 @@ export function IPPONImpact() {
                   IPPON
                 </div>
                 <div className="mt-2 text-xs uppercase tracking-[0.45em] text-gold/60">
-                  勝 · жеңіс
+                  {t("home.ippon_win_kanji")}
                 </div>
               </div>
 

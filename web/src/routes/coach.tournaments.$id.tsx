@@ -23,6 +23,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс санаттары — Judo-Arena" }] }),
@@ -33,10 +34,10 @@ export const Route = createFileRoute("/coach/tournaments/$id")({
   ),
 });
 
-
 type GroupFilter = "ALL" | "MALE" | "FEMALE";
 
 function CoachTournamentDetail() {
+  const { t } = useTranslation();
   const { id } = useParams({ from: "/coach/tournaments/$id" });
   const { user } = useAuth();
   const canManageApplications = user?.clubRole === "OWNER";
@@ -67,7 +68,6 @@ function CoachTournamentDetail() {
     queryFn: () => api.matches.list({ tournamentId: id }),
   });
 
-  // Socket.IO: keep bracket and matches up-to-date during the tournament
   useRealtime(
     [`tournament:${id}`],
     {
@@ -88,7 +88,7 @@ function CoachTournamentDetail() {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
       navigate({ to: "/coach/applications/$id", params: { id: app.id } });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім ашылмады"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.application_open_error")),
   });
 
   const addEntry = useMutation({
@@ -103,9 +103,10 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Спортшы қосылмады"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.athlete_add_error")),
     onSettled: () => setAdding(null),
   });
+
   const addEligible = useMutation({
     mutationFn: async ({ athletes, categoryId }: { athletes: any[]; categoryId: string }) => {
       const app = ownApplication ?? await api.tournaments.createApplication(id);
@@ -121,9 +122,10 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Спортшылар қосылмады"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.athletes_add_error")),
     onSettled: () => setAdding(null),
   });
+
   const submitApplication = useMutation({
     mutationFn: () => {
       if (!ownApplication) throw new Error("NO_APPLICATION");
@@ -133,7 +135,7 @@ function CoachTournamentDetail() {
       setError("");
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім жіберілмеді"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.application_submit_error")),
   });
 
   const ownApplication = appsQuery.data?.[0] ?? null;
@@ -149,14 +151,14 @@ function CoachTournamentDetail() {
   }, [entries]);
   const entryIssues = useMemo(() => entries.map((entry: any) => ({
     entry,
-    issues: validateApplicationEntry(entry),
-  })), [entries]);
+    issues: validateApplicationEntry(entry, t),
+  })), [entries, t]);
   const invalidEntryCount = entryIssues.filter((item: { entry: any; issues: string[] }) => item.issues.length > 0).length;
   const enteredCategoryCount = enteredByCategory.size;
 
   if (tQuery.isLoading) {
     return (
-      <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Жарыс">
+      <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={t("common.loading")}>
         <LoadingState />
       </DashboardShell>
     );
@@ -165,13 +167,14 @@ function CoachTournamentDetail() {
   const tournament = tQuery.data;
   if (!tournament) {
     return (
-      <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Жарыс табылмады">
-        <EmptyState title="Жарыс жоқ" />
+      <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={t("tournament.not_found")}>
+        <EmptyState title={t("tournament.not_found")} />
       </DashboardShell>
     );
   }
 
   const categories = (tournament.categories ?? []).filter((category: any) => filter === "ALL" || category.gender === filter);
+  const categoryCount = tournament.categories?.length ?? 0;
   const deadline = tournament.applicationDeadline ?? tournament.startDate;
   const deadlinePassed = new Date(deadline).getTime() < Date.now();
   const myAthleteIds = new Set((membersQuery.data ?? []).map((athlete: any) => athlete.id));
@@ -181,9 +184,9 @@ function CoachTournamentDetail() {
   );
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle={localizeName(tournament.name)}>
+    <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={localizeName(tournament.name)}>
       <Link to="/coach/tournaments" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold">
-        <ArrowLeft className="h-4 w-4" /> Барлық жарыстар
+        <ArrowLeft className="h-4 w-4" /> {t("tournaments_page.all_tournaments")}
       </Link>
 
       {error && <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -192,10 +195,10 @@ function CoachTournamentDetail() {
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <div className="flex items-center gap-2 font-medium text-amber-300">
             <AlertTriangle className="h-4 w-4" />
-            Клуб тіркелмеген
+            {t("coach.no_club_warning_title")}
           </div>
           <div className="mt-1 text-amber-100/80">
-            Турнирге өтінім беру үшін алдымен клубқа тіркелу керек. Нәтижесіз — тренерді клубқа байланыстыратын Adminге хабарласыңыз.
+            {t("coach.no_club_warning_desc")}
           </div>
         </div>
       )}
@@ -206,11 +209,11 @@ function CoachTournamentDetail() {
             <StatusBadge status={tournament.status} />
             <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
               <Info icon={Calendar}>{dateRange(tournament.startDate, tournament.endDate)}</Info>
-              <Info icon={Calendar}>Дедлайн: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
+              <Info icon={Calendar}>{t("coach.deadline_label")}: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
               <Info icon={MapPin}>{tournament.location}, {tournament.city}</Info>
-              <Info icon={Clock}>{formatWeighIn(tournament)}</Info>
-              <Info icon={Users}>{entries.length} менің спортшым</Info>
-              <Info icon={GitBranch}>{bracketsQuery.data?.length ?? 0} сетка</Info>
+              <Info icon={Clock}>{formatWeighIn(tournament, t)}</Info>
+              <Info icon={Users}>{t("coach.my_athletes_info", { count: entries.length })}</Info>
+              <Info icon={GitBranch}>{t("coach.brackets_info", { count: bracketsQuery.data?.length ?? 0 })}</Info>
             </div>
             {tournament.posterUrl && (
               <a
@@ -220,7 +223,7 @@ function CoachTournamentDetail() {
                 className="mt-4 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold hover:bg-gold/15"
               >
                 <ClipboardList className="h-4 w-4" />
-                Турнир положение / фото
+                {t("coach.tournament_regulations")}
               </a>
             )}
             {tournament.mapUrl && (
@@ -231,7 +234,7 @@ function CoachTournamentDetail() {
                 className="ml-2 mt-4 inline-flex items-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm hover:border-gold/40"
               >
                 <MapPin className="h-4 w-4" />
-                Карта
+                {t("coach.map")}
               </a>
             )}
           </div>
@@ -242,35 +245,41 @@ function CoachTournamentDetail() {
                 params={{ id: ownApplication.id }}
                 className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold hover:bg-gold/15"
               >
-                <ClipboardList className="h-4 w-4" /> Өтінімді ашу
+                <ClipboardList className="h-4 w-4" /> {t("coach.open_application")}
               </Link>
-            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && canManageApplications ? (
+            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && canManageApplications && categoryCount > 0 ? (
               <button
                 onClick={() => createApplication.mutate()}
                 disabled={createApplication.isPending}
                 className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm text-gold-foreground shadow-gold disabled:opacity-60"
               >
                 {createApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Өтінім ашу
+                {t("coach.create_application")}
               </button>
-            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && user?.clubId ? (
-              <span className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">
-                Өтінімді тек клуб иесі ашады
-              </span>
+            ) : tournament.status === "DRAFT" ? (
+              <ApplyUnavailable reason={t("coach.registration_not_open")} />
+            ) : categoryCount === 0 ? (
+              <ApplyUnavailable reason={t("coach.no_categories_to_apply")} />
+            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && !user?.clubId ? (
+              <ApplyUnavailable reason={t("coach.no_club_short")} />
+            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && !canManageApplications ? (
+              <ApplyUnavailable reason={t("coach.only_owner_can_apply")} />
             ) : tournament.status === "REGISTRATION_OPEN" && deadlinePassed ? (
-              <span className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive">Өтінім дедлайны өтті</span>
-            ) : null}
+              <ApplyUnavailable reason={t("coach.deadline_passed")} danger />
+            ) : (
+              <ApplyUnavailable reason={t("coach.registration_closed")} />
+            )}
           </div>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <Panel title="Турнир туралы толық ақпарат">
+        <Panel title={t("coach.tournament_full_info")}>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <Info icon={Calendar}>{dateRange(tournament.startDate, tournament.endDate)}</Info>
-            <Info icon={Calendar}>Өтінім дедлайны: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
+            <Info icon={Calendar}>{t("tournament.deadline")}: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
             <Info icon={MapPin}>{tournament.location}, {tournament.city}</Info>
-            <Info icon={Clock}>{formatWeighIn(tournament)}</Info>
+            <Info icon={Clock}>{formatWeighIn(tournament, t)}</Info>
           </div>
           {localizeName(tournament.description) && (
             <p className="mt-4 border-t border-border/30 pt-4 text-sm leading-relaxed text-muted-foreground">
@@ -289,22 +298,30 @@ function CoachTournamentDetail() {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <MiniStat label="Санаттар" value={tournament.categories?.length ?? 0} />
-        <MiniStat label="Ер балалар" value={(tournament.categories ?? []).filter((c: any) => c.gender === "MALE").length} />
-        <MiniStat label="Қыздар" value={(tournament.categories ?? []).filter((c: any) => c.gender === "FEMALE").length} />
-        <MiniStat label="Матчтар" value={clubMatches.length} />
+        <MiniStat label={t("tournament.stat_categories")} value={tournament.categories?.length ?? 0} />
+        <MiniStat label={t("coach.male_count")} value={(tournament.categories ?? []).filter((c: any) => c.gender === "MALE").length} />
+        <MiniStat label={t("coach.female_count")} value={(tournament.categories ?? []).filter((c: any) => c.gender === "FEMALE").length} />
+        <MiniStat label={t("dashboard.matches")} value={clubMatches.length} />
       </div>
 
       {ownApplication && (
         <Panel
-          title="Менің өтінімім"
+          title={t("coach.my_application")}
           action={<ApplicationStatusBadge status={ownApplication.status} />}
         >
           <div className="grid gap-3 sm:grid-cols-4">
-            <ApplicationMetric label="Спортшы" value={entries.length} />
-            <ApplicationMetric label="Санат" value={enteredCategoryCount} />
-            <ApplicationMetric label="Тексеру" value={invalidEntryCount ? `${invalidEntryCount} мәселе` : "OK"} tone={invalidEntryCount ? "red" : "green"} />
-            <ApplicationMetric label="Мәртебе" value={applicationStatusLabel(ownApplication.status)} tone={ownApplication.status === "APPROVED" ? "green" : ownApplication.status === "REJECTED" ? "red" : "gold"} />
+            <ApplicationMetric label={t("dashboard.athletes")} value={entries.length} />
+            <ApplicationMetric label={t("common.category")} value={enteredCategoryCount} />
+            <ApplicationMetric
+              label={t("coach.check_label")}
+              value={invalidEntryCount ? t("coach.issues_count", { count: invalidEntryCount }) : "OK"}
+              tone={invalidEntryCount ? "red" : "green"}
+            />
+            <ApplicationMetric
+              label={t("common.status")}
+              value={String(t(`status.${ownApplication.status}`, ownApplication.status))}
+              tone={ownApplication.status === "APPROVED" ? "green" : ownApplication.status === "REJECTED" ? "red" : "gold"}
+            />
           </div>
           {ownApplication.reviewerNotes && (
             <div className={`mt-4 rounded-md border p-3 text-sm ${
@@ -313,7 +330,7 @@ function CoachTournamentDetail() {
                 : "border-gold/30 bg-gold/10 text-gold"
             }`}>
               <div className="mb-1 text-xs uppercase tracking-widest">
-                {ownApplication.status === "REJECTED" ? "Админ қайтару себебі" : "Админ ескертуі"}
+                {ownApplication.status === "REJECTED" ? t("coach.admin_rejection_reason") : t("coach.admin_note")}
               </div>
               {ownApplication.reviewerNotes}
             </div>
@@ -322,10 +339,10 @@ function CoachTournamentDetail() {
             <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
               <div className="flex items-center gap-2 font-medium">
                 <AlertTriangle className="h-4 w-4" />
-                Өтінімде қайта тексеруді қажет ететін спортшылар бар
+                {t("coach.invalid_entries_warning")}
               </div>
               <div className="mt-1 text-xs text-amber-100/80">
-                Салмақ, жас немесе жыныс категория талабына сәйкес келмесе, админ өтінімді қайтаруы мүмкін.
+                {t("coach.invalid_entries_detail")}
               </div>
             </div>
           )}
@@ -333,7 +350,7 @@ function CoachTournamentDetail() {
       )}
 
       <Panel
-        title="Санаттар және подгруппалар"
+        title={t("coach.categories_and_groups")}
         action={
           <div className="flex gap-2">
             {(["ALL", "MALE", "FEMALE"] as const).map((value) => (
@@ -344,14 +361,14 @@ function CoachTournamentDetail() {
                   filter === value ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {value === "ALL" ? "Бәрі" : value === "MALE" ? "Ер" : "Қыз"}
+                {value === "ALL" ? t("common.all") : value === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")}
               </button>
             ))}
           </div>
         }
       >
         {categories.length === 0 ? (
-          <EmptyState title="Санаттар жоқ" />
+          <EmptyState title={t("tournament.no_categories")} />
         ) : (
           <div className="space-y-4">
             {categories.map((category: any) => {
@@ -371,10 +388,10 @@ function CoachTournamentDetail() {
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="font-display text-lg font-semibold">{categoryTitle(category)}</div>
                         <FormatBadge format={category.format} />
-                        {bracket && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">Сетка дайын</span>}
+                        {bracket && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">{t("coach.bracket_ready")}</span>}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {category.gender === "MALE" ? "Ер" : "Қыз"} · {category.ageMin}-{category.ageMax} жас · ({category.weightMin}, {category.weightMax}] кг · {category.matchDurationSec}с
+                        {category.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} · {category.ageMin}-{category.ageMax} {t("common.years_short")} · ({category.weightMin}, {category.weightMax}] {t("common.kg")} · {category.matchDurationSec}с
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -384,7 +401,7 @@ function CoachTournamentDetail() {
                             onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                             className="inline-flex items-center gap-1 rounded-md border border-gold/30 px-3 py-1.5 text-xs text-gold hover:bg-gold/10"
                           >
-                            <GitBranch className="h-3.5 w-3.5" /> {selectedCategoryId === category.id ? "Жабу" : "Сетка"}
+                            <GitBranch className="h-3.5 w-3.5" /> {selectedCategoryId === category.id ? t("common.close") : t("coach.bracket")}
                           </button>
                           <a
                             href={api.admin.bracketPdfUrl(bracket.id)}
@@ -401,7 +418,7 @@ function CoachTournamentDetail() {
 
                   <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
                     <div>
-                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">Менің спортшыларым</div>
+                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{t("coach.my_athletes_section")}</div>
                       {isOpenDraft && eligibleToAdd.length > 1 && (
                         <button
                           type="button"
@@ -410,17 +427,17 @@ function CoachTournamentDetail() {
                           className="mb-3 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-xs text-gold hover:bg-gold/15 disabled:opacity-50"
                         >
                           {adding === `all:${category.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                          Барлық сай спортшыларды қосу ({eligibleToAdd.length})
+                          {t("coach.add_all_eligible", { count: eligibleToAdd.length })}
                         </button>
                       )}
                       {eligible.length === 0 ? (
                         <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">
-                          <div>Бұл категорияға сай спортшы жоқ.</div>
+                          <div>{t("coach.no_eligible_athletes")}</div>
                           {ineligiblePreview.length > 0 && (
                             <div className="mt-3 space-y-1 text-xs">
                               {ineligiblePreview.map((athlete: any) => (
                                 <div key={athlete.id}>
-                                  {athlete.name} {athlete.surname}: {categoryMismatchReason(athlete, category)}
+                                  {athlete.name} {athlete.surname}: {categoryMismatchReason(athlete, category, t)}
                                 </div>
                               ))}
                             </div>
@@ -436,10 +453,10 @@ function CoachTournamentDetail() {
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
                                     <div className="font-medium text-sm">{athlete.name} {athlete.surname}</div>
-                                    <div className="text-xs text-muted-foreground">{getAge(athlete.dateOfBirth)} жас · {athlete.weightKg} кг · {athlete.beltRank ?? "—"}</div>
+                                    <div className="text-xs text-muted-foreground">{getAge(athlete.dateOfBirth)} {t("common.years_short")} · {athlete.weightKg} {t("common.kg")} · {athlete.beltRank ?? "—"}</div>
                                   </div>
                                   {alreadyIn ? (
-                                    <EntryCheckBadge issues={validateApplicationEntry(categoryEntries.find((entry: any) => entry.athleteId === athlete.id) ?? { athlete, category })} />
+                                    <EntryCheckBadge issues={validateApplicationEntry(categoryEntries.find((entry: any) => entry.athleteId === athlete.id) ?? { athlete, category }, t)} />
                                   ) : isOpenDraft ? (
                                     <button
                                       onClick={() => addEntry.mutate({ athleteId: athlete.id, categoryId: category.id })}
@@ -447,7 +464,7 @@ function CoachTournamentDetail() {
                                       className="inline-flex items-center gap-1 rounded-md bg-gold/15 px-2 py-1 text-xs text-gold hover:bg-gold/20 disabled:opacity-50"
                                     >
                                       {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                                      Қосу
+                                      {t("common.add")}
                                     </button>
                                   ) : null}
                                 </div>
@@ -459,15 +476,15 @@ function CoachTournamentDetail() {
                     </div>
 
                     <div>
-                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">Матчтар</div>
+                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{t("dashboard.matches")}</div>
                       {categoryMatches.length === 0 ? (
-                        <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">Бұл категория бойынша клуб матчтары әлі жоқ.</div>
+                        <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">{t("coach.no_club_matches")}</div>
                       ) : (
                         <div className="space-y-2">
                           {categoryMatches.map((match: any) => (
                             <div key={match.id} className="rounded-md border border-border/50 p-3 text-xs">
                               <div className="flex justify-between gap-2">
-                                <span className="text-muted-foreground">Татами {match.tatamiNumber ?? "—"} · R{match.round}</span>
+                                <span className="text-muted-foreground">{t("tournament.metric_tatami")} {match.tatamiNumber ?? "—"} · R{match.round}</span>
                                 <MatchStatusBadge status={match.status} />
                               </div>
                               <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
@@ -495,7 +512,7 @@ function CoachTournamentDetail() {
       </Panel>
 
       {ownApplication?.status === "DRAFT" && canManageApplications && (
-        <Panel title="Өтінімді аяқтау">
+        <Panel title={t("coach.finalize_application")}>
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
             {entries.length > 0 && (
               <div className="mb-4 space-y-2">
@@ -527,8 +544,7 @@ function CoachTournamentDetail() {
                 className="mt-1 h-4 w-4 accent-gold"
               />
               <span className="text-muted-foreground">
-                Мен өтінімдегі спортшылардың медициналық рұқсаты, салмағы, жасы және құжаттары дұрыс екенін растаймын.
-                Жарысқа қатысу жауапкершілігін клуб/жаттықтырушы өз мойнына алады.
+                {t("coach.responsibility_text")}
               </span>
             </label>
             <button
@@ -537,23 +553,33 @@ function CoachTournamentDetail() {
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
               {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Өтінімді жіберу
+              {t("coach.submit_application")}
             </button>
-            {entries.length === 0 && <div className="mt-2 text-xs text-muted-foreground">Алдымен кемінде бір спортшы қосыңыз.</div>}
-            {deadlinePassed && <div className="mt-2 text-xs text-destructive">Өтінім дедлайны өтті.</div>}
-            {invalidEntryCount > 0 && <div className="mt-2 text-xs text-amber-200">Алдымен категорияға сәйкес емес спортшыларды түзетіңіз.</div>}
-            {!responsibilityAccepted && entries.length > 0 && <div className="mt-2 text-xs text-muted-foreground">Жіберу үшін жауапкершілік келісімін белгілеңіз.</div>}
+            {entries.length === 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.add_athlete_first")}</div>}
+            {deadlinePassed && <div className="mt-2 text-xs text-destructive">{t("coach.deadline_passed_msg")}</div>}
+            {invalidEntryCount > 0 && <div className="mt-2 text-xs text-amber-200">{t("coach.fix_invalid_entries")}</div>}
+            {!responsibilityAccepted && entries.length > 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.accept_responsibility_first")}</div>}
           </div>
         </Panel>
       )}
       {ownApplication?.status === "DRAFT" && !canManageApplications && (
-        <Panel title="Өтінім қарау режимі">
+        <Panel title={t("coach.view_only_mode")}>
           <div className="rounded-md border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
-            Бұл ресми клуб өтінімі. Спортшыларды қосу, өшіру және жіберу құқығы тек клуб иесінде.
+            {t("coach.view_only_desc")}
           </div>
         </Panel>
       )}
     </DashboardShell>
+  );
+}
+
+function ApplyUnavailable({ reason, danger }: { reason: string; danger?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className={`rounded-md border px-3 py-2 text-sm ${danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"}`}>
+      <div className="font-medium">{t("coach.apply_tournament")}</div>
+      <div className="mt-0.5 text-xs">{reason}</div>
+    </div>
   );
 }
 
@@ -588,41 +614,33 @@ function ApplicationMetric({ label, value, tone }: { label: string; value: strin
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    REGISTRATION_OPEN: { c: "bg-gold/15 text-gold border border-gold/30", l: "Тіркеу ашық" },
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Тіркеу жабық" },
-    IN_PROGRESS: { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
+  const { t } = useTranslation();
+  const map: Record<string, { c: string; key: string }> = {
+    DRAFT:               { c: "bg-muted text-muted-foreground",                                  key: "status.DRAFT" },
+    REGISTRATION_OPEN:   { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.REGISTRATION_OPEN" },
+    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",       key: "status.REGISTRATION_CLOSED" },
+    IN_PROGRESS:         { c: "bg-destructive/20 text-destructive border border-destructive/40", key: "status.IN_PROGRESS" },
+    COMPLETED:           { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.COMPLETED" },
   };
-  const item = map[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.l}</span>;
+  const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
 }
 
 function ApplicationStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
-    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
-    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/30", l: "Қайтарылды" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Қайтарып алынды" },
+  const { t } = useTranslation();
+  const map: Record<string, { c: string; key: string }> = {
+    DRAFT:     { c: "bg-muted text-muted-foreground",                                  key: "status.DRAFT" },
+    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.SUBMITTED" },
+    APPROVED:  { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.APPROVED" },
+    REJECTED:  { c: "bg-destructive/15 text-destructive border border-destructive/30", key: "status.REJECTED" },
+    WITHDRAWN: { c: "bg-muted text-muted-foreground",                                  key: "status.WITHDRAWN" },
   };
-  const item = map[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.l}</span>;
-}
-
-function applicationStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    DRAFT: "Жоба",
-    SUBMITTED: "Қарауда",
-    APPROVED: "Бекітілді",
-    REJECTED: "Қайтарылды",
-    WITHDRAWN: "Қайтарып алынды",
-  };
-  return map[status] ?? status;
+  const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
 }
 
 function EntryCheckBadge({ issues }: { issues: string[] }) {
+  const { t } = useTranslation();
   if (issues.length === 0) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
@@ -630,32 +648,30 @@ function EntryCheckBadge({ issues }: { issues: string[] }) {
       </span>
     );
   }
-  return <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} мәселе</span>;
+  return <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{t("coach.issues_count", { count: issues.length })}</span>;
 }
 
 function MatchStatusBadge({ status }: { status: string }) {
-  const map: Record<string, { c: string; l: string }> = {
-    PENDING: { c: "bg-muted text-muted-foreground", l: "Күтіп тұр" },
-    IN_PROGRESS: { c: "bg-gold/15 text-gold border border-gold/30", l: "LIVE" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
+  const { t } = useTranslation();
+  const map: Record<string, { c: string; key: string }> = {
+    PENDING:     { c: "bg-muted text-muted-foreground",                                  key: "status.PENDING" },
+    IN_PROGRESS: { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.IN_PROGRESS" },
+    COMPLETED:   { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.COMPLETED" },
   };
-  const item = map[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] ${item.c}`}>{item.l}</span>;
+  const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
 }
 
 function FormatBadge({ format }: { format: string }) {
-  const map: Record<string, string> = {
-    SE_IJF: "Olympic / IJF",
-    ROUND_ROBIN: "Round-robin",
-    MIXED: "Mixed",
-  };
-  return <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{map[format] ?? format}</span>;
+  const { t } = useTranslation();
+  return <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{String(t(`format.${format}`, format))}</span>;
 }
 
 function categoryTitle(category: any): string {
+  if (!category) return "";
   const custom = localizeName(category.name);
   if (custom) return custom;
-  return `${category.gender === "MALE" ? "Ер" : "Қыз"} ${category.ageMin}-${category.ageMax} жас ${category.weightMin}-${category.weightMax} кг`;
+  return `${category.gender === "MALE" ? "M" : "F"} ${category.ageMin}-${category.ageMax} ${category.weightMin}-${category.weightMax}kg`;
 }
 
 function fitsCategory(athlete: any, category: any): boolean {
@@ -668,23 +684,23 @@ function fitsCategory(athlete: any, category: any): boolean {
     athlete.weightKg <= category.weightMax;
 }
 
-function validateApplicationEntry(entry: any): string[] {
+function validateApplicationEntry(entry: any, t: any): string[] {
   const athlete = entry.athlete;
   const category = entry.category;
-  if (!athlete || !category) return ["дерек толық емес"];
-  const reason = categoryMismatchReason(athlete, category);
+  if (!athlete || !category) return [t("coach.entry_incomplete")];
+  const reason = categoryMismatchReason(athlete, category, t);
   return reason === "OK" ? [] : [reason];
 }
 
-function categoryMismatchReason(athlete: any, category: any): string {
-  if (!athlete.gender) return "жыныс көрсетілмеген";
-  if (athlete.gender !== category.gender) return "жынысы сәйкес емес";
-  if (!athlete.dateOfBirth) return "туған күні жоқ";
-  if (!athlete.weightKg) return "салмақ жоқ";
+function categoryMismatchReason(athlete: any, category: any, t: any): string {
+  if (!athlete.gender) return t("coach.mismatch_no_gender");
+  if (athlete.gender !== category.gender) return t("coach.mismatch_gender");
+  if (!athlete.dateOfBirth) return t("coach.mismatch_no_dob");
+  if (!athlete.weightKg) return t("coach.mismatch_no_weight");
   const age = getAge(athlete.dateOfBirth);
-  if (age < category.ageMin || age > category.ageMax) return `жасы ${age}, керек ${category.ageMin}-${category.ageMax}`;
+  if (age < category.ageMin || age > category.ageMax) return t("coach.mismatch_age", { age, min: category.ageMin, max: category.ageMax });
   if (athlete.weightKg <= category.weightMin || athlete.weightKg > category.weightMax) {
-    return `салмағы ${athlete.weightKg} кг, керек (${category.weightMin}, ${category.weightMax}]`;
+    return t("coach.mismatch_weight", { weight: athlete.weightKg, min: category.weightMin, max: category.weightMax });
   }
   return "OK";
 }
@@ -702,12 +718,12 @@ function dateRange(start: string, end: string): string {
   return `${new Date(start).toLocaleDateString("kk-KZ")} - ${new Date(end).toLocaleDateString("kk-KZ")}`;
 }
 
-function formatWeighIn(tournament: any): string {
+function formatWeighIn(tournament: any, t: any): string {
   const place = tournament.weighInLocation || tournament.location;
   const start = tournament.weighInStart ? new Date(tournament.weighInStart).toLocaleString("kk-KZ") : "";
   const end = tournament.weighInEnd ? new Date(tournament.weighInEnd).toLocaleString("kk-KZ") : "";
-  const time = start && end ? `${start} - ${end}` : start || "уақыты кейін жарияланады";
-  return `Таразылау: ${place}, ${time}`;
+  const time = start && end ? `${start} - ${end}` : start || t("coach.weigh_in_tbd");
+  return t("coach.weigh_in_format", { place, time });
 }
 
 function mapEmbedUrl(tournament: any): string {

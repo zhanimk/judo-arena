@@ -90,7 +90,7 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
 }
 
 function isValidRoom(room: string): boolean {
-  return /^(tournament|bracket|tatami|user):[a-zA-Z0-9_-]+$/.test(room);
+  return /^(tournament|bracket|tatami|user):[a-zA-Z0-9_-]{1,64}$/.test(room);
 }
 
 // ============================================================

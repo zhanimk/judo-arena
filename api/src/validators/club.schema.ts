@@ -91,7 +91,10 @@ export type UpdateClubGroupInput = z.infer<typeof updateClubGroupSchema>;
 export const createAthleteByCoachSchema = z
   .object({
     email: z.string().email(),
-    password: z.string().min(8).max(128),  // Тренер задаёт начальный пароль
+    password: z.string().min(8).max(128)
+      .regex(/[A-Z]/, "Пароль должен содержать хотя бы одну заглавную букву")
+      .regex(/[a-z]/, "Пароль должен содержать хотя бы одну строчную букву")
+      .regex(/[0-9]/, "Пароль должен содержать хотя бы одну цифру"),
     name: z.string().min(1).max(64),
     surname: z.string().min(1).max(64),
     nameLatin: z.string().max(64).optional(),

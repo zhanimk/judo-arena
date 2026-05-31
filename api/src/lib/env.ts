@@ -27,6 +27,8 @@ const schema = z.object({
 
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
 
+  // Email — либо Resend API (рекомендуется для prod), либо SMTP (Mailpit в dev)
+  RESEND_API_KEY: z.string().optional(),          // если задан — использует Resend API
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_USER: z.string().default(""),

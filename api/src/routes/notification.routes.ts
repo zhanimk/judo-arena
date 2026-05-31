@@ -80,7 +80,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     return listForUser(request.user!.sub, {
       type: qs.type,
       unreadOnly: qs.unreadOnly === "true",
-      limit: qs.limit ? parseInt(qs.limit, 10) : undefined,
+      limit: qs.limit ? Math.min(parseInt(qs.limit, 10) || 50, 200) : undefined,
     });
   });
 

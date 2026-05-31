@@ -20,6 +20,7 @@ import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
 import { buildTatamiState, hasPendingResult, matchOrder } from "@/lib/tatami-state";
+import { useTranslation } from "react-i18next";
 
 type Match = any;
 
@@ -36,9 +37,10 @@ export const Route = createFileRoute("/admin/matches")({
 });
 
 function AdminScoreboard() {
+  const { t } = useTranslation();
   const search = Route.useSearch();
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Табло және татами басқару">
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.matches_title")}>
       <TournamentScoreboardPanel initialTournamentId={search.tournamentId} />
     </DashboardShell>
   );

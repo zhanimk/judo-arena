@@ -1,4 +1,5 @@
 import { Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -56,39 +57,52 @@ export function ApplicationMetric({ label, value, tone }: { label: string; value
 }
 
 export function EntryCheckBadge({ issues }: { issues: string[] }) {
+  const { t } = useTranslation();
   if (issues.length === 0) {
     return <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">OK</span>;
   }
-  return <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} мәселе</span>;
+  return <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} {t("tournament.issues")}</span>;
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    REGISTRATION_OPEN: { c: "bg-gold/15 text-gold border border-gold/30", l: "Тіркеу ашық" },
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Тіркеу жабық" },
-    IN_PROGRESS: { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
-    CANCELLED: { c: "bg-muted text-muted-foreground", l: "Тоқтатылды" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
-    APPROVED: { c: "bg-emerald-500/15 text-emerald-300", l: "Бекітілді" },
-    REJECTED: { c: "bg-destructive/15 text-destructive", l: "Қайтарылды" },
+  const { t } = useTranslation();
+  const colorMap: Record<string, string> = {
+    DRAFT: "bg-muted text-muted-foreground",
+    REGISTRATION_OPEN: "bg-gold/15 text-gold border border-gold/30",
+    REGISTRATION_CLOSED: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+    IN_PROGRESS: "bg-destructive/20 text-destructive border border-destructive/40",
+    COMPLETED: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    CANCELLED: "bg-muted text-muted-foreground",
+    SUBMITTED: "bg-gold/15 text-gold border border-gold/30",
+    APPROVED: "bg-emerald-500/15 text-emerald-300",
+    REJECTED: "bg-destructive/15 text-destructive",
   };
-  const x = m[status] ?? { c: "bg-muted", l: status };
-  return <span className={`text-xs px-3 py-1 rounded-full ${x.c}`}>{x.l}</span>;
+  const cls = colorMap[status] ?? "bg-muted";
+  const label = String(t(`status.${status}`, status));
+  return <span className={`text-xs px-3 py-1 rounded-full ${cls}`}>{label}</span>;
 }
 
 export function WeighInStatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    PENDING: { c: "bg-muted text-muted-foreground", l: "Күтуде" },
-    PASSED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Допуск" },
-    FAILED_WEIGHT: { c: "bg-destructive/15 text-destructive border border-destructive/30", l: "Вес өтпеді" },
-    FAILED_DOCUMENTS: { c: "bg-destructive/15 text-destructive border border-destructive/30", l: "Құжат" },
-    ABSENT: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Келмеді" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Снято" },
+  const { t } = useTranslation();
+  const colorMap: Record<string, string> = {
+    PENDING: "bg-muted text-muted-foreground",
+    PASSED: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    FAILED_WEIGHT: "bg-destructive/15 text-destructive border border-destructive/30",
+    FAILED_DOCUMENTS: "bg-destructive/15 text-destructive border border-destructive/30",
+    ABSENT: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+    WITHDRAWN: "bg-muted text-muted-foreground",
   };
-  const x = m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] ${x.c}`}>{x.l}</span>;
+  const cls = colorMap[status] ?? "bg-muted text-muted-foreground";
+  const labelMap: Record<string, string> = {
+    PENDING: t("weigh_in.status_pending"),
+    PASSED: t("weigh_in.status_passed"),
+    FAILED_WEIGHT: t("weigh_in.status_failed_weight"),
+    FAILED_DOCUMENTS: t("weigh_in.status_failed_docs"),
+    ABSENT: t("weigh_in.status_absent"),
+    WITHDRAWN: t("weigh_in.status_withdrawn"),
+  };
+  const label = labelMap[status] ?? status;
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] ${cls}`}>{label}</span>;
 }
 
 export function FormatBadge({ format }: { format: string }) {
@@ -100,35 +114,39 @@ export function FormatBadge({ format }: { format: string }) {
   return <span className="shrink-0 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{m[format] ?? format}</span>;
 }
 
-export function categoryTitle(c: any): string {
-  if (!c) return "Санат";
+export function categoryTitle(c: any, t?: any): string {
+  if (!c) return t ? t("common.category") : "Category";
   const custom = localizeName(c.name);
   if (custom) return custom;
-  return `${c.gender === "MALE" ? "Ер" : "Қыз"} ${c.ageMin}-${c.ageMax} жас ${c.weightMin}-${c.weightMax} кг`;
+  const gender = c.gender === "MALE"
+    ? (t ? t("common.male") : "M")
+    : (t ? t("tatami.female_short") : "F");
+  const kg = t ? t("common.kg") : "kg";
+  return `${gender} ${c.ageMin}-${c.ageMax} ${t ? t("common.years_short") : "yrs"} ${c.weightMin}-${c.weightMax} ${kg}`;
 }
 
-export function validateApplicationEntry(entry: any): string[] {
+export function validateApplicationEntry(entry: any, t?: any): string[] {
   const issues: string[] = [];
   const athlete = entry.athlete;
   const category = entry.category;
-  if (!athlete || !category) return ["дерек толық емес"];
+  if (!athlete || !category) return [t ? t("validate.incomplete_data") : "incomplete data"];
 
   if (athlete.gender !== category.gender) {
-    issues.push("жыныс сәйкес емес");
+    issues.push(t ? t("validate.gender_mismatch") : "gender mismatch");
   }
 
   const age = athleteAge(athlete);
   if (age === null) {
-    issues.push("жасы жоқ");
+    issues.push(t ? t("validate.no_age") : "no age");
   } else if (age < Number(category.ageMin) || age > Number(category.ageMax)) {
-    issues.push(`жас ${age}, керек ${category.ageMin}-${category.ageMax}`);
+    issues.push(t ? `${t("validate.age")} ${age}, ${t("validate.need")} ${category.ageMin}-${category.ageMax}` : `age ${age}, need ${category.ageMin}-${category.ageMax}`);
   }
 
   const weight = Number(athlete.weightKg);
   if (!Number.isFinite(weight)) {
-    issues.push("салмақ жоқ");
+    issues.push(t ? t("validate.no_weight") : "no weight");
   } else if (weight <= Number(category.weightMin) || weight > Number(category.weightMax)) {
-    issues.push(`салмақ ${weight} кг, керек (${category.weightMin}, ${category.weightMax}]`);
+    issues.push(t ? `${t("validate.weight")} ${weight} ${t("common.kg")}, ${t("validate.need")} (${category.weightMin}, ${category.weightMax}]` : `weight ${weight} kg, need (${category.weightMin}, ${category.weightMax}]`);
   }
 
   return issues;
@@ -145,10 +163,11 @@ export function athleteAge(athlete: any): number | null {
   return age;
 }
 
-export function weightLabel(c: any): string {
+export function weightLabel(c: any, t?: any): string {
+  const kg = t ? t("common.kg") : "kg";
   const max = Number(c.weightMax);
-  if (Number.isFinite(max) && max >= 100) return `+${Math.round(Number(c.weightMin))} кг`;
-  return `-${Math.round(max)} кг`;
+  if (Number.isFinite(max) && max >= 100) return `+${Math.round(Number(c.weightMin))} ${kg}`;
+  return `-${Math.round(max)} ${kg}`;
 }
 
 export function compactI18n(value: Record<string, string>) {
@@ -167,22 +186,23 @@ export function toDateTimeLocal(value: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function mapEmbedUrl(t: any): string {
-  const query = `${t.location}, ${t.city}`;
+export function mapEmbedUrl(tourney: any): string {
+  const query = `${tourney.location}, ${tourney.city}`;
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
-export function formatWeighIn(t: any): string {
-  const place = t.weighInLocation || "орын көрсетілмеген";
-  const start = t.weighInStart ? new Date(t.weighInStart).toLocaleString("kk-KZ") : "";
-  const end = t.weighInEnd ? new Date(t.weighInEnd).toLocaleString("kk-KZ") : "";
-  const time = start && end ? `${start} — ${end}` : start || "уақыт көрсетілмеген";
+export function formatWeighIn(tourney: any, t?: any): string {
+  const place = tourney.weighInLocation || (t ? t("tournament.no_location") : "—");
+  const start = tourney.weighInStart ? new Date(tourney.weighInStart).toLocaleString() : "";
+  const end = tourney.weighInEnd ? new Date(tourney.weighInEnd).toLocaleString() : "";
+  const time = start && end ? `${start} — ${end}` : start || (t ? t("tournament.no_time") : "—");
   return `${place} · ${time}`;
 }
 
 export function localizeName(n: any): string { if (!n) return ""; if (typeof n === "string") return n; return n.kk || n.ru || n.en || ""; }
 
 export function DurationEstimate({ categories, matches, tatamiCount }: { categories: any[]; matches: any[]; tatamiCount: number }) {
+  const { t } = useTranslation();
   const playable = matches.filter((m: any) => m.redAthlete && m.blueAthlete && m.status !== "CANCELLED");
   if (playable.length === 0) return null;
 
@@ -208,18 +228,18 @@ export function DurationEstimate({ categories, matches, tatamiCount }: { categor
   const estimatedMinutes = Math.ceil(totalMatchMinutes / tatamiCount);
   const hours = Math.floor(estimatedMinutes / 60);
   const mins = estimatedMinutes % 60;
-  const durationStr = hours > 0 ? `~${hours} сағ ${mins} мин` : `~${mins} мин`;
+  const durationStr = hours > 0 ? `~${hours} ${t("tournament.hours_short")} ${mins} ${t("tournament.min_short")}` : `~${mins} ${t("tournament.min_short")}`;
 
   return (
     <div className="mt-4 rounded-md border border-gold/30 bg-gold/5 p-4">
       <div className="flex items-center gap-2 text-sm font-medium text-gold">
         <Clock className="h-4 w-4" />
-        Шамамен ұзақтығы: {durationStr}
+        {t("tournament.est_duration")}: {durationStr}
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
-        {playable.length} матч · {tatamiCount} татами
-        {maleCount > 0 && ` · Ер: ${maleCount}`}
-        {femaleCount > 0 && ` · Қыз: ${femaleCount}`}
+        {playable.length} {t("tatami.match_word")} · {tatamiCount} {t("common.tatami")}
+        {maleCount > 0 && ` · ${t("common.male")}: ${maleCount}`}
+        {femaleCount > 0 && ` · ${t("tatami.female_short")}: ${femaleCount}`}
       </div>
     </div>
   );

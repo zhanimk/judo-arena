@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches/$id")({
   head: () => ({ meta: [{ title: "Жекпе-жек — Judo-Arena" }] }),
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/athlete/matches/$id")({
 });
 
 function AthleteMatchDetails() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const { user } = useAuth();
   const athleteId = user?.id ?? "";
@@ -27,7 +29,6 @@ function AthleteMatchDetails() {
     queryKey: ["athlete-match", id],
     queryFn: () => api.matches.get(id),
     enabled: !!id,
-    // 10 s fallback poll when socket is unavailable during live match
     refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? 10_000 : false),
   });
 
@@ -35,7 +36,6 @@ function AthleteMatchDetails() {
   const tournamentId = match?.tournament?.id;
   const isLive = match?.status === "IN_PROGRESS";
 
-  // Socket.IO: instant updates during live match
   useRealtime(
     tournamentId ? [`tournament:${tournamentId}`] : [],
     {
@@ -55,60 +55,59 @@ function AthleteMatchDetails() {
   const opponentScore = mySide === "red" ? match?.scoreSnapshot?.blue : mySide === "blue" ? match?.scoreSnapshot?.red : null;
 
   return (
-    <DashboardShell role="Спортшы" navItems={nav} accentTitle="Жекпе-жек">
+    <DashboardShell role={t("roles.ATHLETE")} navItems={nav} accentTitle={t("matches.match_detail")}>
       <div className="mb-4">
         <Link to="/athlete/matches" className="text-sm text-muted-foreground hover:text-gold">
-          ← Жекпе-жектер тізіміне қайту
+          ← {t("matches.back_to_list")}
         </Link>
       </div>
 
-      {/* Live badge */}
       {isLive && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-400/40 bg-blue-400/5 px-4 py-2.5 text-sm text-blue-300">
           <span className="inline-block h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
-          Матч қазір жүруде — нәтиже нақты уақытта жаңарып тұрады
+          {t("matches.live_hint")}
         </div>
       )}
 
       {matchQuery.isLoading ? (
         <LoadingState />
       ) : !match ? (
-        <EmptyState title="Матч табылмады" hint="Бұл жекпе-жек жүйеде жоқ немесе жойылған." />
+        <EmptyState title={t("matches.not_found")} hint={t("matches.not_found_hint")} />
       ) : !isMyMatch ? (
-        <EmptyState title="Бұл сіздің матчыңыз емес" hint="Өз жекпе-жектеріңіз нәтижелер бөлімінде көрінеді." />
+        <EmptyState title={t("matches.not_my_match")} hint={t("matches.not_my_match_hint")} />
       ) : (
         <>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Нәтиже" value={completed ? (won ? "Жеңіс" : "Жеңіліс") : statusLabel(match.status)} hint={match.tatamiNumber ? `Татами ${match.tatamiNumber}` : "татами белгіленбеген"} accent={won} />
-            <StatCard label="Раунд" value={String(match.round)} hint={sectionLabel(match.bracketSection)} />
-            <StatCard label="Қарсылас" value={opponent ? `${opponent.name} ${opponent.surname}` : "TBD"} hint={opponent ? "дайын" : "әлі анықталмаған"} />
-            <StatCard label="Турнир" value={localizeName(match.tournament?.name)} hint={match.tournament?.status ?? "—"} />
+            <StatCard label={t("matches.result")} value={completed ? (won ? t("matches.win") : t("matches.loss")) : String(t(`status.${match.status}`, match.status))} hint={match.tatamiNumber ? `${t("common.tatami")} ${match.tatamiNumber}` : t("matches.no_tatami")} accent={won} />
+            <StatCard label={t("matches.round")} value={String(match.round)} hint={sectionLabel(match.bracketSection, t)} />
+            <StatCard label={t("matches.opponent")} value={opponent ? `${opponent.name} ${opponent.surname}` : "TBD"} hint={opponent ? t("matches.opponent_ready") : t("matches.opponent_tbd")} />
+            <StatCard label={t("common.tournament")} value={localizeName(match.tournament?.name)} hint={match.tournament?.status ?? "—"} />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <Panel title="Матч картасы">
+            <Panel title={t("matches.match_card")}>
               <div className="grid gap-3 text-sm">
-                <Info label="Санат" value={categoryTitle(match.bracket?.category)} />
-                <Info label="Формат" value={match.bracket?.format ?? "—"} />
-                <Info label="Басталды" value={formatDateTime(match.startedAt)} />
-                <Info label="Аяқталды" value={formatDateTime(match.finishedAt)} />
+                <Info label={t("common.category")} value={categoryTitle(match.bracket?.category, t)} />
+                <Info label={t("common.format")} value={match.bracket?.format ?? "—"} />
+                <Info label={t("matches.started_at")} value={formatDateTime(match.startedAt)} />
+                <Info label={t("matches.finished_at")} value={formatDateTime(match.finishedAt)} />
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <ScoreBox title="Мен" score={myScore} active />
-                <ScoreBox title="Қарсылас" score={opponentScore} />
+                <ScoreBox title={t("matches.me")} score={myScore} active />
+                <ScoreBox title={t("matches.opponent")} score={opponentScore} />
               </div>
             </Panel>
 
-            <Panel title={`Оқиғалар: ${match.events?.length ?? 0}`}>
+            <Panel title={`${t("matches.events")}: ${match.events?.length ?? 0}`}>
               {(match.events ?? []).length === 0 ? (
-                <EmptyState title="Оқиғалар жоқ" hint="Судья матчты жүргізген кезде оқиғалар осында түседі." />
+                <EmptyState title={t("matches.no_events")} hint={t("matches.no_events_hint")} />
               ) : (
                 <ol className="space-y-2 text-sm">
                   {(match.events ?? []).map((event: any) => (
                     <li key={event.id} className="glass flex items-center justify-between gap-3 rounded-md p-3">
                       <div className="min-w-0">
-                        <div className="font-medium">{eventLabel(event.type, event.side)}</div>
+                        <div className="font-medium">{eventLabel(event.type, event.side, t)}</div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Calendar className="h-3.5 w-3.5" />
                           {formatDateTime(event.occurredAt)}
@@ -161,9 +160,9 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function categoryTitle(category: any): string {
-  if (!category) return "Санат";
-  const gender = category.gender === "MALE" ? "Ер" : "Әйел";
+function categoryTitle(category: any, t: (key: string) => string): string {
+  if (!category) return t("common.category");
+  const gender = category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
   return `${gender} ${category.ageMin}-${category.ageMax}, ${category.weightMin}-${category.weightMax} кг`;
 }
 
@@ -173,28 +172,19 @@ function localizeName(value: any): string {
   return value.kk || value.ru || value.en || "—";
 }
 
-function statusLabel(status: string): string {
+function sectionLabel(section: string | null | undefined, t: (key: string) => string): string {
   const labels: Record<string, string> = {
-    PENDING: "Күтуде",
-    IN_PROGRESS: "LIVE",
-    COMPLETED: "Аяқталды",
-    CANCELLED: "Болмады",
+    main: t("bracket.section_main"),
+    repechage: t("bracket.section_repechage"),
+    bronze1: t("bracket.section_bronze1"),
+    bronze2: t("bracket.section_bronze2"),
+    final: t("bracket.section_final"),
   };
-  return labels[status] ?? status;
+  return section ? labels[section] ?? section : t("bracket.section_main");
 }
 
-function sectionLabel(section?: string | null): string {
-  const labels: Record<string, string> = {
-    main: "негізгі сетка",
-    repechage: "жұбату",
-    bronze1: "қола 1",
-    bronze2: "қола 2",
-    final: "финал",
-  };
-  return section ? labels[section] ?? section : "негізгі";
-}
-
-function eventLabel(type: string, side?: string | null): string {
+function eventLabel(type: string, side: string | null | undefined, t: (key: string) => string): string {
+  // Proper nouns (Hajime, Ippon, etc.) are NOT translated
   const labels: Record<string, string> = {
     HAJIME: "Hajime",
     MATE: "Mate",
@@ -205,10 +195,10 @@ function eventLabel(type: string, side?: string | null): string {
     SHIDO: "Shido",
     HANSOKU_MAKE: "Hansoku-make",
     GOLDEN_SCORE: "Golden Score",
-    REPLAY: "Видео-қайталау",
-    END: "Аяқталды",
+    REPLAY: t("matches.event_replay"),
+    END: t("matches.event_end"),
   };
-  const sideLabel = side === "RED" ? "қызыл" : side === "BLUE" ? "көк" : "";
+  const sideLabel = side === "RED" ? t("matches.side_red") : side === "BLUE" ? t("matches.side_blue") : "";
   return `${labels[type] ?? type}${sideLabel ? ` · ${sideLabel}` : ""}`;
 }
 

@@ -31,9 +31,12 @@ let accessToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
+let refreshFailCount = 0;
+const MAX_REFRESH_FAILURES = 3;
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  if (token) refreshFailCount = 0;
   // Sync socket connection token (lazy import to avoid circular dep)
   import("./socket").then(({ updateSocketToken }) => updateSocketToken(token));
 }
@@ -65,6 +68,10 @@ export class ApiError extends Error {
 
 async function refreshTokens(): Promise<string | null> {
   if (isRefreshing && refreshPromise) return refreshPromise;
+  if (refreshFailCount >= MAX_REFRESH_FAILURES) {
+    if (onUnauthorized) onUnauthorized();
+    return null;
+  }
   isRefreshing = true;
   refreshPromise = (async () => {
     try {
@@ -72,11 +79,16 @@ async function refreshTokens(): Promise<string | null> {
         method: "POST",
         credentials: "include",
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        refreshFailCount++;
+        return null;
+      }
       const data = await res.json();
       accessToken = data.accessToken ?? null;
+      refreshFailCount = 0;
       return accessToken;
     } catch {
+      refreshFailCount++;
       return null;
     } finally {
       isRefreshing = false;
@@ -84,6 +96,10 @@ async function refreshTokens(): Promise<string | null> {
     }
   })();
   return refreshPromise;
+}
+
+export function resetRefreshFailCount(): void {
+  refreshFailCount = 0;
 }
 
 async function request<T = unknown>(
@@ -207,7 +223,7 @@ export const api = {
     image: (file: File) => {
       const form = new FormData();
       form.append("file", file);
-      return request<{ url: string }>("/api/uploads/image", { method: "POST", body: form });
+      return request<{ url: string }>("/api/upload/image", { method: "POST", body: form });
     },
   },
 
@@ -352,14 +368,14 @@ export const api = {
       request<any>(`/api/matches/${id}/start`, { method: "POST", judgeToken, tatamiToken }),
     pause: (id: string, judgeToken?: string, tatamiToken?: string) =>
       request<any>(`/api/matches/${id}/pause`, { method: "POST", judgeToken, tatamiToken }),
-    score: (id: string, type: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/score`, { method: "POST", json: { type, side }, judgeToken, tatamiToken }),
-    osaekomi: (id: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/osaekomi`, { method: "POST", json: { side }, judgeToken, tatamiToken }),
-    toketa: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/toketa`, { method: "POST", json: { reason: "TOKETA" }, judgeToken, tatamiToken }),
-    finish: (id: string, winnerSide: "RED" | "BLUE", reason?: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/finish`, { method: "POST", json: { winnerSide, reason }, judgeToken, tatamiToken }),
+    score: (id: string, type: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string, version?: number) =>
+      request<any>(`/api/matches/${id}/score`, { method: "POST", json: { type, side, version }, judgeToken, tatamiToken }),
+    osaekomi: (id: string, side: "RED" | "BLUE", judgeToken?: string, tatamiToken?: string, version?: number) =>
+      request<any>(`/api/matches/${id}/osaekomi`, { method: "POST", json: { side, version }, judgeToken, tatamiToken }),
+    toketa: (id: string, judgeToken?: string, tatamiToken?: string, version?: number) =>
+      request<any>(`/api/matches/${id}/toketa`, { method: "POST", json: { reason: "TOKETA", version }, judgeToken, tatamiToken }),
+    finish: (id: string, winnerSide: "RED" | "BLUE", reason?: string, judgeToken?: string, tatamiToken?: string, version?: number) =>
+      request<any>(`/api/matches/${id}/finish`, { method: "POST", json: { winnerSide, reason, version }, judgeToken, tatamiToken }),
     confirm: (id: string, judgeToken?: string, tatamiToken?: string) =>
       request<any>(`/api/matches/${id}/confirm`, { method: "POST", judgeToken, tatamiToken }),
     cancelResult: (id: string, judgeToken?: string, tatamiToken?: string) =>

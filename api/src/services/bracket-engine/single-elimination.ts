@@ -40,6 +40,9 @@ export function buildSingleElimination(slots: (string | null)[]): SEMatch[] {
   if (size < 2 || (size & (size - 1)) !== 0) {
     throw new Error("Размер сетки должен быть степенью двойки ≥ 2");
   }
+  if (size > 128) {
+    throw new Error("Размер сетки не может превышать 128 участников");
+  }
 
   const matches: SEMatch[] = [];
   const totalRounds = Math.log2(size); // size=8 → 3 раунда (1/4, 1/2, финал)

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
@@ -34,6 +35,7 @@ const INPUT_CLS =
   "w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold";
 
 function CoachOnboarding() {
+  const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -72,7 +74,8 @@ function CoachOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["coach-join-requests-onboarding"] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім жіберілмеді"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_onboarding.request_error")),
   });
 
   const cancelRequest = useMutation({
@@ -81,7 +84,8 @@ function CoachOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["coach-join-requests-onboarding"] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім тоқтатылмады"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_onboarding.cancel_error")),
   });
 
   async function savePhoneAndProceed() {
@@ -131,8 +135,8 @@ function CoachOnboarding() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 ring-4 ring-emerald-500/30 animate-scale-in">
           <CheckCircle2 className="h-10 w-10 text-emerald-400" />
         </div>
-        <div className="text-xl font-bold text-foreground">Кабинет дайын!</div>
-        <div className="text-sm text-muted-foreground animate-pulse">Жүктелуде...</div>
+        <div className="text-xl font-bold text-foreground">{t("coach_onboarding.setup_done")}</div>
+        <div className="text-sm text-muted-foreground animate-pulse">{t("common.loading")}</div>
       </div>
     );
   }
@@ -158,7 +162,7 @@ function CoachOnboarding() {
             <img src={emblem} alt="" className="h-10 w-10 rounded-xl" />
             <div>
               <div className="font-display text-lg font-bold">JUDO·ARENA</div>
-              <div className="text-xs text-muted-foreground">Жаттықтырушыны баптау</div>
+              <div className="text-xs text-muted-foreground">{t("coach_onboarding.subtitle")}</div>
             </div>
           </div>
         </header>
@@ -167,53 +171,67 @@ function CoachOnboarding() {
           {/* Sidebar progress */}
           <aside className="rounded-xl border border-border bg-card p-5">
             <div className="mb-6">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">Қош келдіңіз</p>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("coach_onboarding.welcome")}
+              </p>
               <h1 className="mt-2 font-display text-2xl font-bold">
                 {user.name} {user.surname}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Жаттықтырушы ретінде кабинет ашу үшін клубқа кіріп, ережелерді қабылдаңыз.
+                {t("coach_onboarding.description")}
               </p>
             </div>
             <div className="space-y-3">
               <StepRow
                 number="1"
-                title="Телефон"
+                title={t("coach_onboarding.step_phone")}
                 done={Boolean(user?.phone || phone.trim())}
-                hint="Хабарландыру үшін"
+                hint={t("coach_onboarding.step_phone_hint")}
               />
               <StepRow
                 number="2"
-                title="Клуб"
+                title={t("coach_onboarding.step_club")}
                 done={hasClubStep}
-                hint={user?.club ? localizeName(user.club.name) : activeRequest ? "Өтінім жіберілді" : "Бір клубқа өтінім"}
+                hint={
+                  user?.club
+                    ? localizeName(user.club.name)
+                    : activeRequest
+                      ? t("coach_onboarding.request_pending")
+                      : t("coach_onboarding.step_club_hint")
+                }
               />
               <StepRow
                 number="3"
-                title="Жауапкершілік"
+                title={t("coach_onboarding.step_rules")}
                 done={agreed}
-                hint="Ережелерді қабылдау"
+                hint={t("coach_onboarding.step_rules_hint")}
               />
               <StepRow
                 number="4"
-                title="Дэшборд"
+                title={t("coach_onboarding.step_dashboard")}
                 done={canFinish}
                 disabled={!canFinish}
-                hint="Барлығы дайын болғанда ашылады"
+                hint={t("coach_onboarding.step_dashboard_hint")}
               />
             </div>
           </aside>
 
           <section className="space-y-5">
             {/* Step 1: Phone */}
-            <div className={`rounded-xl border border-border bg-card p-5 ${hasPhoneStep ? "border-emerald-500/20" : ""}`}>
+            <div
+              className={`rounded-xl border border-border bg-card p-5 ${hasPhoneStep ? "border-emerald-500/20" : ""}`}
+            >
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400">
                   <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="font-display text-lg font-bold">1. Телефон нөмірі</h2>
-                  <p className="text-sm text-muted-foreground">Міндетті емес, бірақ хабарландыру үшін пайдалы.</p>
+                  <h2 className="font-display text-lg font-bold">
+                    1. {t("coach_onboarding.phone_title")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t("coach_onboarding.phone_desc")}
+                  </p>
                 </div>
               </div>
               {user?.phone ? (
@@ -236,7 +254,11 @@ function CoachOnboarding() {
                       disabled={savingPhone}
                       className="shrink-0 rounded-lg bg-gradient-gold px-4 py-2.5 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-50"
                     >
-                      {savingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : "Сақтау"}
+                      {savingPhone ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        t("common.save")
+                      )}
                     </button>
                   )}
                 </div>
@@ -261,20 +283,26 @@ function CoachOnboarding() {
             />
 
             {/* Step 3: Responsibility */}
-            <div className={`rounded-xl border bg-card p-5 transition ${agreed ? "border-emerald-500/20" : "border-border"}`}>
+            <div
+              className={`rounded-xl border bg-card p-5 transition ${agreed ? "border-emerald-500/20" : "border-border"}`}
+            >
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="font-display text-lg font-bold">3. Жауапкершілік</h2>
-                  <p className="text-sm text-muted-foreground">Жарыс тәртібі ережелерін қабылдау.</p>
+                  <h2 className="font-display text-lg font-bold">
+                    3. {t("coach_onboarding.rules_title")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t("coach_onboarding.rules_desc")}
+                  </p>
                 </div>
               </div>
               {agreed ? (
                 <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                  <span className="text-sm font-medium">Ережелер қабылданды</span>
+                  <span className="text-sm font-medium">{t("coach_onboarding.rules_accepted")}</span>
                 </div>
               ) : (
                 <button
@@ -283,7 +311,7 @@ function CoachOnboarding() {
                   className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-300 hover:bg-amber-500/15"
                 >
                   <AlertTriangle className="h-4 w-4" />
-                  Ережелерді қарау және қабылдау →
+                  {t("coach_onboarding.rules_review_btn")}
                 </button>
               )}
             </div>
@@ -303,7 +331,7 @@ function CoachOnboarding() {
                 className="inline-flex items-center gap-2 rounded-lg bg-gradient-gold px-6 py-3 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-40 transition"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Кабинетке өту
+                {t("coach_onboarding.go_dashboard")}
               </button>
             </div>
           </section>
@@ -314,6 +342,7 @@ function CoachOnboarding() {
 }
 
 function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => void }) {
+  const { t } = useTranslation();
   const [checked, setChecked] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -324,6 +353,16 @@ function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
+
+  const ruleKeys = [
+    "coach_onboarding.rule_1",
+    "coach_onboarding.rule_2",
+    "coach_onboarding.rule_3",
+    "coach_onboarding.rule_4",
+    "coach_onboarding.rule_5",
+  ] as const;
+
+  const ruleIcons = ["🤝", "🔇", "⚖️", "👥", "🚫"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -336,41 +375,38 @@ function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => 
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-amber-400" />
-            <h2 className="font-display text-lg font-bold">Жаттықтырушы жауапкершілігі</h2>
+            <h2 className="font-display text-lg font-bold">
+              {t("coach_onboarding.modal_title")}
+            </h2>
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="max-h-[50vh] overflow-y-auto px-6 py-5 text-sm leading-relaxed space-y-4">
-          <p className="text-muted-foreground">
-            Judo-Arena платформасына тіркелу арқылы сіз төмендегі ережелерді міндеттейсіз:
-          </p>
+          <p className="text-muted-foreground">{t("coach_onboarding.modal_intro")}</p>
           <ul className="space-y-3">
-            {[
-              { icon: "🤝", text: "Жарыс кезінде дау-жанжал туғызбайтын әрі татами жанындағы барлық қатысушыларға сыйластықпен қарайтын мінез-құлықты сақтаймын." },
-              { icon: "🔇", text: "Төрешілерге, бағдарламалық жасақтамаға немесе басқа тренерлерге/спортшыларға дауыс көтеріп, тіл тигізбеймін." },
-              { icon: "⚖️", text: "Жарыс хаттамасын өзгертуге немесе нәтижеге жосықсыз ықпал етуге әрекет жасамаймын." },
-              { icon: "👥", text: "Клубымның спортшылары жарыс алаңында тиісті тәртіп пен этиканы сақтауына жауаппын." },
-              { icon: "🚫", text: "Ережені бұзған жағдайда Judo-Arena әкімшілігі аккаунтымды уақытша немесе тұрақты түрде бұғаттауға құқылы екенін білемін." },
-            ].map(({ icon, text }) => (
-              <li key={icon} className="flex gap-3">
-                <span className="text-lg leading-none shrink-0 mt-0.5">{icon}</span>
-                <span className="text-foreground">{text}</span>
+            {ruleKeys.map((key, i) => (
+              <li key={key} className="flex gap-3">
+                <span className="text-lg leading-none shrink-0 mt-0.5">{ruleIcons[i]}</span>
+                <span className="text-foreground">{t(key)}</span>
               </li>
             ))}
           </ul>
           <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-3">
-            <p className="text-amber-200 text-xs">
-              Ережені бұзу тренерлердің жарыстарды тіркелуге жіберу мүмкіндігін жоюға, жарыс нәтижелеріне шағымдануды болдырмауға әкеп соғуы мүмкін.
-            </p>
+            <p className="text-amber-200 text-xs">{t("coach_onboarding.modal_warning")}</p>
           </div>
         </div>
 
         <div className="border-t border-border/50 px-6 py-4 space-y-4">
           <label className="flex items-start gap-3 cursor-pointer group">
-            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${checked ? "border-gold bg-gold/20" : "border-border group-hover:border-gold/50"}`}>
+            <div
+              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${checked ? "border-gold bg-gold/20" : "border-border group-hover:border-gold/50"}`}
+            >
               {checked && <CheckCircle2 className="h-3.5 w-3.5 text-gold" />}
             </div>
             <input
@@ -379,9 +415,7 @@ function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => 
               onChange={(e) => setChecked(e.target.checked)}
               className="sr-only"
             />
-            <span className="text-sm">
-              Жоғарыдағы барлық ережелермен таныстым және оларды сақтауға міндеттенемін.
-            </span>
+            <span className="text-sm">{t("coach_onboarding.modal_agree_label")}</span>
           </label>
           <div className="flex gap-3">
             <button
@@ -390,14 +424,14 @@ function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => 
               disabled={!checked}
               className="flex-1 rounded-lg bg-gradient-gold py-2.5 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-40 transition"
             >
-              Қабылдаймын
+              {t("coach_onboarding.modal_accept_btn")}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground"
             >
-              Болдырмау
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -429,6 +463,7 @@ function ClubStep({
   busy: boolean;
   onClubCreated: () => void;
 }) {
+  const { t } = useTranslation();
   const locked = Boolean(userClub || activeRequest);
   const [tab, setTab] = useState<"join" | "create">("join");
   const [form, setForm] = useState({ nameKk: "", nameRu: "", city: "", country: "KZ" });
@@ -447,18 +482,21 @@ function ClubStep({
       await refreshMe();
       onClubCreated();
     },
-    onError: (e: any) => setCreateError(e instanceof ApiError ? e.message : "Клуб жасалмады"),
+    onError: (e: any) =>
+      setCreateError(e instanceof ApiError ? e.message : t("coach_onboarding.create_club_error")),
   });
 
   return (
-    <div className={`rounded-xl border bg-card p-5 ${locked ? "border-emerald-500/20" : "border-border"}`}>
+    <div
+      className={`rounded-xl border bg-card p-5 ${locked ? "border-emerald-500/20" : "border-border"}`}
+    >
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 text-gold">
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-bold">2. Клуб</h2>
-          <p className="text-sm text-muted-foreground">Бар клубқа қосылыңыз немесе жаңа клуб жасаңыз.</p>
+          <h2 className="font-display text-lg font-bold">2. {t("coach_onboarding.step_club")}</h2>
+          <p className="text-sm text-muted-foreground">{t("coach_onboarding.club_desc")}</p>
         </div>
       </div>
 
@@ -475,8 +513,12 @@ function ClubStep({
           <div className="flex items-center gap-3">
             <Clock className="h-5 w-5 text-gold shrink-0" />
             <div>
-              <div className="text-sm font-semibold">{localizeName(activeRequest.club?.name)}</div>
-              <div className="text-xs text-muted-foreground">{activeRequest.club?.city ?? ""} · өтінім күтілуде</div>
+              <div className="text-sm font-semibold">
+                {localizeName(activeRequest.club?.name)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {activeRequest.club?.city ?? ""} · {t("coach_onboarding.request_pending")}
+              </div>
             </div>
           </div>
           <button
@@ -485,14 +527,19 @@ function ClubStep({
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
           >
             <XCircle className="h-3.5 w-3.5" />
-            Өзгерту
+            {t("coach_onboarding.change_club")}
           </button>
         </div>
       ) : (
         <>
           {/* Tabs */}
           <div className="mb-4 flex gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-            {([["join", "Бар клубқа қосылу"], ["create", "Жаңа клуб жасау"]] as const).map(([id, label]) => (
+            {(
+              [
+                ["join", t("coach_onboarding.tab_join")],
+                ["create", t("coach_onboarding.tab_create")],
+              ] as const
+            ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
@@ -515,32 +562,41 @@ function ClubStep({
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Клуб атауын теріңіз..."
+                  placeholder={t("coach_onboarding.search_placeholder")}
                   className={`${INPUT_CLS} pl-9`}
                 />
               </div>
               {search.trim().length < 1 ? (
                 <div className="rounded-lg border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
-                  Клуб атауын теріп іздеңіз
+                  {t("coach_onboarding.search_hint")}
                 </div>
               ) : loading ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin mb-2" />
-                  Іздеу...
+                  {t("coach_onboarding.searching")}
                 </div>
               ) : clubs.length === 0 ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
-                  Клуб табылмады —{" "}
-                  <button type="button" onClick={() => setTab("create")} className="text-gold underline underline-offset-2">
-                    жаңа клуб жасау
+                  {t("coach_onboarding.not_found")}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setTab("create")}
+                    className="text-gold underline underline-offset-2"
+                  >
+                    {t("coach_onboarding.tab_create")}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {clubs.map((club) => (
-                    <div key={club.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-input/35 p-3">
+                    <div
+                      key={club.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-input/35 p-3"
+                    >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{localizeName(club.name)}</div>
+                        <div className="truncate text-sm font-semibold">
+                          {localizeName(club.name)}
+                        </div>
                         <div className="text-xs text-muted-foreground">{club.city}</div>
                       </div>
                       <button
@@ -548,7 +604,7 @@ function ClubStep({
                         disabled={busy || locked}
                         className="shrink-0 rounded-md bg-gradient-gold px-3 py-2 text-xs font-semibold text-gold-foreground shadow-gold disabled:opacity-50"
                       >
-                        Өтінім жіберу
+                        {t("coach_onboarding.send_request")}
                       </button>
                     </div>
                   ))}
@@ -557,12 +613,17 @@ function ClubStep({
             </>
           ) : (
             <form
-              onSubmit={(e) => { e.preventDefault(); createClub.mutate(); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                createClub.mutate();
+              }}
               className="space-y-3"
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Клуб атауы (қаз)</label>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("coach_onboarding.name_kk_label")}
+                  </label>
                   <input
                     required
                     value={form.nameKk}
@@ -572,7 +633,9 @@ function ClubStep({
                   />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Клуб атауы (рус)</label>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("coach_onboarding.name_ru_label")}
+                  </label>
                   <input
                     value={form.nameRu}
                     onChange={(e) => setForm({ ...form, nameRu: e.target.value })}
@@ -581,7 +644,9 @@ function ClubStep({
                   />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Қала</label>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("common.city")}
+                  </label>
                   <input
                     required
                     value={form.city}
@@ -591,11 +656,15 @@ function ClubStep({
                   />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-widest text-muted-foreground">Ел коды</label>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("coach_onboarding.country_label")}
+                  </label>
                   <input
                     value={form.country}
                     maxLength={2}
-                    onChange={(e) => setForm({ ...form, country: e.target.value.toUpperCase().slice(0, 2) })}
+                    onChange={(e) =>
+                      setForm({ ...form, country: e.target.value.toUpperCase().slice(0, 2) })
+                    }
                     className={`mt-1.5 ${INPUT_CLS}`}
                   />
                 </div>
@@ -610,8 +679,12 @@ function ClubStep({
                 disabled={createClub.isPending || !form.nameKk.trim() || !form.city.trim()}
                 className="w-full rounded-lg bg-gradient-gold py-2.5 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-40 inline-flex items-center justify-center gap-2"
               >
-                {createClub.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-                Клуб жасау және иесі болу
+                {createClub.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Building2 className="h-4 w-4" />
+                )}
+                {t("coach_onboarding.create_and_own")}
               </button>
             </form>
           )}
@@ -635,8 +708,12 @@ function StepRow({
   disabled?: boolean;
 }) {
   return (
-    <div className={`flex gap-3 rounded-lg border p-3 transition ${disabled ? "opacity-50" : ""} ${done ? "border-emerald-500/30 bg-emerald-500/8" : "border-border bg-muted/25"}`}>
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-emerald-500 text-white" : "bg-gold/15 text-gold"}`}>
+    <div
+      className={`flex gap-3 rounded-lg border p-3 transition ${disabled ? "opacity-50" : ""} ${done ? "border-emerald-500/30 bg-emerald-500/8" : "border-border bg-muted/25"}`}
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-emerald-500 text-white" : "bg-gold/15 text-gold"}`}
+      >
         {done ? <CheckCircle2 className="h-4 w-4" /> : number}
       </div>
       <div>

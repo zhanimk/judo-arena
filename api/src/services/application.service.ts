@@ -50,9 +50,8 @@ export async function createOrGetDraftApplication(
     throw new ApplicationError("NO_CLUB", "Тренер не привязан к клубу", 409);
   }
   if (coach.clubRole !== ClubRole.OWNER) {
-    throw new ApplicationError("CLUB_OWNER_REQUIRED", "Турнирге ресми өтінімді тек клуб иесі бере алады", 403);
+    throw new ApplicationError("CLUB_OWNER_REQUIRED", "Официальную заявку клуба может подать только главный тренер", 403);
   }
-
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
   if (!tournament) throw new ApplicationError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   if (tournament.status !== TournamentStatus.REGISTRATION_OPEN) {
@@ -611,7 +610,7 @@ async function assertCanManageApplication(actorUserId: string, clubId: string): 
   if (actor.role === UserRole.COACH && actor.clubId === clubId && actor.clubRole === ClubRole.OWNER) return;
   throw new ApplicationError(
     "FORBIDDEN",
-    "Управлять официальной заявкой может только владелец клуба или админ",
+    "Управлять официальной заявкой может только главный тренер клуба или админ",
     403,
   );
 }

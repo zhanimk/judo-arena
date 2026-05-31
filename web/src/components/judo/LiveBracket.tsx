@@ -7,6 +7,7 @@ import { OlympicBracket } from "./OlympicBracket";
 import { api } from "@/lib/api";
 import { useRealtime } from "@/lib/socket";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   tournamentId: string;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function LiveBracket({ tournamentId, categoryId }: Props) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   const query = useQuery({
@@ -42,7 +44,7 @@ export function LiveBracket({ tournamentId, categoryId }: Props) {
   if (query.error || !query.data) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
-        Тор әлі жасалмаған
+        {t("bracket.no_bracket")}
       </div>
     );
   }

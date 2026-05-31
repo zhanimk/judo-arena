@@ -10,6 +10,7 @@ import { Calendar, Clock, GitBranch, MapPin, Radio, Search, Trophy, Users, Loade
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
@@ -23,15 +24,6 @@ export const Route = createFileRoute("/tournaments")({
 
 type Status = "DRAFT" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
-const statusLabel: Record<Status, string> = {
-  DRAFT: "Жоба",
-  REGISTRATION_OPEN: "Тіркеу ашық",
-  REGISTRATION_CLOSED: "Тіркеу жабық",
-  IN_PROGRESS: "LIVE",
-  COMPLETED: "Аяқталды",
-  CANCELLED: "Тоқтатылды",
-};
-
 const statusColor = (s: Status) =>
   s === "IN_PROGRESS" ? "bg-destructive/20 text-destructive border-destructive/40 animate-pulse" :
   s === "REGISTRATION_OPEN" ? "bg-gold/15 text-gold border-gold/30" :
@@ -41,13 +33,6 @@ const statusColor = (s: Status) =>
 
 const tournamentImages = [heroKazakhstan, teamLineup, athleteBlue, athleteWhite];
 
-const filters: Array<{ value: "ALL" | Status; label: string }> = [
-  { value: "ALL", label: "Барлығы" },
-  { value: "REGISTRATION_OPEN", label: "Тіркеу ашық" },
-  { value: "IN_PROGRESS", label: "LIVE" },
-  { value: "COMPLETED", label: "Аяқталған" },
-];
-
 function localizeName(name: any): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
@@ -55,6 +40,7 @@ function localizeName(name: any): string {
 }
 
 function Tournaments() {
+  const { t } = useTranslation();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [filter, setFilter] = useState<"ALL" | Status>("ALL");
   const [search, setSearch] = useState("");
@@ -65,16 +51,23 @@ function Tournaments() {
   const tournaments = data?.items ?? [];
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tournaments.filter((t: any) => {
-      const byStatus = filter === "ALL" || t.status === filter;
-      const text = `${localizeName(t.name)} ${t.city ?? ""} ${t.location ?? ""}`.toLowerCase();
+    return tournaments.filter((tournament: any) => {
+      const byStatus = filter === "ALL" || tournament.status === filter;
+      const text = `${localizeName(tournament.name)} ${tournament.city ?? ""} ${tournament.location ?? ""}`.toLowerCase();
       return byStatus && (!q || text.includes(q));
     });
   }, [filter, search, tournaments]);
   const featured = filtered[0] ?? tournaments[0];
-  const liveCount = tournaments.filter((t: any) => t.status === "IN_PROGRESS").length;
-  const openCount = tournaments.filter((t: any) => t.status === "REGISTRATION_OPEN").length;
-  const totalApplications = tournaments.reduce((sum: number, t: any) => sum + (t._count?.applications ?? 0), 0);
+  const liveCount = tournaments.filter((tournament: any) => tournament.status === "IN_PROGRESS").length;
+  const openCount = tournaments.filter((tournament: any) => tournament.status === "REGISTRATION_OPEN").length;
+  const totalApplications = tournaments.reduce((sum: number, tournament: any) => sum + (tournament._count?.applications ?? 0), 0);
+
+  const filters: Array<{ value: "ALL" | Status; label: string }> = [
+    { value: "ALL", label: t("common.all") },
+    { value: "REGISTRATION_OPEN", label: t("status.REGISTRATION_OPEN") },
+    { value: "IN_PROGRESS", label: "LIVE" },
+    { value: "COMPLETED", label: t("status.COMPLETED") },
+  ];
 
   if (pathname !== "/tournaments") {
     return <Outlet />;
@@ -91,18 +84,18 @@ function Tournaments() {
         <div className="container relative mx-auto grid min-h-[520px] gap-8 px-4 py-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
           <div className="max-w-3xl pb-6">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-gold">
-              <Radio className="h-3.5 w-3.5" /> Жарыстар күнтізбесі
+              <Radio className="h-3.5 w-3.5" /> {t("home.hero_badge")}
             </div>
             <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
-              Жарыстар, жеребе және live нәтижелер бір жерде
+              {t("tournaments_page.title")}
             </h1>
             <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Қай жарысқа тіркелу ашық, қай жерде өтеді, қанша санат бар және live экран қашан қосылады — бәрі осы бетте.
+              {t("tournaments_page.subtitle")}
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <StatCard label="Жарыс" value={String(tournaments.length)} />
-              <StatCard label="Тіркеу ашық" value={String(openCount)} />
-              <StatCard label="Өтінім" value={String(totalApplications)} />
+              <StatCard label={t("home.stats_tournaments")} value={String(tournaments.length)} />
+              <StatCard label={t("status.REGISTRATION_OPEN")} value={String(openCount)} />
+              <StatCard label={t("applications.title")} value={String(totalApplications)} />
             </div>
           </div>
 
@@ -116,21 +109,21 @@ function Tournaments() {
                 <LazyImage src={featured.posterUrl || teamLineup} alt="" className="h-full w-full object-cover" priority />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
                 <span className={`absolute left-4 top-4 rounded-full border px-3 py-1 text-[10px] uppercase tracking-widest ${statusColor(featured.status)}`}>
-                  {statusLabel[featured.status as Status] ?? featured.status}
+                  {String(t(`status.${featured.status}`, featured.status))}
                 </span>
               </div>
               <div className="p-5">
-                <div className="text-xs uppercase tracking-widest text-gold">Басты жарыс</div>
+                <div className="text-xs uppercase tracking-widest text-gold">{t("home.featured_tournament")}</div>
                 <h2 className="mt-2 font-display text-2xl font-bold leading-tight group-hover:text-gold">
                   {localizeName(featured.name)}
                 </h2>
                 <div className="mt-4 space-y-2 text-sm text-muted-foreground">
                   <Info icon={Calendar}>{dateRange(featured.startDate, featured.endDate)}</Info>
                   <Info icon={MapPin}>{featured.location || featured.city}</Info>
-                  <Info icon={Users}>{featured._count?.applications ?? 0} өтінім · {featured._count?.categories ?? 0} санат</Info>
+                  <Info icon={Users}>{featured._count?.applications ?? 0} {t("applications.title").toLowerCase()} · {featured._count?.categories ?? 0} {t("common.category").toLowerCase()}</Info>
                 </div>
                 <div className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold">
-                  Толық ашу
+                  {t("home.open_full")}
                   <GitBranch className="h-4 w-4" />
                 </div>
               </div>
@@ -142,8 +135,8 @@ function Tournaments() {
       <section className="container mx-auto px-4 py-10 flex-1">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold">Барлық жарыстар</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Санат, дедлайн, орын және live статус бойынша тез қарап шығу.</p>
+            <h2 className="font-display text-3xl font-bold">{t("tournaments_page.all_tournaments")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("tournaments_page.all_subtitle")}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <label className="relative block min-w-[260px]">
@@ -151,7 +144,7 @@ function Tournaments() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Қала, жарыс, орын..."
+                placeholder={t("tournaments_page.search_placeholder")}
                 className="h-11 w-full rounded-md border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-gold"
               />
             </label>
@@ -181,59 +174,59 @@ function Tournaments() {
           </div>
         ) : error ? (
           <div className="text-center py-20 text-destructive">
-            Жарыстарды жүктеу мүмкін болмады. Серверге қосылу жоқ па?
+            {t("tournaments_page.load_error")}
           </div>
         ) : tournaments.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <div>Әзірше жарыстар жоқ.</div>
+            <div>{t("tournament.no_tournaments")}</div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card/40 py-16 text-center text-muted-foreground">
-            Бұл фильтр бойынша жарыс табылмады.
+            {t("tournaments_page.no_results")}
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((t: any, index: number) => (
+            {filtered.map((tournament: any, index: number) => (
               <Link
-                key={t.id}
+                key={tournament.id}
                 to="/tournaments/$id"
-                params={{ id: t.id }}
+                params={{ id: tournament.id }}
                 className="group relative overflow-hidden rounded-2xl border border-border bg-card/70 transition-all hover:-translate-y-1 hover:border-gold/50"
               >
                 <div className="relative h-40 overflow-hidden">
-                  <LazyImage src={t.posterUrl || tournamentImages[index % tournamentImages.length]!} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <LazyImage src={tournament.posterUrl || tournamentImages[index % tournamentImages.length]!} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-                  <span className={`absolute left-4 top-4 text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusColor(t.status)} shrink-0`}>
-                    {statusLabel[t.status as Status] ?? t.status}
+                  <span className={`absolute left-4 top-4 text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${statusColor(tournament.status)} shrink-0`}>
+                    {String(t(`status.${tournament.status}`, tournament.status))}
                   </span>
                 </div>
                 <div className="relative p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <h3 className="font-display text-xl font-semibold group-hover:text-gold transition-colors leading-snug">
-                      {localizeName(t.name)}
+                      {localizeName(tournament.name)}
                     </h3>
-                    <span className="rounded-full bg-gold/10 px-2 py-1 text-xs text-gold">{t.tatamiCount ?? 1} татами</span>
+                    <span className="rounded-full bg-gold/10 px-2 py-1 text-xs text-gold">{tournament.tatamiCount ?? 1} {t("common.tatami")}</span>
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    <Info icon={Calendar}>{dateRange(t.startDate, t.endDate)}</Info>
-                    <Info icon={MapPin}>{t.location || t.city}</Info>
-                    <Info icon={Clock}>Дедлайн: {formatDeadline(t)}</Info>
+                    <Info icon={Calendar}>{dateRange(tournament.startDate, tournament.endDate)}</Info>
+                    <Info icon={MapPin}>{tournament.location || tournament.city}</Info>
+                    <Info icon={Clock}>{t("common.deadline")}: {formatDeadline(tournament)}</Info>
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
-                    <Metric icon={Users} label="Өтінім" value={t._count?.applications ?? 0} />
-                    <Metric icon={GitBranch} label="Санат" value={t._count?.categories ?? 0} />
+                    <Metric icon={Users} label={t("applications.title")} value={tournament._count?.applications ?? 0} />
+                    <Metric icon={GitBranch} label={t("common.category")} value={tournament._count?.categories ?? 0} />
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/40 pt-4">
                     <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-                      {["Ақпарат", "Санат", "Хаттама"].map((tab) => (
+                      {[t("tournament.info_tab"), t("tournament.categories_tab"), t("tournament.protocol_tab")].map((tab) => (
                         <span key={tab} className="rounded-full border border-border/60 bg-background/35 px-2.5 py-1">
                           {tab}
                         </span>
                       ))}
                     </div>
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-gold/10 px-3 py-2 text-xs font-semibold text-gold transition-colors group-hover:bg-gold group-hover:text-gold-foreground">
-                      Толық ашу
+                      {t("home.open_full")}
                       <GitBranch className="h-3.5 w-3.5" />
                     </span>
                   </div>

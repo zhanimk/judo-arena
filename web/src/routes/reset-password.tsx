@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Loader2, CheckCircle2, ArrowLeft, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Жаңа құпиясөз — Judo-Arena" }] }),
@@ -31,6 +32,7 @@ function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!isPasswordStrong(password)) { setError(t("auth.pwd_strength_weak")); return; }
     if (password !== confirm) { setError(t("auth.passwords_mismatch")); return; }
     if (!token)               { setError(t("error.generic")); return; }
     setLoading(true);
@@ -113,6 +115,8 @@ function ResetPassword() {
                 </button>
               </div>
 
+              <PasswordStrength password={password} />
+
               <div className="relative">
                 <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35">
                   <ShieldCheck className="h-4 w-4" />
@@ -130,8 +134,6 @@ function ResetPassword() {
                   {showCfm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-
-              <p className="text-[11px] text-white/30">{t("auth.password_too_short")}</p>
 
               {error && (
                 <div className="flex items-start gap-2.5 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">

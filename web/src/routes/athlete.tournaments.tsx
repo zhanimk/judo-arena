@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Judo-Arena" }] }),
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/athlete/tournaments")({
 });
 
 function AthleteTournaments() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const tournamentsQuery = useQuery({
     queryKey: ["all-tournaments-public"],
@@ -43,78 +45,78 @@ function AthleteTournaments() {
   const pendingEntries = (entriesQuery.data ?? []).filter((entry: any) => entry.application?.status === "SUBMITTED");
 
   return (
-    <DashboardShell role="Спортшы" navItems={nav} accentTitle="Жарыстар">
+    <DashboardShell role={t("roles.ATHLETE")} navItems={nav} accentTitle={t("dashboard.tournaments")}>
       <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Panel title="Менің клубым">
+        <Panel title={t("dashboard.my_club")}>
           {user?.club ? (
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="font-display text-xl font-semibold">{localizeName(user.club.name)}</div>
                 <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4 text-gold/70" />
-                  {user.club.city || "Қала көрсетілмеген"}
+                  {user.club.city || t("athlete.no_city")}
                 </div>
               </div>
               <div className="rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-xs text-gold">
-                Клуб арқылы өтінім беріледі
+                {t("athlete.applied_via_club")}
               </div>
             </div>
           ) : (
-            <EmptyState title="Клуб жоқ" hint="Тренер сізді клубқа қосқанда өтінімдер осы жерде көрінеді." />
+            <EmptyState title={t("athlete.no_club")} hint={t("athlete.no_club_hint")} />
           )}
         </Panel>
-        <Panel title="Менің өтінімдерім">
+        <Panel title={t("athlete.my_applications")}>
           {entriesQuery.isLoading ? (
             <LoadingState />
           ) : (entriesQuery.data ?? []).length === 0 ? (
-            <EmptyState title="Әзірше заявка жоқ" hint="Тренер сізді турнирге қосқанда статус осында шығады." />
+            <EmptyState title={t("athlete.no_entries")} hint={t("athlete.no_entries_hint")} />
           ) : (
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <MiniMetric label="Барлығы" value={entriesQuery.data?.length ?? 0} />
-              <MiniMetric label="Қарауда" value={pendingEntries.length} tone="gold" />
-              <MiniMetric label="Бекітілді" value={approvedEntries.length} tone="green" />
+              <MiniMetric label={t("common.all")} value={entriesQuery.data?.length ?? 0} />
+              <MiniMetric label={t("athlete.stat_pending")} value={pendingEntries.length} tone="gold" />
+              <MiniMetric label={t("athlete.stat_approved")} value={approvedEntries.length} tone="green" />
             </div>
           )}
         </Panel>
       </div>
 
-      <Panel title="Барлық жарыстар">
+      <Panel title={t("tournaments_page.all_tournaments")}>
         {tournamentsQuery.isLoading ? (
           <LoadingState />
         ) : (tournamentsQuery.data?.items ?? []).length === 0 ? (
-          <EmptyState title="Әзірше жарыс жоқ" hint="Жаңа жарыс жарияланғанда осы жерде көрінеді." />
+          <EmptyState title={t("tournament.no_tournaments")} hint={t("athlete.no_tournaments_hint")} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tournamentsQuery.data!.items.map((t: any) => {
-              const myEntries = entriesByTournament.get(t.id) ?? [];
+            {tournamentsQuery.data!.items.map((tournament: any) => {
+              const myEntries = entriesByTournament.get(tournament.id) ?? [];
               const primaryEntry = myEntries[0];
               const app = primaryEntry?.application;
               return (
                 <Link
-                  key={t.id}
+                  key={tournament.id}
                   to="/tournaments/$id"
-                  params={{ id: t.id }}
+                  params={{ id: tournament.id }}
                   className={`glass rounded-xl p-5 hover:border-gold/40 transition-all hover:-translate-y-1 border ${myEntries.length ? "border-gold/40" : "border-border/60"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="font-display text-lg font-semibold mb-2">
-                      {localizeName(t.name)}
+                      {localizeName(tournament.name)}
                     </div>
-                    <StatusBadge status={t.status} />
+                    <StatusBadge status={tournament.status} />
                   </div>
                   {myEntries.length > 0 && (
                     <div className={`mb-3 rounded-md border p-3 text-xs ${applicationTone(app?.status)}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-1 font-medium">
                           {app?.status === "APPROVED" ? <CheckCircle2 className="h-3.5 w-3.5" /> : app?.status === "REJECTED" ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                          Мен заявлен: {applicationStatusLabel(app?.status)}
+                          {t("athlete.i_applied")}: {String(t(`status.${app?.status}`, app?.status ?? ""))}
                         </span>
-                        <span>{myEntries.length} санат</span>
+                        <span>{myEntries.length} {t("common.category").toLowerCase()}</span>
                       </div>
                       <div className="mt-2 space-y-1">
                         {myEntries.map((entry: any) => (
                           <div key={entry.id} className="truncate">
-                            {categoryTitle(entry.category)}
+                            {categoryTitle(entry.category, t)}
                           </div>
                         ))}
                       </div>
@@ -126,27 +128,27 @@ function AthleteTournaments() {
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3.5 w-3.5 text-gold/70" />
-                      {dateRange(t.startDate, t.endDate)}
+                      {dateRange(tournament.startDate, tournament.endDate)}
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-3.5 w-3.5 text-gold/70" />
-                      Дедлайн: {new Date(t.applicationDeadline ?? t.startDate).toLocaleString("kk-KZ")}
+                      {t("common.deadline")}: {new Date(tournament.applicationDeadline ?? tournament.startDate).toLocaleString("kk-KZ")}
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3.5 w-3.5 text-gold/70" />
-                      {t.location || t.city}
+                      {tournament.location || tournament.city}
                     </div>
                     <div className="flex items-center gap-2">
                       <Users className="h-3.5 w-3.5 text-gold/70" />
-                      {t._count?.applications ?? 0} өтінім
+                      {tournament._count?.applications ?? 0} {t("applications.title").toLowerCase()}
                     </div>
                     <div className="flex items-center gap-2">
                       <GitBranch className="h-3.5 w-3.5 text-gold/70" />
-                      {t._count?.categories ?? 0} санат · {t.tatamiCount ?? 1} татами
+                      {tournament._count?.categories ?? 0} {t("common.category").toLowerCase()} · {tournament.tatamiCount ?? 1} {t("common.tatami")}
                     </div>
                   </div>
                   <div className="mt-4 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-center text-xs text-gold">
-                    Толық ақпаратты көру
+                    {t("home.open_full")}
                   </div>
                 </Link>
               );
@@ -169,27 +171,17 @@ function MiniMetric({ label, value, tone }: { label: string; value: number; tone
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    REGISTRATION_OPEN: { c: "bg-gold/15 text-gold border border-gold/30", l: "Тіркеу ашық" },
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: "Тіркеу жабық" },
-    IN_PROGRESS: { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
-    COMPLETED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Аяқталды" },
-    CANCELLED: { c: "bg-muted text-muted-foreground", l: "Тоқтатылды" },
+  const { t } = useTranslation();
+  const colors: Record<string, string> = {
+    DRAFT: "bg-muted text-muted-foreground",
+    REGISTRATION_OPEN: "bg-gold/15 text-gold border border-gold/30",
+    REGISTRATION_CLOSED: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+    IN_PROGRESS: "bg-destructive/20 text-destructive border border-destructive/40",
+    COMPLETED: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    CANCELLED: "bg-muted text-muted-foreground",
   };
-  const x = m[status] ?? { c: "bg-muted", l: status };
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${x.c}`}>{x.l}</span>;
-}
-
-function applicationStatusLabel(status?: string): string {
-  const labels: Record<string, string> = {
-    DRAFT: "жоба",
-    SUBMITTED: "қарауда",
-    APPROVED: "бекітілді",
-    REJECTED: "қайтарылды",
-    WITHDRAWN: "қайтарып алынды",
-  };
-  return status ? labels[status] ?? status : "белгісіз";
+  const cls = colors[status] ?? "bg-muted";
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${cls}`}>{String(t(`status.${status}`, status))}</span>;
 }
 
 function applicationTone(status?: string): string {
@@ -199,11 +191,12 @@ function applicationTone(status?: string): string {
   return "border-border/50 bg-muted/20 text-muted-foreground";
 }
 
-function categoryTitle(c: any): string {
-  if (!c) return "Санат";
+function categoryTitle(c: any, t: (key: string, opts?: any) => string): string {
+  if (!c) return t("common.category");
   const custom = localizeName(c.name);
   if (custom !== "—") return custom;
-  return `${c.gender === "MALE" ? "Ер" : "Қыз"} ${c.ageMin}-${c.ageMax} жас ${c.weightMin}-${c.weightMax} кг`;
+  const genderLabel = c.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
+  return `${genderLabel} ${c.ageMin}-${c.ageMax} ${t("common.years_short")} ${c.weightMin}-${c.weightMax} кг`;
 }
 
 function localizeName(name: any): string {

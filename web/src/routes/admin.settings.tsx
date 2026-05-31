@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings, ClipboardList, GitBranch, Save, Loader2 } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -35,6 +36,7 @@ const DEFAULT_POINTS: RatingPoints = {
 };
 
 function AdminSettings() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -54,54 +56,54 @@ function AdminSettings() {
   const save = useMutation({
     mutationFn: () => api.admin.updateConfig("ratingPoints", points),
     onSuccess: () => {
-      setSuccess("✓ Сақталды");
+      setSuccess(t("settings.saved"));
       setError("");
       qc.invalidateQueries({ queryKey: ["system-config", "ratingPoints"] });
       setTimeout(() => setSuccess(""), 3000);
-      toast.success("Рейтинг баптаулары сақталды ✓");
+      toast.success(t("settings.saved"));
     },
     onError: (e: any) => {
-      const m = e instanceof ApiError ? e.message : "Қате";
+      const m = e instanceof ApiError ? e.message : t("error.generic");
       setError(m); setSuccess(""); toast.error(m);
     },
   });
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Жүйе баптаулары">
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.settings_title")}>
       {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
       {success && <div className="mb-4 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded p-3">{success}</div>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Ұпай жүйесі (рейтинг)">
+        <Panel title={t("admin.rating_points_title")}>
           {configQuery.isLoading ? <LoadingState /> : (
             <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3">
-              <PointsRow label="1-орын (Алтын)" value={points.place1} onChange={(v) => setPoints({...points, place1: v})} />
-              <PointsRow label="2-орын (Күміс)" value={points.place2} onChange={(v) => setPoints({...points, place2: v})} />
-              <PointsRow label="3-орын (Қола)" value={points.place3} onChange={(v) => setPoints({...points, place3: v})} />
-              <PointsRow label="3-орын үшін жеңіліс" value={points.place3Loss} onChange={(v) => setPoints({...points, place3Loss: v})} />
-              <PointsRow label="Жұбату (Repechage)" value={points.place7Repechage} onChange={(v) => setPoints({...points, place7Repechage: v})} />
-              <PointsRow label="Қатысу" value={points.participation} onChange={(v) => setPoints({...points, participation: v})} />
-              <PointsRow label="Ippon бонусы (опц.)" value={points.ipponBonus ?? 0} onChange={(v) => setPoints({...points, ipponBonus: v})} />
+              <PointsRow label={t("admin.points_place1")} value={points.place1} onChange={(v) => setPoints({...points, place1: v})} />
+              <PointsRow label={t("admin.points_place2")} value={points.place2} onChange={(v) => setPoints({...points, place2: v})} />
+              <PointsRow label={t("admin.points_place3")} value={points.place3} onChange={(v) => setPoints({...points, place3: v})} />
+              <PointsRow label={t("admin.points_place3_loss")} value={points.place3Loss} onChange={(v) => setPoints({...points, place3Loss: v})} />
+              <PointsRow label={t("admin.points_repechage")} value={points.place7Repechage} onChange={(v) => setPoints({...points, place7Repechage: v})} />
+              <PointsRow label={t("admin.points_participation")} value={points.participation} onChange={(v) => setPoints({...points, participation: v})} />
+              <PointsRow label={t("admin.points_ippon_bonus")} value={points.ipponBonus ?? 0} onChange={(v) => setPoints({...points, ipponBonus: v})} />
 
               <button type="submit" disabled={save.isPending}
                 className="w-full bg-gradient-gold text-gold-foreground py-2.5 rounded-md font-medium shadow-gold inline-flex items-center justify-center gap-2 disabled:opacity-50">
                 {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Сақтау
+                {t("common.save")}
               </button>
             </form>
           )}
         </Panel>
 
-        <Panel title="IJF ережелері (анықтама)">
+        <Panel title={t("admin.ijf_rules_title")}>
           <div className="space-y-2 text-sm">
-            <Row label="Ippon" value="Лезде жеңіс" />
-            <Row label="Waza-ari × 2" value="Ippon = жеңіс" />
-            <Row label="Shido × 3" value="Hansoku-make = жеңіліс" />
-            <Row label="Osaekomi 5 сек" value="Yuko (опционалды)" />
-            <Row label="Osaekomi 10 сек" value="Waza-ari" />
-            <Row label="Osaekomi 20 сек" value="Ippon (лезде жеңіс)" />
+            <Row label="Ippon" value="= immediate win" />
+            <Row label="Waza-ari × 2" value="= Ippon" />
+            <Row label="Shido × 3" value="= Hansoku-make" />
+            <Row label="Osaekomi 5s" value="Yuko (optional)" />
+            <Row label="Osaekomi 10s" value="Waza-ari" />
+            <Row label="Osaekomi 20s" value="Ippon" />
             <div className="mt-4 pt-3 border-t border-border/30 text-xs text-muted-foreground">
-              Бұл ережелер сервердің bracket-engine модулінде кодталған. Өзгерту үшін көзден өзгерту керек.
+              {t("admin.ijf_rules_note")}
             </div>
           </div>
         </Panel>

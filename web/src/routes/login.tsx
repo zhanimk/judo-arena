@@ -8,6 +8,7 @@ import {
   Lock, UserPlus, Loader2, Eye, EyeOff,
   Mail, KeyRound, User, Shield, Trophy, Zap,
 } from "lucide-react";
+import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 import { RedirectIfAuthenticated } from "@/lib/protected-route";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -74,6 +75,10 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (mode === "register" && !isPasswordStrong(password)) {
+      setError(t("auth.pwd_strength_weak"));
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
@@ -94,7 +99,10 @@ function Login() {
     }
   };
 
+  const isDev = import.meta.env.DEV;
+
   const fillDemo = (kind: "admin" | "coach" | "athlete") => {
+    if (!isDev) return;
     switchMode("login");
     setPassword("password123");
     if (kind === "admin")   setEmail("admin@judo-arena.kz");
@@ -269,7 +277,7 @@ function Login() {
                   </Link>
                 </div>
               ) : (
-                <p className="mt-1.5 text-[11px] text-muted-foreground/70">{t("auth.password_too_short")}</p>
+                <PasswordStrength password={password} />
               )}
             </div>
 
@@ -293,31 +301,33 @@ function Login() {
             </button>
           </form>
 
-          <div className="mt-7 pt-6 border-t border-border/60">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/60 text-center mb-3">
-              Demo
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                ["admin",   "🛡️", t("roles.admin")],
-                ["coach",   "📋", t("roles.coach")],
-                ["athlete", "🥋", t("roles.athlete")],
-              ] as const).map(([k, emoji, label]) => (
-                <button
-                  key={k}
-                  onClick={() => fillDemo(k)}
-                  className="flex flex-col items-center gap-1 py-3 rounded-xl bg-muted/50 border border-border/60 hover:border-gold/40 hover:bg-gold/8 transition-all group"
-                >
-                  <span className="text-xl">{emoji}</span>
-                  <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">{label}</span>
-                </button>
-              ))}
+          {isDev && (
+            <div className="mt-7 pt-6 border-t border-border/60">
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground/60 text-center mb-3">
+                Demo
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["admin",   "🛡️", t("roles.admin")],
+                  ["coach",   "📋", t("roles.coach")],
+                  ["athlete", "🥋", t("roles.athlete")],
+                ] as const).map(([k, emoji, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => fillDemo(k)}
+                    className="flex flex-col items-center gap-1 py-3 rounded-xl bg-muted/50 border border-border/60 hover:border-gold/40 hover:bg-gold/8 transition-all group"
+                  >
+                    <span className="text-xl">{emoji}</span>
+                    <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2.5 text-center text-[10px] text-muted-foreground/50">
+                {t("common.password")}:{" "}
+                <span className="font-mono text-gold/80">password123</span>
+              </p>
             </div>
-            <p className="mt-2.5 text-center text-[10px] text-muted-foreground/50">
-              {t("common.password")}:{" "}
-              <span className="font-mono text-gold/80">password123</span>
-            </p>
-          </div>
+          )}
 
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Wand2, Plus, X, Pencil, Trash2, Save, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Panel, EmptyState } from "@/components/dashboard/DashboardShell";
 import { api, ApiError } from "@/lib/api";
 import { Input, Select, FormatBadge, categoryTitle, compactI18n } from "./shared";
@@ -19,6 +20,7 @@ function CategoryForm({
   onCancel: () => void;
   tournamentYear?: number;
 }) {
+  const { t } = useTranslation();
   const tYear = tournamentYear ?? new Date().getFullYear();
 
   const [form, setForm] = useState({
@@ -41,7 +43,7 @@ function CategoryForm({
     if (!preset) return;
     const birthFrom = tYear - preset.ageMax;
     const birthTo   = tYear - preset.ageMin;
-    const gStr   = form.gender === "MALE" ? "Ер" : "Қыз";
+    const gStr   = form.gender === "MALE" ? t("common.male") : t("tatami.female_short");
     const gStrRu = form.gender === "MALE" ? "Муж" : "Жен";
     const wMax = Number(form.weightMax);
     const wMin = Number(form.weightMin);
@@ -52,7 +54,7 @@ function CategoryForm({
       ageMax:          String(preset.ageMax),
       matchDurationSec: String(preset.matchDurationSec),
       goldenScoreSec:   String(preset.goldenScoreSec),
-      nameKk: f.nameKk || `${preset.labelKk} ${gStr} ${label} кг (${birthFrom}–${birthTo})`,
+      nameKk: f.nameKk || `${preset.labelKk} ${gStr} ${label} ${t("common.kg")} (${birthFrom}–${birthTo})`,
       nameRu: f.nameRu || `${preset.labelRu} ${gStrRu} ${label} кг`,
     }));
   }
@@ -78,7 +80,7 @@ function CategoryForm({
     <form onSubmit={submit} className="mb-4 rounded-md border border-gold/20 bg-gold/5 p-4">
       <div className="mb-4 rounded-md border border-border/40 bg-background/40 p-3">
         <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Жас тобын таңдаңыз → автоматты толтыру
+          {t("categories.preset_hint")}
         </div>
         <div className="flex flex-wrap gap-2">
           {AGE_GROUPS.map(g => {
@@ -105,49 +107,49 @@ function CategoryForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Input label="Атауы KK" value={form.nameKk} onChange={(v: string) => setForm({ ...form, nameKk: v })} placeholder="U17 Ер -66 кг" />
-        <Input label="Атауы RU" value={form.nameRu} onChange={(v: string) => setForm({ ...form, nameRu: v })} />
-        <Input label="Атауы EN" value={form.nameEn} onChange={(v: string) => setForm({ ...form, nameEn: v })} />
+        <Input label={t("categories.name_kk")} value={form.nameKk} onChange={(v: string) => setForm({ ...form, nameKk: v })} placeholder="U17 Ер -66 кг" />
+        <Input label={t("categories.name_ru")} value={form.nameRu} onChange={(v: string) => setForm({ ...form, nameRu: v })} />
+        <Input label={t("categories.name_en")} value={form.nameEn} onChange={(v: string) => setForm({ ...form, nameEn: v })} />
 
-        <Select label="Жыныс" value={form.gender} onChange={(gender) => setForm({ ...form, gender })} options={[
-          ["MALE", "Ер (муж)"],
-          ["FEMALE", "Қыз (жен)"],
+        <Select label={t("common.gender")} value={form.gender} onChange={(gender) => setForm({ ...form, gender })} options={[
+          ["MALE", t("common.male")],
+          ["FEMALE", t("tatami.female_short")],
         ]} />
 
         <div>
-          <Input label="Жас min (толық жыл)" type="number" value={form.ageMin}
+          <Input label={t("categories.age_min")} type="number" value={form.ageMin}
             onChange={(v: string) => setForm({ ...form, ageMin: v })} required />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            туған жыл ≤ {tYear - Number(form.ageMin)}
+            {t("categories.birth_year_le")} {tYear - Number(form.ageMin)}
           </div>
         </div>
         <div>
-          <Input label="Жас max (толық жыл)" type="number" value={form.ageMax}
+          <Input label={t("categories.age_max")} type="number" value={form.ageMax}
             onChange={(v: string) => setForm({ ...form, ageMax: v })} required />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            туған жыл ≥ {tYear - Number(form.ageMax)}
+            {t("categories.birth_year_ge")} {tYear - Number(form.ageMax)}
             {form.ageMin !== form.ageMax && (
               <span className="ml-2 text-gold/80">
-                ({tYear - Number(form.ageMax)}–{tYear - Number(form.ageMin)} жж.)
+                ({tYear - Number(form.ageMax)}–{tYear - Number(form.ageMin)})
               </span>
             )}
           </div>
         </div>
 
-        <Input label="Салмақ min, кг" type="number" step="0.01" value={form.weightMin}
+        <Input label={t("categories.weight_min")} type="number" step="0.01" value={form.weightMin}
           onChange={(v: string) => setForm({ ...form, weightMin: v })} required />
-        <Input label="Салмақ max, кг (999 = ашық)" type="number" step="0.01" value={form.weightMax}
+        <Input label={t("categories.weight_max")} type="number" step="0.01" value={form.weightMax}
           onChange={(v: string) => setForm({ ...form, weightMax: v })} required />
 
-        <Select label="Формат" value={form.format} onChange={(format) => setForm({ ...form, format })} options={[
+        <Select label={t("categories.format_label")} value={form.format} onChange={(format) => setForm({ ...form, format })} options={[
           ["SE_IJF", "Olympic / IJF"],
           ["ROUND_ROBIN", "Round-robin"],
           ["MIXED", "Mixed"],
         ]} />
 
-        <Input label="Матч, секунд" type="number" value={form.matchDurationSec}
+        <Input label={t("categories.match_sec")} type="number" value={form.matchDurationSec}
           onChange={(matchDurationSec: string) => setForm({ ...form, matchDurationSec })} required />
-        <Input label="Golden score, сек (0 = шексіз)" type="number" value={form.goldenScoreSec}
+        <Input label={t("categories.gs_sec")} type="number" value={form.goldenScoreSec}
           onChange={(goldenScoreSec: string) => setForm({ ...form, goldenScoreSec })} />
       </div>
 
@@ -161,7 +163,7 @@ function CategoryForm({
         <span>
           <span className="font-medium">Yuko</span>
           <span className="ml-1.5 text-xs text-muted-foreground">
-            — ескі ереже (судья панелінде жасыл YUKO батырмасы пайда болады)
+            — {t("categories.yuko_desc")}
           </span>
         </span>
       </label>
@@ -169,17 +171,18 @@ function CategoryForm({
       <div className="mt-4 flex gap-2">
         <button disabled={busy} className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Сақтау
+          {t("common.save")}
         </button>
         <button type="button" onClick={onCancel} className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
-          Болдырмау
+          {t("common.cancel")}
         </button>
       </div>
     </form>
   );
 }
 
-export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) {
+export function TournamentCategoriesTab({ tournament: tourney }: { tournament: any }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -188,23 +191,23 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
   const [bulkGroup, setBulkGroup] = useState(AGE_GROUPS[3].key);
   const [bulkGenders, setBulkGenders] = useState<("MALE" | "FEMALE")[]>(["MALE", "FEMALE"]);
   const [bulkAdding, setBulkAdding] = useState(false);
-  const canEdit = t.status === "DRAFT";
-  const tournamentYear = t.startDate ? new Date(t.startDate).getFullYear() : new Date().getFullYear();
+  const canEdit = tourney.status === "DRAFT";
+  const tournamentYear = tourney.startDate ? new Date(tourney.startDate).getFullYear() : new Date().getFullYear();
 
   const create = useMutation({
-    mutationFn: (data: any) => api.tournaments.addCategory(t.id, data),
-    onSuccess: () => { setShowForm(false); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", t.id] }); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Санат қосылмады"),
+    mutationFn: (data: any) => api.tournaments.addCategory(tourney.id, data),
+    onSuccess: () => { setShowForm(false); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.create_error")),
   });
   const update = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => api.tournaments.updateCategory(id, data),
-    onSuccess: () => { setEditing(null); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", t.id] }); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Санат сақталмады"),
+    onSuccess: () => { setEditing(null); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.update_error")),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.tournaments.deleteCategory(id),
-    onSuccess: () => { setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", t.id] }); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Санат өшірілмеді"),
+    onSuccess: () => { setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.delete_error")),
   });
 
   async function handleBulkAdd() {
@@ -218,17 +221,17 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
       for (const cat of cats) {
         const { _birthRange: _br, ...payload } = cat as any;
         try {
-          await api.tournaments.addCategory(t.id, payload);
+          await api.tournaments.addCategory(tourney.id, payload);
           added++;
         } catch {
           // skip duplicate/error, continue
         }
       }
     }
-    await qc.invalidateQueries({ queryKey: ["admin-tournament", t.id] });
+    await qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
     setBulkAdding(false);
     setShowBulk(false);
-    if (added === 0) setError("Санаттар қосылмады (қайталанулар немесе қате)");
+    if (added === 0) setError(t("categories.bulk_error"));
   }
 
   const selectedPreset = AGE_GROUPS.find(g => g.key === bulkGroup);
@@ -238,7 +241,7 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
 
   return (
     <Panel
-      title={`Барлығы ${t.categories?.length ?? 0} санат`}
+      title={t("categories.total", { count: tourney.categories?.length ?? 0 })}
       action={canEdit && (
         <div className="flex gap-2">
           <button
@@ -246,21 +249,21 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
             className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm text-gold hover:bg-gold/20"
           >
             <Wand2 className="h-4 w-4" />
-            Шаблон
+            {t("categories.template_btn")}
           </button>
           <button
             onClick={() => { setShowForm((v) => !v); setEditing(null); setShowBulk(false); }}
             className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-sm text-gold-foreground shadow-gold"
           >
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showForm ? "Жабу" : "Санат қосу"}
+            {showForm ? t("common.close") : t("categories.add_btn")}
           </button>
         </div>
       )}
     >
       {!canEdit && (
         <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-          Санаттарды тек DRAFT мәртебесінде өзгертуге болады. Тіркеу ашылғаннан кейін санаттар турнир құрылымының негізі болып бекітіледі.
+          {t("categories.draft_only_warning")}
         </div>
       )}
       {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
@@ -269,11 +272,11 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
         <div className="mb-4 rounded-lg border-2 border-gold/30 bg-gold/5 p-4">
           <div className="mb-3 flex items-center gap-2">
             <Wand2 className="h-4 w-4 text-gold" />
-            <span className="font-semibold text-sm">Жас тобы шаблоны — барлық салмақтарды бірден қосу</span>
+            <span className="font-semibold text-sm">{t("categories.bulk_title")}</span>
           </div>
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Жас тобы</label>
+              <label className="mb-1 block text-xs text-muted-foreground">{t("categories.age_group_label")}</label>
               <select
                 value={bulkGroup}
                 onChange={e => setBulkGroup(e.target.value)}
@@ -284,14 +287,14 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
                   const birthTo   = tournamentYear - g.ageMin;
                   return (
                     <option key={g.key} value={g.key}>
-                      {g.labelRu} ({birthFrom}–{birthTo} жж.)
+                      {g.labelRu} ({birthFrom}–{birthTo})
                     </option>
                   );
                 })}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Жыныс</label>
+              <label className="mb-1 block text-xs text-muted-foreground">{t("common.gender")}</label>
               <div className="flex gap-3 pt-2">
                 {(["MALE", "FEMALE"] as const).map(g => (
                   <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -303,7 +306,7 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
                       )}
                       className="h-4 w-4"
                     />
-                    {g === "MALE" ? "Ер (муж)" : "Қыз (жен)"}
+                    {g === "MALE" ? t("common.male") : t("tatami.female_short")}
                   </label>
                 ))}
               </div>
@@ -313,7 +316,7 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
           {selectedPreset && previewCats.length > 0 && (
             <div className="mb-3">
               <div className="mb-1.5 text-xs text-muted-foreground">
-                {previewCats.length} санат қосылады (матч {selectedPreset.matchDurationSec}с, GS {selectedPreset.goldenScoreSec}с):
+                {previewCats.length} {t("categories.bulk_preview", { match: selectedPreset.matchDurationSec, gs: selectedPreset.goldenScoreSec })}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {previewCats.map((c: any, i) => (
@@ -326,7 +329,7 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
                     }`}
                   >
                     {c.gender === "MALE" ? "♂" : "♀"}
-                    {" "}{wLabel(c.weightMin, c.weightMax)} кг
+                    {" "}{wLabel(c.weightMin, c.weightMax)} {t("common.kg")}
                     <span className="opacity-60 text-[10px]">{c._birthRange}</span>
                   </span>
                 ))}
@@ -341,14 +344,14 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
               className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
               {bulkAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              {bulkAdding ? "Қосылуда…" : `${previewCats.length} санат қосу`}
+              {bulkAdding ? t("categories.bulk_adding") : t("categories.bulk_add_n", { count: previewCats.length })}
             </button>
             <button
               type="button"
               onClick={() => setShowBulk(false)}
               className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Болдырмау
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -362,11 +365,11 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
           onCancel={() => setShowForm(false)}
         />
       )}
-      {(t.categories ?? []).length === 0 ? (
-        <EmptyState title="Санаттар жоқ" hint="DRAFT мәртебесінде санаттар қосуға болады" />
+      {(tourney.categories ?? []).length === 0 ? (
+        <EmptyState title={t("categories.empty")} hint={t("categories.empty_hint")} />
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
-          {t.categories.map((c: any) => (
+          {tourney.categories.map((c: any) => (
             <div key={c.id} className="rounded-md border border-border/60 bg-background/30 p-4 text-sm">
               {editing?.id === c.id ? (
                 <CategoryForm
@@ -380,24 +383,24 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium">{categoryTitle(c)}</div>
+                      <div className="font-medium">{categoryTitle(c, t)}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {c.gender === "MALE" ? "♂ Ер" : "♀ Қыз"} ·{" "}
-                        {c.ageMin}–{c.ageMax} жас{" "}
+                        {c.gender === "MALE" ? `♂ ${t("common.male")}` : `♀ ${t("tatami.female_short")}`} ·{" "}
+                        {c.ageMin}–{c.ageMax} {t("common.years_short")}{" "}
                         <span className="text-gold/60">
-                          ({tournamentYear - c.ageMax}–{tournamentYear - c.ageMin} жж.)
+                          ({tournamentYear - c.ageMax}–{tournamentYear - c.ageMin})
                         </span>
-                        {" "}· ({c.weightMin}, {c.weightMax >= 999 ? "+∞" : c.weightMax}] кг
+                        {" "}· ({c.weightMin}, {c.weightMax >= 999 ? "+∞" : c.weightMax}] {t("common.kg")}
                       </div>
                     </div>
                     <FormatBadge format={c.format} />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     <div className="rounded border border-border/50 p-2">
-                      Матч<br /><span className="text-foreground">{c.matchDurationSec}с</span>
+                      {t("categories.match_label")}<br /><span className="text-foreground">{c.matchDurationSec}s</span>
                     </div>
                     <div className="rounded border border-border/50 p-2">
-                      Golden Score<br /><span className="text-foreground">{c.goldenScoreSec ? `${c.goldenScoreSec}с` : "шексіз"}</span>
+                      Golden Score<br /><span className="text-foreground">{c.goldenScoreSec ? `${c.goldenScoreSec}s` : t("categories.unlimited")}</span>
                     </div>
                   </div>
                   {canEdit && (
@@ -406,14 +409,14 @@ export function TournamentCategoriesTab({ tournament: t }: { tournament: any }) 
                         onClick={() => { setEditing(c); setShowForm(false); }}
                         className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                       >
-                        <Pencil className="h-3.5 w-3.5" /> Өзгерту
+                        <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}
                       </button>
                       <button
                         onClick={() => remove.mutate(c.id)}
                         disabled={remove.isPending}
                         className="inline-flex items-center gap-1 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
                       >
-                        <Trash2 className="h-3.5 w-3.5" /> Өшіру
+                        <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
                       </button>
                     </div>
                   )}

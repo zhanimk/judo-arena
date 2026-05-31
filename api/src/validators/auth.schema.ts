@@ -10,13 +10,18 @@ const imageUrlSchema = z.string().refine(
   "Невалидный URL изображения",
 );
 
+const strongPassword = z
+  .string()
+  .min(8, "Пароль должен быть не короче 8 символов")
+  .max(128, "Пароль слишком длинный")
+  .regex(/[A-Z]/, "Пароль должен содержать хотя бы одну заглавную букву")
+  .regex(/[a-z]/, "Пароль должен содержать хотя бы одну строчную букву")
+  .regex(/[0-9]/, "Пароль должен содержать хотя бы одну цифру");
+
 export const registerSchema = z
   .object({
     email: z.string().email("Невалидный email"),
-    password: z
-      .string()
-      .min(8, "Пароль должен быть не короче 8 символов")
-      .max(128, "Пароль слишком длинный"),
+    password: strongPassword,
     role: z.enum(["ATHLETE", "COACH"], {
       errorMap: () => ({ message: "Можно зарегистрировать только спортсмена или тренера" }),
     }),
@@ -40,7 +45,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const loginSchema = z
   .object({
     email: z.string().email(),
-    password: z.string().min(1),
+    password: z.string().min(1).max(128),
   })
   .strict();
 

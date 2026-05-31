@@ -5,6 +5,7 @@ import { Award, Building2, Loader2, MapPin, Search, Star, Trophy, User, Users } 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/rankings")({
   head: () => ({
@@ -30,6 +31,7 @@ type Tab = "athletes" | "clubs";
 type Gender = "ALL" | "MALE" | "FEMALE";
 
 function Rankings() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("athletes");
   const [gender, setGender] = useState<Gender>("ALL");
   const [search, setSearch] = useState("");
@@ -90,15 +92,15 @@ function Rankings() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-3xl font-bold">
-                Спортшылар <span className="text-gradient-gold">рейтингі</span>
+                {t("rankings.title_prefix")} <span className="text-gradient-gold">{t("rankings.title_suffix")}</span>
               </h1>
               <p className="mt-1 text-sm text-muted-foreground max-w-xl">
-                Турнир нәтижелері бекітілген сайын автоматты жаңарады
+                {t("rankings.subtitle")}
               </p>
             </div>
             {/* ── Points legend ── */}
             <div className="flex items-center gap-1.5 rounded-xl border border-border/50 bg-card/60 px-3 py-2">
-              <span className="mr-1.5 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Ұпай:</span>
+              <span className="mr-1.5 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{t("rankings.points_label")}:</span>
               {([
                 { p: 100, l: "1", c: "bg-yellow-400/20 text-yellow-500 border-yellow-400/40" },
                 { p: 80,  l: "2", c: "bg-zinc-300/20 text-zinc-400 border-zinc-300/40" },
@@ -122,8 +124,8 @@ function Rankings() {
           {/* Main tabs */}
           <div className="flex gap-1 rounded-lg border border-border/50 bg-card/40 p-1">
             {([
-              { id: "athletes" as Tab, label: "Спортшылар", icon: User },
-              { id: "clubs" as Tab, label: "Клубтар", icon: Building2 },
+              { id: "athletes" as Tab, label: t("rankings.tab_athletes"), icon: User },
+              { id: "clubs" as Tab, label: t("rankings.tab_clubs"), icon: Building2 },
             ]).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -146,9 +148,9 @@ function Rankings() {
               <div className="h-5 w-px bg-border/50 hidden sm:block" />
               <div className="flex gap-1">
                 {([
-                  { id: "ALL" as Gender, label: "Барлығы" },
-                  { id: "MALE" as Gender, label: "Ер" },
-                  { id: "FEMALE" as Gender, label: "Қыз" },
+                  { id: "ALL" as Gender, label: t("rankings.filter_all") },
+                  { id: "MALE" as Gender, label: t("rankings.filter_male") },
+                  { id: "FEMALE" as Gender, label: t("rankings.filter_female") },
                 ]).map(({ id, label }) => (
                   <button
                     key={id}
@@ -178,14 +180,14 @@ function Rankings() {
         ) : tab === "athletes" && rows.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Award className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <div className="font-medium">Әзірше дәреже бос</div>
-            <div className="text-sm mt-1">Жарыстар өткеннен кейін ұпайлар көрінеді.</div>
+            <div className="font-medium">{t("rankings.no_data")}</div>
+            <div className="text-sm mt-1">{t("rankings.no_data_hint")}</div>
           </div>
         ) : tab === "clubs" && clubRows.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Building2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <div className="font-medium">Клуб рейтингі бос</div>
-            <div className="text-sm mt-1">Жарыстар аяқталғаннан кейін клуб ұпайлары есептеледі.</div>
+            <div className="font-medium">{t("rankings.no_clubs")}</div>
+            <div className="text-sm mt-1">{t("rankings.no_clubs_hint")}</div>
           </div>
         ) : (
           <>
@@ -225,7 +227,7 @@ function Rankings() {
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Іздеу..."
+                      placeholder={t("rankings.search_placeholder")}
                       className="w-full rounded-lg border border-border/60 bg-card/60 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-gold"
                     />
                   </label>
@@ -234,7 +236,7 @@ function Rankings() {
                     onChange={(e) => setClubId(e.target.value)}
                     className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold"
                   >
-                    <option value="">Барлық клубтар</option>
+                    <option value="">{t("common.all_clubs")}</option>
                     {(clubsQuery.data?.items ?? []).map((club: any) => (
                       <option key={club.id} value={club.id}>{localizeName(club.name)}</option>
                     ))}
@@ -245,10 +247,10 @@ function Rankings() {
                 <div id="rating-table" className="rounded-xl border border-border/50 overflow-hidden">
                   <div className="hidden sm:grid grid-cols-[56px_1fr_1fr_90px_100px] gap-3 px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div>#</div>
-                    <div>Спортшы</div>
-                    <div>Клуб</div>
-                    <div>Салмақ</div>
-                    <div className="text-right">Ұпай</div>
+                    <div>{t("rankings.col_athlete")}</div>
+                    <div>{t("rankings.col_club")}</div>
+                    <div>{t("rankings.col_weight")}</div>
+                    <div className="text-right">{t("rankings.col_points")}</div>
                   </div>
                   <div className="divide-y divide-border/30">
                     {filteredRows.map((row: any, idx: number) => {
@@ -294,14 +296,14 @@ function Rankings() {
                     })}
                     {filteredRows.length === 0 && (
                       <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                        Спортшы табылмады.
+                        {t("rankings.athlete_not_found")}
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="mt-3 text-xs text-muted-foreground text-right tabular-nums">
-                  {gender !== "ALL" && <>{genderRows.length} / </>}{rows.length} спортшы
+                  {gender !== "ALL" && <>{genderRows.length} / </>}{rows.length} {t("rankings.tab_athletes").toLowerCase()}
                 </div>
               </>
             )}
@@ -321,7 +323,7 @@ function Rankings() {
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm truncate">{localizeName(row.club.name)}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {row.club.city || "—"} · {row.athleteCount} спортшы
+                              {row.club.city || "—"} · {row.athleteCount} {t("rankings.tab_athletes").toLowerCase()}
                             </div>
                           </div>
                           <div className="shrink-0 font-display text-lg font-bold text-gradient-gold tabular-nums">
@@ -340,7 +342,7 @@ function Rankings() {
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Клуб немесе қала іздеу..."
+                      placeholder={t("rankings.search_clubs_placeholder")}
                       className="w-full rounded-lg border border-border/60 bg-card/60 py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-gold"
                     />
                   </label>
@@ -350,10 +352,10 @@ function Rankings() {
                 <div id="rating-table" className="rounded-xl border border-border/50 overflow-hidden">
                   <div className="hidden sm:grid grid-cols-[56px_1fr_140px_100px_100px] gap-3 px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div>#</div>
-                    <div>Клуб</div>
-                    <div>Қала</div>
-                    <div>Спортшылар</div>
-                    <div className="text-right">Ұпай</div>
+                    <div>{t("rankings.col_club")}</div>
+                    <div>{t("rankings.col_city")}</div>
+                    <div>{t("rankings.col_athletes")}</div>
+                    <div className="text-right">{t("rankings.col_points")}</div>
                   </div>
                   <div className="divide-y divide-border/30">
                     {filteredClubRows.map((row: any) => {
@@ -378,7 +380,7 @@ function Rankings() {
                             <div className="min-w-0">
                               <div className="font-medium text-sm truncate">{localizeName(row.club.name)}</div>
                               <div className="text-[11px] text-muted-foreground sm:hidden truncate">
-                                {row.club.city || "—"} · {row.athleteCount} спортшы
+                                {row.club.city || "—"} · {row.athleteCount} {t("rankings.tab_athletes").toLowerCase()}
                               </div>
                             </div>
                           </div>
@@ -397,7 +399,7 @@ function Rankings() {
                     })}
                     {filteredClubRows.length === 0 && (
                       <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                        Клуб табылмады.
+                        {t("rankings.club_not_found")}
                       </div>
                     )}
                   </div>

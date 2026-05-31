@@ -233,7 +233,7 @@ function computePlacesFromSEMatches(matches: any[]): Record<string, number> {
 // ============================================================
 
 export async function getClubLeaderboard(options: { limit?: number } = {}) {
-  const limit = options.limit ?? 50;
+  const limit = Math.min(options.limit ?? 50, 200);
 
   // Сумма очков по спортсменам
   const athletePoints = await prisma.ratingEntry.groupBy({
@@ -310,7 +310,7 @@ export async function getLeaderboard(options: {
     where,
     _sum: { points: true },
     orderBy: { _sum: { points: "desc" } },
-    take: options.limit ?? 50,
+    take: Math.min(options.limit ?? 50, 200),
   });
 
   // Подтягиваем данные спортсменов

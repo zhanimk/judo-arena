@@ -6,11 +6,25 @@
  */
 
 import { createFileRoute, useParams } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { api, ApiError } from "@/lib/api";
-import { Loader2, Trophy } from "lucide-react";
+import { Loader2, Trophy, WifiOff } from "lucide-react";
 import { useRealtime } from "@/lib/socket";
+
+/* ─── Offline hook ─── */
+function useOnlineStatus() {
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on  = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online",  on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  return online;
+}
 
 export const Route = createFileRoute("/tatami/$token")({
   head: () => ({ meta: [{ title: "Татами — Judo-Arena" }] }),
@@ -18,9 +32,12 @@ export const Route = createFileRoute("/tatami/$token")({
 });
 
 function TatamiJudgePanel() {
+  const { t } = useTranslation();
   const { token } = useParams({ from: "/tatami/$token" });
   const qc = useQueryClient();
   const [compact, setCompact] = useState(false);
+  const [showHotkeys, setShowHotkeys] = useState(false);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     const check = () => setCompact(window.innerWidth < 768);
@@ -87,18 +104,94 @@ function TatamiJudgePanel() {
   );
 
   const matchId = currentMatch?.id;
-  const onErr = (e: any) => setActionError(e instanceof ApiError ? e.message : "Қате");
+  const matchVersion = currentMatch?.version;
+  const onErr = (e: any) => setActionError(e instanceof ApiError ? e.message : t("error.generic"));
 
   const startMatch    = useMutation({ mutationFn: () => api.matches.start(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const pauseMatch    = useMutation({ mutationFn: () => api.matches.pause(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const goldenScore   = useMutation({ mutationFn: () => api.matches.goldenScore(matchId!, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const scoreAction   = useMutation({ mutationFn: (p: { type: string; side: "RED" | "BLUE" }) => api.matches.score(matchId!, p.type, p.side, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const osaekomiAct   = useMutation({ mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const toketaAct     = useMutation({ mutationFn: () => api.matches.toketa(matchId!, undefined, token),    onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const finishAction  = useMutation({ mutationFn: (p: { winnerSide: "RED" | "BLUE"; reason?: string }) => api.matches.finish(matchId!, p.winnerSide, p.reason, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const scoreAction   = useMutation({ mutationFn: (p: { type: string; side: "RED" | "BLUE" }) => api.matches.score(matchId!, p.type, p.side, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const osaekomiAct   = useMutation({ mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const toketaAct     = useMutation({ mutationFn: () => api.matches.toketa(matchId!, undefined, token, matchVersion),    onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const finishAction  = useMutation({ mutationFn: (p: { winnerSide: "RED" | "BLUE"; reason?: string }) => api.matches.finish(matchId!, p.winnerSide, p.reason, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const confirmAction = useMutation({ mutationFn: () => api.matches.confirm(matchId!, undefined, token),   onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const cancelResult  = useMutation({ mutationFn: () => api.matches.cancelResult(matchId!, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const undoLast      = useMutation({ mutationFn: () => api.matches.undoLast(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+
+  /* ─── Keyboard shortcuts ─── */
+  // Keep latest refs so handler always has current state without re-registering
+  const actionsRef = useRef({
+    canScore: false, canOsaekomiRed: false, canOsaekomiBlue: false,
+    isPending: false, isPaused: false, isClockRunning: false, isFinished: false,
+    pendingResult: null as any,
+    osaekomiSide: undefined as "RED" | "BLUE" | undefined,
+    hasOsaekomi: false,
+  });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const { canScore, isPending, isPaused, isClockRunning, isFinished,
+              pendingResult, osaekomiSide, hasOsaekomi } = actionsRef.current;
+
+      switch (e.key.toLowerCase()) {
+        // ── WHITE / RED side ──────────────────────────────
+        case "q": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "IPPON",    side: "RED" }); } break;
+        case "w": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "WAZA_ARI", side: "RED" }); } break;
+        case "e": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "YUKO",     side: "RED" }); } break;
+        case "r": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "SHIDO",    side: "RED" }); } break;
+        case "t": {
+          e.preventDefault();
+          if (hasOsaekomi && osaekomiSide === "RED") toketaAct.mutate();
+          else if (isClockRunning && !pendingResult) osaekomiAct.mutate("RED");
+          break;
+        }
+        // ── BLUE / КӨК side ──────────────────────────────
+        case "a": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "IPPON",    side: "BLUE" }); } break;
+        case "s": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "WAZA_ARI", side: "BLUE" }); } break;
+        case "d": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "YUKO",     side: "BLUE" }); } break;
+        case "f": if (canScore) { e.preventDefault(); scoreAction.mutate({ type: "SHIDO",    side: "BLUE" }); } break;
+        case "g": {
+          e.preventDefault();
+          if (hasOsaekomi && osaekomiSide === "BLUE") toketaAct.mutate();
+          else if (isClockRunning && !pendingResult) osaekomiAct.mutate("BLUE");
+          break;
+        }
+        // ── Match control ─────────────────────────────────
+        case " ": {
+          e.preventDefault();
+          if (!pendingResult && (isPending || isPaused)) startMatch.mutate();
+          else if (!pendingResult && isClockRunning) pauseMatch.mutate();
+          break;
+        }
+        case "enter": {
+          e.preventDefault();
+          if (pendingResult) confirmAction.mutate();
+          break;
+        }
+        case "escape": {
+          e.preventDefault();
+          if (pendingResult) cancelResult.mutate();
+          break;
+        }
+        case "z": {
+          e.preventDefault();
+          if (!isFinished && !pendingResult) undoLast.mutate();
+          break;
+        }
+        case "?":
+        case "h": {
+          e.preventDefault();
+          setShowHotkeys((v) => !v);
+          break;
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // register once — reads from ref
 
   /* ─── Loading ─── */
   if (tatamiQuery.isLoading) {
@@ -111,11 +204,11 @@ function TatamiJudgePanel() {
 
   /* ─── Error ─── */
   if (tatamiQuery.error) {
-    const msg = tatamiQuery.error instanceof ApiError ? tatamiQuery.error.message : "Қате орын алды";
+    const msg = tatamiQuery.error instanceof ApiError ? tatamiQuery.error.message : t("error.generic");
     return (
       <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1a1a2e", padding: 24 }}>
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: 40, maxWidth: 400, textAlign: "center", border: "1px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ color: "#ef4444", fontSize: 26, fontWeight: 900, marginBottom: 10 }}>Қол жетімсіз</div>
+          <div style={{ color: "#ef4444", fontSize: 26, fontWeight: 900, marginBottom: 10 }}>{t("judge.unavailable")}</div>
           <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 15 }}>{msg}</div>
         </div>
       </div>
@@ -132,7 +225,7 @@ function TatamiJudgePanel() {
           {isTournamentCompleted ? (
             <>
               <div style={{ fontWeight: 900, fontSize: 42, color: "#fbbf24", letterSpacing: 4, textTransform: "uppercase" }}>
-                ЖАРЫС АЯҚТАЛДЫ 🏆
+                {t("tatami.tournament_completed")} 🏆
               </div>
               <div style={{ color: "rgba(255,255,255,0.6)", marginTop: 12, fontSize: 18 }}>
                 {typeof tournament?.name === "object"
@@ -140,20 +233,20 @@ function TatamiJudgePanel() {
                   : tournament?.name ?? ""}
               </div>
               <div style={{ color: "rgba(255,255,255,0.4)", marginTop: 8, fontSize: 14 }}>
-                Барлық матчтар аяқталды
+                {t("tatami.all_matches_done")}
               </div>
             </>
           ) : (
             <>
               <div style={{ fontWeight: 900, fontSize: 36, color: "#fbbf24", letterSpacing: 4, textTransform: "uppercase" }}>
-                Барлығы аяқталды!
+                {t("tatami.all_done")}
               </div>
               <div style={{ color: "rgba(255,255,255,0.55)", marginTop: 10, fontSize: 16 }}>
-                Татами #{session?.tatamiNumber}
+                {t("common.tatami")} #{session?.tatamiNumber}
               </div>
               {stats && (
                 <div style={{ marginTop: 12, color: "#fbbf24", opacity: 0.7 }}>
-                  {stats.completed} / {stats.total} матч
+                  {stats.completed} / {stats.total} {t("tatami.match_word")}
                 </div>
               )}
             </>
@@ -181,7 +274,7 @@ function TatamiJudgePanel() {
 
   const cat = currentMatch.bracket?.category;
   const matchDurationSec = cat?.matchDurationSec ?? 240;
-  const weightLabel = cat ? `${cat.gender === "MALE" ? "Ер" : "Қыз"} ${cat.weightMin}-${cat.weightMax} кг` : "";
+  const weightLabel = cat ? `${cat.gender === "MALE" ? t("common.male") : t("tatami.female_short")} ${cat.weightMin}-${cat.weightMax} ${t("common.kg")}` : "";
   const tName = tournament?.name?.kk ?? tournament?.name?.ru ?? "Жарыс";
   const allowYuko = Boolean(cat?.allowYuko);
 
@@ -189,12 +282,34 @@ function TatamiJudgePanel() {
   const redIpponScored  = (redS.ippon  ?? 0) >= 1;
   const blueIpponScored = (blueS.ippon ?? 0) >= 1;
 
+  // Sync ref for keyboard handler
+  actionsRef.current = {
+    canScore, isPending, isPaused, isClockRunning, isFinished,
+    pendingResult, osaekomiSide,
+    hasOsaekomi: Boolean(score_.osaekomi),
+    canOsaekomiRed:  (isClockRunning || (Boolean(score_.osaekomi) && osaekomiSide === "RED"))  && !pendingResult,
+    canOsaekomiBlue: (isClockRunning || (Boolean(score_.osaekomi) && osaekomiSide === "BLUE")) && !pendingResult,
+  };
+
   /* ─── Render ─── */
   return (
     <div style={{
       display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden",
       fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif", background: "#f0f2f5",
     }}>
+
+      {/* ══ OFFLINE BANNER ══ */}
+      {!isOnline && (
+        <div style={{
+          background: "#dc2626", color: "#fff", textAlign: "center",
+          padding: "6px 16px", fontSize: compact ? 12 : 14, fontWeight: 700,
+          letterSpacing: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          flexShrink: 0,
+        }}>
+          <WifiOff style={{ width: 16, height: 16 }} />
+          {t("tatami.offline_warning")}
+        </div>
+      )}
 
       {/* ══ HEADER ══ */}
       <div style={{
@@ -208,11 +323,67 @@ function TatamiJudgePanel() {
         <span style={{ color: "#ccc", fontSize: compact ? 12 : 16, flex: 1, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {tName}
         </span>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          {stats && <div style={{ fontSize: compact ? 11 : 14, color: "#fbbf24" }}>{stats.completed}/{stats.total}</div>}
-          {weightLabel && <div style={{ fontSize: compact ? 10 : 12, color: "#aaa" }}>{weightLabel}</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: compact ? 8 : 14, flexShrink: 0 }}>
+          <div style={{ textAlign: "right" }}>
+            {stats && <div style={{ fontSize: compact ? 11 : 14, color: "#fbbf24" }}>{stats.completed}/{stats.total}</div>}
+            {weightLabel && <div style={{ fontSize: compact ? 10 : 12, color: "#aaa" }}>{weightLabel}</div>}
+          </div>
+          {/* Keyboard shortcuts toggle — hidden on mobile */}
+          {!compact && (
+            <button
+              onClick={() => setShowHotkeys(v => !v)}
+              title="Keyboard shortcuts (H)"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, color: "#aaa", fontSize: 12, fontWeight: 700, padding: "4px 10px", cursor: "pointer", letterSpacing: 1 }}>
+              ⌨ ?
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ══ HOTKEYS OVERLAY ══ */}
+      {showHotkeys && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.88)", zIndex: 99,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24,
+        }}
+          onClick={() => setShowHotkeys(false)}
+        >
+          <div style={{ background: "#1a1a2e", borderRadius: 16, padding: 32, maxWidth: 520, width: "100%", border: "1px solid rgba(255,255,255,0.12)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#fbbf24", marginBottom: 20, letterSpacing: 2 }}>⌨ KEYBOARD SHORTCUTS</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
+              {([
+                ["Q", "IPPON — АҚ (Белый)"],
+                ["A", "IPPON — КӨК (Синий)"],
+                ["W", "WAZA-ARI — АҚ"],
+                ["S", "WAZA-ARI — КӨК"],
+                ["E", "ЮКО — АҚ"],
+                ["D", "ЮКО — КӨК"],
+                ["R", "SHIDO — АҚ"],
+                ["F", "SHIDO — КӨК"],
+                ["T", "OSAEKOMI / TOKETA — АҚ"],
+                ["G", "OSAEKOMI / TOKETA — КӨК"],
+                ["Space", "СТАРТ / ПАУЗА"],
+                ["Enter", "Нәтижені растау"],
+                ["Esc", "Нәтижені болдырмау"],
+                ["Z", "Соңғыны болдырмау (Undo)"],
+                ["H / ?", "Бұл терезе"],
+              ] as [string, string][]).map(([key, desc]) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "rgba(255,255,255,0.05)", borderRadius: 8 }}>
+                  <span style={{ background: "#fbbf24", color: "#111", fontWeight: 900, borderRadius: 5, padding: "2px 8px", fontSize: 12, minWidth: 36, textAlign: "center", flexShrink: 0 }}>{key}</span>
+                  <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 12 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowHotkeys(false)}
+              style={{ marginTop: 20, width: "100%", background: "#fbbf24", color: "#111", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 900, fontSize: 14, cursor: "pointer", letterSpacing: 1 }}>
+              ЖАБУ (ESC)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ══ SCOREBOARD: АҚ card + Timer + КӨК card ══ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, padding: compact ? "6px 8px" : "10px 14px" }}>
@@ -260,21 +431,21 @@ function TatamiJudgePanel() {
       {/* ══ PENDING / WINNER BANNER ══ */}
       {pendingResult && (
         <div style={{ background: "#f59e0b", color: "#111", textAlign: "center", padding: compact ? "8px 0" : "12px 0", fontSize: compact ? 16 : 24, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", flexShrink: 0 }}>
-          НӘТИЖЕНІ БЕКІТУ: {pendingResult.winnerSide === "RED" ? (red?.surname ?? "АҚ") : (blue?.surname ?? "КӨК")}
+          {t("judge.confirm_btn")}: {pendingResult.winnerSide === "RED" ? (red?.surname ?? t("judge.side_red")) : (blue?.surname ?? t("judge.side_blue"))}
         </div>
       )}
       {isFinished && showResult && winnerId && (
         <div style={{ background: "#16a34a", color: "#fff", textAlign: "center", padding: compact ? "8px 0" : "12px 0", fontSize: compact ? 18 : 28, fontWeight: 900, letterSpacing: 3, flexShrink: 0 }}>
           <Trophy style={{ display: "inline", verticalAlign: "middle", width: 24, height: 24, marginRight: 10 }} />
-          ЖЕҢІМПАЗ: {winnerId === red?.id ? (red?.surname ?? "АҚ") : (blue?.surname ?? "КӨК")}
-          <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 400, marginTop: 3 }}>Келесі матч 3 секундтан кейін…</div>
+          {t("common.winner")}: {winnerId === red?.id ? (red?.surname ?? t("judge.side_red")) : (blue?.surname ?? t("judge.side_blue"))}
+          <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 400, marginTop: 3 }}>{t("tatami.next_match_soon")}</div>
         </div>
       )}
 
       {/* ══ QUEUE STRIP ══ */}
       {queue.length > 0 && (
         <div style={{ background: "#e8eaed", borderTop: "2px solid #d0d3d8", padding: compact ? "5px 10px" : "7px 20px", display: "flex", alignItems: "center", gap: compact ? 10 : 20, overflowX: "auto", flexShrink: 0 }}>
-          <span style={{ fontSize: compact ? 11 : 13, fontWeight: 900, color: "#888", letterSpacing: 3, flexShrink: 0 }}>КЕЗЕК</span>
+          <span style={{ fontSize: compact ? 11 : 13, fontWeight: 900, color: "#888", letterSpacing: 3, flexShrink: 0 }}>{t("tatami.queue")}</span>
           {queue.slice(0, 6).map((m: any, i: number) => (
             <span key={m.id} style={{
               fontSize: compact ? 13 : 15, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? "#1a1a2e" : "#666",
@@ -300,11 +471,11 @@ function TatamiJudgePanel() {
         <div style={{ display: "flex", gap: compact ? 5 : 8, justifyContent: "center", flexWrap: "wrap" }}>
 
           {!pendingResult && (isPending || isPaused) && (
-            <Btn label="▶ ХАДЖИМЕ" bg="#fbbf24" fg="#111" bold
+            <Btn label={`▶ ${t("scoring.hajime")}`} bg="#fbbf24" fg="#111" bold
               onClick={() => startMatch.mutate()} disabled={startMatch.isPending} compact={compact} />
           )}
           {!pendingResult && isClockRunning && (
-            <Btn label="❚❚ МАТЕ" bg="#1a1a2e" fg="#fff"
+            <Btn label={`❚❚ ${t("scoring.mate")}`} bg="#1a1a2e" fg="#fff"
               onClick={() => pauseMatch.mutate()} disabled={pauseMatch.isPending} compact={compact} />
           )}
           {isRunning && !pendingResult && !score_.isGoldenScore && (
@@ -313,28 +484,28 @@ function TatamiJudgePanel() {
           )}
           {isRunning && !pendingResult && (
             <>
-              <Btn label="АҚ ЖЕҢДІ" bg="#e5e7eb" fg="#111"
-                onClick={() => finishAction.mutate({ winnerSide: "RED", reason: "Судья шешімі" })}
+              <Btn label={t("judge.red_won")} bg="#e5e7eb" fg="#111"
+                onClick={() => finishAction.mutate({ winnerSide: "RED", reason: t("judge.judge_decision") })}
                 disabled={finishAction.isPending} compact={compact} />
-              <Btn label="КӨК ЖЕҢДІ" bg="#1e40af" fg="#fff"
-                onClick={() => finishAction.mutate({ winnerSide: "BLUE", reason: "Судья шешімі" })}
+              <Btn label={t("judge.blue_won")} bg="#1e40af" fg="#fff"
+                onClick={() => finishAction.mutate({ winnerSide: "BLUE", reason: t("judge.judge_decision") })}
                 disabled={finishAction.isPending} compact={compact} />
             </>
           )}
           {isRunning && !pendingResult && (
-            <Btn label="↩ БОЛДЫРУ" bg="#6b7280" fg="#fff"
+            <Btn label={`↩ ${t("tatami.undo")}`} bg="#6b7280" fg="#fff"
               onClick={() => undoLast.mutate()} disabled={undoLast.isPending} compact={compact} />
           )}
           {pendingResult && (
             <>
-              <Btn label="✓ БЕКІТУ" bg="#16a34a" fg="#fff" bold
+              <Btn label={`✓ ${t("tatami.confirm_short")}`} bg="#16a34a" fg="#fff" bold
                 onClick={() => confirmAction.mutate()} disabled={confirmAction.isPending || cancelResult.isPending} compact={compact} />
-              <Btn label="✗ БОЛДЫРМАУ" bg="#dc2626" fg="#fff" bold
+              <Btn label={`✗ ${t("common.cancel").toUpperCase()}`} bg="#dc2626" fg="#fff" bold
                 onClick={() => cancelResult.mutate()} disabled={cancelResult.isPending || confirmAction.isPending} compact={compact} />
             </>
           )}
           {isFinished && !showResult && (
-            <Btn label="КЕЛЕСІ МАТЧ →" bg="#fbbf24" fg="#111" bold
+            <Btn label={`${t("tatami.next_match")} →`} bg="#fbbf24" fg="#111" bold
               onClick={refetch} compact={compact} />
           )}
         </div>
@@ -356,6 +527,7 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
   onIPPON: () => void; onWAZA: () => void; onYUKO: () => void; onSHIDO: () => void;
   onOsaekomi: () => void; canOsaekomi: boolean; allowYuko: boolean;
 }) {
+  const { t } = useTranslation();
   const isWhite  = side === "white";
   const ippon    = score?.ippon   ?? 0;
   const wazaari  = score?.wazaari ?? 0;
@@ -391,7 +563,7 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
       {/* Side bar */}
       <div style={{ width: compact ? 38 : 68, background: sideBarBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <span style={{ fontSize: compact ? 12 : 20, fontWeight: 900, color: isWhite ? "#444" : "#fff", letterSpacing: 2, writingMode: "vertical-rl", textOrientation: "mixed" }}>
-          {isWhite ? "АҚ" : "КӨК"}
+          {isWhite ? t("judge.side_red") : t("judge.side_blue")}
         </span>
       </div>
 
@@ -454,8 +626,8 @@ function TapCell({ label, value, active, dark, compact, onClick, disabled, isShi
   label: string; value: number; active: boolean; dark: boolean;
   compact: boolean; onClick: () => void; disabled: boolean; isShido?: boolean; isYuko?: boolean;
 }) {
-  const w = compact ? 52 : 90;
-  const h = compact ? 56 : 90;
+  const w = compact ? 60 : 90;  // min 60px — WCAG touch target ≥ 44px
+  const h = compact ? 64 : 90;
 
   const activeBg     = isShido ? "#dc2626" : isYuko ? "#16a34a" : "#fbbf24";
   const activeBorder = isShido ? "#b91c1c" : isYuko ? "#15803d" : "#f59e0b";
@@ -473,7 +645,8 @@ function TapCell({ label, value, active, dark, compact, onClick, disabled, isShi
         background: active ? activeBg : inactiveBg,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.55 : 1,
+        opacity: disabled ? 0.35 : 1,
+        pointerEvents: disabled ? "none" : "auto",
         fontFamily: "inherit",
         userSelect: "none",
         WebkitTapHighlightColor: "transparent",
@@ -542,6 +715,7 @@ function TimerBar({ scoreSnapshot, durationSec, isRunning, isGoldenScore, isFini
 }
 
 function OsaekomiBar({ startedAt, side, compact }: { startedAt: string; side: string; compact: boolean }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const s = new Date(startedAt).getTime();
@@ -550,7 +724,7 @@ function OsaekomiBar({ startedAt, side, compact }: { startedAt: string; side: st
   }, [startedAt]);
   return (
     <div style={{ position: "absolute", left: compact ? 8 : 16, background: "#fbbf24", borderRadius: 8, padding: compact ? "4px 12px" : "6px 20px", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 20px rgba(251,191,36,0.5)", animation: "judgeTimerPulse 1s ease-in-out infinite" }}>
-      <span style={{ fontSize: compact ? 11 : 14, fontWeight: 900, color: "#111", letterSpacing: 2 }}>OSAEKOMI {side === "RED" ? "АҚ" : "КӨК"}</span>
+      <span style={{ fontSize: compact ? 11 : 14, fontWeight: 900, color: "#111", letterSpacing: 2 }}>OSAEKOMI {side === "RED" ? t("judge.side_red") : t("judge.side_blue")}</span>
       <span style={{ fontSize: compact ? 24 : 36, fontWeight: 900, color: "#111", fontVariantNumeric: "tabular-nums" }}>{elapsed}s</span>
     </div>
   );

@@ -1,10 +1,15 @@
 /**
- * /judge — без токена.
- * Перенаправляет на главную, так как судья работает только через /judge/:token.
+ * /judge — layout route для /judge/$token.
+ * Сам по себе перенаправляет на главную.
  */
 
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, Outlet, useParams } from "@tanstack/react-router";
+
+function JudgeLayout() {
+  // Если есть дочерний сегмент ($token) — рендерим его
+  return <Outlet />;
+}
 
 export const Route = createFileRoute("/judge")({
-  component: () => <Navigate to="/" />,
+  component: JudgeLayout,
 });

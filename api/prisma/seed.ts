@@ -17,7 +17,7 @@
  * Безопасно запускать многократно — использует upsert.
  */
 
-import { PrismaClient, UserRole, Gender, Locale, TournamentStatus, BracketFormat } from "@prisma/client";
+import { PrismaClient, UserRole, Gender, Locale, TournamentStatus, BracketFormat, ClubRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -270,7 +270,7 @@ async function main() {
     // Привязать тренера к клубу
     await prisma.user.update({
       where: { id: coach.id },
-      data: { clubId: club.id },
+      data: { clubId: club.id, clubRole: ClubRole.OWNER },
     });
 
     // 4 мужчины + 4 женщины (по одному из каждого имени с поправкой по клубу)

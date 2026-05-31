@@ -16,7 +16,13 @@ export function initSentry(): void {
     dsn: env.SENTRY_DSN,
     environment: env.NODE_ENV,
     release: process.env.RELEASE ?? process.env.npm_package_version ?? "unknown",
-    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 1.0,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.2 : 1.0,
+    tracesSampler: (ctx) => {
+      const name = ctx.name ?? "";
+      if (name.includes("/health")) return 0;
+      if (name.includes("/admin/")) return 1.0;
+      return env.NODE_ENV === "production" ? 0.2 : 1.0;
+    },
     enabled: env.NODE_ENV !== "test",
     // Automatic Node.js instrumentation (http, pg, redis, etc.)
     integrations: [
@@ -27,9 +33,16 @@ export function initSentry(): void {
     beforeSend(event) {
       if (event.request?.data) {
         const data = event.request.data as Record<string, unknown>;
-        if (data.password) data.password = "[FILTERED]";
-        if (data.passwordHash) data.passwordHash = "[FILTERED]";
-        if (data.token) data.token = "[FILTERED]";
+        for (const field of ["password", "passwordHash", "token", "refreshToken", "accessToken", "secret"]) {
+          if (data[field]) data[field] = "[FILTERED]";
+        }
+      }
+      // Scrub Authorization header
+      if (event.request?.headers) {
+        const h = event.request.headers as Record<string, unknown>;
+        if (h["authorization"]) h["authorization"] = "[FILTERED]";
+        if (h["x-judge-token"]) h["x-judge-token"] = "[FILTERED]";
+        if (h["x-tatami-token"]) h["x-tatami-token"] = "[FILTERED]";
       }
       return event;
     },

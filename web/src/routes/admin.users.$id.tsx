@@ -6,6 +6,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 
 export const Route = createFileRoute("/admin/users/$id")({
   head: () => ({ meta: [{ title: "Пайдаланушы — Әкімші" }] }),
@@ -19,6 +21,7 @@ export const Route = createFileRoute("/admin/users/$id")({
 const INPUT = "mt-1 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none";
 
 function AdminUserDetail() {
+  const { t } = useTranslation();
   const { id } = useParams({ from: "/admin/users/$id" });
   const qc = useQueryClient();
   const [error, setError] = useState("");
@@ -59,7 +62,7 @@ function AdminUserDetail() {
   const toggleMut = useMutation({
     mutationFn: () => api.admin.toggleUserActive(id, !query.data?.isActive),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-user", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const editMut = useMutation({
@@ -79,7 +82,7 @@ function AdminUserDetail() {
       qc.invalidateQueries({ queryKey: ["admin-user", id] });
       setShowEdit(false);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const changeClubMut = useMutation({
@@ -89,7 +92,7 @@ function AdminUserDetail() {
       setShowChangeClub(false);
       setNewClubId("");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const resetPwdMut = useMutation({
@@ -99,12 +102,12 @@ function AdminUserDetail() {
       setNewPassword("");
       setConfirmPassword("");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Қате"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
-  if (query.isLoading) return <DashboardShell role="Әкімші" navItems={nav} accentTitle="..."><LoadingState /></DashboardShell>;
+  if (query.isLoading) return <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("common.loading")}><LoadingState /></DashboardShell>;
   const u = query.data;
-  if (!u) return <DashboardShell role="Әкімші" navItems={nav} accentTitle="Табылмады"><EmptyState title="—" /></DashboardShell>;
+  if (!u) return <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("common.not_found")}><EmptyState title="—" /></DashboardShell>;
 
   const totalPoints = (u.ratingEntries ?? []).reduce((s: number, e: any) => s + Number(e.points), 0);
   const totalMatches = (u._count?.redmatches ?? 0) + (u._count?.bluematches ?? 0);
@@ -113,26 +116,26 @@ function AdminUserDetail() {
     setEform((p) => ({ ...p, [f]: e.target.value }));
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle={`${u.name} ${u.surname}`}>
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={`${u.name} ${u.surname}`}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link to="/admin/users" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold">
-          <ArrowLeft className="h-4 w-4" /> Пайдаланушылар тізіміне қайту
+          <ArrowLeft className="h-4 w-4" /> {t("admin.back_to_users")}
         </Link>
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => { initEditForm(u); setShowEdit(true); setError(""); }}
             className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded glass border border-gold/40 hover:border-gold">
-            <Edit2 className="h-3.5 w-3.5" /> Өңдеу
+            <Edit2 className="h-3.5 w-3.5" /> {t("common.edit")}
           </button>
           <button
             onClick={() => { setNewClubId(u.clubId ?? ""); setShowChangeClub(true); setError(""); }}
             className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded glass border border-border hover:border-gold/40">
-            <RefreshCw className="h-3.5 w-3.5" /> Клуб ауыстыру
+            <RefreshCw className="h-3.5 w-3.5" /> {t("admin.change_club")}
           </button>
           <button
             onClick={() => { setShowResetPwd(true); setError(""); }}
             className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded glass border border-amber-500/40 text-amber-300 hover:border-amber-500/70">
-            <Key className="h-3.5 w-3.5" /> Пароль
+            <Key className="h-3.5 w-3.5" /> {t("admin.reset_password")}
           </button>
           <button onClick={() => toggleMut.mutate()} disabled={toggleMut.isPending}
             className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded disabled:opacity-50 ${
@@ -140,7 +143,7 @@ function AdminUserDetail() {
                 ? "bg-destructive/15 text-destructive border border-destructive/40"
                 : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40"
             }`}>
-            {u.isActive ? <><Lock className="h-3.5 w-3.5" /> Блоктау</> : <><Unlock className="h-3.5 w-3.5" /> Ашу</>}
+            {u.isActive ? <><Lock className="h-3.5 w-3.5" /> {t("admin.block_user")}</> : <><Unlock className="h-3.5 w-3.5" /> {t("admin.unblock_user")}</>}
           </button>
         </div>
       </div>
@@ -154,7 +157,7 @@ function AdminUserDetail() {
           u.role === "COACH" ? "bg-sky-500/15 text-sky-300" : "bg-emerald-500/15 text-emerald-300"
         }`}>{u.role}</span>
         <span className={`text-[11px] px-2.5 py-1 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
-          {u.isActive ? "Белсенді" : "Блокталған"}
+          {u.isActive ? t("admin.active") : t("admin.blocked_status")}
         </span>
         <span className="text-sm text-muted-foreground">{u.email}</span>
         {u.club && (
@@ -166,36 +169,36 @@ function AdminUserDetail() {
       </div>
 
       <div className="grid gap-5 grid-cols-2 lg:grid-cols-3 mb-6">
-        <StatCard label="Дәреже" value={String(Math.round(totalPoints))} accent />
-        <StatCard label="Жекпе-жек" value={String(totalMatches)} hint={`${u._count?.wonMatches ?? 0} жеңіс`} />
-        <StatCard label="Жарыстар" value={String((u.ratingEntries ?? []).length)} />
+        <StatCard label={t("admin.stat_rating")} value={String(Math.round(totalPoints))} accent />
+        <StatCard label={t("admin.stat_matches")} value={String(totalMatches)} hint={`${u._count?.wonMatches ?? 0} ${t("admin.stat_wins")}`} />
+        <StatCard label={t("admin.stat_tournaments")} value={String((u.ratingEntries ?? []).length)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Жеке мәлімет">
+        <Panel title={t("admin.personal_info")}>
           <div className="space-y-2 text-sm">
-            <Field label="Аты-жөні" value={`${u.name} ${u.surname}`} />
-            <Field label="Латиница" value={`${u.nameLatin ?? ""} ${u.surnameLatin ?? ""}`.trim() || "—"} />
-            <Field label="Жыныс" value={u.gender === "MALE" ? "Ер" : u.gender === "FEMALE" ? "Әйел" : "—"} />
-            <Field label="Туған күн" value={u.dateOfBirth ? new Date(u.dateOfBirth).toLocaleDateString("kk-KZ") : "—"} />
-            <Field label="Салмақ" value={u.weightKg ? `${u.weightKg} кг` : "—"} />
-            <Field label="Белбеу" value={u.beltRank ?? "—"} />
-            <Field label="Телефон" value={u.phone ?? "—"} />
-            <Field label="Клуб" value={u.club ? localizeName(u.club.name) : "—"} />
-            <Field label="Тіркелген" value={new Date(u.createdAt).toLocaleDateString("kk-KZ")} />
+            <Field label={t("admin.field_fullname")} value={`${u.name} ${u.surname}`} />
+            <Field label={t("admin.field_latin")} value={`${u.nameLatin ?? ""} ${u.surnameLatin ?? ""}`.trim() || "—"} />
+            <Field label={t("admin.field_gender")} value={u.gender === "MALE" ? t("common.male") : u.gender === "FEMALE" ? t("common.female") : "—"} />
+            <Field label={t("admin.field_dob")} value={u.dateOfBirth ? new Date(u.dateOfBirth).toLocaleDateString("kk-KZ") : "—"} />
+            <Field label={t("admin.field_weight")} value={u.weightKg ? `${u.weightKg} ${t("common.kg")}` : "—"} />
+            <Field label={t("admin.field_belt")} value={u.beltRank ?? "—"} />
+            <Field label={t("admin.field_phone")} value={u.phone ?? "—"} />
+            <Field label={t("admin.field_club")} value={u.club ? localizeName(u.club.name) : "—"} />
+            <Field label={t("admin.field_registered")} value={new Date(u.createdAt).toLocaleDateString("kk-KZ")} />
           </div>
         </Panel>
 
-        <Panel title="Турнирлік нәтижелер">
+        <Panel title={t("admin.tournament_results")}>
           {(u.ratingEntries ?? []).length === 0 ? (
-            <EmptyState title="Қатысқан жарыстар жоқ" />
+            <EmptyState title={t("admin.no_tournament_results")} />
           ) : (
             <ul className="space-y-2 text-sm">
               {u.ratingEntries.map((e: any) => (
                 <li key={e.id} className="flex justify-between glass rounded-md p-3">
                   <div>
                     <div className="font-medium">{localizeName(e.tournament?.name)}</div>
-                    <div className="text-xs text-muted-foreground">{placeLabel(e.place)}</div>
+                    <div className="text-xs text-muted-foreground">{placeLabel(e.place, t)}</div>
                   </div>
                   <span className="text-gold font-display text-lg">{Number(e.points)}</span>
                 </li>
@@ -209,26 +212,26 @@ function AdminUserDetail() {
 
       {/* Edit profile */}
       {showEdit && (
-        <Modal title="Профильді өңдеу" onClose={() => setShowEdit(false)}>
+        <Modal title={t("admin.edit_profile")} onClose={() => setShowEdit(false)}>
           {editMut.error && <ErrBox msg={(editMut.error as any)?.message} />}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Аты *</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.first_name")} *</label>
                 <input value={eform.name} onChange={fi("name")} required className={INPUT} />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Тегі *</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.last_name")} *</label>
                 <input value={eform.surname} onChange={fi("surname")} required className={INPUT} />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Аты (лат.)</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.first_name_latin")}</label>
                 <input value={eform.nameLatin} onChange={fi("nameLatin")} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Тегі (лат.)</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("profile.last_name_latin")}</label>
                 <input value={eform.surnameLatin} onChange={fi("surnameLatin")} className={INPUT} />
               </div>
             </div>
@@ -238,40 +241,40 @@ function AdminUserDetail() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Жынысы</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_gender")}</label>
                 <select value={eform.gender} onChange={fi("gender")} className={INPUT}>
                   <option value="">—</option>
-                  <option value="MALE">Ер</option>
-                  <option value="FEMALE">Әйел</option>
+                  <option value="MALE">{t("common.male")}</option>
+                  <option value="FEMALE">{t("common.female")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Туған күн</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_dob")}</label>
                 <input type="date" value={eform.dateOfBirth} onChange={fi("dateOfBirth")} className={INPUT} />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Салмақ (кг)</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_weight_kg")}</label>
                 <input type="number" step="0.1" value={eform.weightKg} onChange={fi("weightKg")} className={INPUT} placeholder="73.0" />
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Белбеу</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_belt")}</label>
                 <input value={eform.beltRank} onChange={fi("beltRank")} className={INPUT} placeholder="1 dan" />
               </div>
             </div>
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Телефон</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.field_phone")}</label>
               <input value={eform.phone} onChange={fi("phone")} className={INPUT} placeholder="+7 700 000 00 00" />
             </div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setShowEdit(false)} className="text-sm px-4 py-2 rounded glass border border-border">
-              Болдырмау
+              {t("common.cancel")}
             </button>
             <button onClick={() => editMut.mutate()} disabled={editMut.isPending || !eform.name || !eform.surname}
               className="text-sm px-4 py-2 rounded bg-gradient-gold text-gold-foreground shadow-gold disabled:opacity-50">
-              {editMut.isPending ? "Сақтауда..." : "Сақтау"}
+              {editMut.isPending ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </Modal>
@@ -279,15 +282,15 @@ function AdminUserDetail() {
 
       {/* Change club */}
       {showChangeClub && (
-        <Modal title="Клуб ауыстыру" onClose={() => setShowChangeClub(false)}>
+        <Modal title={t("admin.change_club")} onClose={() => setShowChangeClub(false)}>
           {changeClubMut.error && <ErrBox msg={(changeClubMut.error as any)?.message} />}
           <p className="text-sm text-muted-foreground mb-3">
-            Қазір: <strong>{u.club ? localizeName(u.club.name) : "клубсыз"}</strong>
+            {t("admin.current_club_label")}: <strong>{u.club ? localizeName(u.club.name) : t("admin.no_club")}</strong>
           </p>
           <div>
-            <label className="text-xs uppercase tracking-widest text-muted-foreground">Жаңа клуб</label>
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.new_club_label")}</label>
             <select value={newClubId} onChange={(e) => setNewClubId(e.target.value)} className={INPUT}>
-              <option value="">— клубсыз —</option>
+              <option value="">— {t("admin.no_club")} —</option>
               {(clubsQuery.data?.items ?? []).map((c: any) => (
                 <option key={c.id} value={c.id}>{localizeName(c.name)} ({c.city})</option>
               ))}
@@ -295,11 +298,11 @@ function AdminUserDetail() {
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setShowChangeClub(false)} className="text-sm px-4 py-2 rounded glass border border-border">
-              Болдырмау
+              {t("common.cancel")}
             </button>
             <button onClick={() => changeClubMut.mutate()} disabled={changeClubMut.isPending}
               className="text-sm px-4 py-2 rounded bg-gradient-gold text-gold-foreground shadow-gold disabled:opacity-50">
-              {changeClubMut.isPending ? "Сақтауда..." : "Сақтау"}
+              {changeClubMut.isPending ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </Modal>
@@ -307,33 +310,34 @@ function AdminUserDetail() {
 
       {/* Reset password */}
       {showResetPwd && (
-        <Modal title="Пароль ауыстыру" onClose={() => { setShowResetPwd(false); setNewPassword(""); setConfirmPassword(""); }}>
+        <Modal title={t("admin.reset_password")} onClose={() => { setShowResetPwd(false); setNewPassword(""); setConfirmPassword(""); }}>
           {resetPwdMut.error && <ErrBox msg={(resetPwdMut.error as any)?.message} />}
           <div className="space-y-3">
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Жаңа пароль *</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.new_password_label")} *</label>
               <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                className={INPUT} placeholder="кемінде 6 таңба" />
+                className={INPUT} placeholder={t("admin.password_min_hint")} />
+              <PasswordStrength password={newPassword} />
             </div>
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Растау *</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.confirm_password_label")} *</label>
               <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                className={INPUT} placeholder="қайта енгізіңіз" />
+                className={INPUT} placeholder={t("admin.password_reenter_hint")} />
               {confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-destructive mt-1">Парольдер сәйкес келмейді</p>
+                <p className="text-xs text-destructive mt-1">{t("admin.password_mismatch")}</p>
               )}
             </div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => { setShowResetPwd(false); setNewPassword(""); setConfirmPassword(""); }}
               className="text-sm px-4 py-2 rounded glass border border-border">
-              Болдырмау
+              {t("common.cancel")}
             </button>
             <button
               onClick={() => resetPwdMut.mutate()}
-              disabled={resetPwdMut.isPending || newPassword.length < 6 || newPassword !== confirmPassword}
+              disabled={resetPwdMut.isPending || !isPasswordStrong(newPassword) || newPassword !== confirmPassword}
               className="text-sm px-4 py-2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 disabled:opacity-50">
-              {resetPwdMut.isPending ? "Жүктелуде..." : "Пароль ауыстыру"}
+              {resetPwdMut.isPending ? t("common.saving") : t("admin.reset_password")}
             </button>
           </div>
         </Modal>
@@ -385,11 +389,12 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function placeLabel(p: number): string {
-  if (p === 1) return "🥇 1-орын";
-  if (p === 2) return "🥈 2-орын";
-  if (p === 3) return "🥉 3-орын";
-  return `${p}-орын`;
+function placeLabel(p: number, t: any): string {
+  const place = t("admin.place_n", { n: p });
+  if (p === 1) return `🥇 ${place}`;
+  if (p === 2) return `🥈 ${place}`;
+  if (p === 3) return `🥉 ${place}`;
+  return place;
 }
 
 function localizeName(n: any): string {

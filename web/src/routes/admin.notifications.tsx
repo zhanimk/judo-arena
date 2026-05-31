@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings, ClipboardList, GitBranch, Send, Loader2, Clock } from "lucide-react";
+import { Send, Loader2, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/admin/notifications")({
 type Kind = "all" | "role" | "club" | "tournament";
 
 function AdminNotifications() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [kind, setKind] = useState<Kind>("all");
   const [role, setRole] = useState<"ATHLETE" | "COACH">("ATHLETE");
@@ -61,7 +63,7 @@ function AdminNotifications() {
       return api.notifications.broadcast({ ...base, kind: "tournament", tournamentId, type: "tournament_update" });
     },
     onSuccess: (r) => {
-      const msg = `${r.count} адамға жіберілді ✓`;
+      const msg = t("admin.notification_sent", { count: r.count });
       setSuccess(msg);
       setTitle(""); setBody(""); setError("");
       qc.invalidateQueries({ queryKey: ["audit-notifications"] });
@@ -76,17 +78,17 @@ function AdminNotifications() {
   });
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Хабарландыру жіберу">
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.notifications_title")}>
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <Panel title="Жаңа хабарландыру">
+        <Panel title={t("admin.notification_new")}>
           <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="space-y-4">
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Аудитория</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_audience")}</label>
               <div className="mt-1.5 grid grid-cols-4 gap-2">
                 {(["all", "role", "club", "tournament"] as const).map((k) => (
                   <button key={k} type="button" onClick={() => setKind(k)}
                     className={`py-2 rounded text-xs border ${kind === k ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
-                    {k === "all" ? "Барлығы" : k === "role" ? "Рөл" : k === "club" ? "Клуб" : "Жарыс"}
+                    {k === "all" ? t("admin.notification_audience_all") : k === "role" ? t("admin.notification_audience_role") : k === "club" ? t("admin.notification_audience_club") : t("admin.notification_audience_tournament")}
                   </button>
                 ))}
               </div>
@@ -94,12 +96,12 @@ function AdminNotifications() {
 
             {kind === "role" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Рөл</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.role")}</label>
                 <div className="mt-1.5 grid grid-cols-2 gap-2">
                   {(["ATHLETE", "COACH"] as const).map((r) => (
                     <button key={r} type="button" onClick={() => setRole(r)}
                       className={`py-2 rounded text-xs border ${role === r ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
-                      {r === "ATHLETE" ? "Спортшылар" : "Жаттықтырушылар"}
+                      {r === "ATHLETE" ? t("admin.notification_role_athletes") : t("admin.notification_role_coaches")}
                     </button>
                   ))}
                 </div>
@@ -108,10 +110,10 @@ function AdminNotifications() {
 
             {kind === "club" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Клуб</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.club")}</label>
                 <select value={clubId} onChange={(e) => setClubId(e.target.value)} required
                   className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
-                  <option value="">Таңдау...</option>
+                  <option value="">{t("common.select")}...</option>
                   {(clubsQuery.data?.items ?? []).map((c: any) => (
                     <option key={c.id} value={c.id}>{localizeName(c.name)} · {c.city}</option>
                   ))}
@@ -121,10 +123,10 @@ function AdminNotifications() {
 
             {kind === "tournament" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Жарыс</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.tournament")}</label>
                 <select value={tournamentId} onChange={(e) => setTournamentId(e.target.value)} required
                   className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
-                  <option value="">Таңдау...</option>
+                  <option value="">{t("common.select")}...</option>
                   {(tQuery.data?.items ?? []).map((t: any) => (
                     <option key={t.id} value={t.id}>{localizeName(t.name)}</option>
                   ))}
@@ -135,19 +137,19 @@ function AdminNotifications() {
                   disabled={!selectedTournament}
                   className="mt-2 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold hover:bg-gold/15 disabled:opacity-50"
                 >
-                  <Clock className="h-4 w-4" /> Таразылау шаблоны
+                  <Clock className="h-4 w-4" /> {t("admin.weigh_in_template")}
                 </button>
               </div>
             )}
 
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Тақырып</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_subject")}</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100}
                 className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none" />
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Мәтін</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_body")}</label>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} required rows={5} maxLength={2000}
                 className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none" />
             </div>
@@ -158,14 +160,14 @@ function AdminNotifications() {
             <button type="submit" disabled={send.isPending}
               className="bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded font-medium shadow-gold inline-flex items-center gap-2 disabled:opacity-50">
               {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Жіберу
+              {t("admin.notification_send")}
             </button>
           </form>
         </Panel>
 
-        <Panel title="Соңғы рассылкалар">
+        <Panel title={t("admin.notification_history")}>
           {auditQuery.isLoading ? <LoadingState /> :
-            (auditQuery.data?.items ?? []).length === 0 ? <EmptyState title="Әзірше рассылкалар жоқ" /> : (
+            (auditQuery.data?.items ?? []).length === 0 ? <EmptyState title={t("admin.notification_empty")} /> : (
               <ul className="space-y-2 text-sm max-h-[500px] overflow-y-auto">
                 {(auditQuery.data?.items ?? []).map((a: any) => (
                   <li key={a.id} className="glass rounded p-2.5">

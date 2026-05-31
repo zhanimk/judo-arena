@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DashboardShell, StatCard, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import { DashboardShell, StatCard, StatCardSkeleton, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { LayoutDashboard, Users, Trophy, ShieldAlert, Activity, Settings, ClipboardList, GitBranch } from "lucide-react";
+import { Users, ShieldAlert, Activity, ClipboardList } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/admin/")({
 
 
 function AdminOverview() {
+  const { t } = useTranslation();
   const tournamentsQuery = useQuery({ queryKey: ["all-tournaments"], queryFn: () => api.tournaments.list() });
   const clubsQuery = useQuery({ queryKey: ["all-clubs"], queryFn: () => api.clubs.list() });
   const liveMatchesQuery = useQuery({
@@ -31,25 +33,30 @@ function AdminOverview() {
   const active = tournaments.filter((t: any) => t.status === "REGISTRATION_OPEN" || t.status === "IN_PROGRESS");
 
   return (
-    <DashboardShell role="Әкімші" navItems={nav} accentTitle="Әкімші панелі">
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Жарыстар" value={String(tournaments.length)} hint={`${active.length} белсенді`} accent />
-        <StatCard label="Клубтар" value={clubsQuery.isLoading ? "…" : String(clubsQuery.data?.total ?? 0)} />
-        <StatCard label="LIVE матчтар" value={liveMatchesQuery.isLoading ? "…" : String(liveMatchesQuery.data?.length ?? 0)} hint="real-time" />
-        <StatCard label="Аудит жазбалары" value={String(auditQuery.data?.total ?? 0)} />
+    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.panel_title")}>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {(tournamentsQuery.isLoading || clubsQuery.isLoading || liveMatchesQuery.isLoading)
+          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : <>
+            <StatCard label={t("admin.stat_tournaments")} value={String(tournaments.length)} hint={t("admin.stat_active", { count: active.length })} accent />
+            <StatCard label={t("admin.stat_clubs")} value={String(clubsQuery.data?.total ?? 0)} />
+            <StatCard label={t("admin.stat_live_matches")} value={String(liveMatchesQuery.data?.length ?? 0)} hint={t("admin.stat_realtime")} />
+            <StatCard label={t("admin.stat_audit")} value={String(auditQuery.data?.total ?? 0)} />
+          </>
+        }
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <Panel title="LIVE матчтар">
+        <Panel title={t("admin.live_matches_panel")}>
           {liveMatchesQuery.isLoading ? <LoadingState /> :
             (liveMatchesQuery.data ?? []).length === 0 ? (
-              <EmptyState title="Қазір LIVE матч жоқ" hint="Auto-refresh 5 сек" />
+              <EmptyState title={t("admin.no_live_matches")} hint={t("admin.live_auto_refresh")} />
             ) : (
               <ul className="space-y-2 text-sm">
                 {(liveMatchesQuery.data ?? []).slice(0, 5).map((m: any) => (
                   <li key={m.id} className="glass rounded-md p-3 flex justify-between">
                     <div>
-                      <div className="font-medium">Татами #{m.tatamiNumber ?? "—"}</div>
+                      <div className="font-medium">{t("admin.tatami_label", { n: m.tatamiNumber ?? "—" })}</div>
                       <div className="text-xs text-muted-foreground">
                         {m.redAthlete?.surname ?? "?"} vs {m.blueAthlete?.surname ?? "?"}
                       </div>
@@ -61,43 +68,43 @@ function AdminOverview() {
             )}
         </Panel>
 
-        <Panel title="Жылдам әрекеттер">
+        <Panel title={t("admin.quick_actions")}>
           <div className="grid gap-2">
             <Link to="/admin/tournaments" className="bg-gradient-gold text-gold-foreground py-2.5 rounded-md text-sm font-medium shadow-gold text-center">
-              Турнир орталығын ашу
+              {t("admin.open_tournament_center")}
             </Link>
             <div className="grid grid-cols-2 gap-2">
               <Link to="/admin/applications" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
-                <ClipboardList className="h-3.5 w-3.5 text-gold" /> Өтінімдер
+                <ClipboardList className="h-3.5 w-3.5 text-gold" /> {t("dashboard.applications")}
               </Link>
               <Link to="/admin/matches" search={{ tournamentId: undefined }} className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-gold" /> Матчтар
+                <Activity className="h-3.5 w-3.5 text-gold" /> {t("dashboard.matches")}
               </Link>
               <Link to="/admin/users" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-gold" /> Пайдаланушылар
+                <Users className="h-3.5 w-3.5 text-gold" /> {t("dashboard.users")}
               </Link>
               <Link to="/admin/ratings" className="glass border border-border py-2.5 rounded-md text-xs hover:border-gold/40 text-center flex items-center justify-center gap-1.5">
-                <ShieldAlert className="h-3.5 w-3.5 text-gold" /> Рейтинг
+                <ShieldAlert className="h-3.5 w-3.5 text-gold" /> {t("dashboard.ratings")}
               </Link>
             </div>
-            {(tournamentsQuery.data?.items ?? []).slice(0, 2).map((t: any) => (
+            {(tournamentsQuery.data?.items ?? []).slice(0, 2).map((tournament: any) => (
               <Link
-                key={t.id}
+                key={tournament.id}
                 to="/admin/tournaments/$id"
-                params={{ id: t.id }}
+                params={{ id: tournament.id }}
                 className="glass border border-gold/30 px-3 py-2.5 rounded-md text-sm hover:border-gold/60"
               >
-                <span className="block truncate">{localizeName(t.name)}</span>
-                <span className="text-[11px] text-muted-foreground">{t.status}</span>
+                <span className="block truncate">{localizeName(tournament.name)}</span>
+                <span className="text-[11px] text-muted-foreground">{tournament.status}</span>
               </Link>
             ))}
           </div>
         </Panel>
 
-        <Panel title="Соңғы әрекеттер">
+        <Panel title={t("admin.recent_activity")}>
           {auditQuery.isLoading ? <LoadingState /> :
             (auditQuery.data?.items ?? []).length === 0 ? (
-              <EmptyState title="Журнал бос" />
+              <EmptyState title={t("admin.audit_empty")} />
             ) : (
               <ul className="space-y-2 text-sm">
                 {(auditQuery.data?.items ?? []).slice(0, 5).map((a: any) => (

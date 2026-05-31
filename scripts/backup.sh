@@ -32,7 +32,20 @@ mkdir -p "${BACKUP_DIR}"
 
 echo "[$(date -Iseconds)] Starting backup → ${FILEPATH}"
 pg_dump "${DATABASE_URL}" | gzip > "${FILEPATH}"
-echo "[$(date -Iseconds)] Backup complete ($(du -sh "${FILEPATH}" | cut -f1))"
+
+# Verify the archive is not corrupted and is non-empty
+if ! gzip -t "${FILEPATH}" 2>/dev/null; then
+  echo "[$(date -Iseconds)] ERROR: Backup file is corrupt — removing" >&2
+  rm -f "${FILEPATH}"
+  exit 1
+fi
+if [[ ! -s "${FILEPATH}" ]]; then
+  echo "[$(date -Iseconds)] ERROR: Backup file is empty" >&2
+  rm -f "${FILEPATH}"
+  exit 1
+fi
+
+echo "[$(date -Iseconds)] Backup complete and verified ($(du -sh "${FILEPATH}" | cut -f1))"
 
 # --- Optional S3 upload ---
 if [[ -n "${BACKUP_S3_BUCKET:-}" ]]; then

@@ -4,7 +4,7 @@
  * Uses bcrypt cost 6 (fast for testing)
  */
 
-import { PrismaClient, UserRole, Gender, Locale, BracketFormat, TournamentStatus } from "@prisma/client";
+import { PrismaClient, UserRole, Gender, Locale, BracketFormat, TournamentStatus, ClubRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -103,9 +103,9 @@ async function main() {
         email, passwordHash: HASH, role: UserRole.COACH,
         name: "Тренер", surname: `ФТ${i+1}`,
         nameLatin: "Coach", surnameLatin: `FT${i+1}`,
-        clubId: clubs[i].id, isActive: true, preferredLocale: Locale.kk,
+        clubId: clubs[i].id, clubRole: ClubRole.OWNER, isActive: true, preferredLocale: Locale.kk,
       },
-      update: { clubId: clubs[i].id },
+      update: { clubId: clubs[i].id, clubRole: ClubRole.OWNER },
     });
     coaches.push(coach);
   }

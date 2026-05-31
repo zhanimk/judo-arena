@@ -33,8 +33,8 @@ export class AuthError extends Error {
 // Регистрация
 // ============================================================
 export async function register(input: RegisterInput): Promise<{ user: User; tokens: TokenPair }> {
-  // Проверка уникальности email
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  // Проверка уникальности email (нормализуем до lowercase — как и при сохранении)
+  const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase().trim() } });
   if (existing) {
     throw new AuthError("EMAIL_TAKEN", "Email уже зарегистрирован", 409);
   }

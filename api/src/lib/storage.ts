@@ -19,19 +19,18 @@ import { env } from "./env.js";
 let s3Client: import("@aws-sdk/client-s3").S3Client | null = null;
 
 function getS3(): import("@aws-sdk/client-s3").S3Client | null {
-  const bucket = process.env.S3_BUCKET;
-  if (!bucket) return null;
+  if (!env.S3_BUCKET) return null;
   if (s3Client) return s3Client;
 
   const { S3Client } = require("@aws-sdk/client-s3") as typeof import("@aws-sdk/client-s3");
   s3Client = new S3Client({
-    region: process.env.AWS_DEFAULT_REGION ?? "us-east-1",
-    endpoint: process.env.S3_ENDPOINT,
-    forcePathStyle: Boolean(process.env.S3_ENDPOINT), // needed for MinIO / R2
-    credentials: process.env.AWS_ACCESS_KEY_ID
+    region: env.AWS_DEFAULT_REGION,
+    endpoint: env.S3_ENDPOINT,
+    forcePathStyle: Boolean(env.S3_ENDPOINT), // needed for MinIO / R2
+    credentials: env.AWS_ACCESS_KEY_ID
       ? {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+          accessKeyId: env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: env.AWS_SECRET_ACCESS_KEY ?? "",
         }
       : undefined,
   });
@@ -70,21 +69,19 @@ async function storeS3(
   mimeType: string,
 ): Promise<string> {
   const { PutObjectCommand } = await import("@aws-sdk/client-s3");
-  const bucket = process.env.S3_BUCKET!;
   await client.send(
     new PutObjectCommand({
-      Bucket: bucket,
+      Bucket: env.S3_BUCKET!,
       Key: subPath,
       Body: buffer,
       ContentType: mimeType,
-      ACL: "public-read",
+      // ACL omitted: bucket policy controls access (private by default).
+      // Public access is provided via S3_PUBLIC_URL (CDN/R2 public domain).
     }),
   );
 
-  const publicBase = process.env.S3_PUBLIC_URL?.replace(/\/$/, "");
+  const publicBase = env.S3_PUBLIC_URL?.replace(/\/$/, "");
   if (publicBase) return `${publicBase}/${subPath}`;
 
-  // Default AWS S3 URL
-  const region = process.env.AWS_DEFAULT_REGION ?? "us-east-1";
-  return `https://${bucket}.s3.${region}.amazonaws.com/${subPath}`;
+  return `https://${env.S3_BUCKET}.s3.${env.AWS_DEFAULT_REGION}.amazonaws.com/${subPath}`;
 }

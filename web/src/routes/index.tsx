@@ -13,6 +13,10 @@ import athleteBlue2 from "@/assets/athlete-blue-2.jpg";
 import techniqueKyu from "@/assets/technique-kyu.jpg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useCountUp } from "@/hooks/useCountUp";
+import { useTypewriter } from "@/hooks/useTypewriter";
+import { useRipple } from "@/hooks/useRipple";
+import { useConfetti } from "@/components/ui/Confetti";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Shield, Users, ArrowRight,
@@ -22,6 +26,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Bracket, sampleRounds } from "@/components/judo/Bracket";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -199,6 +204,7 @@ function Countdown({ to }: { to: number }) {
   const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
   const m = Math.floor((diff / (1000 * 60)) % 60);
   const s = Math.floor((diff / 1000) % 60);
+  const { t: tCount } = useTranslation();
   const Cell = ({ v, l }: { v: number; l: string }) => (
     <div className="flex min-w-[3.8rem] flex-col items-center rounded-xl border border-gold/20 bg-background/50 px-2 py-3 sm:min-w-[5rem] sm:px-4">
       <div className="font-display text-3xl font-bold text-gradient-gold tabular-nums leading-none sm:text-5xl">
@@ -209,10 +215,10 @@ function Countdown({ to }: { to: number }) {
   );
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-      <Cell v={d} l="күн" />
-      <Cell v={h} l="сағ" />
-      <Cell v={m} l="мин" />
-      <Cell v={s} l="сек" />
+      <Cell v={d} l={tCount("home.countdown_days")} />
+      <Cell v={h} l={tCount("home.countdown_hours")} />
+      <Cell v={m} l={tCount("home.countdown_minutes")} />
+      <Cell v={s} l={tCount("home.countdown_seconds")} />
     </div>
   );
 }
@@ -233,6 +239,7 @@ function useTicker() {
 }
 
 function Home() {
+  const { t } = useTranslation();
   const live = useTicker();
   const mm = String(Math.floor(live.time / 60)).padStart(2, "0");
   const ss = String(live.time % 60).padStart(2, "0");
@@ -308,6 +315,42 @@ function Home() {
     change: i < 3 ? "+1" : "—",
     image: topAthletes[i]?.image ?? athleteBlue1,
   }));
+  // Count-up for clubs section stats
+  const { value: countTournaments, ref: refT } = useCountUp(tournamentsQuery.data?.total ?? tournaments.length);
+  const { value: countApplications, ref: refA } = useCountUp(totalApplications);
+  const { value: countClubs, ref: refC } = useCountUp(clubsQuery.data?.total ?? 0);
+  const { value: countCategories, ref: refCat } = useCountUp(totalCategories);
+
+  // Magnetic effect for CTA buttons
+  const magneticMove = (e: React.MouseEvent<HTMLElement>, strength = 0.4) => {
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width / 2) * strength;
+    const y = (e.clientY - r.top - r.height / 2) * strength;
+    el.style.transform = `translate(${x}px, ${y}px) scale(1.05)`;
+  };
+  const magneticLeave = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    el.style.transition = "transform 0.45s cubic-bezier(0.34,1.56,0.64,1)";
+    el.style.transform = "translate(0,0) scale(1)";
+    setTimeout(() => { el.style.transition = ""; }, 450);
+  };
+
+  // 3D tilt for tournament cards
+  const cardTilt = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(800px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg) translateY(-4px) scale(1.01)`;
+    el.style.transition = "transform 0.1s ease-out";
+  };
+  const cardTiltLeave = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget as HTMLElement;
+    el.style.transition = "transform 0.5s cubic-bezier(0.34,1.56,0.64,1)";
+    el.style.transform = "perspective(800px) rotateY(0) rotateX(0) translateY(0) scale(1)";
+  };
+
   const [activeTechnique, setActiveTechnique] = useState(0);
   const [activeBelt, setActiveBelt] = useState(3);
   const currentTechnique = techniqueVideos[activeTechnique];
@@ -356,33 +399,181 @@ function Home() {
     if (tiltRef.current) tiltRef.current.style.transform = "rotateY(-8deg) rotateX(6deg)";
   };
 
+  // Typewriter
+  const typeText = useTypewriter([t("home.typewriter_1"), t("home.typewriter_2"), t("home.typewriter_3")], 60, 2000);
+
+  // Ripple & Confetti
+  const { trigger: ripple } = useRipple();
+  const { burst } = useConfetti();
+
+  // Mouse trail particles
+  const trailRef = useRef<Array<{ x: number; y: number; id: number }>>([]);
+  const trailContainerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let id = 0;
+    const onMove = (e: MouseEvent) => {
+      const container = trailContainerRef.current;
+      if (!container) return;
+      id++;
+      const dot = document.createElement("div");
+      const size = 4 + Math.random() * 4;
+      dot.style.cssText = `
+        position:fixed;left:${e.clientX - size/2}px;top:${e.clientY - size/2}px;
+        width:${size}px;height:${size}px;border-radius:50%;
+        background:oklch(0.86 0.16 90/${0.4 + Math.random()*0.4});
+        pointer-events:none;z-index:9996;
+        transition:opacity 0.5s ease,transform 0.5s ease;
+        box-shadow:0 0 6px oklch(0.86 0.16 90/0.6);
+      `;
+      container.appendChild(dot);
+      requestAnimationFrame(() => {
+        dot.style.opacity = "0";
+        dot.style.transform = `scale(0) translateY(-8px)`;
+      });
+      setTimeout(() => dot.remove(), 520);
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  // Mouse spotlight effect for hero section
+  const heroRef = useRef<HTMLElement | null>(null);
+  const spotlightRef = useRef<HTMLDivElement | null>(null);
+  const cursorDotRef = useRef<HTMLDivElement | null>(null);
+  const cursorRingRef = useRef<HTMLDivElement | null>(null);
+  const cursorPos = useRef({ x: -200, y: -200 });
+  const ringPos = useRef({ x: -200, y: -200 });
+  const rafId = useRef<number>(0);
+
+  useEffect(() => {
+    const dot = cursorDotRef.current;
+    const ring = cursorRingRef.current;
+    const spotlight = spotlightRef.current;
+    if (!dot || !ring || !spotlight) return;
+
+    const animate = () => {
+      ringPos.current.x += (cursorPos.current.x - ringPos.current.x) * 0.12;
+      ringPos.current.y += (cursorPos.current.y - ringPos.current.y) * 0.12;
+      dot.style.transform = `translate(${cursorPos.current.x - 4}px, ${cursorPos.current.y - 4}px)`;
+      ring.style.transform = `translate(${ringPos.current.x - 20}px, ${ringPos.current.y - 20}px)`;
+      rafId.current = requestAnimationFrame(animate);
+    };
+    rafId.current = requestAnimationFrame(animate);
+
+    const onMove = (e: MouseEvent) => {
+      cursorPos.current = { x: e.clientX, y: e.clientY };
+      const hero = heroRef.current;
+      if (hero) {
+        const r = hero.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+        spotlight.style.background = `radial-gradient(600px circle at ${x}px ${y}px, oklch(0.76 0.15 80 / 0.13), transparent 55%)`;
+      }
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(rafId.current);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col" ref={revealRef as React.RefObject<HTMLDivElement>}>
-      <SiteHeader hideUntilScroll />
+    <div className="min-h-screen flex flex-col cursor-none" ref={revealRef as React.RefObject<HTMLDivElement>}>
+      {/* Mouse trail container */}
+      <div ref={trailContainerRef} className="pointer-events-none" />
+
+      {/* Custom cursor — dot + ring */}
+      <div
+        ref={cursorDotRef}
+        className="pointer-events-none fixed left-0 top-0 z-[9998] h-2 w-2 rounded-full bg-gold shadow-[0_0_8px_oklch(0.76_0.15_80/0.9)]"
+        style={{ willChange: "transform" }}
+      />
+      <div
+        ref={cursorRingRef}
+        className="pointer-events-none fixed left-0 top-0 z-[9997] h-10 w-10 rounded-full border border-gold/50"
+        style={{ willChange: "transform", transition: "border-color 0.2s" }}
+      />
+
+      <SiteHeader />
 
       {/* HERO */}
-      <section id="zharys" className="relative overflow-hidden">
+      <section id="zharys" ref={heroRef} className="relative overflow-hidden">
         <div className="absolute inset-0 bg-navy-deep" />
         <img
           src={heroKazakhstan}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-45"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/78 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/72 to-background" />
         <div className="absolute inset-0 grid-bg opacity-30" />
+
+        {/* Mouse spotlight */}
+        <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-10 transition-[background] duration-100" />
+
+        {/* Aurora background */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* Main aurora blobs */}
+          <div className="absolute -left-32 -top-32 h-[700px] w-[700px] rounded-full opacity-20 blur-[120px] animate-aurora"
+            style={{ background: "radial-gradient(circle, oklch(0.76 0.15 80) 0%, oklch(0.60 0.18 280) 50%, transparent 70%)" }} />
+          <div className="absolute -right-32 top-1/4 h-[500px] w-[500px] rounded-full opacity-15 blur-[100px]"
+            style={{ background: "radial-gradient(circle, oklch(0.55 0.20 260) 0%, oklch(0.76 0.15 80) 60%, transparent 70%)", animation: "aurora 22s ease-in-out 6s infinite" }} />
+          <div className="absolute left-1/3 bottom-0 h-[400px] w-[400px] rounded-full opacity-12 blur-[90px]"
+            style={{ background: "radial-gradient(circle, oklch(0.62 0.22 25) 0%, oklch(0.76 0.15 80) 60%, transparent 70%)", animation: "aurora 16s ease-in-out 3s infinite" }} />
+          {/* Subtle moving orbs */}
+          <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/8 blur-[100px]" style={{ animation: "heroOrb1 6s ease-in-out infinite" }} />
+          <div className="absolute right-1/4 top-1/2 h-64 w-64 rounded-full bg-primary/10 blur-[60px]" style={{ animation: "heroOrb2 8s ease-in-out 2s infinite" }} />
+        </div>
+
+        {/* Floating particles */}
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span
+            key={i}
+            className="pointer-events-none absolute rounded-full bg-gold blur-[1px]"
+            style={{
+              left: `${(i * 61 + 5) % 98}%`,
+              top: `${(i * 37 + 10) % 90}%`,
+              width: `${2 + (i % 3)}px`,
+              height: `${2 + (i % 3)}px`,
+              opacity: 0.15 + (i % 5) * 0.06,
+              animation: `heroFloat ${4 + (i % 4)}s ease-in-out ${(i * 0.4) % 4}s infinite`,
+            }}
+          />
+        ))}
+
+        <style>{`
+          @keyframes heroOrb1 { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.6} 50%{transform:translate(-50%,-50%) scale(1.15);opacity:1} }
+          @keyframes heroOrb2 { 0%,100%{transform:scale(1);opacity:0.5} 50%{transform:scale(1.2);opacity:0.9} }
+          @keyframes heroFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+          @keyframes heroBadgeIn { from{opacity:0;transform:translateY(-16px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+          @keyframes heroTitleIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+          @keyframes heroCardIn { from{opacity:0;transform:rotateY(-8deg) rotateX(6deg) translateY(40px) scale(0.96)} to{opacity:1;transform:rotateY(-8deg) rotateX(6deg) translateY(0) scale(1)} }
+          @keyframes heroCtaIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+          @keyframes heroLineIn { from{width:0} to{width:100%} }
+        `}</style>
 
         <div className="container relative mx-auto px-4 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
           <div className="mx-auto max-w-6xl text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-background/65 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold backdrop-blur">
+            <div
+              className="mb-5 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-background/65 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold backdrop-blur"
+              style={{ animation: "heroBadgeIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both" }}
+            >
               <Trophy className="h-4 w-4" />
-              Жақын жарыс
+              {t("home.hero_badge")}
             </div>
 
-            <h1 className="font-display text-5xl font-bold leading-none sm:text-7xl lg:text-8xl">
+            <h1
+              className="font-display text-5xl font-bold leading-none sm:text-7xl lg:text-8xl"
+              style={{ animation: "heroTitleIn 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.25s both" }}
+            >
               Judo<span className="text-gradient-gold">-Arena</span>
             </h1>
 
-            <div className="mx-auto mt-8 max-w-5xl [perspective:1400px]">
+            {/* Animated gold divider line */}
+            <div className="mx-auto mt-6 h-px max-w-xs overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-transparent via-gold to-transparent" style={{ animation: "heroLineIn 0.8s ease-out 0.7s both" }} />
+            </div>
+
+            <div className="mx-auto mt-8 max-w-5xl [perspective:1400px]" style={{ animation: "heroCardIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.45s both" }}>
             <div
               ref={tiltRef}
               onMouseMove={handleTilt}
@@ -396,11 +587,14 @@ function Home() {
               <div className="border-b border-border/50 bg-background/45 px-5 py-4 sm:px-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    <span className="h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_18px_oklch(0.62_0.22_25/0.8)]" />
-                    Тіркеу және қатысу
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75 animate-ping" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_18px_oklch(0.62_0.22_25/0.8)]" />
+                    </span>
+                    {t("home.registration_label")}
                   </div>
                   {featuredTournament && (
-                    <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-semibold text-gold">
+                    <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${featuredTournament.status === "IN_PROGRESS" ? "border-destructive/40 bg-destructive/15 text-destructive" : "border-gold/30 bg-gold/10 text-gold"}`}>
                       {statusText[featuredTournament.status] ?? featuredTournament.status}
                     </span>
                   )}
@@ -471,6 +665,43 @@ function Home() {
             </div>
             </div>
             </div>
+
+            {/* Tagline + CTA — below card */}
+            <div style={{ animation: "heroCtaIn 0.7s ease-out 0.9s both" }}>
+              <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Дзюдо жарыстарын{" "}
+                <span className="text-gold/90 font-medium">
+                  {typeText}<span className="typewriter-cursor text-gold">|</span>
+                </span>
+                {" "}— жеребе, törелік, нақты уақыттағы дәреже бір экранда
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to="/tournaments"
+                  onMouseMove={magneticMove}
+                  onMouseLeave={magneticLeave}
+                  onClick={(e) => ripple(e as any)}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-gold px-7 py-3.5 text-sm font-bold text-gold-foreground shadow-gold hover:shadow-[0_0_40px_oklch(0.76_0.15_80/0.6)] ripple-container overflow-hidden"
+                  style={{ willChange: "transform", display: "inline-flex" }}
+                >
+                  <Trophy className="h-4 w-4" />
+                  Жарыстарды көру
+                </Link>
+                <Link
+                  to="/login"
+                  search={{ mode: "register" }}
+                  onMouseMove={magneticMove}
+                  onMouseLeave={magneticLeave}
+                  onClick={(e) => { ripple(e as any); burst(e.clientX, e.clientY); }}
+                  className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-background/60 px-7 py-3.5 text-sm font-semibold backdrop-blur hover:border-gold/80 hover:bg-gold/10 ripple-container overflow-hidden"
+                  style={{ willChange: "transform", display: "inline-flex" }}
+                >
+                  Тіркелу
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
@@ -484,16 +715,34 @@ function Home() {
         <div className="container mx-auto px-4 relative">
           <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
             <div className="reveal">
-              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">2 · Клуб және спортшылар</div>
+              {/* Count-up stats row */}
+              <div className="flex flex-wrap gap-6 mb-6">
+                {[
+                  { val: countTournaments, ref: refT, label: "жарыс" },
+                  { val: countApplications, ref: refA, label: "өтінім" },
+                  { val: countClubs, ref: refC, label: "клуб" },
+                  { val: countCategories, ref: refCat, label: "санат" },
+                ].map((s) => (
+                  <div key={s.label} className="flex items-end gap-1.5" ref={s.ref as React.RefObject<HTMLDivElement>}>
+                    <span className="font-display text-4xl font-bold text-gradient-gold tabular-nums leading-none">{s.val}</span>
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground mb-1">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("home.clubs_athletes_section")}</div>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
-                Клубтар мен <span className="text-gradient-gold italic">спортшылар</span>
+                {t("home.clubs_athletes_title").split(" ").slice(0,-1).join(" ")}{" "}
+                <span className="relative text-gradient-gold italic">
+                  {t("home.clubs_athletes_title").split(" ").slice(-1)[0]}
+                  <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-gold/80 via-gold/40 to-transparent" />
+                </span>
               </h2>
               <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-                Клубтар, спортшылар және дәреже нақты жүйе деректерінен жүктеледі.
+                {t("home.clubs_athletes_desc")}
               </p>
             </div>
             <Link to="/rankings" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
-              Дәрежеге өту <ArrowRight className="h-4 w-4" />
+              {t("home.go_to_rankings")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
@@ -503,7 +752,10 @@ function Home() {
                 <Link
                   to="/rankings"
                   key={c.name}
-                  className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}
+                  onMouseMove={cardTilt}
+                  onMouseLeave={cardTiltLeave}
+                  className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
+                  style={{ willChange: "transform", transformStyle: "preserve-3d" }}
                 >
                   <LazyImage
                     src={c.image}
@@ -629,16 +881,17 @@ function Home() {
         <div className="container mx-auto px-4 relative">
           <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
             <div className="reveal">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">3 · Жарыс хаттамасы</div>
-              <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight">
-                Жарыс <span className="text-gradient-gold italic">хаттамасы</span>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">{t("home.protocol_section")}</div>
+              <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight overflow-hidden">
+                {t("home.protocol_title").split(" ").slice(0,1).join(" ")}{" "}
+                <span className="text-gradient-gold italic inline-block">{t("home.protocol_title").split(" ").slice(1).join(" ")}</span>
               </h2>
               <p className="mt-3 text-muted-foreground max-w-xl">
-                Кез келген көрермен тіркелусіз белдесулердің нәтижелерін көре алады.
+                {t("home.protocol_desc")}
               </p>
             </div>
             <span className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30">
-              <Radio className="h-3.5 w-3.5 animate-pulse" /> LIVE · Татами #2 · −73 кг
+              <Radio className="h-3.5 w-3.5 animate-pulse" /> {t("home.protocol_live_badge")}
             </span>
           </div>
           <div className="glass rounded-2xl p-6 border border-gold/20 shadow-elegant">
@@ -646,7 +899,7 @@ function Home() {
           </div>
           <div className="mt-6 text-center">
             <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
-              Жарыс хаттамасына өту <ArrowRight className="h-4 w-4" />
+              {t("home.go_to_protocol")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -664,8 +917,8 @@ function Home() {
                 <Trophy className="h-5 w-5 text-gold-foreground" />
               </div>
               <div>
-                <div className="font-display text-lg font-bold">Жарыс аяқталды — хаттама дайын</div>
-                <p className="text-sm text-muted-foreground">Тор, орындар, дәреже ұпайлары және PDF автоматты есептеледі</p>
+                <div className="font-display text-lg font-bold">{t("home.protocol_ready_title")}</div>
+                <p className="text-sm text-muted-foreground">{t("home.protocol_ready_desc")}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -685,16 +938,16 @@ function Home() {
       <section className="container mx-auto px-4 py-14 sm:py-20">
         <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
           <div className="reveal">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Жақын жарыстар</div>
+            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("home.calendar_section")}</div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
-              Жарыс күнтізбесі және <span className="text-gradient-gold italic">тіркеу</span>
+              {t("home.calendar_title").split(" ").slice(0,-1).join(" ")} <span className="text-gradient-gold italic">{t("home.calendar_title").split(" ").slice(-1)[0]}</span>
             </h2>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Командалар өтінім береді, қатысушылар санаттарға бөлінеді, ал басталған жарыстарда live-тор мен белдесулер жаңарады.
+              {t("home.calendar_desc")}
             </p>
           </div>
           <Link to="/tournaments" className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold hover:border-gold/60">
-            Барлық жарыстар <ChevronRight className="h-4 w-4" />
+            {t("home.view_all_tournaments")} <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
         {featuredTournament ? (
@@ -774,12 +1027,15 @@ function Home() {
                 </span>
               ))}
             </div>
-            {upcomingRest.map((t: any, i: number) => (
+            {upcomingRest.map((tour: any, i: number) => (
             <Link
               to="/tournaments/$id"
-              params={{ id: t.id }}
-              key={t.id}
-              className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}
+              params={{ id: tour.id }}
+              key={tour.id}
+              onMouseMove={cardTilt}
+              onMouseLeave={cardTiltLeave}
+              className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
+              style={{ willChange: "transform", transformStyle: "preserve-3d" }}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-gold/15 to-sky-500/10 opacity-80" />
               <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
@@ -790,18 +1046,18 @@ function Home() {
                   <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full border border-gold/30 bg-gold/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
-                        Тіркеу ашық
+                        {t("status.REGISTRATION_OPEN")}
                       </span>
                       <span className="rounded-full border border-border/60 bg-background/40 px-2.5 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {statusText[t.status] ?? t.status}
+                        {statusText[tour.status] ?? tour.status}
                       </span>
                     </div>
                   <h3 className="font-display text-lg font-semibold group-hover:text-gold transition-colors">
-                    {localizeName(t.name)}
+                    {localizeName(tour.name)}
                   </h3>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-gold/70" />{formatDateRange(t.startDate, t.endDate)}</span>
-                    <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-gold/70" />{t.city}</span>
+                    <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-gold/70" />{formatDateRange(tour.startDate, tour.endDate)}</span>
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-gold/70" />{tour.city}</span>
                   </div>
                 </div>
                   <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold sm:flex">
@@ -811,9 +1067,9 @@ function Home() {
 
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Өтінім", value: t._count?.applications ?? 0 },
-                    { label: "Татами", value: t.tatamiCount ?? 1 },
-                    { label: "Санат", value: t._count?.categories ?? 0 },
+                    { label: t("home.stats_tournaments"), value: tour._count?.applications ?? 0 },
+                    { label: t("home.tatami_label"), value: tour.tatamiCount ?? 1 },
+                    { label: t("tournament.categories"), value: tour._count?.categories ?? 0 },
                   ].map((item) => (
                     <div key={item.label} className="rounded-xl border border-border/60 bg-background/35 p-3 text-center">
                       <div className="font-display text-xl font-bold text-gradient-gold tabular-nums sm:text-2xl">{item.value}</div>
@@ -825,12 +1081,12 @@ function Home() {
                 <div className="flex flex-col gap-4 border-t border-border/40 pt-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {t.status === "IN_PROGRESS" ? "Белдесулер жүріп жатыр" : "Басталуына дейін"}
+                      {tour.status === "IN_PROGRESS" ? t("home.live_now") : t("home.until_start")}
                     </div>
-                    <Countdown to={new Date(t.startDate).getTime()} />
+                    <Countdown to={new Date(tour.startDate).getTime()} />
                   </div>
                   <span className="inline-flex items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold group-hover:border-gold/60">
-                    {t.status === "IN_PROGRESS" ? "Live тор" : "Толық ақпарат"}
+                    {tour.status === "IN_PROGRESS" ? t("home.live_bracket") : t("home.full_info")}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </div>
@@ -858,13 +1114,13 @@ function Home() {
               <div className="reveal">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-destructive">
                   <Radio className="h-3.5 w-3.5 animate-pulse" />
-                  Live орталық
+                  {t("home.live_center_badge")}
                 </div>
                 <h2 className="font-display text-3xl font-bold sm:text-4xl md:text-5xl">
-                  Татами, тор және <span className="text-gradient-gold italic">хаттама</span> бір экранда
+                  {t("home.live_center_title")}
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Халықаралық жарыс форматындағы бақылау орталығы: әр татамидегі ағымдағы белдесу, келесі кездесу, live-тор күйі және ресми құжаттар.
+                  {t("home.live_center_desc")}
                 </p>
               </div>
               <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
@@ -875,7 +1131,7 @@ function Home() {
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
               <div className="grid gap-4 md:grid-cols-3">
                 {(liveMatches.length ? liveMatches : []).map((item, i) => (
-                  <div key={item.tatami} className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur reveal reveal-delay-${i + 1}`}>
+                  <div key={item.tatami} className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur blur-reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}>
                     <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl" />
                     <div className="relative flex items-center justify-between">
                       <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-destructive">
@@ -916,16 +1172,16 @@ function Home() {
                     <Shield className="h-5 w-5 text-gold-foreground" />
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Ресми құжаттар</div>
-                    <h3 className="font-display text-xl font-semibold">Құжаттар модулі</h3>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("home.official_docs")}</div>
+                    <h3 className="font-display text-xl font-semibold">{t("home.docs_module")}</h3>
                   </div>
                 </div>
                 <div className="space-y-3">
                   {[
-                    { title: "Бастау парағы", status: "Дайын" },
-                    { title: "Жарыс торы", status: "Live" },
-                    { title: "Санат хаттамасы", status: "Авто" },
-                    { title: "PDF қорытынды", status: "Соңында" },
+                    { title: t("home.doc_start_sheet"), status: t("home.doc_ready") },
+                    { title: t("home.doc_bracket"), status: t("home.doc_live") },
+                    { title: t("home.doc_protocol"), status: t("home.doc_auto") },
+                    { title: t("home.doc_pdf"), status: t("home.doc_final") },
                   ].map((doc) => (
                     <div key={doc.title} className="flex items-center justify-between rounded-xl border border-border/60 bg-card/45 px-4 py-3">
                       <span className="text-sm">{doc.title}</span>
@@ -953,35 +1209,35 @@ function Home() {
             <div className="reveal-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-gold">
                 <Sparkles className="h-3.5 w-3.5" />
-                Жарысқа өтінім
+                {t("home.entry_badge")}
               </div>
               <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
-                Командаңызды тіркеп, қатысушыларды <span className="text-gradient-gold italic">санаттарға</span> қосыңыз
+                {t("home.entry_title")}
               </h3>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Жаттықтырушы жарысты таңдайды, спортшыларды салмақ және жас санатына бөледі, ал әкімші өтінімді бекіткен соң тор құрылады.
+                {t("home.entry_desc")}
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   to="/tournaments"
                   className="inline-flex items-center gap-2 bg-gradient-gold text-gold-foreground px-5 py-3 rounded-md font-semibold shadow-gold hover:scale-105 transition-transform"
                 >
-                  Жарыс таңдау <ArrowRight className="h-4 w-4" />
+                  {t("home.select_tournament")} <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/login"
                   className="inline-flex items-center gap-2 glass border border-gold/30 px-5 py-3 rounded-md font-medium hover:border-gold/60 transition-colors"
                 >
-                  Өтінім беру
+                  {t("home.submit_entry")}
                 </Link>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 reveal-right">
               {[
-                { icon: Trophy, n: "01", t: "Жарыс", d: "Күн, қала және татами саны таңдалады." },
-                { icon: Users, n: "02", t: "Қатысушылар", d: "Команда спортшыларын санаттарға бөледі." },
-                { icon: Shield, n: "03", t: "Бекіту", d: "Әкімші өтінімді тексеріп, торға жібереді." },
+                { icon: Trophy, n: "01", t: t("home.step_tournament"), d: t("home.step_tournament_desc") },
+                { icon: Users, n: "02", t: t("home.step_participants"), d: t("home.step_participants_desc") },
+                { icon: Shield, n: "03", t: t("home.step_approve"), d: t("home.step_approve_desc") },
               ].map((step) => (
                 <div
                   key={step.n}
@@ -1004,15 +1260,15 @@ function Home() {
           <div className="relative mt-5 grid gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:grid-cols-3">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-gold" />
-              Команда және клуб деректері сақталады
+              {t("home.entry_feat_1")}
             </div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-gold" />
-              Спортшылар жас/салмақ бойынша бөлінеді
+              {t("home.entry_feat_2")}
             </div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-gold" />
-              Бекітілген өтінімнен тор жасалады
+              {t("home.entry_feat_3")}
             </div>
           </div>
         </div>
@@ -1058,14 +1314,13 @@ function Home() {
           <div className="mb-8 max-w-3xl lg:mb-12 reveal">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
                 <BookOpen className="h-3.5 w-3.5 text-gold" />
-                <span className="text-[10px] uppercase tracking-[0.28em] text-gold">КЮ техникасы</span>
+                <span className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("home.technique_section")}</span>
               </div>
               <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
-                Ішкі <span className="text-gradient-gold italic">бейне зал</span>: техника және белбеу
+                {t("home.technique_title")}
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                КЮ бейнелері мен белбеу жолы бір жерде: спортшы деңгейін таңдайды, техникасын көреді,
-                келесі белбеуге не керек екенін түсінеді.
+                {t("home.technique_desc")}
               </p>
           </div>
 
@@ -1130,13 +1385,13 @@ function Home() {
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-medium text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
                   >
                     <PlayCircle className="h-4 w-4" />
-                    Сабақты қосу
+                    {t("home.play_lesson")}
                   </button>
                   <button
                     type="button"
                     className="inline-flex items-center justify-center rounded-md border border-gold/30 bg-background/50 px-6 py-3 font-medium backdrop-blur transition-colors hover:border-gold/60"
                   >
-                    Техника тізімі
+                    {t("home.technique_list")}
                   </button>
                 </div>
               </div>

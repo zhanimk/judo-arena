@@ -68,8 +68,8 @@ export async function listAuditLogs(query: {
   const [items, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
-      take: query.limit ?? 50,
-      skip: query.offset ?? 0,
+      take: Math.min(query.limit ?? 50, 200),
+      skip: Math.max(query.offset ?? 0, 0),
       orderBy: { createdAt: "desc" },
       include: {
         actor: { select: { id: true, name: true, surname: true, role: true } },

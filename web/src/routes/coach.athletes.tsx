@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/athletes")({
   head: () => ({ meta: [{ title: "Спортшылар — Judo-Arena" }] }),
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/coach/athletes")({
 
 
 function CoachAthletes() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const clubId = user?.clubId;
   const qc = useQueryClient();
@@ -49,9 +51,9 @@ function CoachAthletes() {
     onSuccess: (_data, { approve }) => {
       qc.invalidateQueries({ queryKey: ["coach-join-requests"] });
       qc.invalidateQueries({ queryKey: ["club-members", clubId] });
-      toast.success(approve ? "Спортшы клубқа қабылданды ✓" : "Өтінім қабылданбады");
+      toast.success(approve ? t("coach.athlete_accepted") : t("coach.request_declined"));
     },
-    onError: () => toast.error("Кезде қате орын алды"),
+    onError: () => toast.error(t("error.generic")),
   });
 
   const pendingRequests = requestsQuery.data ?? [];
@@ -72,7 +74,7 @@ function CoachAthletes() {
   const stats = useMemo(() => getAthleteStats(athletes), [athletes]);
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Менің спортшыларым">
+    <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={t("coach.my_athletes")}>
       <div className="space-y-6">
 
         {/* Incoming join requests */}
@@ -80,7 +82,7 @@ function CoachAthletes() {
           <Panel
             title={
               <span className="flex items-center gap-2">
-                Клубқа өтінімдер
+                {t("coach.join_requests")}
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[10px] font-bold text-navy-deep">
                   {pendingRequests.length}
                 </span>
@@ -97,9 +99,9 @@ function CoachAthletes() {
                     <div>
                       <p className="text-sm font-semibold">{r.athlete?.surname} {r.athlete?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {r.athlete?.gender === "MALE" ? "Ер" : "Әйел"}
+                        {r.athlete?.gender === "MALE" ? t("common.male") : t("common.female")}
                         {r.athlete?.weightKg ? ` · ${r.athlete.weightKg} кг` : ""}
-                        {r.athlete?.dateOfBirth ? ` · ${getAge(r.athlete.dateOfBirth)} жас` : ""}
+                        {r.athlete?.dateOfBirth ? ` · ${getAge(r.athlete.dateOfBirth)} ${t("common.years_short")}` : ""}
                       </p>
                     </div>
                   </div>
@@ -109,14 +111,14 @@ function CoachAthletes() {
                       disabled={reviewMut.isPending}
                       className="flex items-center gap-1.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Қабылдау
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {t("common.approve")}
                     </button>
                     <button
                       onClick={() => reviewMut.mutate({ id: r.id, approve: false })}
                       disabled={reviewMut.isPending}
                       className="flex items-center gap-1.5 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
                     >
-                      <XCircle className="h-3.5 w-3.5" /> Бас тарту
+                      <XCircle className="h-3.5 w-3.5" /> {t("common.reject")}
                     </button>
                   </div>
                 </div>
@@ -127,13 +129,13 @@ function CoachAthletes() {
 
         {/* Athletes list */}
         <Panel
-          title={`Барлығы ${athletes.length}`}
+          title={`${t("common.all")} ${athletes.length}`}
           action={
             <button
               onClick={() => setShowForm(!showForm)}
               className="inline-flex items-center gap-1.5 text-sm bg-gradient-gold text-gold-foreground px-3 py-1.5 rounded-md shadow-gold"
             >
-              <UserPlus className="h-4 w-4" /> {showForm ? "Жабу" : "Қосу"}
+              <UserPlus className="h-4 w-4" /> {showForm ? t("common.close") : t("common.add")}
             </button>
           }
         >
@@ -143,7 +145,7 @@ function CoachAthletes() {
 
           {membersQuery.isLoading ? <TableSkeleton rows={6} cols={5} /> :
             athletes.length === 0 ? (
-              <EmptyState title="Спортшылар жоқ" hint="Алғашқы спортшыңызды қосыңыз" />
+              <EmptyState title={t("coach.no_athletes")} hint={t("coach.invite_athlete")} />
             ) : (
               <AthletesBoard
                 athletes={visibleAthletes}
@@ -184,15 +186,16 @@ function AthletesBoard({
   onGender: (value: "ALL" | "MALE" | "FEMALE") => void;
   onSort: (value: "ageWeight" | "weight" | "name") => void;
 }) {
+  const { t } = useTranslation();
   const groups = useMemo(() => groupByAgeBand(athletes), [athletes]);
 
   return (
     <div className="mt-4 space-y-5">
       <div className="grid gap-3 md:grid-cols-4">
-        <MiniMetric icon={Users} label="Спортшылар" value={String(total)} />
-        <MiniMetric icon={CalendarDays} label="Орташа жас" value={stats.avgAge ? `${stats.avgAge} жас` : "—"} />
-        <MiniMetric icon={Scale} label="Орташа салмақ" value={stats.avgWeight ? `${stats.avgWeight} кг` : "—"} />
-        <MiniMetric icon={Users} label="Ер / Әйел" value={`${stats.male} / ${stats.female}`} />
+        <MiniMetric icon={Users} label={t("coach.stat_athletes")} value={String(total)} />
+        <MiniMetric icon={CalendarDays} label={t("coach.avg_age")} value={stats.avgAge ? `${stats.avgAge} ${t("common.years_short")}` : "—"} />
+        <MiniMetric icon={Scale} label={t("coach.avg_weight")} value={stats.avgWeight ? `${stats.avgWeight} кг` : "—"} />
+        <MiniMetric icon={Users} label={`${t("common.male")} / ${t("common.female")}`} value={`${stats.male} / ${stats.female}`} />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_220px]">
@@ -201,7 +204,7 @@ function AthletesBoard({
           <input
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Аты, тегі, email немесе белбеу"
+            placeholder={t("coach.athlete_search_placeholder")}
             className="h-10 w-full rounded-md border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-gold"
           />
         </label>
@@ -209,9 +212,9 @@ function AthletesBoard({
         <Segmented
           value={gender}
           options={[
-            ["ALL", "Барлығы"],
-            ["MALE", "Ер"],
-            ["FEMALE", "Әйел"],
+            ["ALL", t("common.all")],
+            ["MALE", t("common.male")],
+            ["FEMALE", t("common.female")],
           ]}
           onChange={(v) => onGender(v as "ALL" | "MALE" | "FEMALE")}
         />
@@ -223,15 +226,15 @@ function AthletesBoard({
             onChange={(e) => onSort(e.target.value as "ageWeight" | "weight" | "name")}
             className="h-10 w-full appearance-none rounded-md border border-border bg-input pl-9 pr-3 text-sm outline-none focus:border-gold"
           >
-            <option value="ageWeight">Жас → салмақ</option>
-            <option value="weight">Салмақ бойынша</option>
-            <option value="name">Аты-жөні бойынша</option>
+            <option value="ageWeight">{t("coach.sort_age_weight")}</option>
+            <option value="weight">{t("coach.sort_weight")}</option>
+            <option value="name">{t("coach.sort_name")}</option>
           </select>
         </label>
       </div>
 
       {athletes.length === 0 ? (
-        <EmptyState title="Сәйкес спортшы жоқ" hint="Іздеу немесе фильтрді өзгертіңіз" />
+        <EmptyState title={t("coach.no_matching_athletes")} hint={t("coach.change_filter")} />
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
@@ -240,7 +243,7 @@ function AthletesBoard({
                 <div>
                   <h3 className="font-display text-base font-semibold">{group.label}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {group.items.length} спортшы · {group.weightRange}
+                    {group.items.length} {t("coach.stat_athletes").toLowerCase()} · {group.weightRange}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -266,6 +269,7 @@ function AthletesBoard({
 }
 
 function AthleteRow({ athlete }: { athlete: any }) {
+  const { t } = useTranslation();
   const age = athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : null;
   return (
     <Link
@@ -277,10 +281,10 @@ function AthleteRow({ athlete }: { athlete: any }) {
         <div className="truncate font-semibold">{athlete.surname} {athlete.name}</div>
         <div className="truncate text-xs text-muted-foreground">{athlete.email}</div>
       </div>
-      <Cell label="Жыныс" value={athlete.gender === "MALE" ? "Ер" : "Әйел"} />
-      <Cell label="Жасы" value={age ? `${age} жас` : "—"} />
-      <Cell label="Салмақ" value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} strong />
-      <Cell label="Белбеу" value={athlete.beltRank ?? "—"} gold />
+      <Cell label={t("common.gender")} value={athlete.gender === "MALE" ? t("common.male") : t("common.female")} />
+      <Cell label={t("common.age")} value={age ? `${age} ${t("common.years_short")}` : "—"} />
+      <Cell label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} strong />
+      <Cell label={t("common.belt")} value={athlete.beltRank ?? "—"} gold />
     </Link>
   );
 }
@@ -326,6 +330,7 @@ function Segmented({ value, options, onChange }: { value: string; options: [stri
 }
 
 function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     email: "", password: "", name: "", surname: "",
     gender: "MALE" as "MALE" | "FEMALE", dateOfBirth: "", weightKg: "", beltRank: "",
@@ -339,9 +344,9 @@ function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void
         dateOfBirth: new Date(form.dateOfBirth).toISOString(),
         preferredLocale: "kk",
       }),
-    onSuccess: () => { toast.success("Спортшы сәтті қосылды ✓"); onDone(); },
+    onSuccess: () => { toast.success(t("coach.athlete_added")); onDone(); },
     onError: (e: any) => {
-      const msg = e instanceof ApiError ? e.message : "Қате орын алды";
+      const msg = e instanceof ApiError ? e.message : t("error.generic");
       setError(msg);
       toast.error(msg);
     },
@@ -350,27 +355,27 @@ function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void
   return (
     <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="mt-4 mb-6 glass rounded-lg p-4 grid gap-3 md:grid-cols-2">
       <Input label="Email" type="email" value={form.email} onChange={(v) => setForm({...form, email: v})} required />
-      <Input label="Бастапқы құпиясөз" type="password" value={form.password} onChange={(v) => setForm({...form, password: v})} required minLength={8} />
-      <Input label="Аты" value={form.name} onChange={(v) => setForm({...form, name: v})} required />
-      <Input label="Тегі" value={form.surname} onChange={(v) => setForm({...form, surname: v})} required />
+      <Input label={t("coach.initial_password")} type="password" value={form.password} onChange={(v) => setForm({...form, password: v})} required minLength={8} />
+      <Input label={t("common.name")} value={form.name} onChange={(v) => setForm({...form, name: v})} required />
+      <Input label={t("common.surname")} value={form.surname} onChange={(v) => setForm({...form, surname: v})} required />
       <div>
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">Жыныс</label>
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.gender")}</label>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           {(["MALE", "FEMALE"] as const).map((g) => (
             <button key={g} type="button" onClick={() => setForm({...form, gender: g})}
               className={`py-2 rounded-md text-sm border ${form.gender === g ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
-              {g === "MALE" ? "Ер" : "Әйел"}
+              {g === "MALE" ? t("common.male") : t("common.female")}
             </button>
           ))}
         </div>
       </div>
-      <Input label="Туған күн" type="date" value={form.dateOfBirth} onChange={(v) => setForm({...form, dateOfBirth: v})} required />
-      <Input label="Салмақ (кг)" type="number" step="0.1" value={form.weightKg} onChange={(v) => setForm({...form, weightKg: v})} required />
-      <Input label="Белбеу" value={form.beltRank} onChange={(v) => setForm({...form, beltRank: v})} placeholder="мысалы 2 kyu" />
+      <Input label={t("auth.date_of_birth")} type="date" value={form.dateOfBirth} onChange={(v) => setForm({...form, dateOfBirth: v})} required />
+      <Input label={`${t("common.weight")} (кг)`} type="number" step="0.1" value={form.weightKg} onChange={(v) => setForm({...form, weightKg: v})} required />
+      <Input label={t("common.belt")} value={form.beltRank} onChange={(v) => setForm({...form, beltRank: v})} placeholder={t("coach.belt_placeholder")} />
 
       {error && <div className="md:col-span-2 text-sm text-destructive">{error}</div>}
       <button disabled={mut.isPending} type="submit" className="md:col-span-2 bg-gradient-gold text-gold-foreground py-2.5 rounded-md font-medium shadow-gold inline-flex items-center justify-center gap-2 disabled:opacity-50">
-        {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Қосу
+        {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />} {t("common.add")}
       </button>
     </form>
   );
@@ -450,7 +455,7 @@ function groupByAgeBand(athletes: any[]) {
 
 function getWeightRange(items: any[]) {
   const weights = items.map((a) => Number(a.weightKg)).filter((v) => Number.isFinite(v) && v > 0);
-  if (weights.length === 0) return "салмақ көрсетілмеген";
+  if (weights.length === 0) return "—";
   return `${Math.min(...weights)}-${Math.max(...weights)} кг`;
 }
 

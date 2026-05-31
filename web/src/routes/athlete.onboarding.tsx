@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { api, ApiError } from "@/lib/api";
 import { isAthleteProfileComplete, useAuth } from "@/lib/auth-store";
@@ -30,6 +31,7 @@ const INPUT_CLS =
   "w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold";
 
 function AthleteOnboarding() {
+  const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -41,7 +43,6 @@ function AthleteOnboarding() {
     queryKey: ["my-join-requests"],
     queryFn: () => api.joinRequests.myList(),
     enabled: !!user,
-    // Пока заявка PENDING — обновляем каждые 15 сек, чтобы тренер мог принять и атлет сразу увидел
     refetchInterval: (q) =>
       (q.state.data ?? []).some((r: any) => r.status === "PENDING") ? 15_000 : false,
   });
@@ -53,7 +54,10 @@ function AthleteOnboarding() {
   });
 
   const activeRequest = useMemo(
-    () => (requestsQuery.data ?? []).find((r: any) => r.status === "PENDING" || r.status === "APPROVED"),
+    () =>
+      (requestsQuery.data ?? []).find(
+        (r: any) => r.status === "PENDING" || r.status === "APPROVED",
+      ),
     [requestsQuery.data],
   );
 
@@ -66,7 +70,8 @@ function AthleteOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["my-join-requests"] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім жіберілмеді"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("athlete_onboarding.request_error")),
   });
 
   const cancelRequest = useMutation({
@@ -75,7 +80,8 @@ function AthleteOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["my-join-requests"] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім тоқтатылмады"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("athlete_onboarding.cancel_error")),
   });
 
   if (!user) {
@@ -92,8 +98,8 @@ function AthleteOnboarding() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 ring-4 ring-emerald-500/30 animate-scale-in">
           <CheckCircle2 className="h-10 w-10 text-emerald-400" />
         </div>
-        <div className="text-xl font-bold text-foreground">Кабинет дайын!</div>
-        <div className="text-sm text-muted-foreground animate-pulse">Жүктелуде...</div>
+        <div className="text-xl font-bold text-foreground">{t("coach_onboarding.setup_done")}</div>
+        <div className="text-sm text-muted-foreground animate-pulse">{t("common.loading")}</div>
       </div>
     );
   }
@@ -106,7 +112,9 @@ function AthleteOnboarding() {
             <img src={emblem} alt="" className="h-10 w-10 rounded-xl" />
             <div>
               <div className="font-display text-lg font-bold">JUDO·ARENA</div>
-              <div className="text-xs text-muted-foreground">Спортшыны бастапқы баптау</div>
+              <div className="text-xs text-muted-foreground">
+                {t("athlete_onboarding.subtitle")}
+              </div>
             </div>
           </div>
         </header>
@@ -114,35 +122,43 @@ function AthleteOnboarding() {
         <main className="grid flex-1 gap-6 lg:grid-cols-[0.78fr_1fr]">
           <aside className="rounded-xl border border-border bg-card p-5">
             <div className="mb-6">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">Қош келдіңіз</p>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("coach_onboarding.welcome")}
+              </p>
               <h1 className="mt-2 font-display text-2xl font-bold">
                 {user.name} {user.surname}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Кабинет ашылу үшін алдымен клубқа өтінім жіберіп, спорттық деректерді толтырыңыз.
+                {t("athlete_onboarding.description")}
               </p>
             </div>
 
             <div className="space-y-3">
               <StepRow
                 number="1"
-                title="Клуб таңдау"
+                title={t("athlete_onboarding.step_club")}
                 done={hasClubStep}
-                hint={user.club ? localizeName(user.club.name) : activeRequest ? "Өтінім жіберілді" : "Бір клубқа ғана өтінім"}
+                hint={
+                  user.club
+                    ? localizeName(user.club.name)
+                    : activeRequest
+                      ? t("coach_onboarding.request_pending")
+                      : t("athlete_onboarding.step_club_hint")
+                }
               />
               <StepRow
                 number="2"
-                title="Профильді толтыру"
+                title={t("athlete_onboarding.step_profile")}
                 done={hasProfileStep}
                 disabled={!hasClubStep}
-                hint="Жасы, жынысы, салмағы"
+                hint={t("athlete_onboarding.step_profile_hint")}
               />
               <StepRow
                 number="3"
-                title="Дэшборд"
+                title={t("coach_onboarding.step_dashboard")}
                 done={hasClubStep && hasProfileStep}
                 disabled={!hasClubStep || !hasProfileStep}
-                hint="Барлығы дайын болғанда ашылады"
+                hint={t("coach_onboarding.step_dashboard_hint")}
               />
             </div>
           </aside>
@@ -196,8 +212,12 @@ function StepRow({
   disabled?: boolean;
 }) {
   return (
-    <div className={`flex gap-3 rounded-lg border p-3 ${disabled ? "opacity-50" : ""} ${done ? "border-emerald-500/30 bg-emerald-500/8" : "border-border bg-muted/25"}`}>
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-emerald-500 text-white" : "bg-gold/15 text-gold"}`}>
+    <div
+      className={`flex gap-3 rounded-lg border p-3 ${disabled ? "opacity-50" : ""} ${done ? "border-emerald-500/30 bg-emerald-500/8" : "border-border bg-muted/25"}`}
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-emerald-500 text-white" : "bg-gold/15 text-gold"}`}
+      >
         {done ? <CheckCircle2 className="h-4 w-4" /> : number}
       </div>
       <div>
@@ -229,6 +249,7 @@ function ClubStep({
   cancelRequest: (requestId: string) => void;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   const locked = Boolean(userClub || activeRequest);
 
   return (
@@ -238,23 +259,36 @@ function ClubStep({
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-bold">1. Клуб таңдаңыз</h2>
-          <p className="text-sm text-muted-foreground">Спортшы бір ғана клубта тұра алады.</p>
+          <h2 className="font-display text-lg font-bold">
+            1. {t("athlete_onboarding.club_title")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t("athlete_onboarding.club_desc")}</p>
         </div>
       </div>
 
       {userClub ? (
-        <StatusBox icon={<CheckCircle2 className="h-5 w-5" />} title={localizeName(userClub.name)} hint={`${userClub.city} · клубқа тіркелген`} tone="success" />
+        <StatusBox
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          title={localizeName(userClub.name)}
+          hint={`${userClub.city} · ${t("athlete_onboarding.club_joined")}`}
+          tone="success"
+        />
       ) : activeRequest ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/25 bg-gold/8 p-4">
-          <StatusBox icon={<Clock className="h-5 w-5" />} title={localizeName(activeRequest.club?.name)} hint={`${activeRequest.club?.city ?? ""} · өтінім күтілуде`} tone="gold" unframed />
+          <StatusBox
+            icon={<Clock className="h-5 w-5" />}
+            title={localizeName(activeRequest.club?.name)}
+            hint={`${activeRequest.club?.city ?? ""} · ${t("coach_onboarding.request_pending")}`}
+            tone="gold"
+            unframed
+          />
           <button
             onClick={() => cancelRequest(activeRequest.id)}
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
           >
             <XCircle className="h-3.5 w-3.5" />
-            Өзгерту
+            {t("coach_onboarding.change_club")}
           </button>
         </div>
       ) : (
@@ -264,18 +298,25 @@ function ClubStep({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Клуб атауы немесе қала"
+              placeholder={t("athlete_onboarding.club_search_placeholder")}
               className={`${INPUT_CLS} pl-9`}
             />
           </div>
           <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
             {loading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">Клубтар жүктелуде...</div>
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {t("athlete_onboarding.clubs_loading")}
+              </div>
             ) : clubs.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">Клуб табылмады</div>
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {t("coach_onboarding.not_found")}
+              </div>
             ) : (
               clubs.map((club) => (
-                <div key={club.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-input/35 p-3">
+                <div
+                  key={club.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-input/35 p-3"
+                >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{localizeName(club.name)}</div>
                     <div className="text-xs text-muted-foreground">{club.city}</div>
@@ -285,7 +326,7 @@ function ClubStep({
                     disabled={busy || locked}
                     className="shrink-0 rounded-md bg-gradient-gold px-3 py-2 text-xs font-semibold text-gold-foreground shadow-gold disabled:opacity-50"
                   >
-                    Өтінім жіберу
+                    {t("coach_onboarding.send_request")}
                   </button>
                 </div>
               ))
@@ -303,11 +344,21 @@ function ProfileStep({
   onSaved,
 }: {
   locked: boolean;
-  user: { id: string; dateOfBirth?: string | null; gender?: "MALE" | "FEMALE" | null; weightKg?: number | null; beltRank?: string | null; phone?: string | null };
+  user: {
+    id: string;
+    dateOfBirth?: string | null;
+    gender?: "MALE" | "FEMALE" | null;
+    weightKg?: number | null;
+    beltRank?: string | null;
+    phone?: string | null;
+  };
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [dateOfBirth, setDateOfBirth] = useState(toDateInput(user.dateOfBirth));
-  const [gender, setGender] = useState<"MALE" | "FEMALE" | "">((user.gender ?? "") as "MALE" | "FEMALE" | "");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "">(
+    (user.gender ?? "") as "MALE" | "FEMALE" | "",
+  );
   const [weightKg, setWeightKg] = useState(user.weightKg ? String(user.weightKg) : "");
   const [beltRank, setBeltRank] = useState(user.beltRank ?? "");
   const [phone, setPhone] = useState(user.phone ?? "");
@@ -323,7 +374,8 @@ function ProfileStep({
         phone: phone || undefined,
       }),
     onSuccess: () => onSaved(),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Профиль сақталмады"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("athlete_onboarding.profile_save_error")),
   });
 
   const disabled = locked || save.isPending;
@@ -335,8 +387,10 @@ function ProfileStep({
           <UserRound className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-bold">2. Профильді толтырыңыз</h2>
-          <p className="text-sm text-muted-foreground">Телефон міндетті емес. Жарыс үшін жас, жыныс және салмақ керек.</p>
+          <h2 className="font-display text-lg font-bold">
+            2. {t("athlete_onboarding.profile_title")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t("athlete_onboarding.profile_desc")}</p>
         </div>
       </div>
 
@@ -346,38 +400,83 @@ function ProfileStep({
           e.preventDefault();
           setError("");
           if (!dateOfBirth || !gender || !weightKg) {
-            setError("Туған күн, жыныс және салмақ міндетті");
+            setError(t("athlete_onboarding.profile_required_error"));
             return;
           }
           save.mutate();
         }}
       >
         <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Туған күні</span>
-          <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} disabled={disabled} className={INPUT_CLS} required />
+          <span className="mb-1 block text-xs text-muted-foreground">
+            {t("athlete_onboarding.dob_label")}
+          </span>
+          <input
+            type="date"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            disabled={disabled}
+            className={INPUT_CLS}
+            required
+          />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Жынысы</span>
-          <select value={gender} onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "")} disabled={disabled} className={INPUT_CLS} required>
-            <option value="">Таңдау</option>
-            <option value="MALE">Ер</option>
-            <option value="FEMALE">Әйел</option>
+          <span className="mb-1 block text-xs text-muted-foreground">{t("common.gender")}</span>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "")}
+            disabled={disabled}
+            className={INPUT_CLS}
+            required
+          >
+            <option value="">{t("common.select")}</option>
+            <option value="MALE">{t("common.male")}</option>
+            <option value="FEMALE">{t("common.female")}</option>
           </select>
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Салмақ, кг</span>
-          <input type="number" min="1" max="300" step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} disabled={disabled} className={INPUT_CLS} required />
+          <span className="mb-1 block text-xs text-muted-foreground">
+            {t("athlete_onboarding.weight_label")}
+          </span>
+          <input
+            type="number"
+            min="1"
+            max="300"
+            step="0.1"
+            value={weightKg}
+            onChange={(e) => setWeightKg(e.target.value)}
+            disabled={disabled}
+            className={INPUT_CLS}
+            required
+          />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Белбеу</span>
-          <input value={beltRank} onChange={(e) => setBeltRank(e.target.value)} disabled={disabled} placeholder="Мысалы: 5 kyu" className={INPUT_CLS} />
+          <span className="mb-1 block text-xs text-muted-foreground">{t("common.belt")}</span>
+          <input
+            value={beltRank}
+            onChange={(e) => setBeltRank(e.target.value)}
+            disabled={disabled}
+            placeholder={t("athlete_onboarding.belt_placeholder")}
+            className={INPUT_CLS}
+          />
         </label>
         <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block text-xs text-muted-foreground">Телефон, болса</span>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={disabled} placeholder="+7..." className={INPUT_CLS} />
+          <span className="mb-1 block text-xs text-muted-foreground">
+            {t("athlete_onboarding.phone_label")}
+          </span>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={disabled}
+            placeholder="+7..."
+            className={INPUT_CLS}
+          />
         </label>
 
-        {error && <div className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+        {error && (
+          <div className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
         <div className="sm:col-span-2 flex justify-end">
           <button
@@ -385,8 +484,12 @@ function ProfileStep({
             disabled={disabled}
             className="inline-flex items-center gap-2 rounded-lg bg-gradient-gold px-4 py-2.5 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-50"
           >
-            {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Сақтап, кабинетке өту
+            {save.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="h-4 w-4" />
+            )}
+            {t("athlete_onboarding.save_btn")}
           </button>
         </div>
       </form>
@@ -409,7 +512,9 @@ function StatusBox({
 }) {
   const color = tone === "success" ? "text-emerald-400" : "text-gold";
   return (
-    <div className={`flex items-center gap-3 ${unframed ? "" : "rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-4"}`}>
+    <div
+      className={`flex items-center gap-3 ${unframed ? "" : "rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-4"}`}
+    >
       <div className={color}>{icon}</div>
       <div>
         <div className="text-sm font-semibold">{title}</div>

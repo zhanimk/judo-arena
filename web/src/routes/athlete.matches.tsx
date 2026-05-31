@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches")({
   head: () => ({ meta: [{ title: "Жекпе-жектер — Judo-Arena" }] }),
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/athlete/matches")({
 type StatusFilter = "all" | "PENDING" | "IN_PROGRESS" | "COMPLETED";
 
 function AthleteMatchesList() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const athleteId = user?.id ?? "";
 
@@ -58,21 +60,23 @@ function AthleteMatchesList() {
     return list;
   }, [matches, statusFilter, search, athleteId]);
 
-  const total    = matches.length;
-  const wins     = matches.filter((m) => m.winnerId === athleteId).length;
-  const losses   = matches.filter((m) => m.winnerId && m.winnerId !== athleteId).length;
-  const pending  = matches.filter((m) => m.status === "PENDING").length;
+  const total   = matches.length;
+  const wins    = matches.filter((m) => m.winnerId === athleteId).length;
+  const losses  = matches.filter((m) => m.winnerId && m.winnerId !== athleteId).length;
+  const pending = matches.filter((m) => m.status === "PENDING").length;
+
+  const stats = [
+    { label: t("common.all"),         value: total },
+    { label: t("matches.win"),        value: wins,    cls: "text-gold" },
+    { label: t("matches.loss"),       value: losses,  cls: "text-destructive" },
+    { label: t("athlete.stat_pending"), value: pending, cls: "text-muted-foreground" },
+  ];
 
   return (
-    <DashboardShell role="Спортшы" navItems={nav} accentTitle="Менің жекпе-жектерім">
+    <DashboardShell role={t("roles.ATHLETE")} navItems={nav} accentTitle={t("athlete.matches_page_title")}>
       {/* Stat strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
-        {[
-          { label: "Барлығы", value: total },
-          { label: "Жеңіс",   value: wins,    cls: "text-gold" },
-          { label: "Жеңіліс", value: losses,  cls: "text-destructive" },
-          { label: "Күтуде",  value: pending, cls: "text-muted-foreground" },
-        ].map(({ label, value, cls }) => (
+        {stats.map(({ label, value, cls }) => (
           <div key={label} className="glass rounded-xl px-4 py-3 text-center">
             <div className={`font-display text-2xl font-bold ${cls ?? ""}`}>{value}</div>
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground mt-0.5">{label}</div>
@@ -80,7 +84,7 @@ function AthleteMatchesList() {
         ))}
       </div>
 
-      <Panel title="Жекпе-жектер тізімі">
+      <Panel title={t("matches.list_title")}>
         {/* Filters */}
         <div className="mb-4 flex flex-wrap gap-3">
           {/* Status tabs */}
@@ -96,7 +100,7 @@ function AthleteMatchesList() {
                     : "bg-card/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {statusLabel(s)}
+                {s === "all" ? t("common.all") : String(t(`status.${s}`, s))}
               </button>
             ))}
           </div>
@@ -107,7 +111,7 @@ function AthleteMatchesList() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Қарсылас немесе турнир..."
+              placeholder={t("matches.search_placeholder")}
               className="w-full rounded-lg border border-border/60 bg-card/70 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-gold"
             />
           </label>
@@ -118,8 +122,8 @@ function AthleteMatchesList() {
           <LoadingState />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={search || statusFilter !== "all" ? "Нәтиже табылмады" : "Жекпе-жектер жоқ"}
-            hint={search || statusFilter !== "all" ? "Іздеу шарттарын өзгертіп көріңіз" : "Жарысқа қатысқанда матчтар осы жерде пайда болады"}
+            title={search || statusFilter !== "all" ? t("common.no_data") : t("athlete.no_matches")}
+            hint={search || statusFilter !== "all" ? t("matches.search_hint") : t("athlete.no_matches_hint")}
           />
         ) : (
           <ul className="space-y-2">
@@ -131,8 +135,8 @@ function AthleteMatchesList() {
 
         {filtered.length > 0 && (
           <div className="mt-3 text-right text-xs text-muted-foreground">
-            {filtered.length} жекпе-жек
-            {search && ` · іздеу: "${search}"`}
+            {filtered.length} {t("dashboard.matches").toLowerCase()}
+            {search && ` · ${t("common.search").toLowerCase()}: "${search}"`}
           </div>
         )}
       </Panel>
@@ -143,6 +147,7 @@ function AthleteMatchesList() {
 // ─── Строка матча ────────────────────────────────────────────────────────────
 
 function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
+  const { t } = useTranslation();
   const opp    = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
   const mySide = m.redAthlete?.id === athleteId ? "red" : "blue";
   const myScore  = m.scoreSnapshot?.[mySide];
@@ -168,10 +173,10 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
             <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">LIVE</span>
           ) : done ? (
             <span className={`font-display text-sm font-bold ${won ? "text-gold" : "text-destructive"}`}>
-              {won ? "Жеңіс" : "Жеңіліс"}
+              {won ? t("matches.win") : t("matches.loss")}
             </span>
           ) : (
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">Күтуде</span>
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">{String(t("status.PENDING"))}</span>
           )}
         </div>
 
@@ -185,8 +190,8 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
               <Trophy className="h-3 w-3 text-gold/50" />
               {localizeName(m.tournament?.name) ?? "—"}
             </span>
-            <span>{sectionLabel(m.bracketSection)} · Раунд {m.round}</span>
-            {m.tatamiNumber && <span>Татами {m.tatamiNumber}</span>}
+            <span>{sectionLabel(m.bracketSection, t)} · {t("matches.round")} {m.round}</span>
+            {m.tatamiNumber && <span>{t("common.tatami")} {m.tatamiNumber}</span>}
           </div>
         </div>
 
@@ -233,22 +238,14 @@ function localizeName(n: any): string {
   return n.kk || n.ru || n.en || "—";
 }
 
-function statusLabel(s: StatusFilter | string): string {
-  if (s === "all")         return "Барлығы";
-  if (s === "PENDING")     return "Күтуде";
-  if (s === "IN_PROGRESS") return "LIVE";
-  if (s === "COMPLETED")   return "Аяқталды";
-  return s;
-}
-
-function sectionLabel(s: string | null): string {
+function sectionLabel(s: string | null, t: (key: string) => string): string {
   if (!s) return "—";
   const m: Record<string, string> = {
-    main:      "Негізгі",
-    repechage: "Жұбату",
-    bronze1:   "Қола №1",
-    bronze2:   "Қола №2",
-    final:     "Финал",
+    main:      t("bracket.section_main"),
+    repechage: t("bracket.section_repechage"),
+    bronze1:   t("bracket.section_bronze1"),
+    bronze2:   t("bracket.section_bronze2"),
+    final:     t("bracket.section_final"),
   };
   return m[s] ?? s;
 }

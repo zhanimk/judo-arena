@@ -1,11 +1,12 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
-import { AlertTriangle, Building2, CheckCircle2, Clock3 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Plus } from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/applications")({
   head: () => ({ meta: [{ title: "Өтінімдер — Judo-Arena" }] }),
@@ -29,6 +30,7 @@ function CoachApplicationsRoute() {
 }
 
 function CoachApplications() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -65,7 +67,7 @@ function CoachApplications() {
   const approved = apps.filter((a: any) => a.status === "APPROVED").length;
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Менің өтінімдерім">
+    <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={t("coach.applications_page_title")}>
       {applicationNotifications.length > 0 && (
         <div className="mb-6 grid gap-3">
           {applicationNotifications.slice(0, 3).map((n: any) => (
@@ -93,7 +95,7 @@ function CoachApplications() {
                       params={{ id: n.payload.applicationId }}
                       className="rounded-md bg-gold/15 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
                     >
-                      Өтінімді ашу
+                      {t("coach.open_application")}
                     </Link>
                   )}
                   {!n.read && (
@@ -101,7 +103,7 @@ function CoachApplications() {
                       onClick={() => markRead.mutate(n.id)}
                       className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                     >
-                      Оқылды
+                      {t("common.unread")}
                     </button>
                   )}
                 </div>
@@ -112,32 +114,41 @@ function CoachApplications() {
       )}
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <MiniStat icon={Clock3} label="Қарауда" value={pending} />
-        <MiniStat icon={CheckCircle2} label="Бекітілді" value={approved} ok />
-        <MiniStat icon={AlertTriangle} label="Түзету керек" value={rejected} danger />
+        <MiniStat icon={Clock3} label={t("coach.stat_pending")} value={pending} />
+        <MiniStat icon={CheckCircle2} label={t("coach.stat_approved")} value={approved} ok />
+        <MiniStat icon={AlertTriangle} label={t("applications.needs_correction")} value={rejected} danger />
       </div>
 
       <Panel
-        title={`Барлығы ${apps.length} өтінім`}
+        title={`${t("common.all")} ${apps.length} ${t("applications.title").toLowerCase()}`}
         action={
-          <div className="flex flex-wrap gap-2">
-            {["ALL", "DRAFT", "SUBMITTED", "APPROVED", "REJECTED"].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                  statusFilter === status ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {status === "ALL" ? "Бәрі" : statusLabel(status)}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/coach/tournaments"
+              className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-xs font-medium text-gold-foreground shadow-gold"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("coach.apply_tournament")}
+            </Link>
+            <div className="flex flex-wrap gap-2">
+              {["ALL", "DRAFT", "SUBMITTED", "APPROVED", "REJECTED"].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                    statusFilter === status ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {status === "ALL" ? t("common.all") : String(t(`status.${status}`, status))}
+                </button>
+              ))}
+            </div>
           </div>
         }
       >
         {appsQuery.isLoading ? <LoadingState /> :
           filteredApps.length === 0 ? (
-            <EmptyState title="Өтінімдер жоқ" hint="«Жарыстар» бөлімінен өтінім бере аласыз" />
+            <EmptyState title={t("applications.no_applications")} hint={t("coach.apply_hint")} />
           ) : (
             <ul className="space-y-3 text-sm">
               {filteredApps.map((a: any) => (
@@ -151,8 +162,8 @@ function CoachApplications() {
                       <div>
                         <div className="font-medium">{a.tournamentName}</div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {a._count?.entries ?? 0} спортшы
-                          {a.submittedAt ? ` · жіберілген ${new Date(a.submittedAt).toLocaleDateString("kk-KZ")}` : ""}
+                          {t("common.athletes_count", { count: a._count?.entries ?? 0 })}
+                          {a.submittedAt ? ` · ${t("applications.submitted")} ${new Date(a.submittedAt).toLocaleDateString("kk-KZ")}` : ""}
                         </div>
                       </div>
                       <StatusBadge status={a.status} />
@@ -162,7 +173,7 @@ function CoachApplications() {
                         «{a.reviewerNotes}»
                       </div>
                     )}
-                    <div className="mt-2 text-xs text-gold">Ашу →</div>
+                    <div className="mt-2 text-xs text-gold">{t("common.view")} →</div>
                   </Link>
                 </li>
               ))}
@@ -186,26 +197,16 @@ function MiniStat({ icon: Icon, label, value, ok, danger }: { icon: any; label: 
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, { c: string; l: string }> = {
-    DRAFT: { c: "bg-muted text-muted-foreground", l: "Жоба" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", l: "Қарауда" },
-    APPROVED: { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: "Бекітілді" },
-    REJECTED: { c: "bg-destructive/15 text-destructive border border-destructive/40", l: "Қайтарылды" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground", l: "Алынды" },
+  const { t } = useTranslation();
+  const colors: Record<string, string> = {
+    DRAFT: "bg-muted text-muted-foreground",
+    SUBMITTED: "bg-gold/15 text-gold border border-gold/30",
+    APPROVED: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    REJECTED: "bg-destructive/15 text-destructive border border-destructive/40",
+    WITHDRAWN: "bg-muted text-muted-foreground",
   };
-  const x = m[status] ?? { c: "bg-muted", l: status };
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${x.c} shrink-0`}>{x.l}</span>;
-}
-
-function statusLabel(status: string): string {
-  const m: Record<string, string> = {
-    DRAFT: "Жоба",
-    SUBMITTED: "Қарауда",
-    APPROVED: "Бекітілді",
-    REJECTED: "Қайтарылды",
-    WITHDRAWN: "Алынды",
-  };
-  return m[status] ?? status;
+  const cls = colors[status] ?? "bg-muted";
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${cls} shrink-0`}>{String(t(`status.${status}`, status))}</span>;
 }
 
 function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }

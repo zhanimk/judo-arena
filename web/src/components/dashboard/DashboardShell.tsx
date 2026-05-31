@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { ReactNode, useState } from "react";
 import emblem from "@/assets/jcl-logo.jpeg";
-import { LogOut, Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, Bell } from "lucide-react";
+import { LogOut, Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, Bell, PackageOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, logout as doLogout } from "@/lib/auth-store";
 import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
@@ -29,6 +29,9 @@ const navLabelKeys: Record<string, string> = {
   "Нәтижелер": "dashboard.results",
   "Хабарландырулар": "dashboard.notifications",
   "Рейтинг": "nav.rankings",
+  "Матчтар": "dashboard.matches",
+  "Есептер": "dashboard.reports",
+  "Менің клубым": "dashboard.my_club",
 };
 
 const roleKeys: Record<string, string> = {
@@ -128,13 +131,26 @@ export function DashboardShell({
         {/* Logo row */}
         <div className={`flex h-16 items-center border-b border-border/40 ${collapsed ? "justify-center px-2" : "px-4 gap-2"}`}>
           {collapsed ? (
-            <Link to={dashboardRoot(user?.role)} title="JUDO·ARENA" className="flex items-center justify-center">
-              <img src={emblem} alt="" className="h-8 w-8" />
+            <Link to={dashboardRoot(user?.role)} title="JUDO·ARENA" className="group flex items-center justify-center">
+              <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
+                <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
+                <span className="absolute inset-[2px] rounded-[10px] bg-card" />
+                <img src={emblem} alt="" className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:scale-105" />
+              </span>
             </Link>
           ) : (
-            <Link to={dashboardRoot(user?.role)} className="flex flex-1 min-w-0 items-center gap-2">
-              <img src={emblem} alt="" className="h-8 w-8 shrink-0" />
-              <span className="font-display font-bold truncate">JUDO·ARENA</span>
+            <Link to={dashboardRoot(user?.role)} className="group flex flex-1 min-w-0 items-center gap-2.5">
+              <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
+                <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
+                <span className="absolute inset-[2px] rounded-[10px] bg-card" />
+                <img src={emblem} alt="" className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-display text-sm font-bold leading-none tracking-wide truncate">
+                  JUDO<span className="text-gradient-gold">·</span>ARENA
+                </span>
+                <span className="block text-[9px] uppercase tracking-[0.2em] text-muted-foreground mt-0.5 truncate">management</span>
+              </span>
             </Link>
           )}
 
@@ -204,7 +220,8 @@ export function DashboardShell({
                 <span className="relative shrink-0">
                   <n.icon className="h-4 w-4" />
                   {isNotif && unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                    <span aria-label={`${unreadCount} unread`}
+                      className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
@@ -363,11 +380,28 @@ export function LoadingState({ message }: { message?: string }) {
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title, hint, icon: Icon, action,
+}: {
+  title: string;
+  hint?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  action?: { label: string; to: string };
+}) {
+  const Ico = Icon ?? PackageOpen;
   return (
-    <div className="text-center py-8">
-      <div className="text-sm font-medium">{title}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/40">
+        <Ico className="h-5 w-5 text-muted-foreground/60" />
+      </div>
+      <div className="text-sm font-medium text-foreground">{title}</div>
+      {hint && <div className="mt-1 text-xs text-muted-foreground max-w-xs">{hint}</div>}
+      {action && (
+        <Link to={action.to}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold/10 border border-gold/20 px-4 py-2 text-xs font-medium text-gold hover:bg-gold/20 transition-colors">
+          {action.label}
+        </Link>
+      )}
     </div>
   );
 }

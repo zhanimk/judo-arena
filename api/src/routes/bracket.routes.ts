@@ -46,7 +46,7 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 
   app.post<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
     async (
       request: FastifyRequest<{ Params: { tournamentId: string; categoryId: string } }>,
       reply,
@@ -76,7 +76,7 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 
   app.post<{ Params: { tournamentId: string } }>(
     "/:tournamentId/brackets/prepare",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
     async (request: FastifyRequest<{ Params: { tournamentId: string } }>, reply) => {
       const result = await prepareTournamentDraw(request.user!.sub, request.params.tournamentId);
       return reply.code(201).send(result);

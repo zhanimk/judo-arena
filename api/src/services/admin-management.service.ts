@@ -115,8 +115,8 @@ export async function listAllUsers(query: {
       { surname: { contains: query.search, mode: "insensitive" } },
     ];
   }
-  const limit = query.limit ?? 50;
-  const offset = query.offset ?? 0;
+  const limit = Math.min(query.limit ?? 50, 200);
+  const offset = Math.max(query.offset ?? 0, 0);
 
   const [items, total] = await Promise.all([
     prisma.user.findMany({

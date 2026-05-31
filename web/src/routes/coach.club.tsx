@@ -23,6 +23,7 @@ import { api, ApiError, mediaUrl } from "@/lib/api";
 import { Avatar, LazyImage } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/club")({
   head: () => ({ meta: [{ title: "Клуб — Judo-Arena" }] }),
@@ -32,8 +33,6 @@ export const Route = createFileRoute("/coach/club")({
     </ProtectedRoute>
   ),
 });
-
-
 
 type Locale = "kk" | "ru" | "en";
 type ClubForm = {
@@ -55,6 +54,7 @@ const emptyForm: ClubForm = {
 };
 
 function CoachClub() {
+  const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
   const clubId = user?.clubId;
   const isOwner = user?.clubRole === "OWNER";
@@ -103,20 +103,20 @@ function CoachClub() {
         qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
       ]);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Клуб сақталмады"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
   });
 
   return (
-    <DashboardShell role="Жаттықтырушы" navItems={nav} accentTitle="Менің клубым">
+    <DashboardShell role={t("dashboard.coach")} navItems={nav} accentTitle={t("coach_club.my_club")}>
       {!clubId && (
         <div className="mb-6 rounded-md border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">
-          Алдымен клуб таңдаңыз: жаңа клуб құрыңыз немесе бар клубқа қосылуға өтінім жіберіңіз.
+          {t("coach_club.no_club_hint")}
         </div>
       )}
 
       {!clubId && (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-          <Panel title="Жаңа клуб құру">
+          <Panel title={t("coach_club.create_club")}>
             <ClubEditor
               initial={formInitial}
               isSaving={saveClub.isPending}
@@ -124,7 +124,7 @@ function CoachClub() {
               onSubmit={(form) => saveClub.mutate(form)}
             />
           </Panel>
-          <Panel title="Бар клубқа қосылу">
+          <Panel title={t("coach_club.join_club")}>
             <CoachJoinClubPanel
               requests={coachRequestsQuery.data ?? []}
               isLoading={coachRequestsQuery.isLoading}
@@ -141,46 +141,46 @@ function CoachClub() {
       )}
 
       {clubId && (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-        <Panel title={clubId ? "Клуб карточкасы" : "Клуб құру"}>
-          {clubQuery.isLoading ? (
-            <LoadingState />
-          ) : (
-            <ClubEditor
-              initial={formInitial}
-              isSaving={saveClub.isPending}
-              error={error}
-              onSubmit={(form) => saveClub.mutate(form)}
-              readOnly={!isOwner}
-            />
-          )}
-        </Panel>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+          <Panel title={clubId ? t("coach_club.club_card") : t("coach_club.create_club")}>
+            {clubQuery.isLoading ? (
+              <LoadingState />
+            ) : (
+              <ClubEditor
+                initial={formInitial}
+                isSaving={saveClub.isPending}
+                error={error}
+                onSubmit={(form) => saveClub.mutate(form)}
+                readOnly={!isOwner}
+              />
+            )}
+          </Panel>
 
-        <Panel title="Көрініс">
-          <ClubPreview club={clubQuery.data} fallback={formInitial} />
-          <div className="mt-5 border-t border-border/40 pt-5">
-            <h3 className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">Клуб тренерлері</h3>
-            <ClubCoaches
-              clubId={clubId}
-              currentUserId={user?.id}
-              canManage={isOwner}
-              coaches={clubQuery.data?.members ?? (user ? [user] : [])}
-              onChanged={async () => {
-                await Promise.all([
-                  qc.invalidateQueries({ queryKey: ["coach-club"] }),
-                  qc.invalidateQueries({ queryKey: ["auth-me"] }),
-                ]);
-                await refreshMe();
-              }}
-            />
-          </div>
-        </Panel>
-      </div>
+          <Panel title={t("coach_club.preview")}>
+            <ClubPreview club={clubQuery.data} fallback={formInitial} />
+            <div className="mt-5 border-t border-border/40 pt-5">
+              <h3 className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">{t("coach_club.club_coaches")}</h3>
+              <ClubCoaches
+                clubId={clubId}
+                currentUserId={user?.id}
+                canManage={isOwner}
+                coaches={clubQuery.data?.members ?? (user ? [user] : [])}
+                onChanged={async () => {
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["coach-club"] }),
+                    qc.invalidateQueries({ queryKey: ["auth-me"] }),
+                  ]);
+                  await refreshMe();
+                }}
+              />
+            </div>
+          </Panel>
+        </div>
       )}
 
       {clubId && isOwner && (
         <div className="mt-6">
-          <Panel title={`Тренер өтінімдері ${incomingCoachRequestsQuery.data?.length ?? 0}`}>
+          <Panel title={`${t("coach_club.coach_requests")} ${incomingCoachRequestsQuery.data?.length ?? 0}`}>
             <IncomingCoachRequests
               requests={incomingCoachRequestsQuery.data ?? []}
               isLoading={incomingCoachRequestsQuery.isLoading}
@@ -196,21 +196,21 @@ function CoachClub() {
       )}
 
       {clubId && (
-      <div className="mt-6">
-        <Panel title={`Жас топтары ${groupsQuery.data?.length ?? 0}`}>
-          {!clubId ? (
-            <EmptyState title="Алдымен клуб құрыңыз" hint="Топтарды клуб сақталғаннан кейін қосуға болады" />
-          ) : groupsQuery.isLoading ? (
-            <LoadingState />
-          ) : (
-            <GroupsManager
-              clubId={clubId}
-              groups={groupsQuery.data ?? []}
-              onChanged={() => qc.invalidateQueries({ queryKey: ["club-groups", clubId] })}
-            />
-          )}
-        </Panel>
-      </div>
+        <div className="mt-6">
+          <Panel title={`${t("coach_club.age_groups")} ${groupsQuery.data?.length ?? 0}`}>
+            {!clubId ? (
+              <EmptyState title={t("coach_club.create_club_first")} hint={t("coach_club.groups_after_save")} />
+            ) : groupsQuery.isLoading ? (
+              <LoadingState />
+            ) : (
+              <GroupsManager
+                clubId={clubId}
+                groups={groupsQuery.data ?? []}
+                onChanged={() => qc.invalidateQueries({ queryKey: ["club-groups", clubId] })}
+              />
+            )}
+          </Panel>
+        </div>
       )}
 
       {clubId && (
@@ -223,6 +223,7 @@ function CoachClub() {
 }
 
 function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: () => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [result, setResult] = useState<{ created: number; skipped: number; errors: any[] } | null>(null);
@@ -233,10 +234,10 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
     onSuccess: (r) => {
       setResult(r);
       onImported();
-      import("sonner").then(({ toast }) => toast.success(`${r.created} спортшы қосылды`));
+      import("sonner").then(({ toast }) => toast.success(t("coach_club.import_success", { count: r.created })));
     },
     onError: (e: any) => {
-      import("sonner").then(({ toast }) => toast.error(e instanceof ApiError ? e.message : "Қате"));
+      import("sonner").then(({ toast }) => toast.error(e instanceof ApiError ? e.message : t("error.generic")));
     },
   });
 
@@ -270,16 +271,15 @@ athlete1@club.kz,Pass1234!,Айбек,Сейткали,Aibek,Seitkali,2005-03-15
 athlete2@club.kz,Pass1234!,Дина,Байжан,Dina,Baizan,2006-07-22,FEMALE,57,5 КЮ`;
 
   return (
-    <Panel title="CSV арқылы спортшыларды импорттау">
+    <Panel title={t("coach_club.csv_import_title")}>
       {!open ? (
-        <button onClick={() => setOpen(true)}
-          className="text-sm text-gold hover:underline">
-          CSV импортын ашу →
+        <button onClick={() => setOpen(true)} className="text-sm text-gold hover:underline">
+          {t("coach_club.csv_import_open")} →
         </button>
       ) : (
         <div className="space-y-4">
           <div className="text-xs text-muted-foreground">
-            Форматы: <code className="bg-muted px-1 rounded">email, password, name, surname, nameLatin, surnameLatin, dateOfBirth, gender, weightKg, beltRank</code>
+            {t("coach_club.csv_format_label")}: <code className="bg-muted px-1 rounded">email, password, name, surname, nameLatin, surnameLatin, dateOfBirth, gender, weightKg, beltRank</code>
           </div>
           <button onClick={() => {
             const a = document.createElement("a");
@@ -287,43 +287,43 @@ athlete2@club.kz,Pass1234!,Дина,Байжан,Dina,Baizan,2006-07-22,FEMALE,5
             a.download = "athletes_template.csv";
             a.click();
           }} className="text-xs text-gold hover:underline">
-            Үлгіні жүктеу (template.csv)
+            {t("coach_club.csv_download_template")}
           </button>
           <textarea
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
             rows={8}
-            placeholder="CSV мәтінін осы жерге қойыңыз..."
+            placeholder={t("coach_club.csv_paste_hint")}
             className="w-full bg-input border border-border rounded px-3 py-2 text-xs font-mono focus:border-gold focus:outline-none"
           />
           <div className="flex gap-3">
             <button
               onClick={() => {
                 const rows = parseCsv(csvText);
-                if (!rows.length) { import("sonner").then(({ toast }) => toast.error("CSV оқылмады")); return; }
+                if (!rows.length) { import("sonner").then(({ toast }) => toast.error(t("coach_club.csv_parse_error"))); return; }
                 importMut.mutate(rows);
               }}
               disabled={importMut.isPending || !csvText.trim()}
               className="bg-gradient-gold text-gold-foreground px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
             >
-              {importMut.isPending ? "Импортталуда..." : "Импорттау"}
+              {importMut.isPending ? t("coach_club.importing") : t("coach_club.import_btn")}
             </button>
             <button onClick={() => { setOpen(false); setResult(null); setCsvText(""); }}
               className="text-sm text-muted-foreground hover:text-foreground">
-              Жабу
+              {t("common.close")}
             </button>
           </div>
 
           {result && (
             <div className="glass rounded p-3 text-sm space-y-1">
-              <div className="text-emerald-400">✓ Қосылды: {result.created}</div>
-              {result.skipped > 0 && <div className="text-yellow-400">↷ Өткізілді: {result.skipped}</div>}
+              <div className="text-emerald-400">✓ {t("coach_club.import_created")}: {result.created}</div>
+              {result.skipped > 0 && <div className="text-yellow-400">↷ {t("coach_club.import_skipped")}: {result.skipped}</div>}
               {result.errors.length > 0 && (
                 <details className="text-xs text-destructive">
-                  <summary className="cursor-pointer">{result.errors.length} қате</summary>
+                  <summary className="cursor-pointer">{result.errors.length} {t("coach_club.import_errors")}</summary>
                   <ul className="mt-1 space-y-0.5">
                     {result.errors.map((e, i) => (
-                      <li key={i}>Қатар {e.row}: {e.email} — {e.reason}</li>
+                      <li key={i}>{t("coach_club.import_row")} {e.row}: {e.email} — {e.reason}</li>
                     ))}
                   </ul>
                 </details>
@@ -349,6 +349,7 @@ function ClubEditor({
   onSubmit: (form: ClubForm) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(initial);
   const [locale, setLocale] = useState<Locale>("kk");
 
@@ -367,7 +368,7 @@ function ClubEditor({
     <form onSubmit={(e) => { e.preventDefault(); if (!readOnly) onSubmit(form); }} className="space-y-5">
       {readOnly && (
         <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-          Клуб карточкасын тек клуб иесі өзгерте алады. Сіз спортшылармен және жарыс өтінімдерімен жұмыс істей аласыз.
+          {t("coach_club.readonly_hint")}
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -375,7 +376,7 @@ function ClubEditor({
           <button
             key={lng}
             type="button"
-          onClick={() => setLocale(lng)}
+            onClick={() => setLocale(lng)}
             disabled={readOnly}
             className={`rounded-md border px-3 py-1.5 text-xs uppercase transition-colors ${
               locale === lng ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
@@ -388,28 +389,28 @@ function ClubEditor({
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field
-          label={`Атауы (${locale.toUpperCase()})`}
+          label={`${t("coach_club.name_label")} (${locale.toUpperCase()})`}
           value={form.name[locale]}
           onChange={(value) => updateLocale("name", value)}
           required={locale === "kk"}
           disabled={readOnly}
         />
-        <Field label="Қысқа атауы" value={form.shortName} onChange={(shortName) => setForm({ ...form, shortName })} placeholder="JCL Almaty" disabled={readOnly} />
-        <Field label="Қала" value={form.city} onChange={(city) => setForm({ ...form, city })} required disabled={readOnly} />
-        <Field label="Ел коды" value={form.country} onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })} required maxLength={2} disabled={readOnly} />
+        <Field label={t("coach_club.short_name")} value={form.shortName} onChange={(shortName) => setForm({ ...form, shortName })} placeholder="JCL Almaty" disabled={readOnly} />
+        <Field label={t("admin.club_city")} value={form.city} onChange={(city) => setForm({ ...form, city })} required disabled={readOnly} />
+        <Field label={t("admin.club_country")} value={form.country} onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })} required maxLength={2} disabled={readOnly} />
         <div className="md:col-span-2">
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">Логотип</label>
+          <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("coach_club.logo_label")}</label>
           <div className="mt-1.5 flex gap-2">
             <input
-          value={form.logoUrl}
-          onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+              value={form.logoUrl}
+              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
               disabled={readOnly}
-              placeholder="/uploads/... немесе https://..."
+              placeholder="/uploads/... or https://..."
               className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
             />
             <label className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground ${readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:text-foreground"}`}>
               {uploadLogo.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Жүктеу
+              {t("coach_club.upload_btn")}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -427,59 +428,56 @@ function ClubEditor({
       </div>
 
       <div>
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">Сипаттама ({locale.toUpperCase()})</label>
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">
+          {t("coach_club.description_label")} ({locale.toUpperCase()})
+        </label>
         <textarea
           value={form.description[locale]}
           onChange={(e) => updateLocale("description", e.target.value)}
           disabled={readOnly}
           rows={5}
           className="mt-1.5 w-full resize-none rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-          placeholder="Клуб туралы қысқаша ақпарат"
+          placeholder={t("coach_club.description_placeholder")}
         />
       </div>
 
       {error && <div className="text-sm text-destructive">{error}</div>}
-      {!readOnly && <button
-        disabled={isSaving}
-        type="submit"
-        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 font-medium text-gold-foreground shadow-gold disabled:opacity-50 sm:w-auto"
-      >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        Сақтау
-      </button>}
+      {!readOnly && (
+        <button
+          disabled={isSaving}
+          type="submit"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 font-medium text-gold-foreground shadow-gold disabled:opacity-50 sm:w-auto"
+        >
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {t("common.save")}
+        </button>
+      )}
     </form>
   );
 }
 
 function GroupsManager({ clubId, groups, onChanged }: { clubId: string; groups: any[]; onChanged: () => void }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState({ name: "", ageMin: "6", ageMax: "8" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const createGroup = useMutation({
     mutationFn: () => api.clubs.createGroup(clubId, toGroupPayload(draft)),
-    onSuccess: () => {
-      setDraft({ name: "", ageMin: "6", ageMax: "8" });
-      setError("");
-      onChanged();
-    },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Топ қосылмады"),
+    onSuccess: () => { setDraft({ name: "", ageMin: "6", ageMax: "8" }); setError(""); onChanged(); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_add_error")),
   });
 
   const updateGroup = useMutation({
     mutationFn: (group: any) => api.clubs.updateGroup(group.id, toGroupPayload(group)),
-    onSuccess: () => {
-      setEditingId(null);
-      setError("");
-      onChanged();
-    },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Топ сақталмады"),
+    onSuccess: () => { setEditingId(null); setError(""); onChanged(); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_save_error")),
   });
 
   const deleteGroup = useMutation({
     mutationFn: (id: string) => api.clubs.deleteGroup(id),
     onSuccess: onChanged,
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Топ өшірілмеді"),
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_delete_error")),
   });
 
   return (
@@ -488,22 +486,22 @@ function GroupsManager({ clubId, groups, onChanged }: { clubId: string; groups: 
         onSubmit={(e) => { e.preventDefault(); createGroup.mutate(); }}
         className="grid gap-3 rounded-md border border-border/60 bg-background/30 p-3 md:grid-cols-[minmax(180px,1fr)_110px_110px_auto]"
       >
-        <Field label="Топ атауы" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
-        <Field label="Жасынан" type="number" value={draft.ageMin} onChange={(ageMin) => setDraft({ ...draft, ageMin })} required />
-        <Field label="Жасына дейін" type="number" value={draft.ageMax} onChange={(ageMax) => setDraft({ ...draft, ageMax })} required />
+        <Field label={t("admin.group_name")} value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
+        <Field label={t("admin.age_from")} type="number" value={draft.ageMin} onChange={(ageMin) => setDraft({ ...draft, ageMin })} required />
+        <Field label={t("admin.age_to")} type="number" value={draft.ageMax} onChange={(ageMax) => setDraft({ ...draft, ageMax })} required />
         <button
           disabled={createGroup.isPending}
           className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-gold/15 px-4 text-sm text-gold hover:bg-gold/20 disabled:opacity-50"
         >
           {createGroup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Қосу
+          {t("common.add")}
         </button>
       </form>
 
       {error && <div className="text-sm text-destructive">{error}</div>}
 
       {groups.length === 0 ? (
-        <EmptyState title="Жас топтары жоқ" hint="Мысалы: U10, U12, Junior" />
+        <EmptyState title={t("coach_club.no_groups")} hint="U10, U12, Junior" />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {groups.map((group) => (
@@ -529,13 +527,14 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
   onEdit: () => void; onCancel: () => void;
   onSave: (data: any) => void; onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ ...group, ageMin: String(group.ageMin), ageMax: String(group.ageMax) });
 
   if (isEditing) {
     return (
       <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="rounded-md border border-gold/30 bg-gold/5 p-4">
         <div className="space-y-3">
-          <Field label="Топ" value={form.name} onChange={(name) => setForm({ ...form, name })} required />
+          <Field label={t("admin.group_name")} value={form.name} onChange={(name) => setForm({ ...form, name })} required />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Min" type="number" value={form.ageMin} onChange={(ageMin) => setForm({ ...form, ageMin })} required />
             <Field label="Max" type="number" value={form.ageMax} onChange={(ageMax) => setForm({ ...form, ageMax })} required />
@@ -543,10 +542,10 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
         </div>
         <div className="mt-4 flex gap-2">
           <button disabled={isBusy} className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm text-gold-foreground shadow-gold disabled:opacity-50">
-            <Save className="h-4 w-4" /> Сақтау
+            <Save className="h-4 w-4" /> {t("common.save")}
           </button>
           <button type="button" onClick={onCancel} className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-            Болдырмау
+            {t("common.cancel")}
           </button>
         </div>
       </form>
@@ -558,13 +557,13 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-medium">{group.name}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{group.ageMin}-{group.ageMax} жас</div>
+          <div className="mt-1 text-xs text-muted-foreground">{group.ageMin}-{group.ageMax} {t("common.years_short")}</div>
         </div>
         <div className="flex gap-1">
-          <button onClick={onEdit} className="rounded-md p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Өзгерту">
+          <button onClick={onEdit} className="rounded-md p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label={t("common.edit")}>
             <Pencil className="h-4 w-4" />
           </button>
-          <button onClick={onDelete} disabled={isBusy} className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" aria-label="Өшіру">
+          <button onClick={onDelete} disabled={isBusy} className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" aria-label={t("common.delete")}>
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -574,9 +573,10 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
 }
 
 function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
+  const { t } = useTranslation();
   const logo = club?.logoUrl || fallback.logoUrl;
   const name = localizeName(club?.name) || fallback.name.kk || fallback.name.ru || fallback.name.en || "Judo Club";
-  const description = localizeName(club?.description) || fallback.description.kk || fallback.description.ru || fallback.description.en || "Клуб сипаттамасы сақталғаннан кейін осында көрінеді.";
+  const description = localizeName(club?.description) || fallback.description.kk || fallback.description.ru || fallback.description.en || t("coach_club.description_preview_hint");
 
   return (
     <div className="overflow-hidden rounded-md border border-border/60 bg-background/30">
@@ -589,7 +589,7 @@ function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
       </div>
       <div className="p-4">
         <div className="font-display text-xl font-semibold">{name}</div>
-        <div className="mt-1 text-sm text-muted-foreground">{club?.city || fallback.city || "Қала"} · {club?.country || fallback.country}</div>
+        <div className="mt-1 text-sm text-muted-foreground">{club?.city || fallback.city || t("admin.club_city")} · {club?.country || fallback.country}</div>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -605,6 +605,7 @@ function CoachJoinClubPanel({
   isLoading: boolean;
   onChanged: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
@@ -616,26 +617,20 @@ function CoachJoinClubPanel({
   const pending = requests.find((request) => request.status === "PENDING");
   const requestClub = useMutation({
     mutationFn: (clubId: string) => api.clubs.coachJoinRequest(clubId),
-    onSuccess: async () => {
-      setError("");
-      await onChanged();
-    },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім жіберілмеді"),
+    onSuccess: async () => { setError(""); await onChanged(); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.request_error")),
   });
   const cancelRequest = useMutation({
     mutationFn: (id: string) => api.coachClubRequests.cancel(id),
-    onSuccess: async () => {
-      setError("");
-      await onChanged();
-    },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Өтінім қайтарылмады"),
+    onSuccess: async () => { setError(""); await onChanged(); },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
   });
 
   return (
     <div className="space-y-4">
       {pending && (
         <div className="rounded-md border border-gold/30 bg-gold/10 p-4">
-          <div className="text-sm font-semibold text-gold">Өтінім жіберілді</div>
+          <div className="text-sm font-semibold text-gold">{t("coach_club.request_sent")}</div>
           <div className="mt-1 text-sm text-muted-foreground">{localizeName(pending.club?.name)} · {pending.club?.city}</div>
           <button
             type="button"
@@ -644,12 +639,12 @@ function CoachJoinClubPanel({
             className="mt-3 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             {cancelRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-            Қайтару
+            {t("common.cancel")}
           </button>
         </div>
       )}
 
-      <Field label="Клуб іздеу" value={search} onChange={setSearch} placeholder="Қала немесе қысқа атауы" />
+      <Field label={t("coach_club.search_club")} value={search} onChange={setSearch} placeholder={t("coach_club.search_club_placeholder")} />
       {error && <div className="text-sm text-destructive">{error}</div>}
 
       {isLoading || clubsQuery.isLoading ? (
@@ -662,7 +657,7 @@ function CoachJoinClubPanel({
               <div key={club.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold">{localizeName(club.name)}</div>
-                  <div className="truncate text-xs text-muted-foreground">{club.city} · {club._count?.members ?? 0} мүше</div>
+                  <div className="truncate text-xs text-muted-foreground">{club.city} · {club._count?.members ?? 0} {t("coach_club.members")}</div>
                 </div>
                 <button
                   type="button"
@@ -671,12 +666,14 @@ function CoachJoinClubPanel({
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-gold/15 px-3 py-2 text-sm text-gold hover:bg-gold/20 disabled:opacity-50"
                 >
                   {requestClub.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                  {isCurrentPending ? "Жіберілді" : "Қосылу"}
+                  {isCurrentPending ? t("coach_club.sent") : t("coach_club.join_btn")}
                 </button>
               </div>
             );
           })}
-          {(clubsQuery.data?.items ?? []).length === 0 && <EmptyState title="Клуб табылмады" hint="Іздеуді өзгертіңіз немесе жаңа клуб құрыңыз" />}
+          {(clubsQuery.data?.items ?? []).length === 0 && (
+            <EmptyState title={t("admin.club_not_found")} hint={t("coach_club.search_hint")} />
+          )}
         </div>
       )}
     </div>
@@ -692,13 +689,14 @@ function IncomingCoachRequests({
   isLoading: boolean;
   onChanged: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const review = useMutation({
     mutationFn: ({ id, approve }: { id: string; approve: boolean }) => api.coachClubRequests.review(id, approve),
     onSuccess: onChanged,
   });
 
   if (isLoading) return <LoadingState />;
-  if (requests.length === 0) return <EmptyState title="Жаңа өтінім жоқ" hint="Тренерлер қосылуға сұраныс жіберсе, осында шығады" />;
+  if (requests.length === 0) return <EmptyState title={t("coach_club.no_requests")} hint={t("coach_club.no_requests_hint")} />;
 
   return (
     <div className="space-y-2">
@@ -716,7 +714,7 @@ function IncomingCoachRequests({
               className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              Қабылдау
+              {t("common.approve")}
             </button>
             <button
               type="button"
@@ -725,7 +723,7 @@ function IncomingCoachRequests({
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-destructive disabled:opacity-50"
             >
               <X className="h-4 w-4" />
-              Қайтару
+              {t("common.reject")}
             </button>
           </div>
         </div>
@@ -747,6 +745,7 @@ function ClubCoaches({
   coaches: any[];
   onChanged: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const unique = Array.from(new Map(coaches.map((coach) => [coach.id, coach])).values());
   const removeCoach = useMutation({
     mutationFn: (coachId: string) => api.clubs.removeCoach(clubId, coachId),
@@ -758,7 +757,7 @@ function ClubCoaches({
   });
 
   if (unique.length === 0) {
-    return <p className="text-sm text-muted-foreground">Тренерлер әлі көрсетілмеген</p>;
+    return <p className="text-sm text-muted-foreground">{t("coach_club.no_coaches_yet")}</p>;
   }
 
   return (
@@ -788,8 +787,8 @@ function ClubCoaches({
                 disabled={transferOwner.isPending}
                 onClick={() => transferOwner.mutate(coach.id)}
                 className="rounded-md p-2 text-muted-foreground hover:bg-gold/10 hover:text-gold disabled:opacity-50"
-                aria-label="Клуб иесі ету"
-                title="Клуб иесі ету"
+                aria-label={t("coach_club.make_owner")}
+                title={t("coach_club.make_owner")}
               >
                 <Crown className="h-4 w-4" />
               </button>
@@ -798,8 +797,8 @@ function ClubCoaches({
                 disabled={removeCoach.isPending}
                 onClick={() => removeCoach.mutate(coach.id)}
                 className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                aria-label="Клубтан шығару"
-                title="Клубтан шығару"
+                aria-label={t("coach_club.remove_coach")}
+                title={t("coach_club.remove_coach")}
               >
                 <Trash2 className="h-4 w-4" />
               </button>

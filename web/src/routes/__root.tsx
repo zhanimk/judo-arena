@@ -3,7 +3,7 @@ import {
   Outlet, Link, createRootRouteWithContext, useRouter,
   HeadContent, Scripts, useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
@@ -11,6 +11,7 @@ import { hydrateThemeFromStorage } from "@/lib/theme";
 import { initSentry, Sentry } from "@/lib/sentry";
 import { usePWA } from "@/hooks/usePWA";
 import { useTranslation } from "react-i18next";
+import emblem from "@/assets/jcl-logo.jpeg";
 
 // Initialise Sentry as early as possible
 initSentry();
@@ -122,12 +123,151 @@ function PWAUpdateBanner() {
   );
 }
 
+function SplashScreen() {
+  const [phase, setPhase] = useState<"visible" | "fading" | "done">("visible");
+
+  useEffect(() => {
+    const shown = sessionStorage.getItem("splash-shown");
+    if (shown) { setPhase("done"); return; }
+    sessionStorage.setItem("splash-shown", "1");
+    const t1 = setTimeout(() => setPhase("fading"), 1800);
+    const t2 = setTimeout(() => setPhase("done"), 2500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  if (phase === "done") return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background"
+      style={{
+        transition: "opacity 0.7s cubic-bezier(0.4,0,0.2,1)",
+        opacity: phase === "fading" ? 0 : 1,
+        pointerEvents: phase === "fading" ? "none" : "auto",
+      }}
+    >
+      {/* Background radial glow */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/8 blur-[120px]" />
+        <div className="absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/12 blur-[60px]" />
+      </div>
+
+      {/* Animated ring */}
+      <div className="relative mb-8" style={{ animation: "splashLogoIn 0.7s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+        <div className="absolute inset-0 rounded-full border border-gold/30" style={{ animation: "splashRing1 2s ease-in-out infinite" }} />
+        <div className="absolute -inset-4 rounded-full border border-gold/15" style={{ animation: "splashRing2 2s ease-in-out 0.3s infinite" }} />
+        <div className="absolute -inset-8 rounded-full border border-gold/8" style={{ animation: "splashRing2 2s ease-in-out 0.6s infinite" }} />
+        {/* Logo */}
+        <span className="relative inline-flex h-24 w-24 items-center justify-center">
+          <span className="absolute inset-0 rounded-[28px] conic-gold opacity-80 blur-[14px]" />
+          <span className="absolute inset-[3px] rounded-[26px] bg-card" />
+          <img src={emblem} alt="" className="relative h-20 w-20 rounded-[22px] object-cover shadow-gold" />
+        </span>
+      </div>
+
+      {/* Brand name */}
+      <div style={{ animation: "splashTextIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.25s both" }}>
+        <p className="font-display text-3xl font-bold tracking-wide text-center">
+          JUDO<span className="text-gradient-gold">·</span>ARENA
+        </p>
+        <p className="mt-2 text-center text-xs uppercase tracking-[0.35em] text-muted-foreground">
+          цифрлық дзюдо платформасы
+        </p>
+      </div>
+
+      {/* Loading bar */}
+      <div className="mt-10 h-[2px] w-48 overflow-hidden rounded-full bg-border/40" style={{ animation: "splashFadeIn 0.4s 0.5s both" }}>
+        <div className="h-full rounded-full bg-gradient-to-r from-gold/60 via-gold to-gold/60" style={{ animation: "splashBar 1.4s cubic-bezier(0.4,0,0.2,1) 0.5s forwards", width: "0%" }} />
+      </div>
+
+      <style>{`
+        @keyframes splashLogoIn {
+          from { opacity: 0; transform: scale(0.5) translateY(20px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes splashTextIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes splashFadeIn {
+          from { opacity: 0; } to { opacity: 1; }
+        }
+        @keyframes splashRing1 {
+          0%,100% { transform: scale(1); opacity: 0.6; }
+          50%      { transform: scale(1.08); opacity: 1; }
+        }
+        @keyframes splashRing2 {
+          0%,100% { transform: scale(1); opacity: 0.3; }
+          50%      { transform: scale(1.12); opacity: 0.6; }
+        }
+        @keyframes splashBar {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ScrollProgress() {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      const scrolled = el.scrollTop;
+      const total = el.scrollHeight - el.clientHeight;
+      setPct(total > 0 ? (scrolled / total) * 100 : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[9999] h-[2px] pointer-events-none">
+      <div
+        className="h-full bg-gradient-to-r from-gold/80 via-gold to-gold/80 shadow-[0_0_8px_oklch(0.76_0.15_80/0.8)]"
+        style={{ width: `${pct}%`, transition: "width 0.1s linear" }}
+      />
+    </div>
+  );
+}
+
+function PageTransition({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [visible, setVisible] = useState(true);
+  const prevPath = useRef(pathname);
+
+  useEffect(() => {
+    if (prevPath.current === pathname) return;
+    prevPath.current = pathname;
+    setVisible(false);
+    const t = setTimeout(() => setVisible(true), 80);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  return (
+    <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }}>
+      {children}
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
+      <ClientOnly><SplashScreen /></ClientOnly>
+      <ClientOnly><ScrollProgress /></ClientOnly>
+      {/* Grain texture overlay */}
+      <div
+        className="pointer-events-none fixed inset-0 z-[9990] opacity-[0.025]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "128px 128px",
+        }}
+      />
       <AuthBootstrap />
-      <Outlet />
+      <PageTransition><Outlet /></PageTransition>
       <ClientOnly><PWAUpdateBanner /></ClientOnly>
       <ClientOnly>
         <Toaster

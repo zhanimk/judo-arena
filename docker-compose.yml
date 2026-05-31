@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.9-alpine
     container_name: judo-postgres
     restart: unless-stopped
     environment:
@@ -19,7 +19,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: judo-redis
     restart: unless-stopped
     ports:
@@ -44,7 +44,7 @@ services:
   # Запускать вручную: docker compose run --rm backup
   # Или добавить в cron: 0 2 * * * docker compose -f /path/docker-compose.yml run --rm backup
   backup:
-    image: postgres:16-alpine
+    image: postgres:16.9-alpine
     container_name: judo-backup
     profiles: [backup]   # не стартует с основными сервисами: docker compose --profile backup up
     depends_on:
