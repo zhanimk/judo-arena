@@ -134,13 +134,13 @@ function TournamentDetail() {
     brackets.find((b: any) => b.categoryId === selectedCategoryId) ?? brackets[0] ?? null;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <SiteHeader />
+    <div className="min-h-screen flex flex-col pt-20 sm:pt-22">
+      <SiteHeader fixed />
 
       <section id="overview" className="relative overflow-hidden border-b border-border/40">
         <div className="absolute inset-0 bg-gradient-hero opacity-75" />
         <div className="absolute inset-0 grid-bg opacity-30" />
-        <div className="container relative mx-auto px-4 py-12 sm:py-16">
+        <div className="container relative mx-auto px-4 py-8 sm:py-10">
           <Link
             to="/tournaments"
             className="mb-5 inline-flex text-sm text-muted-foreground hover:text-gold"
@@ -153,7 +153,7 @@ function TournamentDetail() {
               {t("tournament.all_info_badge")}
             </span>
           </div>
-          <h1 className="mt-4 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-6xl">
+          <h1 className="mt-4 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-5xl">
             {name}
           </h1>
           {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
@@ -188,7 +188,7 @@ function TournamentDetail() {
         </div>
       </section>
 
-      <div className="sticky top-24 z-40 mx-auto -mt-5 w-full max-w-6xl px-4">
+      <div className="sticky top-20 z-40 mx-auto w-full max-w-6xl px-4 sm:top-24">
         <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-gold/25 bg-background/90 p-2 shadow-elegant backdrop-blur-xl [scrollbar-width:none]">
           {(
             [

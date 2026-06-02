@@ -25,9 +25,9 @@ const roleLabel = (role?: string) => {
   return "Спортшы";
 };
 
-type SiteHeaderProps = { hideUntilScroll?: boolean };
+type SiteHeaderProps = { fixed?: boolean; hideUntilScroll?: boolean };
 
-export function SiteHeader({ hideUntilScroll = false }: SiteHeaderProps) {
+export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeaderProps) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -68,7 +68,7 @@ export function SiteHeader({ hideUntilScroll = false }: SiteHeaderProps) {
 
   return (
     <header
-      className={`${hideUntilScroll ? "fixed inset-x-0" : "sticky"} top-0 z-50 transition-all duration-300 ${
+      className={`${hideUntilScroll || fixed ? "fixed inset-x-0" : "sticky"} top-0 z-50 transition-all duration-300 ${
         scrolled || open
           ? "translate-y-0 opacity-100"
           : "pointer-events-none -translate-y-full opacity-0"
