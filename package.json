@@ -7,9 +7,12 @@
   "license": "MIT",
   "workspaces": [
     "web",
-    "api"
+    "api",
+    "packages/*"
   ],
   "scripts": {
+    "start": "bash ./start.sh",
+    "start:seed": "bash ./start.sh --seed",
     "dev": "concurrently -n web,api -c blue,green \"npm run dev -w web\" \"npm run dev -w api\"",
     "dev:web": "npm run dev -w web",
     "dev:api": "npm run dev -w api",
@@ -24,13 +27,29 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@playwright/test": "*",
     "concurrently": "^8.2.2",
-    "@playwright/test": "*"
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "serve": "^14.2.3",
+    "wait-on": "^8.0.1"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "lint-staged": {
+    "api/src/**/*.ts": [
+      "eslint -c api/eslint.config.js --max-warnings 0 --fix"
+    ],
+    "web/src/**/*.{ts,tsx}": [
+      "eslint -c web/eslint.config.js --max-warnings 0 --fix"
+    ],
+    "**/*.{ts,tsx,js,json,md}": [
+      "prettier --write --ignore-unknown"
+    ]
   }
 }

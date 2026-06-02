@@ -19,10 +19,24 @@ import { useRipple } from "@/hooks/useRipple";
 import { useConfetti } from "@/components/ui/Confetti";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Trophy, Shield, Users, ArrowRight,
-  Sparkles, Medal, Timer, Radio, ChevronRight,
-  Building2, User, Calendar, MapPin, Star, BarChart, Search, GitBranch,
-  PlayCircle, BookOpen,
+  Trophy,
+  Shield,
+  Users,
+  ArrowRight,
+  Sparkles,
+  Medal,
+  Radio,
+  ChevronRight,
+  Building2,
+  User,
+  Calendar,
+  MapPin,
+  Star,
+  BarChart,
+  Search,
+  GitBranch,
+  PlayCircle,
+  BookOpen,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Bracket, sampleRounds } from "@/components/judo/Bracket";
@@ -32,20 +46,20 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Judo-Arena — Дзюдо жарыстарын автоматтандыру" },
-      { name: "description", content: "Дзюдо жарыстарына арналған цифрлық платформа: автоматты жеребе тастау, төрелік панелі, нақты уақыттағы дәреже." },
+      {
+        name: "description",
+        content:
+          "Дзюдо жарыстарына арналған цифрлық платформа: автоматты жеребе тастау, төрелік панелі, нақты уақыттағы дәреже.",
+      },
       { property: "og:title", content: "Judo-Arena — Дзюдоның цифрлық аренасы" },
-      { property: "og:description", content: "Жарыстар, жеребе, төрелік, дәреже — бір экранда, нақты уақытта." },
+      {
+        property: "og:description",
+        content: "Жарыстар, жеребе, төрелік, дәреже — бір экранда, нақты уақытта.",
+      },
     ],
   }),
   component: Home,
 });
-
-const stats = [
-  { value: "<1с", label: "Жеребе тастау" },
-  { value: "100%", label: "IJF стандарты" },
-  { value: "24/7", label: "Live трансляция" },
-  { value: "∞", label: "Қайтару тереңдігі" },
-];
 
 const statusText: Record<string, string> = {
   DRAFT: "Жоба",
@@ -57,45 +71,210 @@ const statusText: Record<string, string> = {
 };
 
 const partners = [
-  { name: "ҚР Дзюдо Федерациясы", type: "Федерация", city: "Қазақстан", desc: "Ұлттық жарыстар мен төрешілік стандарттарды қолдайды.", image: heroKazakhstan, logo: emblem, accent: "from-sky-500/25" },
-  { name: "Almaty Judo Club", type: "Клуб", city: "Алматы", desc: "Жас спортшыларды республикалық аренаға дайындайды.", image: athleteBlue1, logo: emblem, accent: "from-amber-500/25" },
-  { name: "Astana Pro", type: "Академия", city: "Астана", desc: "Жаттықтырушылар штабы және жарыс аналитикасы серіктесі.", image: teamLineup, logo: emblem, accent: "from-emerald-500/25" },
-  { name: "Tigers Karaganda", type: "Клуб", city: "Қарағанды", desc: "Аймақтық жарыстар мен балалар лигасын дамытады.", image: athleteBlue2, logo: emblem, accent: "from-orange-500/25" },
-  { name: "Shymkent Warriors", type: "Клуб", city: "Шымкент", desc: "Татами мәдениетін және ашық жарыстарды қолдайды.", image: athleteWomanWhite, logo: emblem, accent: "from-rose-500/25" },
-  { name: "IJF Standard", type: "Стандарт", city: "Халықаралық", desc: "Ережелер, хаттама және бағалау логикасына негіз.", image: techniqueKyu, logo: emblem, accent: "from-violet-500/25" },
-  { name: "Aktobe Dojo", type: "Dojo", city: "Ақтөбе", desc: "Өңірлік таланттарды цифрлық дәрежеге қосады.", image: heroImg, logo: emblem, accent: "from-cyan-500/25" },
-  { name: "Pavlodar Elite", type: "Клуб", city: "Павлодар", desc: "Жарыс күніндегі live-табло және хаттама серіктесі.", image: judoka3d, logo: emblem, accent: "from-lime-500/25" },
-];
-
-const upcoming = [
-  { name: "Алматы Кубогі 2026", date: "24–26 мамыр", city: "Алматы", status: "LIVE", participants: 248, teams: 32, categories: 18, format: "SE + Repechage", startsAt: Date.now() + 1000 * 60 * 60 * 6, accent: "from-destructive/20 to-gold/10" },
-  { name: "Қазақстан Чемпионаты", date: "12–15 маусым", city: "Астана", status: "Тіркеу", participants: 412, teams: 44, categories: 24, format: "SE + Айналмалы", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 18, accent: "from-gold/20 to-sky-500/10" },
-  { name: "Tigers Open", date: "2–3 шілде", city: "Қарағанды", status: "Тіркеу", participants: 96, teams: 14, categories: 10, format: "Айналмалы", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 41, accent: "from-orange-500/20 to-gold/10" },
-  { name: "Astana Junior Cup", date: "20 шілде", city: "Астана", status: "Тіркеу", participants: 184, teams: 26, categories: 16, format: "SE + Repechage", startsAt: Date.now() + 1000 * 60 * 60 * 24 * 60, accent: "from-emerald-500/20 to-gold/10" },
-];
-
-const liveTatami = [
-  { tatami: 1, category: "U18 · −66 кг", current: "Д. Нұрлан vs Р. Олжас", next: "Шешуші · Белдесу 42", status: "Қосымша уақыт", progress: 72 },
-  { tatami: 2, category: "Ересектер · −81 кг", current: "Ә. Сәрсенов vs Н. Қайратұлы", next: "Қола A · Белдесу 57", status: "Жартылай шешуші", progress: 58 },
-  { tatami: 3, category: "U21 · −73 кг", current: "М. Ержан vs С. Бекзат", next: "Жұбаныш · Белдесу 31", status: "Иппон тексеру", progress: 84 },
+  {
+    name: "ҚР Дзюдо Федерациясы",
+    type: "Федерация",
+    city: "Қазақстан",
+    desc: "Ұлттық жарыстар мен төрешілік стандарттарды қолдайды.",
+    image: heroKazakhstan,
+    logo: emblem,
+    accent: "from-sky-500/25",
+  },
+  {
+    name: "Almaty Judo Club",
+    type: "Клуб",
+    city: "Алматы",
+    desc: "Жас спортшыларды республикалық аренаға дайындайды.",
+    image: athleteBlue1,
+    logo: emblem,
+    accent: "from-amber-500/25",
+  },
+  {
+    name: "Astana Pro",
+    type: "Академия",
+    city: "Астана",
+    desc: "Жаттықтырушылар штабы және жарыс аналитикасы серіктесі.",
+    image: teamLineup,
+    logo: emblem,
+    accent: "from-emerald-500/25",
+  },
+  {
+    name: "Tigers Karaganda",
+    type: "Клуб",
+    city: "Қарағанды",
+    desc: "Аймақтық жарыстар мен балалар лигасын дамытады.",
+    image: athleteBlue2,
+    logo: emblem,
+    accent: "from-orange-500/25",
+  },
+  {
+    name: "Shymkent Warriors",
+    type: "Клуб",
+    city: "Шымкент",
+    desc: "Татами мәдениетін және ашық жарыстарды қолдайды.",
+    image: athleteWomanWhite,
+    logo: emblem,
+    accent: "from-rose-500/25",
+  },
+  {
+    name: "IJF Standard",
+    type: "Стандарт",
+    city: "Халықаралық",
+    desc: "Ережелер, хаттама және бағалау логикасына негіз.",
+    image: techniqueKyu,
+    logo: emblem,
+    accent: "from-violet-500/25",
+  },
+  {
+    name: "Aktobe Dojo",
+    type: "Dojo",
+    city: "Ақтөбе",
+    desc: "Өңірлік таланттарды цифрлық дәрежеге қосады.",
+    image: heroImg,
+    logo: emblem,
+    accent: "from-cyan-500/25",
+  },
+  {
+    name: "Pavlodar Elite",
+    type: "Клуб",
+    city: "Павлодар",
+    desc: "Жарыс күніндегі live-табло және хаттама серіктесі.",
+    image: judoka3d,
+    logo: emblem,
+    accent: "from-lime-500/25",
+  },
 ];
 
 const clubs = [
-  { name: "Almaty Judo Club", city: "Алматы", coach: "Қ. Серіков", athletes: 86, wins: 142, entries: 34, categories: 12, ready: 92, color: "from-sky-500/20 to-sky-500/5", image: athleteBlue1 },
-  { name: "Astana Pro", city: "Астана", coach: "Д. Жұмабек", athletes: 64, wins: 118, entries: 28, categories: 10, ready: 86, color: "from-amber-500/20 to-amber-500/5", image: teamLineup },
-  { name: "Tigers Karaganda", city: "Қарағанды", coach: "Б. Темірлан", athletes: 48, wins: 96, entries: 21, categories: 8, ready: 78, color: "from-orange-500/20 to-orange-500/5", image: athleteBlue2 },
-  { name: "Shymkent Warriors", city: "Шымкент", coach: "Е. Сейітжан", athletes: 52, wins: 88, entries: 24, categories: 9, ready: 82, color: "from-emerald-500/20 to-emerald-500/5", image: athleteWomanWhite },
-  { name: "Aktobe Dojo", city: "Ақтөбе", coach: "Н. Қанат", athletes: 39, wins: 71, entries: 16, categories: 7, ready: 74, color: "from-violet-500/20 to-violet-500/5", image: techniqueKyu },
-  { name: "Pavlodar Elite", city: "Павлодар", coach: "Р. Дәурен", athletes: 41, wins: 65, entries: 18, categories: 7, ready: 70, color: "from-rose-500/20 to-rose-500/5", image: heroKazakhstan },
+  {
+    name: "Almaty Judo Club",
+    city: "Алматы",
+    coach: "Қ. Серіков",
+    athletes: 86,
+    wins: 142,
+    entries: 34,
+    categories: 12,
+    ready: 92,
+    color: "from-sky-500/20 to-sky-500/5",
+    image: athleteBlue1,
+  },
+  {
+    name: "Astana Pro",
+    city: "Астана",
+    coach: "Д. Жұмабек",
+    athletes: 64,
+    wins: 118,
+    entries: 28,
+    categories: 10,
+    ready: 86,
+    color: "from-amber-500/20 to-amber-500/5",
+    image: teamLineup,
+  },
+  {
+    name: "Tigers Karaganda",
+    city: "Қарағанды",
+    coach: "Б. Темірлан",
+    athletes: 48,
+    wins: 96,
+    entries: 21,
+    categories: 8,
+    ready: 78,
+    color: "from-orange-500/20 to-orange-500/5",
+    image: athleteBlue2,
+  },
+  {
+    name: "Shymkent Warriors",
+    city: "Шымкент",
+    coach: "Е. Сейітжан",
+    athletes: 52,
+    wins: 88,
+    entries: 24,
+    categories: 9,
+    ready: 82,
+    color: "from-emerald-500/20 to-emerald-500/5",
+    image: athleteWomanWhite,
+  },
+  {
+    name: "Aktobe Dojo",
+    city: "Ақтөбе",
+    coach: "Н. Қанат",
+    athletes: 39,
+    wins: 71,
+    entries: 16,
+    categories: 7,
+    ready: 74,
+    color: "from-violet-500/20 to-violet-500/5",
+    image: techniqueKyu,
+  },
+  {
+    name: "Pavlodar Elite",
+    city: "Павлодар",
+    coach: "Р. Дәурен",
+    athletes: 41,
+    wins: 65,
+    entries: 18,
+    categories: 7,
+    ready: 70,
+    color: "from-rose-500/20 to-rose-500/5",
+    image: heroKazakhstan,
+  },
 ];
 
 const topAthletes = [
-  { rank: 1, name: "Ә. Сәрсенов", club: "Almaty Judo", weight: "−73 кг", points: 460, change: "+2", image: athleteBlue1 },
-  { rank: 2, name: "Н. Қайратұлы", club: "Astana Pro", weight: "−81 кг", points: 410, change: "+1", image: athleteBlue2 },
-  { rank: 3, name: "Д. Нұрлан", club: "Tigers Karaganda", weight: "−66 кг", points: 380, change: "−1", image: athleteWomanWhite },
-  { rank: 4, name: "С. Бекзат", club: "Shymkent Warriors", weight: "−90 кг", points: 295, change: "+3", image: techniqueKyu },
-  { rank: 5, name: "Р. Олжас", club: "Aktobe Dojo", weight: "−60 кг", points: 245, change: "—", image: heroKazakhstan },
-  { rank: 6, name: "М. Ержан", club: "Pavlodar Elite", weight: "−100 кг", points: 215, change: "+1", image: teamLineup },
+  {
+    rank: 1,
+    name: "Ә. Сәрсенов",
+    club: "Almaty Judo",
+    weight: "−73 кг",
+    points: 460,
+    change: "+2",
+    image: athleteBlue1,
+  },
+  {
+    rank: 2,
+    name: "Н. Қайратұлы",
+    club: "Astana Pro",
+    weight: "−81 кг",
+    points: 410,
+    change: "+1",
+    image: athleteBlue2,
+  },
+  {
+    rank: 3,
+    name: "Д. Нұрлан",
+    club: "Tigers Karaganda",
+    weight: "−66 кг",
+    points: 380,
+    change: "−1",
+    image: athleteWomanWhite,
+  },
+  {
+    rank: 4,
+    name: "С. Бекзат",
+    club: "Shymkent Warriors",
+    weight: "−90 кг",
+    points: 295,
+    change: "+3",
+    image: techniqueKyu,
+  },
+  {
+    rank: 5,
+    name: "Р. Олжас",
+    club: "Aktobe Dojo",
+    weight: "−60 кг",
+    points: 245,
+    change: "—",
+    image: heroKazakhstan,
+  },
+  {
+    rank: 6,
+    name: "М. Ержан",
+    club: "Pavlodar Elite",
+    weight: "−100 кг",
+    points: 215,
+    change: "+1",
+    image: teamLineup,
+  },
 ];
 
 const techniqueVideos = [
@@ -164,11 +343,6 @@ function formatDateRange(start?: string | Date | null, end?: string | Date | nul
   return `${fmt.format(startDate)} – ${fmt.format(endDate)}`;
 }
 
-function formatTime(start?: string | Date | null) {
-  if (!start) return "Уақыты белгісіз";
-  return new Intl.DateTimeFormat("kk-KZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(start));
-}
-
 function participantCount(tournament: any) {
   return (
     tournament?._count?.participants ??
@@ -187,9 +361,15 @@ function athleteName(a: any) {
 
 function categoryName(category: any) {
   if (!category) return "Санат";
-  const gender = category.gender === "FEMALE" ? "Қыздар" : category.gender === "MALE" ? "Ұлдар" : "Аралас";
-  const age = category.ageMin || category.ageMax ? `U${category.ageMax ?? category.ageMin}` : "Open";
-  const weight = category.weightMax ? `−${category.weightMax} кг` : category.weightMin ? `+${category.weightMin} кг` : "Open";
+  const gender =
+    category.gender === "FEMALE" ? "Қыздар" : category.gender === "MALE" ? "Ұлдар" : "Аралас";
+  const age =
+    category.ageMin || category.ageMax ? `U${category.ageMax ?? category.ageMin}` : "Open";
+  const weight = category.weightMax
+    ? `−${category.weightMax} кг`
+    : category.weightMin
+      ? `+${category.weightMin} кг`
+      : "Open";
   return `${gender} · ${age} · ${weight}`;
 }
 
@@ -210,7 +390,9 @@ function Countdown({ to }: { to: number }) {
       <div className="font-display text-3xl font-bold text-gradient-gold tabular-nums leading-none sm:text-5xl">
         {String(v).padStart(2, "0")}
       </div>
-      <div className="mt-2 text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">{l}</div>
+      <div className="mt-2 text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">
+        {l}
+      </div>
     </div>
   );
   return (
@@ -240,9 +422,9 @@ function useTicker() {
 
 function Home() {
   const { t } = useTranslation();
-  const live = useTicker();
-  const mm = String(Math.floor(live.time / 60)).padStart(2, "0");
-  const ss = String(live.time % 60).padStart(2, "0");
+  void useTicker();
+  //   const _mm = String(Math.floor(live.time / 60)).padStart(2, "0");
+  //   const _ss = String(live.time % 60).padStart(2, "0");
   const tournamentsQuery = useQuery({
     queryKey: ["home-tournaments"],
     queryFn: () => api.tournaments.list({ limit: 8 }),
@@ -258,7 +440,10 @@ function Home() {
     queryFn: () => api.ratings.leaderboard({ limit: 6 }),
     staleTime: 60_000,
   });
-  const tournaments = tournamentsQuery.data?.items ?? [];
+  const tournaments = useMemo(
+    () => tournamentsQuery.data?.items ?? [],
+    [tournamentsQuery.data?.items],
+  );
   const featuredTournament = useMemo(() => {
     return (
       tournaments.find((t: any) => t.status === "IN_PROGRESS") ??
@@ -277,34 +462,42 @@ function Home() {
     enabled: Boolean(featuredTournament?.id),
     staleTime: 20_000,
   });
-  const liveMatches = (featuredMatchesQuery.data ?? []).slice(0, 3).map((match: any, i: number) => ({
-    tatami: match.tatamiNumber ?? i + 1,
-    category: categoryName(match.bracket?.category),
-    current: `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`,
-    next: `Кезең ${match.round ?? 1} · Белдесу ${match.position ?? i + 1}`,
-    status: statusText[match.status] ?? match.status ?? "Кезекте",
-    progress: match.status === "COMPLETED" ? 100 : match.status === "IN_PROGRESS" ? 64 : 28,
-  }));
-  const totalApplications = tournaments.reduce((sum: number, t: any) => sum + (t._count?.applications ?? 0), 0);
-  const totalCategories = tournaments.reduce((sum: number, t: any) => sum + (t._count?.categories ?? 0), 0);
-  const homeStats = [
-    { value: String(tournamentsQuery.data?.total ?? tournaments.length), label: "Жарыс" },
-    { value: String(totalApplications), label: "Өтінім" },
-    { value: String(clubsQuery.data?.total ?? 0), label: "Клуб" },
-    { value: String(totalCategories), label: "Санат" },
-  ];
+  const liveMatches = (featuredMatchesQuery.data ?? [])
+    .slice(0, 3)
+    .map((match: any, i: number) => ({
+      tatami: match.tatamiNumber ?? i + 1,
+      category: categoryName(match.bracket?.category),
+      current: `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`,
+      next: `Кезең ${match.round ?? 1} · Белдесу ${match.position ?? i + 1}`,
+      status: statusText[match.status] ?? match.status ?? "Кезекте",
+      progress: match.status === "COMPLETED" ? 100 : match.status === "IN_PROGRESS" ? 64 : 28,
+    }));
+  const totalApplications = tournaments.reduce(
+    (sum: number, t: any) => sum + (t._count?.applications ?? 0),
+    0,
+  );
+  const totalCategories = tournaments.reduce(
+    (sum: number, t: any) => sum + (t._count?.categories ?? 0),
+    0,
+  );
 
-  const teamRows = (clubsQuery.data?.items ?? []).slice(0, 6).map((club: any, i: number) => ({
-    name: localizeName(club.name),
-    city: club.city ?? "—",
-    coach: club.createdBy?.name ? `${club.createdBy.name} ${club.createdBy.surname ?? ""}`.trim() : "—",
-    athletes: club._count?.members ?? 0,
-    entries: Math.round((club._count?.members ?? 0) * 0.42),
-    categories: Math.max(0, Math.round((club._count?.members ?? 0) / 7)),
-    ready: Math.min(100, 62 + i * 8),
-    color: clubs[i]?.color ?? "from-gold/20 to-gold/5",
-    image: clubs[i]?.image ?? teamLineup,
-  }));
+  const teamRowsFromApi = (clubsQuery.data?.items ?? [])
+    .slice(0, 4)
+    .map((club: any, i: number) => ({
+      name: localizeName(club.name),
+      city: club.city ?? "—",
+      coach: club.createdBy?.name
+        ? `${club.createdBy.name} ${club.createdBy.surname ?? ""}`.trim()
+        : "—",
+      athletes: club._count?.members ?? 0,
+      entries: Math.round((club._count?.members ?? 0) * 0.42),
+      categories: Math.max(0, Math.round((club._count?.members ?? 0) / 7)),
+      ready: Math.min(100, 62 + i * 8),
+      color: clubs[i]?.color ?? "from-gold/20 to-gold/5",
+      image: clubs[i]?.image ?? teamLineup,
+    }));
+  /* fallback to static demo data while API loads or when no clubs returned */
+  const teamRows = teamRowsFromApi.length > 0 ? teamRowsFromApi : clubs.slice(0, 4);
 
   const athleteRows = (leaderboardQuery.data ?? []).slice(0, 6).map((row: any, i: number) => ({
     rank: row.rank ?? i + 1,
@@ -316,7 +509,9 @@ function Home() {
     image: topAthletes[i]?.image ?? athleteBlue1,
   }));
   // Count-up for clubs section stats
-  const { value: countTournaments, ref: refT } = useCountUp(tournamentsQuery.data?.total ?? tournaments.length);
+  const { value: countTournaments, ref: refT } = useCountUp(
+    tournamentsQuery.data?.total ?? tournaments.length,
+  );
   const { value: countApplications, ref: refA } = useCountUp(totalApplications);
   const { value: countClubs, ref: refC } = useCountUp(clubsQuery.data?.total ?? 0);
   const { value: countCategories, ref: refCat } = useCountUp(totalCategories);
@@ -333,7 +528,9 @@ function Home() {
     const el = e.currentTarget;
     el.style.transition = "transform 0.45s cubic-bezier(0.34,1.56,0.64,1)";
     el.style.transform = "translate(0,0) scale(1)";
-    setTimeout(() => { el.style.transition = ""; }, 450);
+    setTimeout(() => {
+      el.style.transition = "";
+    }, 450);
   };
 
   // 3D tilt for tournament cards
@@ -355,13 +552,62 @@ function Home() {
   const [activeBelt, setActiveBelt] = useState(3);
   const currentTechnique = techniqueVideos[activeTechnique];
   const beltPath = [
-    { label: "Ақ", level: "6 КЮ", color: "from-white to-zinc-200", text: "text-navy-deep", progress: 14, skills: "Ұстау, құлау, негізгі тұрыс" },
-    { label: "Сары", level: "5 КЮ", color: "from-yellow-300 to-yellow-500", text: "text-navy-deep", progress: 28, skills: "De-ashi-barai, Hiza-guruma" },
-    { label: "Қызғылт сары", level: "4 КЮ", color: "from-orange-400 to-orange-600", text: "text-navy-deep", progress: 42, skills: "Tai-otoshi, Kesa-gatame" },
-    { label: "Жасыл", level: "3 КЮ", color: "from-green-500 to-emerald-700", text: "text-white", progress: 57, skills: "Uchi-mata, комбинация" },
-    { label: "Көк", level: "2 КЮ", color: "from-sky-500 to-blue-700", text: "text-white", progress: 71, skills: "Tomoe-nage, ne-waza бақылау" },
-    { label: "Қоңыр", level: "1 КЮ", color: "from-amber-700 to-amber-950", text: "text-white", progress: 86, skills: "Sode, Juji-gatame, тактика" },
-    { label: "Қара", level: "1 ДАН", color: "from-neutral-900 to-black", text: "text-gold", progress: 100, skills: "Шеберлік, жарыс тәжірибесі" },
+    {
+      label: "Ақ",
+      level: "6 КЮ",
+      color: "from-white to-zinc-200",
+      text: "text-navy-deep",
+      progress: 14,
+      skills: "Ұстау, құлау, негізгі тұрыс",
+    },
+    {
+      label: "Сары",
+      level: "5 КЮ",
+      color: "from-yellow-300 to-yellow-500",
+      text: "text-navy-deep",
+      progress: 28,
+      skills: "De-ashi-barai, Hiza-guruma",
+    },
+    {
+      label: "Қызғылт сары",
+      level: "4 КЮ",
+      color: "from-orange-400 to-orange-600",
+      text: "text-navy-deep",
+      progress: 42,
+      skills: "Tai-otoshi, Kesa-gatame",
+    },
+    {
+      label: "Жасыл",
+      level: "3 КЮ",
+      color: "from-green-500 to-emerald-700",
+      text: "text-white",
+      progress: 57,
+      skills: "Uchi-mata, комбинация",
+    },
+    {
+      label: "Көк",
+      level: "2 КЮ",
+      color: "from-sky-500 to-blue-700",
+      text: "text-white",
+      progress: 71,
+      skills: "Tomoe-nage, ne-waza бақылау",
+    },
+    {
+      label: "Қоңыр",
+      level: "1 КЮ",
+      color: "from-amber-700 to-amber-950",
+      text: "text-white",
+      progress: 86,
+      skills: "Sode, Juji-gatame, тактика",
+    },
+    {
+      label: "Қара",
+      level: "1 ДАН",
+      color: "from-neutral-900 to-black",
+      text: "text-gold",
+      progress: 100,
+      skills: "Шеберлік, жарыс тәжірибесі",
+    },
   ];
   const currentBelt = beltPath[activeBelt];
 
@@ -400,14 +646,18 @@ function Home() {
   };
 
   // Typewriter
-  const typeText = useTypewriter([t("home.typewriter_1"), t("home.typewriter_2"), t("home.typewriter_3")], 60, 2000);
+  const typeText = useTypewriter(
+    [t("home.typewriter_1"), t("home.typewriter_2"), t("home.typewriter_3")],
+    60,
+    2000,
+  );
 
   // Ripple & Confetti
   const { trigger: ripple } = useRipple();
   const { burst } = useConfetti();
 
   // Mouse trail particles
-  const trailRef = useRef<Array<{ x: number; y: number; id: number }>>([]);
+  //   const _trailRef = useRef<Array<{ x: number; y: number; id: number }>>([]);
   const trailContainerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     let id = 0;
@@ -418,9 +668,9 @@ function Home() {
       const dot = document.createElement("div");
       const size = 4 + Math.random() * 4;
       dot.style.cssText = `
-        position:fixed;left:${e.clientX - size/2}px;top:${e.clientY - size/2}px;
+        position:fixed;left:${e.clientX - size / 2}px;top:${e.clientY - size / 2}px;
         width:${size}px;height:${size}px;border-radius:50%;
-        background:oklch(0.86 0.16 90/${0.4 + Math.random()*0.4});
+        background:oklch(0.86 0.16 90/${0.4 + Math.random() * 0.4});
         pointer-events:none;z-index:9996;
         transition:opacity 0.5s ease,transform 0.5s ease;
         box-shadow:0 0 6px oklch(0.86 0.16 90/0.6);
@@ -478,7 +728,10 @@ function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col cursor-none" ref={revealRef as React.RefObject<HTMLDivElement>}>
+    <div
+      className="min-h-screen flex flex-col cursor-none"
+      ref={revealRef as React.RefObject<HTMLDivElement>}
+    >
       {/* Mouse trail container */}
       <div ref={trailContainerRef} className="pointer-events-none" />
 
@@ -494,34 +747,58 @@ function Home() {
         style={{ willChange: "transform", transition: "border-color 0.2s" }}
       />
 
-      <SiteHeader />
+      <SiteHeader hideUntilScroll />
 
       {/* HERO */}
       <section id="zharys" ref={heroRef} className="relative overflow-hidden">
         <div className="absolute inset-0 bg-navy-deep" />
+        {/* logo watermark */}
+        {/* logo watermark — more visible */}
         <img
-          src={heroKazakhstan}
+          src={emblem}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-45"
+          className="absolute left-1/2 top-1/2 h-[60%] w-auto max-w-[60%] -translate-x-1/2 -translate-y-1/2 object-contain select-none pointer-events-none"
+          style={{ opacity: 0.13, filter: "blur(0px) saturate(0.4) brightness(1.8)" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/72 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/65 to-background" />
         <div className="absolute inset-0 grid-bg opacity-30" />
 
         {/* Mouse spotlight */}
-        <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-10 transition-[background] duration-100" />
+        <div
+          ref={spotlightRef}
+          className="pointer-events-none absolute inset-0 z-10 transition-[background] duration-100"
+        />
 
-        {/* Aurora background */}
+        {/* Aurora + orbs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {/* Main aurora blobs */}
-          <div className="absolute -left-32 -top-32 h-[700px] w-[700px] rounded-full opacity-20 blur-[120px] animate-aurora"
-            style={{ background: "radial-gradient(circle, oklch(0.76 0.15 80) 0%, oklch(0.60 0.18 280) 50%, transparent 70%)" }} />
-          <div className="absolute -right-32 top-1/4 h-[500px] w-[500px] rounded-full opacity-15 blur-[100px]"
-            style={{ background: "radial-gradient(circle, oklch(0.55 0.20 260) 0%, oklch(0.76 0.15 80) 60%, transparent 70%)", animation: "aurora 22s ease-in-out 6s infinite" }} />
-          <div className="absolute left-1/3 bottom-0 h-[400px] w-[400px] rounded-full opacity-12 blur-[90px]"
-            style={{ background: "radial-gradient(circle, oklch(0.62 0.22 25) 0%, oklch(0.76 0.15 80) 60%, transparent 70%)", animation: "aurora 16s ease-in-out 3s infinite" }} />
-          {/* Subtle moving orbs */}
-          <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/8 blur-[100px]" style={{ animation: "heroOrb1 6s ease-in-out infinite" }} />
-          <div className="absolute right-1/4 top-1/2 h-64 w-64 rounded-full bg-primary/10 blur-[60px]" style={{ animation: "heroOrb2 8s ease-in-out 2s infinite" }} />
+          <div
+            className="absolute -left-32 -top-32 h-[700px] w-[700px] rounded-full opacity-18 blur-[120px] animate-aurora"
+            style={{
+              background:
+                "radial-gradient(circle, oklch(0.76 0.15 80) 0%, oklch(0.60 0.18 280) 50%, transparent 70%)",
+            }}
+          />
+          <div
+            className="absolute -right-32 top-1/4 h-[500px] w-[500px] rounded-full opacity-14 blur-[100px]"
+            style={{
+              background:
+                "radial-gradient(circle, oklch(0.55 0.20 260) 0%, oklch(0.76 0.15 80) 60%, transparent 70%)",
+              animation: "aurora 22s ease-in-out 6s infinite",
+            }}
+          />
+          {/* strong gold glow behind title */}
+          <div
+            className="absolute left-1/2 top-[28%] h-[320px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background: "radial-gradient(ellipse, rgba(200,146,42,0.22) 0%, transparent 70%)",
+              filter: "blur(40px)",
+              animation: "heroOrb1 5s ease-in-out infinite",
+            }}
+          />
+          <div
+            className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/6 blur-[100px]"
+            style={{ animation: "heroOrb1 6s ease-in-out infinite" }}
+          />
         </div>
 
         {/* Floating particles */}
@@ -540,15 +817,58 @@ function Home() {
           />
         ))}
 
+        {/* floating 3-D rings around title */}
+        <div className="pointer-events-none absolute left-1/2 top-[26%] -translate-x-1/2 -translate-y-1/2">
+          <div
+            className="rounded-full"
+            style={{
+              width: 520,
+              height: 140,
+              border: "1px solid rgba(200,146,42,0.14)",
+              animation: "ringFloat 8s ease-in-out infinite",
+            }}
+          />
+        </div>
+        <div className="pointer-events-none absolute left-1/2 top-[26%] -translate-x-1/2 -translate-y-1/2">
+          <div
+            className="rounded-full"
+            style={{
+              width: 680,
+              height: 180,
+              border: "1px dashed rgba(200,146,42,0.08)",
+              animation: "ringFloat 11s ease-in-out infinite reverse",
+            }}
+          />
+        </div>
+
         <style>{`
-          @keyframes heroOrb1 { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.6} 50%{transform:translate(-50%,-50%) scale(1.15);opacity:1} }
-          @keyframes heroOrb2 { 0%,100%{transform:scale(1);opacity:0.5} 50%{transform:scale(1.2);opacity:0.9} }
-          @keyframes heroFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-          @keyframes heroBadgeIn { from{opacity:0;transform:translateY(-16px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
-          @keyframes heroTitleIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+          @keyframes heroOrb1   { 0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.7} 50%{transform:translate(-50%,-50%) scale(1.18);opacity:1} }
+          @keyframes heroFloat  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+          @keyframes heroBadgeIn{ from{opacity:0;transform:translateY(-14px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+          @keyframes heroTitleIn{ from{opacity:0;transform:translateY(28px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
           @keyframes heroCardIn { from{opacity:0;transform:rotateY(-8deg) rotateX(6deg) translateY(40px) scale(0.96)} to{opacity:1;transform:rotateY(-8deg) rotateX(6deg) translateY(0) scale(1)} }
-          @keyframes heroCtaIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+          @keyframes heroCtaIn  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
           @keyframes heroLineIn { from{width:0} to{width:100%} }
+          @keyframes ringFloat  { 0%,100%{transform:translateY(0) scaleX(1)} 50%{transform:translateY(-10px) scaleX(1.03)} }
+          @keyframes goldSheen  { 0%{background-position:-200% center} 100%{background-position:200% center} }
+          @keyframes titleGlow  { 0%,100%{filter:drop-shadow(0 0 18px rgba(200,146,42,0.35)) drop-shadow(0 8px 32px rgba(0,0,0,0.6))} 50%{filter:drop-shadow(0 0 38px rgba(200,146,42,0.62)) drop-shadow(0 12px 48px rgba(0,0,0,0.55))} }
+          .hero-title-3d {
+            animation: heroTitleIn 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.25s both, titleGlow 3.5s ease-in-out 1s infinite;
+            text-shadow:
+              0 1px 0 rgba(255,255,255,0.06),
+              0 4px 0 rgba(0,0,0,0.35),
+              0 8px 0 rgba(0,0,0,0.22),
+              0 14px 30px rgba(0,0,0,0.45),
+              0 0 60px rgba(200,146,42,0.18);
+          }
+          .hero-gold-word {
+            background: linear-gradient(100deg, #a86510 0%, #f5c842 30%, #ffe066 48%, #f5c842 66%, #c8922a 85%, #e8a93a 100%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: goldSheen 4s linear infinite;
+          }
         `}</style>
 
         <div className="container relative mx-auto px-4 pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
@@ -561,109 +881,112 @@ function Home() {
               {t("home.hero_badge")}
             </div>
 
+            {/* ── 3-D glowing title ── */}
             <h1
-              className="font-display text-5xl font-bold leading-none sm:text-7xl lg:text-8xl"
-              style={{ animation: "heroTitleIn 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.25s both" }}
+              className="hero-title-3d font-display font-black leading-none"
+              style={{ fontSize: "clamp(3.5rem,10vw,8rem)", letterSpacing: "-0.02em" }}
             >
-              Judo<span className="text-gradient-gold">-Arena</span>
+              <span className="text-white">Judo</span>
+              <span className="hero-gold-word">-Arena</span>
             </h1>
 
             {/* Animated gold divider line */}
             <div className="mx-auto mt-6 h-px max-w-xs overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-transparent via-gold to-transparent" style={{ animation: "heroLineIn 0.8s ease-out 0.7s both" }} />
+              <div
+                className="h-full bg-gradient-to-r from-transparent via-gold to-transparent"
+                style={{ animation: "heroLineIn 0.8s ease-out 0.7s both" }}
+              />
             </div>
 
-            <div className="mx-auto mt-8 max-w-5xl [perspective:1400px]" style={{ animation: "heroCardIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.45s both" }}>
             <div
-              ref={tiltRef}
-              onMouseMove={handleTilt}
-              onMouseLeave={resetTilt}
-              className="group relative overflow-hidden rounded-2xl border border-gold/30 bg-card/88 text-left shadow-elegant backdrop-blur-xl transition-transform duration-200 ease-out [transform:rotateY(-8deg)_rotateX(6deg)] [transform-style:preserve-3d]"
+              className="mx-auto mt-8 max-w-5xl [perspective:1400px]"
+              style={{ animation: "heroCardIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.45s both" }}
             >
-              <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-br from-gold/35 via-transparent to-destructive/20 opacity-60 blur-xl transition-opacity group-hover:opacity-90" />
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_38%,oklch(0.86_0.16_90/0.18)_48%,transparent_58%,transparent_100%)] opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="pointer-events-none absolute right-6 top-6 h-24 w-24 rounded-full border border-gold/20 bg-gold/10 blur-sm [transform:translateZ(46px)]" />
-              <div className="relative [transform:translateZ(34px)]">
-              <div className="border-b border-border/50 bg-background/45 px-5 py-4 sm:px-7">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75 animate-ping" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_18px_oklch(0.62_0.22_25/0.8)]" />
-                    </span>
-                    {t("home.registration_label")}
+              <div
+                ref={tiltRef}
+                onMouseMove={handleTilt}
+                onMouseLeave={resetTilt}
+                className="group relative overflow-hidden rounded-2xl border border-gold/30 bg-card/88 text-left shadow-elegant backdrop-blur-xl transition-transform duration-200 ease-out [transform:rotateY(-8deg)_rotateX(6deg)] [transform-style:preserve-3d]"
+              >
+                <div className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-br from-gold/35 via-transparent to-destructive/20 opacity-60 blur-xl transition-opacity group-hover:opacity-90" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_38%,oklch(0.86_0.16_90/0.18)_48%,transparent_58%,transparent_100%)] opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="pointer-events-none absolute right-6 top-6 h-24 w-24 rounded-full border border-gold/20 bg-gold/10 blur-sm [transform:translateZ(46px)]" />
+                <div className="relative [transform:translateZ(34px)]">
+                  <div className="border-b border-border/50 bg-background/45 px-5 py-4 sm:px-7">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75 animate-ping" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive shadow-[0_0_18px_oklch(0.62_0.22_25/0.8)]" />
+                        </span>
+                        {t("home.registration_label")}
+                      </div>
+                      {featuredTournament && (
+                        <span
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${featuredTournament.status === "IN_PROGRESS" ? "border-destructive/40 bg-destructive/15 text-destructive" : "border-gold/30 bg-gold/10 text-gold"}`}
+                        >
+                          {statusText[featuredTournament.status] ?? featuredTournament.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {featuredTournament && (
-                    <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${featuredTournament.status === "IN_PROGRESS" ? "border-destructive/40 bg-destructive/15 text-destructive" : "border-gold/30 bg-gold/10 text-gold"}`}>
-                      {statusText[featuredTournament.status] ?? featuredTournament.status}
-                    </span>
+
+                  {featuredTournament ? (
+                    <div className="p-4 sm:p-5">
+                      <h2 className="font-display text-xl font-bold leading-tight text-foreground sm:text-2xl">
+                        {localizeName(featuredTournament.name)}
+                      </h2>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-gold" />
+                          {formatDateRange(
+                            featuredTournament.startDate,
+                            featuredTournament.endDate,
+                          )}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-gold" />
+                          {featuredTournament.location || featuredTournament.city || "Белгісіз"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-gold" />
+                          <span className="font-semibold text-gold">
+                            {participantCount(featuredTournament)}
+                          </span>{" "}
+                          қатысушы
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/20 bg-gold/8 px-4 py-3">
+                        <Countdown to={new Date(featuredTournament.startDate).getTime()} />
+                        <Link
+                          to="/login"
+                          search={{ mode: "register" }}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-gold px-5 py-2.5 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+                        >
+                          Тіркелу <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center sm:p-10">
+                      <h2 className="font-display text-3xl font-bold">
+                        Жақын жарыс әлі жарияланбады
+                      </h2>
+                      <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                        Жарыс қосылған кезде атауы, күні, орны, басталу уақыты және тіркелу
+                        батырмасы осы жерде көрінеді.
+                      </p>
+                      <Link
+                        to="/tournaments"
+                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
+                      >
+                        Жарыстарды көру
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
                   )}
                 </div>
               </div>
-
-              {featuredTournament ? (
-                <div className="p-5 sm:p-7 lg:p-8">
-                  <h2 className="font-display text-4xl font-bold leading-tight text-foreground sm:text-6xl">
-                    {localizeName(featuredTournament.name)}
-                  </h2>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.9fr_1.2fr_0.8fr]">
-                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
-                      <Calendar className="mb-4 h-6 w-6 text-gold" />
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Күні</div>
-                      <div className="mt-2 font-display text-xl font-bold sm:text-2xl">{formatDateRange(featuredTournament.startDate, featuredTournament.endDate)}</div>
-                    </div>
-                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
-                      <Timer className="mb-4 h-6 w-6 text-gold" />
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Басталу уақыты</div>
-                      <div className="mt-2 font-display text-3xl font-bold text-gradient-gold sm:text-4xl">{formatTime(featuredTournament.startDate)}</div>
-                    </div>
-                    <div className="rounded-xl border border-border/60 bg-background/45 p-5">
-                      <MapPin className="mb-4 h-6 w-6 text-gold" />
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Өтетін жері</div>
-                      <div className="mt-2 font-display text-xl font-bold sm:text-2xl">{featuredTournament.location || featuredTournament.city || "Белгісіз"}</div>
-                    </div>
-                    <div className="rounded-xl border border-gold/30 bg-gold/10 p-5">
-                      <Users className="mb-4 h-6 w-6 text-gold" />
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Қатысушылар</div>
-                      <div className="mt-2 font-display text-5xl font-bold text-gradient-gold">{participantCount(featuredTournament)}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-2xl border border-gold/25 bg-gold/10 p-5 lg:flex lg:items-center lg:justify-between lg:gap-6">
-                    <div className="text-center lg:text-left">
-                      <div className="mb-4 text-xs uppercase tracking-[0.24em] text-gold">
-                        Басталуына қалған уақыт
-                      </div>
-                      <Countdown to={new Date(featuredTournament.startDate).getTime()} />
-                    </div>
-                    <Link
-                      to="/login"
-                      search={{ mode: "register" }}
-                      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-8 py-4 text-lg font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02] lg:mt-0 lg:w-auto"
-                    >
-                      Тіркелу
-                      <ArrowRight className="h-5 w-5" />
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center sm:p-10">
-                  <h2 className="font-display text-3xl font-bold">Жақын жарыс әлі жарияланбады</h2>
-                  <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                    Жарыс қосылған кезде атауы, күні, орны, басталу уақыты және тіркелу батырмасы осы жерде көрінеді.
-                  </p>
-                  <Link
-                    to="/tournaments"
-                    className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
-                  >
-                    Жарыстарды көру
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              )}
-            </div>
-            </div>
             </div>
 
             {/* Tagline + CTA — below card */}
@@ -671,9 +994,10 @@ function Home() {
               <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Дзюдо жарыстарын{" "}
                 <span className="text-gold/90 font-medium">
-                  {typeText}<span className="typewriter-cursor text-gold">|</span>
-                </span>
-                {" "}— жеребе, törелік, нақты уақыттағы дәреже бір экранда
+                  {typeText}
+                  <span className="typewriter-cursor text-gold">|</span>
+                </span>{" "}
+                — жеребе, törелік, нақты уақыттағы дәреже бір экранда
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <Link
@@ -692,7 +1016,10 @@ function Home() {
                   search={{ mode: "register" }}
                   onMouseMove={magneticMove}
                   onMouseLeave={magneticLeave}
-                  onClick={(e) => { ripple(e as any); burst(e.clientX, e.clientY); }}
+                  onClick={(e) => {
+                    ripple(e as any);
+                    burst(e.clientX, e.clientY);
+                  }}
                   className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-background/60 px-7 py-3.5 text-sm font-semibold backdrop-blur hover:border-gold/80 hover:bg-gold/10 ripple-container overflow-hidden"
                   style={{ willChange: "transform", display: "inline-flex" }}
                 >
@@ -701,14 +1028,16 @@ function Home() {
                 </Link>
               </div>
             </div>
-
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
       </section>
 
       {/* TEAMS + ATHLETES */}
-      <section id="klubtar" className="relative py-14 sm:py-20 border-y border-border/40 bg-navy-deep/30 overflow-hidden">
+      <section
+        id="klubtar"
+        className="relative py-14 sm:py-20 border-y border-border/40 bg-navy-deep/30 overflow-hidden"
+      >
         <div className="absolute inset-0 grid-bg opacity-25" />
         <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
         <div className="absolute right-0 bottom-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
@@ -723,15 +1052,25 @@ function Home() {
                   { val: countClubs, ref: refC, label: "клуб" },
                   { val: countCategories, ref: refCat, label: "санат" },
                 ].map((s) => (
-                  <div key={s.label} className="flex items-end gap-1.5" ref={s.ref as React.RefObject<HTMLDivElement>}>
-                    <span className="font-display text-4xl font-bold text-gradient-gold tabular-nums leading-none">{s.val}</span>
-                    <span className="text-xs uppercase tracking-widest text-muted-foreground mb-1">{s.label}</span>
+                  <div
+                    key={s.label}
+                    className="flex items-end gap-1.5"
+                    ref={s.ref as React.RefObject<HTMLDivElement>}
+                  >
+                    <span className="font-display text-4xl font-bold text-gradient-gold tabular-nums leading-none">
+                      {s.val}
+                    </span>
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground mb-1">
+                      {s.label}
+                    </span>
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("home.clubs_athletes_section")}</div>
+              <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">
+                {t("home.clubs_athletes_section")}
+              </div>
               <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
-                {t("home.clubs_athletes_title").split(" ").slice(0,-1).join(" ")}{" "}
+                {t("home.clubs_athletes_title").split(" ").slice(0, -1).join(" ")}{" "}
                 <span className="relative text-gradient-gold italic">
                   {t("home.clubs_athletes_title").split(" ").slice(-1)[0]}
                   <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-gold/80 via-gold/40 to-transparent" />
@@ -741,7 +1080,10 @@ function Home() {
                 {t("home.clubs_athletes_desc")}
               </p>
             </div>
-            <Link to="/rankings" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+            <Link
+              to="/rankings"
+              className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+            >
               {t("home.go_to_rankings")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -782,8 +1124,12 @@ function Home() {
                       {c.name}
                     </h3>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-gold/70" /> {c.city}</span>
-                      <span className="inline-flex items-center gap-1"><User className="h-3 w-3 text-gold/70" /> {c.coach}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-gold/70" /> {c.city}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3 w-3 text-gold/70" /> {c.coach}
+                      </span>
                     </div>
                     <div className="mt-5 grid grid-cols-3 gap-2">
                       {[
@@ -791,9 +1137,16 @@ function Home() {
                         { label: "Өтінім", value: c.entries },
                         { label: "Санат", value: c.categories },
                       ].map((item) => (
-                        <div key={item.label} className="rounded-lg bg-background/40 border border-border/60 p-3">
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{item.label}</div>
-                          <div className="font-display text-2xl font-bold text-gradient-gold">{item.value}</div>
+                        <div
+                          key={item.label}
+                          className="rounded-lg bg-background/40 border border-border/60 p-3"
+                        >
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {item.label}
+                          </div>
+                          <div className="font-display text-2xl font-bold text-gradient-gold">
+                            {item.value}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -803,7 +1156,10 @@ function Home() {
                         <span>{c.ready}%</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-background/50 border border-border/50">
-                        <div className="h-full rounded-full bg-gradient-gold shadow-gold" style={{ width: `${c.ready}%` }} />
+                        <div
+                          className="h-full rounded-full bg-gradient-gold shadow-gold"
+                          style={{ width: `${c.ready}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -829,15 +1185,28 @@ function Home() {
               </div>
               <div className="divide-y divide-border/40">
                 {athleteRows.map((a) => {
-                  const medal = a.rank === 1 ? "text-yellow-400" : a.rank === 2 ? "text-zinc-300" : a.rank === 3 ? "text-amber-600" : "text-muted-foreground";
-                  const change = a.change.startsWith("+") ? "text-emerald-400" : a.change.startsWith("−") ? "text-rose-400" : "text-muted-foreground";
+                  const medal =
+                    a.rank === 1
+                      ? "text-yellow-400"
+                      : a.rank === 2
+                        ? "text-zinc-300"
+                        : a.rank === 3
+                          ? "text-amber-600"
+                          : "text-muted-foreground";
+                  const change = a.change.startsWith("+")
+                    ? "text-emerald-400"
+                    : a.change.startsWith("−")
+                      ? "text-rose-400"
+                      : "text-muted-foreground";
                   return (
                     <Link
                       to="/rankings"
                       key={`${a.rank}-${a.name}`}
                       className="group grid grid-cols-[3rem_1fr_auto] gap-3 px-4 py-4 hover:bg-gold/5 transition-colors items-center sm:px-5"
                     >
-                      <div className={`font-display text-2xl font-bold ${medal} flex items-center gap-2`}>
+                      <div
+                        className={`font-display text-2xl font-bold ${medal} flex items-center gap-2`}
+                      >
                         {a.rank <= 3 && <Star className="h-4 w-4 fill-current" />}
                         {a.rank}
                       </div>
@@ -846,12 +1215,18 @@ function Home() {
                           <LazyImage src={a.image} alt="" className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate font-semibold group-hover:text-gold transition-colors">{a.name}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">{a.club} · {a.weight}</div>
+                          <div className="truncate font-semibold group-hover:text-gold transition-colors">
+                            {a.name}
+                          </div>
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            {a.club} · {a.weight}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-display text-lg font-bold text-gradient-gold tabular-nums">{a.points}</div>
+                        <div className="font-display text-lg font-bold text-gradient-gold tabular-nums">
+                          {a.points}
+                        </div>
                         <div className={`text-xs tabular-nums ${change}`}>{a.change}</div>
                       </div>
                     </Link>
@@ -859,12 +1234,16 @@ function Home() {
                 })}
                 {athleteRows.length === 0 && (
                   <div className="px-5 py-10 text-center text-muted-foreground">
-                    Дәрежеде әзірше спортшылар жоқ. Жарыс қорытындысы шыққанда ұпайлар осында түседі.
+                    Дәрежеде әзірше спортшылар жоқ. Жарыс қорытындысы шыққанда ұпайлар осында
+                    түседі.
                   </div>
                 )}
               </div>
               <div className="border-t border-border/40 p-4">
-                <Link to="/rankings" className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
+                <Link
+                  to="/rankings"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60"
+                >
                   Барлық спортшылар <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -873,7 +1252,6 @@ function Home() {
         </div>
       </section>
 
-
       {/* ЖАРЫС ХАТТАМАЛАРЫ */}
       <section id="hattamalar" className="relative py-16 sm:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-hero opacity-60" />
@@ -881,14 +1259,16 @@ function Home() {
         <div className="container mx-auto px-4 relative">
           <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
             <div className="reveal">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">{t("home.protocol_section")}</div>
+              <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">
+                {t("home.protocol_section")}
+              </div>
               <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight overflow-hidden">
-                {t("home.protocol_title").split(" ").slice(0,1).join(" ")}{" "}
-                <span className="text-gradient-gold italic inline-block">{t("home.protocol_title").split(" ").slice(1).join(" ")}</span>
+                {t("home.protocol_title").split(" ").slice(0, 1).join(" ")}{" "}
+                <span className="text-gradient-gold italic inline-block">
+                  {t("home.protocol_title").split(" ").slice(1).join(" ")}
+                </span>
               </h2>
-              <p className="mt-3 text-muted-foreground max-w-xl">
-                {t("home.protocol_desc")}
-              </p>
+              <p className="mt-3 text-muted-foreground max-w-xl">{t("home.protocol_desc")}</p>
             </div>
             <span className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-destructive/15 text-destructive border border-destructive/30">
               <Radio className="h-3.5 w-3.5 animate-pulse" /> {t("home.protocol_live_badge")}
@@ -898,13 +1278,15 @@ function Home() {
             <Bracket rounds={sampleRounds} />
           </div>
           <div className="mt-6 text-center">
-            <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+            <Link
+              to="/tournaments"
+              className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+            >
               {t("home.go_to_protocol")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </section>
-
 
       {/* PROTOCOL RESULT MODULE */}
       <section className="container mx-auto px-4 pb-14 sm:pb-20">
@@ -917,15 +1299,23 @@ function Home() {
                 <Trophy className="h-5 w-5 text-gold-foreground" />
               </div>
               <div>
-                <div className="font-display text-lg font-bold">{t("home.protocol_ready_title")}</div>
+                <div className="font-display text-lg font-bold">
+                  {t("home.protocol_ready_title")}
+                </div>
                 <p className="text-sm text-muted-foreground">{t("home.protocol_ready_desc")}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link to="/rankings" className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/15">
+              <Link
+                to="/rankings"
+                className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/15"
+              >
                 <BarChart className="h-4 w-4" /> Дәреже кестесі
               </Link>
-              <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+              <Link
+                to="/tournaments"
+                className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+              >
                 <GitBranch className="h-4 w-4" /> Жарыстарға өту
               </Link>
             </div>
@@ -933,175 +1323,223 @@ function Home() {
         </div>
       </section>
 
-
       {/* UPCOMING TOURNAMENTS WITH COUNTDOWN */}
       <section className="container mx-auto px-4 py-14 sm:py-20">
         <div className="flex items-end justify-between mb-8 sm:mb-12 flex-wrap gap-4">
           <div className="reveal">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("home.calendar_section")}</div>
+            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">
+              {t("home.calendar_section")}
+            </div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
-              {t("home.calendar_title").split(" ").slice(0,-1).join(" ")} <span className="text-gradient-gold italic">{t("home.calendar_title").split(" ").slice(-1)[0]}</span>
+              {t("home.calendar_title").split(" ").slice(0, -1).join(" ")}{" "}
+              <span className="text-gradient-gold italic">
+                {t("home.calendar_title").split(" ").slice(-1)[0]}
+              </span>
             </h2>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
               {t("home.calendar_desc")}
             </p>
           </div>
-          <Link to="/tournaments" className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold hover:border-gold/60">
+          <Link
+            to="/tournaments"
+            className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold hover:border-gold/60"
+          >
             {t("home.view_all_tournaments")} <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
         {featuredTournament ? (
-        <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-          <Link
-            to="/tournaments/$id"
-            params={{ id: featuredTournament.id }}
-            className="group relative min-h-[29rem] overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50"
-          >
-            <LazyImage src={featuredTournament.posterUrl || teamLineup} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-t from-destructive/20 to-gold/10 via-background/80" />
-            <div className="absolute inset-0 grid-bg opacity-30" />
-            <div className="relative flex h-full flex-col justify-between p-5 sm:p-7">
-              <div>
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-destructive">
-                    <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" /> {statusText[featuredTournament.status] ?? featuredTournament.status}
-                  </span>
-                  <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-                    Негізгі жарыс
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-gold" />{formatDateRange(featuredTournament.startDate, featuredTournament.endDate)}</span>
-                  <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-gold" />{featuredTournament.city}</span>
-                </div>
-                <h3 className="mt-4 max-w-2xl font-display text-3xl font-bold leading-tight sm:text-5xl">
-                  {localizeName(featuredTournament.name)}
-                </h3>
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Live жарыс модулі: командалар, қатысушылар, live-тор, белдесулер және хаттама бір жерден бақыланады.
-                </p>
-              </div>
-
-              <div className="mt-8">
-                <div className="mb-5 grid grid-cols-3 gap-2">
-                  {[
-                    { label: "Өтінім", value: featuredTournament._count?.applications ?? 0 },
-                    { label: "Татами", value: featuredTournament.tatamiCount ?? 1 },
-                    { label: "Санат", value: featuredTournament._count?.categories ?? 0 },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-white/10 bg-background/55 p-3 text-center backdrop-blur">
-                      <div className="font-display text-2xl font-bold text-gradient-gold tabular-nums">{item.value}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {["Шолу", "Қатысушылар", "Live-тор", "Белдесулер", "Хаттама"].map((tab, i) => (
-                    <span
-                      key={tab}
-                      className={`rounded-full border px-3 py-2 text-xs transition-colors ${
-                        i === 0
-                          ? "border-gold/40 bg-gold/15 text-gold"
-                          : "border-border/60 bg-background/45 text-muted-foreground"
-                      }`}
-                    >
-                      {tab}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <div className="flex flex-col gap-4">
-            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-4 backdrop-blur">
-              <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
-              <div className="rounded-xl border border-border/60 bg-background/55 py-3 pl-10 pr-4 text-sm text-muted-foreground">
-                Жарыс, қала немесе клуб іздеу
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {["2026", "LIVE", "Тіркеу ашық", "Бір шығару", "Айналмалы"].map((filter) => (
-                <span key={filter} className="rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground">
-                  {filter}
-                </span>
-              ))}
-            </div>
-            {upcomingRest.map((tour: any, i: number) => (
+          <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
             <Link
               to="/tournaments/$id"
-              params={{ id: tour.id }}
-              key={tour.id}
-              onMouseMove={cardTilt}
-              onMouseLeave={cardTiltLeave}
-              className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
-              style={{ willChange: "transform", transformStyle: "preserve-3d" }}
+              params={{ id: featuredTournament.id }}
+              className="group relative min-h-[29rem] overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-gold/15 to-sky-500/10 opacity-80" />
-              <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
-
-              <div className="relative flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-gold/30 bg-gold/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
-                        {t("status.REGISTRATION_OPEN")}
-                      </span>
-                      <span className="rounded-full border border-border/60 bg-background/40 px-2.5 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {statusText[tour.status] ?? tour.status}
-                      </span>
-                    </div>
-                  <h3 className="font-display text-lg font-semibold group-hover:text-gold transition-colors">
-                    {localizeName(tour.name)}
+              <LazyImage
+                src={featuredTournament.posterUrl || teamLineup}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-destructive/20 to-gold/10 via-background/80" />
+              <div className="absolute inset-0 grid-bg opacity-30" />
+              <div className="relative flex h-full flex-col justify-between p-5 sm:p-7">
+                <div>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/20 px-3 py-1.5 text-[10px] uppercase tracking-widest text-destructive">
+                      <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />{" "}
+                      {statusText[featuredTournament.status] ?? featuredTournament.status}
+                    </span>
+                    <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
+                      Негізгі жарыс
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5 text-gold" />
+                      {formatDateRange(featuredTournament.startDate, featuredTournament.endDate)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-gold" />
+                      {featuredTournament.city}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 max-w-2xl font-display text-3xl font-bold leading-tight sm:text-5xl">
+                    {localizeName(featuredTournament.name)}
                   </h3>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-gold/70" />{formatDateRange(tour.startDate, tour.endDate)}</span>
-                    <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-gold/70" />{tour.city}</span>
-                  </div>
-                </div>
-                  <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold sm:flex">
-                    <Trophy className="h-5 w-5 text-gold-foreground" />
-                  </div>
+                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                    Live жарыс модулі: командалар, қатысушылар, live-тор, белдесулер және хаттама
+                    бір жерден бақыланады.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: t("home.stats_tournaments"), value: tour._count?.applications ?? 0 },
-                    { label: t("home.tatami_label"), value: tour.tatamiCount ?? 1 },
-                    { label: t("tournament.categories"), value: tour._count?.categories ?? 0 },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-border/60 bg-background/35 p-3 text-center">
-                      <div className="font-display text-xl font-bold text-gradient-gold tabular-nums sm:text-2xl">{item.value}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-border/40 pt-4 xl:flex-row xl:items-center xl:justify-between">
-                  <div>
-                    <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {tour.status === "IN_PROGRESS" ? t("home.live_now") : t("home.until_start")}
-                    </div>
-                    <Countdown to={new Date(tour.startDate).getTime()} />
+                <div className="mt-8">
+                  <div className="mb-5 grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Өтінім", value: featuredTournament._count?.applications ?? 0 },
+                      { label: "Татами", value: featuredTournament.tatamiCount ?? 1 },
+                      { label: "Санат", value: featuredTournament._count?.categories ?? 0 },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-xl border border-white/10 bg-background/55 p-3 text-center backdrop-blur"
+                      >
+                        <div className="font-display text-2xl font-bold text-gradient-gold tabular-nums">
+                          {item.value}
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {item.label}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="inline-flex items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold group-hover:border-gold/60">
-                    {tour.status === "IN_PROGRESS" ? t("home.live_bracket") : t("home.full_info")}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {["Шолу", "Қатысушылар", "Live-тор", "Белдесулер", "Хаттама"].map((tab, i) => (
+                      <span
+                        key={tab}
+                        className={`rounded-full border px-3 py-2 text-xs transition-colors ${
+                          i === 0
+                            ? "border-gold/40 bg-gold/15 text-gold"
+                            : "border-border/60 bg-background/45 text-muted-foreground"
+                        }`}
+                      >
+                        {tab}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </Link>
-          ))}
+
+            <div className="flex flex-col gap-4">
+              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-4 backdrop-blur">
+                <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
+                <div className="rounded-xl border border-border/60 bg-background/55 py-3 pl-10 pr-4 text-sm text-muted-foreground">
+                  Жарыс, қала немесе клуб іздеу
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["2026", "LIVE", "Тіркеу ашық", "Бір шығару", "Айналмалы"].map((filter) => (
+                  <span
+                    key={filter}
+                    className="rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground"
+                  >
+                    {filter}
+                  </span>
+                ))}
+              </div>
+              {upcomingRest.map((tour: any, i: number) => (
+                <Link
+                  to="/tournaments/$id"
+                  params={{ id: tour.id }}
+                  key={tour.id}
+                  onMouseMove={cardTilt}
+                  onMouseLeave={cardTiltLeave}
+                  className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
+                  style={{ willChange: "transform", transformStyle: "preserve-3d" }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-gold/15 to-sky-500/10 opacity-80" />
+                  <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+
+                  <div className="relative flex flex-col gap-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-gold/30 bg-gold/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
+                            {t("status.REGISTRATION_OPEN")}
+                          </span>
+                          <span className="rounded-full border border-border/60 bg-background/40 px-2.5 py-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {statusText[tour.status] ?? tour.status}
+                          </span>
+                        </div>
+                        <h3 className="font-display text-lg font-semibold group-hover:text-gold transition-colors">
+                          {localizeName(tour.name)}
+                        </h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-gold/70" />
+                            {formatDateRange(tour.startDate, tour.endDate)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 text-gold/70" />
+                            {tour.city}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold sm:flex">
+                        <Trophy className="h-5 w-5 text-gold-foreground" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          label: t("home.stats_tournaments"),
+                          value: tour._count?.applications ?? 0,
+                        },
+                        { label: t("home.tatami_label"), value: tour.tatamiCount ?? 1 },
+                        { label: t("tournament.categories"), value: tour._count?.categories ?? 0 },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="rounded-xl border border-border/60 bg-background/35 p-3 text-center"
+                        >
+                          <div className="font-display text-xl font-bold text-gradient-gold tabular-nums sm:text-2xl">
+                            {item.value}
+                          </div>
+                          <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {item.label}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-4 border-t border-border/40 pt-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div>
+                        <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {tour.status === "IN_PROGRESS"
+                            ? t("home.live_now")
+                            : t("home.until_start")}
+                        </div>
+                        <Countdown to={new Date(tour.startDate).getTime()} />
+                      </div>
+                      <span className="inline-flex items-center justify-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold group-hover:border-gold/60">
+                        {tour.status === "IN_PROGRESS"
+                          ? t("home.live_bracket")
+                          : t("home.full_info")}
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
         ) : (
           <div className="rounded-2xl border border-gold/20 bg-card/60 p-8 text-center text-muted-foreground">
             Әзірше жүйеде жарыс жоқ. Әкімші жаңа жарыс қосқанда ол осы жерде бірден шығады.
           </div>
         )}
       </section>
-
 
       {/* LIVE CENTER */}
       <section className="container mx-auto px-4 pb-14 sm:pb-20">
@@ -1123,7 +1561,10 @@ function Home() {
                   {t("home.live_center_desc")}
                 </p>
               </div>
-              <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
+              <Link
+                to="/tournaments"
+                className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60"
+              >
                 Жарыс хаттамасы <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -1131,20 +1572,29 @@ function Home() {
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
               <div className="grid gap-4 md:grid-cols-3">
                 {(liveMatches.length ? liveMatches : []).map((item, i) => (
-                  <div key={item.tatami} className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur blur-reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}>
+                  <div
+                    key={item.tatami}
+                    className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur blur-reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
+                  >
                     <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl" />
                     <div className="relative flex items-center justify-between">
                       <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-destructive">
                         LIVE
                       </span>
-                      <span className="font-display text-3xl font-bold text-gold/30">#{item.tatami}</span>
+                      <span className="font-display text-3xl font-bold text-gold/30">
+                        #{item.tatami}
+                      </span>
                     </div>
-                    <div className="relative mt-4 text-[10px] uppercase tracking-widest text-muted-foreground">{item.category}</div>
+                    <div className="relative mt-4 text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {item.category}
+                    </div>
                     <h3 className="relative mt-2 min-h-[3rem] font-display text-lg font-semibold leading-tight">
                       {item.current}
                     </h3>
                     <div className="relative mt-4 rounded-xl border border-border/60 bg-card/50 p-3">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Келесі</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Келесі
+                      </div>
                       <div className="mt-1 text-sm text-foreground">{item.next}</div>
                     </div>
                     <div className="relative mt-4">
@@ -1153,7 +1603,10 @@ function Home() {
                         <span>{item.progress}%</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full border border-border/50 bg-background/50">
-                        <div className="h-full rounded-full bg-gradient-gold shadow-gold" style={{ width: `${item.progress}%` }} />
+                        <div
+                          className="h-full rounded-full bg-gradient-gold shadow-gold"
+                          style={{ width: `${item.progress}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1172,7 +1625,9 @@ function Home() {
                     <Shield className="h-5 w-5 text-gold-foreground" />
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("home.official_docs")}</div>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
+                      {t("home.official_docs")}
+                    </div>
                     <h3 className="font-display text-xl font-semibold">{t("home.docs_module")}</h3>
                   </div>
                 </div>
@@ -1183,7 +1638,10 @@ function Home() {
                     { title: t("home.doc_protocol"), status: t("home.doc_auto") },
                     { title: t("home.doc_pdf"), status: t("home.doc_final") },
                   ].map((doc) => (
-                    <div key={doc.title} className="flex items-center justify-between rounded-xl border border-border/60 bg-card/45 px-4 py-3">
+                    <div
+                      key={doc.title}
+                      className="flex items-center justify-between rounded-xl border border-border/60 bg-card/45 px-4 py-3"
+                    >
                       <span className="text-sm">{doc.title}</span>
                       <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold">
                         {doc.status}
@@ -1196,7 +1654,6 @@ function Home() {
           </div>
         </div>
       </section>
-
 
       {/* TOURNAMENT ENTRY — team registration flow */}
       <section className="container mx-auto px-4 -mt-6 relative z-10">
@@ -1235,9 +1692,24 @@ function Home() {
 
             <div className="grid gap-3 sm:grid-cols-3 reveal-right">
               {[
-                { icon: Trophy, n: "01", t: t("home.step_tournament"), d: t("home.step_tournament_desc") },
-                { icon: Users, n: "02", t: t("home.step_participants"), d: t("home.step_participants_desc") },
-                { icon: Shield, n: "03", t: t("home.step_approve"), d: t("home.step_approve_desc") },
+                {
+                  icon: Trophy,
+                  n: "01",
+                  t: t("home.step_tournament"),
+                  d: t("home.step_tournament_desc"),
+                },
+                {
+                  icon: Users,
+                  n: "02",
+                  t: t("home.step_participants"),
+                  d: t("home.step_participants_desc"),
+                },
+                {
+                  icon: Shield,
+                  n: "03",
+                  t: t("home.step_approve"),
+                  d: t("home.step_approve_desc"),
+                },
               ].map((step) => (
                 <div
                   key={step.n}
@@ -1251,7 +1723,9 @@ function Home() {
                     <span className="font-display text-3xl font-bold text-gold/25">{step.n}</span>
                   </div>
                   <div className="relative mt-4 font-display text-lg font-semibold">{step.t}</div>
-                  <p className="relative mt-2 text-xs leading-relaxed text-muted-foreground">{step.d}</p>
+                  <p className="relative mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {step.d}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1274,7 +1748,6 @@ function Home() {
         </div>
       </section>
 
-
       {/* PARTNERS MARQUEE */}
       <section className="border-y border-border/40 bg-navy-deep/40 py-6 overflow-hidden">
         <div className="flex gap-12 animate-marquee whitespace-nowrap">
@@ -1288,7 +1761,11 @@ function Home() {
       </section>
 
       {/* TECHNIQUE VIDEO LIBRARY */}
-      <section id="tehnika" ref={cineRef} className="relative overflow-hidden border-y border-border/40 py-16 sm:py-24">
+      <section
+        id="tehnika"
+        ref={cineRef}
+        className="relative overflow-hidden border-y border-border/40 py-16 sm:py-24"
+      >
         <div className="absolute inset-0 bg-gradient-hero opacity-70" />
         <div className="absolute inset-0 grid-bg opacity-25" />
         <div
@@ -1305,23 +1782,25 @@ function Home() {
               width: `${3 + (i % 3) * 2}px`,
               height: `${3 + (i % 3) * 2}px`,
               animationDelay: `${(i * 0.35) % 4}s`,
-              opacity: 0.25 + ((i % 4) / 10),
+              opacity: 0.25 + (i % 4) / 10,
             }}
           />
         ))}
 
         <div className="container mx-auto px-4 relative">
           <div className="mb-8 max-w-3xl lg:mb-12 reveal">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
-                <BookOpen className="h-3.5 w-3.5 text-gold" />
-                <span className="text-[10px] uppercase tracking-[0.28em] text-gold">{t("home.technique_section")}</span>
-              </div>
-              <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
-                {t("home.technique_title")}
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                {t("home.technique_desc")}
-              </p>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-gold" />
+              <span className="text-[10px] uppercase tracking-[0.28em] text-gold">
+                {t("home.technique_section")}
+              </span>
+            </div>
+            <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
+              {t("home.technique_title")}
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {t("home.technique_desc")}
+            </p>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[1.35fr_0.95fr]">
@@ -1335,13 +1814,21 @@ function Home() {
               <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/5" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_30%,oklch(0.76_0.15_80/0.24),transparent_32%)]" />
 
-              <div className="absolute right-6 top-24 hidden h-52 w-52 md:block" style={{ perspective: "900px" }}>
-                <div className="relative h-full w-full preserve-3d" style={{ transform: "rotateX(62deg) rotateZ(-28deg)" }}>
+              <div
+                className="absolute right-6 top-24 hidden h-52 w-52 md:block"
+                style={{ perspective: "900px" }}
+              >
+                <div
+                  className="relative h-full w-full preserve-3d"
+                  style={{ transform: "rotateX(62deg) rotateZ(-28deg)" }}
+                >
                   {[0, 1, 2, 3].map((layer) => (
                     <div
                       key={layer}
                       className="absolute inset-0 rounded-xl border border-gold/25 bg-gradient-to-br from-gold/25 via-white/10 to-navy-deep/70 shadow-gold"
-                      style={{ transform: `translateZ(${layer * 14}px) scale(${1 - layer * 0.07})` }}
+                      style={{
+                        transform: `translateZ(${layer * 14}px) scale(${1 - layer * 0.07})`,
+                      }}
                     />
                   ))}
                   <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-gold/35" />
@@ -1362,19 +1849,26 @@ function Home() {
                   <span className="rounded-full bg-gold px-4 py-1.5 text-xs font-bold text-gold-foreground shadow-gold">
                     {currentTechnique.level}
                   </span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{currentTechnique.duration}</span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{currentTechnique.date}</span>
+                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    {currentTechnique.duration}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    {currentTechnique.date}
+                  </span>
                 </div>
                 <h3 className="font-display text-3xl font-bold leading-tight sm:text-5xl">
                   {currentTechnique.title}
                 </h3>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {currentTechnique.focus}. Бұл жерде кейін нақты бейне файл немесе YouTube қойылады,
-                  ал қазір дайын ойнатқыш күйінде көрсетілген.
+                  {currentTechnique.focus}. Бұл жерде кейін нақты бейне файл немесе YouTube
+                  қойылады, ал қазір дайын ойнатқыш күйінде көрсетілген.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   {currentTechnique.moves.map((move) => (
-                    <span key={move} className="rounded-full border border-gold/20 bg-background/55 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
+                    <span
+                      key={move}
+                      className="rounded-full border border-gold/20 bg-background/55 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur"
+                    >
                       {move}
                     </span>
                   ))}
@@ -1401,7 +1895,9 @@ function Home() {
               <div className="rounded-2xl border border-gold/20 bg-card/80 p-4 shadow-elegant backdrop-blur">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.26em] text-gold">бейне тізімі</div>
+                    <div className="text-[10px] uppercase tracking-[0.26em] text-gold">
+                      бейне тізімі
+                    </div>
                     <div className="font-display text-xl font-bold">КЮ бейнелері</div>
                   </div>
                   <div className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs text-gold">
@@ -1421,7 +1917,11 @@ function Home() {
                       }`}
                     >
                       <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
-                        <LazyImage src={video.image} alt="" className="h-full w-full object-cover opacity-80 transition-transform group-hover:scale-105" />
+                        <LazyImage
+                          src={video.image}
+                          alt=""
+                          className="h-full w-full object-cover opacity-80 transition-transform group-hover:scale-105"
+                        />
                         <span className="absolute inset-0 bg-background/20" />
                         <span className="absolute inset-0 flex items-center justify-center">
                           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold text-gold-foreground">
@@ -1434,7 +1934,9 @@ function Home() {
                           <span className="font-display font-semibold">{video.level}</span>
                           <span className="text-xs text-muted-foreground">{video.duration}</span>
                         </span>
-                        <span className="mt-1 block truncate text-sm text-muted-foreground">{video.title}</span>
+                        <span className="mt-1 block truncate text-sm text-muted-foreground">
+                          {video.title}
+                        </span>
                       </span>
                     </button>
                   ))}
@@ -1446,7 +1948,9 @@ function Home() {
                 <div className="relative">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.26em] text-gold">белбеу жолы</div>
+                      <div className="text-[10px] uppercase tracking-[0.26em] text-gold">
+                        белбеу жолы
+                      </div>
                       <div className="font-display text-xl font-bold">КЮ жүйесі</div>
                     </div>
                     <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
@@ -1457,16 +1961,23 @@ function Home() {
                   <div className="mb-4 rounded-xl border border-border/60 bg-background/40 p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <span className={`h-8 w-16 rounded-md bg-gradient-to-r ${currentBelt.color} shadow-elegant`} />
+                        <span
+                          className={`h-8 w-16 rounded-md bg-gradient-to-r ${currentBelt.color} shadow-elegant`}
+                        />
                         <div>
                           <div className="font-display text-xl font-bold">{currentBelt.label}</div>
                           <div className="text-xs text-muted-foreground">{currentBelt.skills}</div>
                         </div>
                       </div>
-                      <div className="font-display text-2xl font-bold text-gradient-gold">{currentBelt.progress}%</div>
+                      <div className="font-display text-2xl font-bold text-gradient-gold">
+                        {currentBelt.progress}%
+                      </div>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full border border-border/50 bg-background/60">
-                      <div className="h-full rounded-full bg-gradient-gold transition-all duration-500" style={{ width: `${currentBelt.progress}%` }} />
+                      <div
+                        className="h-full rounded-full bg-gradient-gold transition-all duration-500"
+                        style={{ width: `${currentBelt.progress}%` }}
+                      />
                     </div>
                   </div>
 
@@ -1482,8 +1993,12 @@ function Home() {
                             : "border-border/60 bg-background/40 hover:border-gold/40"
                         }`}
                       >
-                        <span className={`mb-2 block h-3 rounded-full bg-gradient-to-r ${belt.color}`} />
-                        <span className="block truncate font-display text-sm font-semibold">{belt.label}</span>
+                        <span
+                          className={`mb-2 block h-3 rounded-full bg-gradient-to-r ${belt.color}`}
+                        />
+                        <span className="block truncate font-display text-sm font-semibold">
+                          {belt.label}
+                        </span>
                         <span className="text-[10px] text-gold">{belt.level}</span>
                       </button>
                     ))}
@@ -1499,7 +2014,9 @@ function Home() {
       <section className="container mx-auto px-4 py-14 sm:py-20">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-12">
           <div className="max-w-2xl reveal">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">Серіктестер</div>
+            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">
+              Серіктестер
+            </div>
             <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
               Бізге <span className="text-gradient-gold italic">сенім артқандар</span>
             </h2>
@@ -1515,40 +2032,44 @@ function Home() {
         <div className="-mx-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none]">
           <div className="flex gap-5">
             {partners.map((p) => (
-            <div
-              key={p.name}
-              className="group relative h-[25rem] w-[18rem] shrink-0 overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50 sm:w-[21rem]"
-            >
-              <LazyImage
-                src={p.image}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className={`absolute inset-0 bg-gradient-to-t ${p.accent} via-background/70 to-background/10`} />
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                <LazyImage src={p.logo} alt="" className="h-12 w-12 rounded-xl border border-white/20 bg-white object-cover shadow-gold" />
-                <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-                  {p.type}
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-5">
-                <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 text-gold" />
-                  {p.city}
+              <div
+                key={p.name}
+                className="group relative h-[25rem] w-[18rem] shrink-0 overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50 sm:w-[21rem]"
+              >
+                <LazyImage
+                  src={p.image}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
+                />
+                <div
+                  className={`absolute inset-0 bg-gradient-to-t ${p.accent} via-background/70 to-background/10`}
+                />
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
+                  <LazyImage
+                    src={p.logo}
+                    alt=""
+                    className="h-12 w-12 rounded-xl border border-white/20 bg-white object-cover shadow-gold"
+                  />
+                  <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
+                    {p.type}
+                  </span>
                 </div>
-                <h3 className="font-display text-2xl font-bold leading-tight group-hover:text-gold transition-colors">
-                  {p.name}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {p.desc}
-                </p>
-                <div className="mt-5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-gold">
-                  <Medal className="h-4 w-4" />
-                  official partner
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 text-gold" />
+                    {p.city}
+                  </div>
+                  <h3 className="font-display text-2xl font-bold leading-tight group-hover:text-gold transition-colors">
+                    {p.name}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
+                  <div className="mt-5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-gold">
+                    <Medal className="h-4 w-4" />
+                    official partner
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
       </section>
@@ -1584,63 +2105,190 @@ function Home() {
       </section>
 
       {/* TOURNAMENT DAY FINALE */}
-      <section className="container mx-auto px-4 pb-16 sm:pb-24">
-        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-navy-deep shadow-elegant">
+      <section className="px-3 pb-16 sm:px-4 sm:pb-24">
+        <div
+          className="relative overflow-hidden rounded-3xl"
+          style={{ background: "linear-gradient(135deg,#060c1c 0%,#0c1835 55%,#07101f 100%)" }}
+        >
+          {/* bg photo */}
           <LazyImage
             src={heroKazakhstan}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center opacity-55"
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-20 mix-blend-luminosity"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/25" />
-          <div className="absolute inset-0 grid-bg opacity-20" />
-          <div className="absolute right-8 top-8 hidden h-44 w-44 rounded-full conic-gold opacity-25 blur-2xl md:block" />
+          {/* grid */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(200,146,42,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(200,146,42,0.06) 1px,transparent 1px)",
+              backgroundSize: "56px 56px",
+            }}
+          />
+          {/* glow orbs */}
+          <div
+            className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none"
+            style={{
+              background: "radial-gradient(circle,rgba(200,146,42,0.14) 0%,transparent 65%)",
+              filter: "blur(48px)",
+            }}
+          />
+          <div
+            className="absolute -bottom-20 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
+            style={{
+              background: "radial-gradient(circle,rgba(26,58,140,0.22) 0%,transparent 65%)",
+              filter: "blur(40px)",
+            }}
+          />
+          {/* top gold line */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
 
-          <div className="relative grid gap-8 p-5 sm:p-7 lg:grid-cols-[0.95fr_1.05fr] lg:p-10">
-            <div className="flex min-h-[28rem] flex-col justify-end">
-              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.28em] text-gold backdrop-blur">
+          <div className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[1fr_1fr] lg:gap-12 lg:p-12 xl:p-14">
+            {/* LEFT — copy */}
+            <div className="flex flex-col justify-center">
+              <div
+                className="mb-5 inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.28em]"
+                style={{
+                  background: "rgba(200,146,42,0.12)",
+                  border: "1px solid rgba(200,146,42,0.28)",
+                  color: "#e8a93a",
+                }}
+              >
                 <Trophy className="h-3.5 w-3.5" />
                 жарыс күні
               </div>
-              <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
-                Команда келді.<br />
-                Тор ашылды.<br />
-                <span className="text-gradient-gold italic">Татами дайын.</span>
+              <h2
+                className="font-black leading-[0.88] text-white"
+                style={{ fontSize: "clamp(2.2rem,4.5vw,4rem)", letterSpacing: "-0.025em" }}
+              >
+                Команда келді.
+                <br />
+                Тор ашылды.
+                <br />
+                <span
+                  style={{
+                    background: "linear-gradient(100deg,#c8922a,#f5c842,#c8922a)",
+                    backgroundSize: "200% 100%",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Татами дайын.
+                </span>
               </h2>
-              <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Басты бет соңында бос ұран емес, жарыстың нақты шешуші көрінісі: кім тіркелді,
-                қай татамиде күреседі және қандай құжат дайын болады.
+              <p
+                className="mt-5 max-w-md text-sm leading-relaxed sm:text-base"
+                style={{ color: "rgba(255,255,255,0.52)" }}
+              >
+                Жарыстың нақты шешуші көрінісі: кім тіркелді, қай татамиде күреседі және қандай
+                құжат дайын болады.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-medium text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]">
+                <Link
+                  to="/tournaments"
+                  className="inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-black text-[#1a0e00] transition-all hover:brightness-110 active:scale-[0.98]"
+                  style={{
+                    background: "linear-gradient(135deg,#f0c040,#c8922a)",
+                    boxShadow: "0 8px 28px rgba(200,146,42,0.42)",
+                  }}
+                >
                   Live жарыстар <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-background/55 px-6 py-3 font-medium backdrop-blur transition-colors hover:border-gold/60">
+                <Link
+                  to="/tournaments"
+                  className="inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all hover:brightness-110"
+                  style={{
+                    border: "1px solid rgba(200,146,42,0.30)",
+                    color: "#e8a93a",
+                    background: "rgba(200,146,42,0.08)",
+                  }}
+                >
                   Жарыс хаттамасы
                 </Link>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:content-end">
+            {/* RIGHT — 4 stat cards */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {[
-                { title: "Бастау парағы", value: "248", desc: "қатысушы бекітілді", icon: Users },
-                { title: "Тор", value: "18", desc: "санат бойынша құрылды", icon: GitBranch },
-                { title: "Татами", value: "3", desc: "live кезек жұмыс істейді", icon: Radio },
-                { title: "Қорытынды", value: "PDF", desc: "медаль және хаттама", icon: Shield },
+                {
+                  title: "Бастау парағы",
+                  value: "248",
+                  desc: "қатысушы бекітілді",
+                  icon: Users,
+                  color: "rgba(200,146,42,0.18)",
+                },
+                {
+                  title: "Тор",
+                  value: "18",
+                  desc: "санат бойынша құрылды",
+                  icon: GitBranch,
+                  color: "rgba(59,130,246,0.18)",
+                },
+                {
+                  title: "Татами",
+                  value: "3",
+                  desc: "live кезек жұмыс істейді",
+                  icon: Radio,
+                  color: "rgba(239,68,68,0.18)",
+                },
+                {
+                  title: "Қорытынды",
+                  value: "PDF",
+                  desc: "медаль және хаттама",
+                  icon: Shield,
+                  color: "rgba(34,197,94,0.18)",
+                },
               ].map((item, i) => (
-                <div key={item.title} className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-background/55 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50 reveal reveal-delay-${i + 1}`}>
-                  <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl transition-colors group-hover:bg-gold/20" />
-                  <div className="relative flex items-center justify-between">
-                    <div className="h-11 w-11 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                      <item.icon className="h-5 w-5 text-gold-foreground" />
+                <div
+                  key={item.title}
+                  className={`group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:-translate-y-1 reveal reveal-delay-${i + 1}`}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                    backdropFilter: "blur(16px)",
+                  }}
+                >
+                  {/* icon bg glow */}
+                  <div
+                    className="absolute -right-8 -top-8 w-24 h-24 rounded-full pointer-events-none transition-opacity group-hover:opacity-100 opacity-70"
+                    style={{ background: item.color, filter: "blur(20px)" }}
+                  />
+                  <div className="relative">
+                    <div className="flex items-start justify-between mb-4">
+                      <div
+                        className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                        style={{
+                          background: "linear-gradient(135deg,#f0c040,#c8922a)",
+                          boxShadow: "0 6px 18px rgba(200,146,42,0.40)",
+                        }}
+                      >
+                        <item.icon className="h-5 w-5 text-[#1a0e00]" />
+                      </div>
+                      <span
+                        className="font-black text-3xl sm:text-4xl leading-none"
+                        style={{ color: "#e8a93a" }}
+                      >
+                        {item.value}
+                      </span>
                     </div>
-                    <div className="font-display text-3xl font-bold text-gradient-gold">{item.value}</div>
+                    <p className="font-bold text-white text-base leading-tight">{item.title}</p>
+                    <p
+                      className="mt-1 text-xs sm:text-sm"
+                      style={{ color: "rgba(255,255,255,0.45)" }}
+                    >
+                      {item.desc}
+                    </p>
                   </div>
-                  <div className="relative mt-5 font-display text-xl font-semibold">{item.title}</div>
-                  <div className="relative mt-1 text-sm text-muted-foreground">{item.desc}</div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* bottom line */}
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         </div>
       </section>
 

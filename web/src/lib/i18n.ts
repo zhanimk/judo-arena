@@ -1,15 +1,13 @@
 /**
- * react-i18next setup.
- * 3 локали: kk (default) / ru / en.
- * Переводы лежат в shared/locales/{lang}.json.
+ * react-i18next — все три локали бандлятся инлайн.
+ * Нет HTTP-запросов → нет гидрационных несовпадений SSR/клиент.
  */
 
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-
-import kk from "@/shared/locales/kk.json";
-import ru from "@/shared/locales/ru.json";
-import en from "@/shared/locales/en.json";
+import kkCommon from "../../public/locales/kk/common.json";
+import ruCommon from "../../public/locales/ru/common.json";
+import enCommon from "../../public/locales/en/common.json";
 
 export type Locale = "kk" | "ru" | "en";
 
@@ -25,18 +23,24 @@ function applyDocumentLocale(locale: string | undefined): void {
 }
 
 if (!i18n.isInitialized) {
-  i18n
-    .use(initReactI18next)
-    .init({
-      resources: { kk: { common: kk }, ru: { common: ru }, en: { common: en } },
-      lng: "kk",
-      fallbackLng: "kk",
-      defaultNS: "common",
-      supportedLngs: ["kk", "ru", "en"],
-      interpolation: { escapeValue: false },
-    })
-    .then(() => applyDocumentLocale(i18n.resolvedLanguage ?? i18n.language));
+  i18n.use(initReactI18next).init({
+    lng: "kk",
+    fallbackLng: "kk",
+    ns: ["common"],
+    defaultNS: "common",
+    supportedLngs: ["kk", "ru", "en"],
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+    // Synchronous — no async, no hydration mismatch
+    initImmediate: false,
+    resources: {
+      kk: { common: kkCommon },
+      ru: { common: ruCommon },
+      en: { common: enCommon },
+    },
+  });
 
+  applyDocumentLocale(i18n.language);
   i18n.on("languageChanged", applyDocumentLocale);
 }
 
@@ -58,9 +62,9 @@ export function hydrateLocaleFromStorage(): void {
     if (stored === "kk" || stored === "ru" || stored === "en") {
       i18n.changeLanguage(stored);
     } else {
-      applyDocumentLocale(i18n.resolvedLanguage ?? i18n.language);
+      applyDocumentLocale(i18n.language);
     }
   } catch {
-    applyDocumentLocale(i18n.resolvedLanguage ?? i18n.language);
+    applyDocumentLocale(i18n.language);
   }
 }

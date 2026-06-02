@@ -1,15 +1,15 @@
 /**
  * Socket.IO интеграция с Fastify.
  *
- * Комнаты:
- *   tournament:{id}  — публичное табло турнира (любой подключающийся)
- *   bracket:{id}     — обновления конкретной сетки
- *   tatami:{n}       — события на конкретном татами (для зрителей)
+ * Комнаты и правила доступа (ACL):
+ *   tournament:{id}  — публичное табло турнира (анонимные разрешены)
+ *   bracket:{id}     — обновления сетки (анонимные разрешены)
+ *   tatami:{n}       — события татами (только аутентифицированные пользователи)
  *   user:{id}        — приватные уведомления (только владелец токена)
  *
  * Auth:
  *   Клиент передаёт accessToken в socket.handshake.auth.token (опционально).
- *   Без токена — публичные комнаты доступны, user:* — нет.
+ *   Без токена — только tournament:* и bracket:* доступны.
  *
  * События (server → client):
  *   match:scoreUpdate, match:started, match:finished
@@ -57,19 +57,45 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
   });
 
   io.on("connection", (socket) => {
-    app.log.info({ socketId: socket.id, userId: socket.data.userId ?? "anon" }, "Socket connected");
+    app.log.info(
+      { socketId: socket.id, userId: socket.data.userId ?? "anon" },
+      "Socket connected",
+    );
 
     // Клиент подписывается на комнаты
     socket.on("subscribe", (rooms: string[] | string) => {
       const list = Array.isArray(rooms) ? rooms : [rooms];
       for (const room of list) {
-        if (!isValidRoom(room)) continue;
+        if (!isValidRoom(room)) {
+          app.log.warn(
+            { socketId: socket.id, room },
+            "Blocked subscribe: invalid room name",
+          );
+          continue;
+        }
 
-        // user:* rooms require authenticated socket AND matching userId
+        // user:* — только владелец токена
         if (room.startsWith("user:")) {
           const targetUserId = room.split(":")[1];
           if (!socket.data.userId || socket.data.userId !== targetUserId) {
-            app.log.warn({ socketId: socket.id, room }, "Blocked subscribe to foreign user room");
+            app.log.warn(
+              { socketId: socket.id, room },
+              "Blocked subscribe to foreign user room",
+            );
+            socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
+            continue;
+          }
+        }
+
+        // tatami:* — только аутентифицированные пользователи
+        // (анонимные зрители используют публичное tournament:* табло)
+        if (room.startsWith("tatami:")) {
+          if (!socket.data.userId) {
+            app.log.warn(
+              { socketId: socket.id, room },
+              "Blocked anonymous subscribe to tatami room",
+            );
+            socket.emit("subscribe:error", { room, reason: "AUTH_REQUIRED" });
             continue;
           }
         }
@@ -98,7 +124,12 @@ function isValidRoom(room: string): boolean {
 // ============================================================
 
 export function emitMatchEvent(
-  match: { id: string; tournamentId: string; bracketId: string; tatamiNumber: number | null },
+  match: {
+    id: string;
+    tournamentId: string;
+    bracketId: string;
+    tatamiNumber: number | null;
+  },
   eventName: string,
   payload: unknown,
 ): void {
@@ -111,17 +142,29 @@ export function emitMatchEvent(
   for (const r of rooms) io.to(r).emit(eventName, payload);
 }
 
-export function emitToBracket(bracketId: string, eventName: string, payload: unknown): void {
+export function emitToBracket(
+  bracketId: string,
+  eventName: string,
+  payload: unknown,
+): void {
   if (!io) return;
   io.to(`bracket:${bracketId}`).emit(eventName, payload);
 }
 
-export function emitToTournament(tournamentId: string, eventName: string, payload: unknown): void {
+export function emitToTournament(
+  tournamentId: string,
+  eventName: string,
+  payload: unknown,
+): void {
   if (!io) return;
   io.to(`tournament:${tournamentId}`).emit(eventName, payload);
 }
 
-export function emitToUser(userId: string, eventName: string, payload: unknown): void {
+export function emitToUser(
+  userId: string,
+  eventName: string,
+  payload: unknown,
+): void {
   if (!io) return;
   io.to(`user:${userId}`).emit(eventName, payload);
 }

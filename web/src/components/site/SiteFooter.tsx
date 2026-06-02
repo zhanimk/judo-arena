@@ -1,95 +1,183 @@
 import { Link } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
-import teamLineup from "@/assets/team-lineup.jpg";
-import { ArrowUpRight, Instagram, Mail, MapPin, Radio, Trophy } from "lucide-react";
+import { ArrowUpRight, Instagram, Mail, MapPin, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function SiteFooter() {
   const { t } = useTranslation();
 
   return (
-    <footer className="relative mt-0 overflow-hidden border-t border-gold/20 bg-navy-deep">
-      <img src={teamLineup} alt="" className="absolute inset-0 h-full w-full object-cover opacity-12" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
-      <div className="absolute inset-0 grid-bg opacity-20" />
+    <footer
+      className="relative overflow-hidden border-t border-gold/15"
+      style={{
+        background: "linear-gradient(180deg,hsl(var(--background)) 0%,hsl(var(--navy-deep)) 100%)",
+      }}
+    >
+      {/* grid bg */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-20"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(200,146,42,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,146,42,0.07) 1px,transparent 1px)",
+          backgroundSize: "52px 52px",
+        }}
+      />
+      {/* gold glow top-left */}
+      <div
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full pointer-events-none"
+        style={{
+          background: "radial-gradient(circle,rgba(200,146,42,0.10) 0%,transparent 65%)",
+          filter: "blur(40px)",
+        }}
+      />
+      {/* top gold line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
 
-      <div className="container relative mx-auto px-4 py-10 sm:py-14">
-        <div className="mb-8 flex flex-col gap-4 rounded-2xl border border-gold/20 bg-card/45 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+      <div className="container relative mx-auto px-4 pt-10 pb-8 sm:pt-12 sm:pb-10">
+        {/* ── Live-arena banner ── */}
+        <div
+          className="mb-10 flex flex-col gap-4 overflow-hidden rounded-2xl sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            background:
+              "linear-gradient(135deg,rgba(200,146,42,0.10) 0%,rgba(200,146,42,0.04) 100%)",
+            border: "1px solid rgba(200,146,42,0.22)",
+            padding: "1rem 1.25rem",
+          }}
+        >
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-gold shadow-gold">
-              <Radio className="h-5 w-5 text-gold-foreground" />
+            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/35">
+              <img src={emblem} alt="JCL" className="h-full w-full object-cover" />
             </span>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.28em] text-gold">live arena</div>
-              <div className="font-display text-lg font-semibold">{t("footer.tagline")}</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-gold">
+                live arena
+              </div>
+              <div className="font-display text-base font-bold">{t("footer.tagline")}</div>
             </div>
           </div>
-          <Link to="/tournaments" className="inline-flex w-fit items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60">
+          <Link
+            to="/tournaments"
+            className="inline-flex w-fit items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-gold transition-all hover:brightness-110"
+            style={{
+              background: "rgba(200,146,42,0.12)",
+              border: "1px solid rgba(200,146,42,0.30)",
+            }}
+          >
             {t("footer.tournaments")} <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr_0.75fr_1fr]">
+        {/* ── Main grid ── */}
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr]">
+          {/* Brand */}
           <div>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="relative inline-flex h-12 w-12 items-center justify-center">
-                <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] animate-spin-conic" />
-                <span className="absolute inset-[2px] rounded-[10px] bg-background" />
-                <img src={emblem} alt="Judo Child League" className="relative h-10 w-10 rounded-lg object-cover" />
+            <Link to="/" className="group mb-4 flex items-center gap-3">
+              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/30 transition-transform group-hover:scale-105">
+                <img src={emblem} alt="JCL" className="h-full w-full object-cover" />
               </span>
               <div>
-                <div className="font-display text-xl font-bold">JUDO·CHILD·LEAGUE</div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">digital tournament arena</div>
+                <div className="font-display text-base font-bold leading-tight">
+                  JUDO·CHILD·LEAGUE
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  digital tournament arena
+                </div>
               </div>
-            </div>
-            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+            </Link>
+            <p className="max-w-[260px] text-sm leading-relaxed text-muted-foreground">
               {t("footer.tagline")}
             </p>
           </div>
 
+          {/* Platform */}
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">{t("footer.platform")}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/tournaments" className="hover:text-gold">{t("footer.tournaments")}</Link></li>
-              <li><Link to="/rankings" className="hover:text-gold">{t("footer.rankings")}</Link></li>
-              <li><Link to="/protocol" className="hover:text-gold">{t("footer.protocol")}</Link></li>
-              <li><Link to="/about" className="hover:text-gold">{t("footer.about")}</Link></li>
+            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-gold">
+              {t("footer.platform")}
+            </h4>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              <li>
+                <Link to="/tournaments" className="transition-colors hover:text-gold">
+                  {t("footer.tournaments")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/rankings" className="transition-colors hover:text-gold">
+                  {t("footer.rankings")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/protocol" className="transition-colors hover:text-gold">
+                  {t("footer.protocol")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="transition-colors hover:text-gold">
+                  {t("footer.about")}
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Auth */}
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">{t("nav.login")}</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/login" className="hover:text-gold">{t("roles.coach")}</Link></li>
-              <li><Link to="/login" className="hover:text-gold">{t("roles.athlete")}</Link></li>
-              <li><Link to="/login" className="hover:text-gold">{t("roles.admin")}</Link></li>
+            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-gold">
+              {t("nav.login")}
+            </h4>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              <li>
+                <Link to="/login" className="transition-colors hover:text-gold">
+                  {t("roles.coach")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className="transition-colors hover:text-gold">
+                  {t("roles.athlete")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className="transition-colors hover:text-gold">
+                  {t("roles.admin")}
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Contact */}
           <div>
-            <h4 className="mb-3 text-sm font-semibold text-gold">{t("footer.contact")}</h4>
+            <h4 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-gold">
+              {t("footer.contact")}
+            </h4>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <a href="mailto:support@ajl.kz" className="flex items-center gap-2 hover:text-gold">
-                <Mail className="h-4 w-4 text-gold" /> support@ajl.kz
+              <a
+                href="mailto:support@ajl.kz"
+                className="flex items-center gap-2 transition-colors hover:text-gold"
+              >
+                <Mail className="h-4 w-4 text-gold shrink-0" /> support@ajl.kz
               </a>
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-gold" /> Astana, Kazakhstan
+                <MapPin className="h-4 w-4 text-gold shrink-0" /> Astana, Kazakhstan
               </div>
               <a
                 href="https://www.instagram.com/judochildleague"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-gold hover:border-gold/60"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-gold transition-all hover:brightness-110"
+                style={{
+                  background: "rgba(200,146,42,0.10)",
+                  border: "1px solid rgba(200,146,42,0.25)",
+                }}
               >
-                <Instagram className="h-4 w-4" />
-                Instagram
-                <ArrowUpRight className="h-3.5 w-3.5" />
+                <Instagram className="h-4 w-4" /> Instagram <ArrowUpRight className="h-3.5 w-3.5" />
               </a>
             </div>
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        {/* ── Bottom bar ── */}
+        <div
+          className="mt-10 flex flex-col gap-3 border-t pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+          style={{ borderColor: "rgba(200,146,42,0.12)" }}
+        >
           <div>© 2026 Judo Child League. {t("footer.rights")}</div>
           <div className="flex items-center gap-2">
             <Trophy className="h-3.5 w-3.5 text-gold" />

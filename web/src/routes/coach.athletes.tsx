@@ -1,6 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState, TableSkeleton, CardListSkeleton } from "@/components/dashboard/DashboardShell";
-import { UserPlus, Loader2, CheckCircle2, XCircle, Clock, Search, SlidersHorizontal, Scale, CalendarDays, Users } from "lucide-react";
+import {
+  DashboardShell,
+  Panel,
+  EmptyState,
+  TableSkeleton,
+} from "@/components/dashboard/DashboardShell";
+import {
+  UserPlus,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Search,
+  SlidersHorizontal,
+  Scale,
+  CalendarDays,
+  Users,
+} from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -19,8 +34,6 @@ export const Route = createFileRoute("/coach/athletes")({
     </ProtectedRoute>
   ),
 });
-
-
 
 function CoachAthletes() {
   const { t } = useTranslation();
@@ -65,7 +78,8 @@ function CoachAthletes() {
       .filter((a: any) => {
         if (gender !== "ALL" && a.gender !== gender) return false;
         if (!q) return true;
-        const haystack = `${a.name ?? ""} ${a.surname ?? ""} ${a.email ?? ""} ${a.beltRank ?? ""}`.toLowerCase();
+        const haystack =
+          `${a.name ?? ""} ${a.surname ?? ""} ${a.email ?? ""} ${a.beltRank ?? ""}`.toLowerCase();
         return haystack.includes(q);
       })
       .sort((a: any, b: any) => compareAthletes(a, b, sortBy));
@@ -76,7 +90,6 @@ function CoachAthletes() {
   return (
     <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={t("coach.my_athletes")}>
       <div className="space-y-6">
-
         {/* Incoming join requests */}
         {pendingRequests.length > 0 && (
           <Panel
@@ -91,17 +104,25 @@ function CoachAthletes() {
           >
             <div className="mt-2 space-y-2">
               {pendingRequests.map((r: any) => (
-                <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-gold/15 bg-gold/5 p-3">
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gold/15 bg-gold/5 p-3"
+                >
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold/15 text-sm font-bold text-gold">
-                      {r.athlete?.surname?.[0]}{r.athlete?.name?.[0]}
+                      {r.athlete?.surname?.[0]}
+                      {r.athlete?.name?.[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{r.athlete?.surname} {r.athlete?.name}</p>
+                      <p className="text-sm font-semibold">
+                        {r.athlete?.surname} {r.athlete?.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {r.athlete?.gender === "MALE" ? t("common.male") : t("common.female")}
                         {r.athlete?.weightKg ? ` · ${r.athlete.weightKg} кг` : ""}
-                        {r.athlete?.dateOfBirth ? ` · ${getAge(r.athlete.dateOfBirth)} ${t("common.years_short")}` : ""}
+                        {r.athlete?.dateOfBirth
+                          ? ` · ${getAge(r.athlete.dateOfBirth)} ${t("common.years_short")}`
+                          : ""}
                       </p>
                     </div>
                   </div>
@@ -140,25 +161,32 @@ function CoachAthletes() {
           }
         >
           {showForm && clubId && (
-            <AddAthleteForm clubId={clubId} onDone={() => { setShowForm(false); qc.invalidateQueries({ queryKey: ["club-members", clubId] }); }} />
+            <AddAthleteForm
+              clubId={clubId}
+              onDone={() => {
+                setShowForm(false);
+                qc.invalidateQueries({ queryKey: ["club-members", clubId] });
+              }}
+            />
           )}
 
-          {membersQuery.isLoading ? <TableSkeleton rows={6} cols={5} /> :
-            athletes.length === 0 ? (
-              <EmptyState title={t("coach.no_athletes")} hint={t("coach.invite_athlete")} />
-            ) : (
-              <AthletesBoard
-                athletes={visibleAthletes}
-                total={athletes.length}
-                stats={stats}
-                search={search}
-                gender={gender}
-                sortBy={sortBy}
-                onSearch={setSearch}
-                onGender={setGender}
-                onSort={setSortBy}
-              />
-            )}
+          {membersQuery.isLoading ? (
+            <TableSkeleton rows={6} cols={5} />
+          ) : athletes.length === 0 ? (
+            <EmptyState title={t("coach.no_athletes")} hint={t("coach.invite_athlete")} />
+          ) : (
+            <AthletesBoard
+              athletes={visibleAthletes}
+              total={athletes.length}
+              stats={stats}
+              search={search}
+              gender={gender}
+              sortBy={sortBy}
+              onSearch={setSearch}
+              onGender={setGender}
+              onSort={setSortBy}
+            />
+          )}
         </Panel>
       </div>
     </DashboardShell>
@@ -193,9 +221,21 @@ function AthletesBoard({
     <div className="mt-4 space-y-5">
       <div className="grid gap-3 md:grid-cols-4">
         <MiniMetric icon={Users} label={t("coach.stat_athletes")} value={String(total)} />
-        <MiniMetric icon={CalendarDays} label={t("coach.avg_age")} value={stats.avgAge ? `${stats.avgAge} ${t("common.years_short")}` : "—"} />
-        <MiniMetric icon={Scale} label={t("coach.avg_weight")} value={stats.avgWeight ? `${stats.avgWeight} кг` : "—"} />
-        <MiniMetric icon={Users} label={`${t("common.male")} / ${t("common.female")}`} value={`${stats.male} / ${stats.female}`} />
+        <MiniMetric
+          icon={CalendarDays}
+          label={t("coach.avg_age")}
+          value={stats.avgAge ? `${stats.avgAge} ${t("common.years_short")}` : "—"}
+        />
+        <MiniMetric
+          icon={Scale}
+          label={t("coach.avg_weight")}
+          value={stats.avgWeight ? `${stats.avgWeight} кг` : "—"}
+        />
+        <MiniMetric
+          icon={Users}
+          label={`${t("common.male")} / ${t("common.female")}`}
+          value={`${stats.male} / ${stats.female}`}
+        />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_220px]">
@@ -238,17 +278,24 @@ function AthletesBoard({
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
-            <section key={group.key} className="rounded-xl border border-border/60 bg-background/25 overflow-hidden">
+            <section
+              key={group.key}
+              className="rounded-xl border border-border/60 bg-background/25 overflow-hidden"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-muted/25 px-4 py-3">
                 <div>
                   <h3 className="font-display text-base font-semibold">{group.label}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {group.items.length} {t("coach.stat_athletes").toLowerCase()} · {group.weightRange}
+                    {group.items.length} {t("coach.stat_athletes").toLowerCase()} ·{" "}
+                    {group.weightRange}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {group.weightBuckets.map((bucket) => (
-                    <span key={bucket.label} className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
+                    <span
+                      key={bucket.label}
+                      className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground"
+                    >
                       {bucket.label}: <b className="text-foreground">{bucket.count}</b>
                     </span>
                   ))}
@@ -278,22 +325,45 @@ function AthleteRow({ athlete }: { athlete: any }) {
       className="grid gap-3 px-4 py-3 text-sm transition-colors hover:bg-gold/5 md:grid-cols-[minmax(180px,1.3fr)_90px_100px_110px_1fr]"
     >
       <div className="min-w-0">
-        <div className="truncate font-semibold">{athlete.surname} {athlete.name}</div>
+        <div className="truncate font-semibold">
+          {athlete.surname} {athlete.name}
+        </div>
         <div className="truncate text-xs text-muted-foreground">{athlete.email}</div>
       </div>
-      <Cell label={t("common.gender")} value={athlete.gender === "MALE" ? t("common.male") : t("common.female")} />
+      <Cell
+        label={t("common.gender")}
+        value={athlete.gender === "MALE" ? t("common.male") : t("common.female")}
+      />
       <Cell label={t("common.age")} value={age ? `${age} ${t("common.years_short")}` : "—"} />
-      <Cell label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} strong />
+      <Cell
+        label={t("common.weight")}
+        value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"}
+        strong
+      />
       <Cell label={t("common.belt")} value={athlete.beltRank ?? "—"} gold />
     </Link>
   );
 }
 
-function Cell({ label, value, strong, gold }: { label: string; value: string; strong?: boolean; gold?: boolean }) {
+function Cell({
+  label,
+  value,
+  strong,
+  gold,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  gold?: boolean;
+}) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground md:hidden">{label}</div>
-      <div className={`${strong ? "font-semibold" : ""} ${gold ? "text-gold" : "text-foreground"}`}>{value}</div>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground md:hidden">
+        {label}
+      </div>
+      <div className={`${strong ? "font-semibold" : ""} ${gold ? "text-gold" : "text-foreground"}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -310,7 +380,15 @@ function MiniMetric({ icon: Icon, label, value }: { icon: any; label: string; va
   );
 }
 
-function Segmented({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (value: string) => void }) {
+function Segmented({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: [string, string][];
+  onChange: (value: string) => void;
+}) {
   return (
     <div className="grid grid-cols-3 rounded-md border border-border bg-input p-1">
       {options.map(([v, label]) => (
@@ -332,8 +410,14 @@ function Segmented({ value, options, onChange }: { value: string; options: [stri
 function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({
-    email: "", password: "", name: "", surname: "",
-    gender: "MALE" as "MALE" | "FEMALE", dateOfBirth: "", weightKg: "", beltRank: "",
+    email: "",
+    password: "",
+    name: "",
+    surname: "",
+    gender: "MALE" as "MALE" | "FEMALE",
+    dateOfBirth: "",
+    weightKg: "",
+    beltRank: "",
   });
   const [error, setError] = useState("");
   const mut = useMutation({
@@ -344,7 +428,10 @@ function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void
         dateOfBirth: new Date(form.dateOfBirth).toISOString(),
         preferredLocale: "kk",
       }),
-    onSuccess: () => { toast.success(t("coach.athlete_added")); onDone(); },
+    onSuccess: () => {
+      toast.success(t("coach.athlete_added"));
+      onDone();
+    },
     onError: (e: any) => {
       const msg = e instanceof ApiError ? e.message : t("error.generic");
       setError(msg);
@@ -353,28 +440,85 @@ function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="mt-4 mb-6 glass rounded-lg p-4 grid gap-3 md:grid-cols-2">
-      <Input label="Email" type="email" value={form.email} onChange={(v) => setForm({...form, email: v})} required />
-      <Input label={t("coach.initial_password")} type="password" value={form.password} onChange={(v) => setForm({...form, password: v})} required minLength={8} />
-      <Input label={t("common.name")} value={form.name} onChange={(v) => setForm({...form, name: v})} required />
-      <Input label={t("common.surname")} value={form.surname} onChange={(v) => setForm({...form, surname: v})} required />
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        mut.mutate();
+      }}
+      className="mt-4 mb-6 glass rounded-lg p-4 grid gap-3 md:grid-cols-2"
+    >
+      <Input
+        label="Email"
+        type="email"
+        value={form.email}
+        onChange={(v) => setForm({ ...form, email: v })}
+        required
+      />
+      <Input
+        label={t("coach.initial_password")}
+        type="password"
+        value={form.password}
+        onChange={(v) => setForm({ ...form, password: v })}
+        required
+        minLength={8}
+      />
+      <Input
+        label={t("common.name")}
+        value={form.name}
+        onChange={(v) => setForm({ ...form, name: v })}
+        required
+      />
+      <Input
+        label={t("common.surname")}
+        value={form.surname}
+        onChange={(v) => setForm({ ...form, surname: v })}
+        required
+      />
       <div>
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.gender")}</label>
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">
+          {t("common.gender")}
+        </label>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           {(["MALE", "FEMALE"] as const).map((g) => (
-            <button key={g} type="button" onClick={() => setForm({...form, gender: g})}
-              className={`py-2 rounded-md text-sm border ${form.gender === g ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
+            <button
+              key={g}
+              type="button"
+              onClick={() => setForm({ ...form, gender: g })}
+              className={`py-2 rounded-md text-sm border ${form.gender === g ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}
+            >
               {g === "MALE" ? t("common.male") : t("common.female")}
             </button>
           ))}
         </div>
       </div>
-      <Input label={t("auth.date_of_birth")} type="date" value={form.dateOfBirth} onChange={(v) => setForm({...form, dateOfBirth: v})} required />
-      <Input label={`${t("common.weight")} (кг)`} type="number" step="0.1" value={form.weightKg} onChange={(v) => setForm({...form, weightKg: v})} required />
-      <Input label={t("common.belt")} value={form.beltRank} onChange={(v) => setForm({...form, beltRank: v})} placeholder={t("coach.belt_placeholder")} />
+      <Input
+        label={t("auth.date_of_birth")}
+        type="date"
+        value={form.dateOfBirth}
+        onChange={(v) => setForm({ ...form, dateOfBirth: v })}
+        required
+      />
+      <Input
+        label={`${t("common.weight")} (кг)`}
+        type="number"
+        step="0.1"
+        value={form.weightKg}
+        onChange={(v) => setForm({ ...form, weightKg: v })}
+        required
+      />
+      <Input
+        label={t("common.belt")}
+        value={form.beltRank}
+        onChange={(v) => setForm({ ...form, beltRank: v })}
+        placeholder={t("coach.belt_placeholder")}
+      />
 
       {error && <div className="md:col-span-2 text-sm text-destructive">{error}</div>}
-      <button disabled={mut.isPending} type="submit" className="md:col-span-2 bg-gradient-gold text-gold-foreground py-2.5 rounded-md font-medium shadow-gold inline-flex items-center justify-center gap-2 disabled:opacity-50">
+      <button
+        disabled={mut.isPending}
+        type="submit"
+        className="md:col-span-2 bg-gradient-gold text-gold-foreground py-2.5 rounded-md font-medium shadow-gold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+      >
         {mut.isPending && <Loader2 className="h-4 w-4 animate-spin" />} {t("common.add")}
       </button>
     </form>
@@ -390,9 +534,12 @@ function Input({ label, value, onChange, ...rest }: InputProps) {
   return (
     <div>
       <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>
-      <input value={value} onChange={(e) => onChange(e.target.value)}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         {...rest}
-        className="mt-1.5 w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-gold focus:outline-none" />
+        className="mt-1.5 w-full bg-input border border-border rounded-md px-3 py-2 text-sm focus:border-gold focus:outline-none"
+      />
     </div>
   );
 }
@@ -410,18 +557,25 @@ function compareAthletes(a: any, b: any, sortBy: "ageWeight" | "weight" | "name"
   const nameB = `${b.surname ?? ""} ${b.name ?? ""}`;
 
   if (sortBy === "name") return nameA.localeCompare(nameB, "kk");
-  if (sortBy === "weight") return weightA - weightB || ageA - ageB || nameA.localeCompare(nameB, "kk");
+  if (sortBy === "weight")
+    return weightA - weightB || ageA - ageB || nameA.localeCompare(nameB, "kk");
   return ageA - ageB || weightA - weightB || nameA.localeCompare(nameB, "kk");
 }
 
 function getAthleteStats(athletes: any[]) {
-  const ages = athletes.map((a) => a.dateOfBirth ? getAge(a.dateOfBirth) : null).filter((v): v is number => v !== null);
-  const weights = athletes.map((a) => Number(a.weightKg)).filter((v) => Number.isFinite(v) && v > 0);
+  const ages = athletes
+    .map((a) => (a.dateOfBirth ? getAge(a.dateOfBirth) : null))
+    .filter((v): v is number => v !== null);
+  const weights = athletes
+    .map((a) => Number(a.weightKg))
+    .filter((v) => Number.isFinite(v) && v > 0);
   return {
     male: athletes.filter((a) => a.gender === "MALE").length,
     female: athletes.filter((a) => a.gender === "FEMALE").length,
     avgAge: ages.length ? Math.round(ages.reduce((s, v) => s + v, 0) / ages.length) : 0,
-    avgWeight: weights.length ? Math.round((weights.reduce((s, v) => s + v, 0) / weights.length) * 10) / 10 : 0,
+    avgWeight: weights.length
+      ? Math.round((weights.reduce((s, v) => s + v, 0) / weights.length) * 10) / 10
+      : 0,
   };
 }
 

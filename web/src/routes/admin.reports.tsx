@@ -3,14 +3,18 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  Panel,
+  LoadingState,
+  EmptyState,
+} from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import {
   BarChart3,
   Calendar,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   Download,
   ExternalLink,
   FileText,
@@ -41,13 +45,17 @@ function AdminReports() {
   const [tab, setTab] = useState<Tab>("stats");
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "stats",     label: t("reports.tab_stats"),     icon: <BarChart3   className="h-4 w-4" /> },
-    { id: "protocols", label: t("reports.tab_protocols"), icon: <Trophy      className="h-4 w-4" /> },
-    { id: "audit",     label: t("reports.tab_audit"),     icon: <ShieldAlert className="h-4 w-4" /> },
+    { id: "stats", label: t("reports.tab_stats"), icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "protocols", label: t("reports.tab_protocols"), icon: <Trophy className="h-4 w-4" /> },
+    { id: "audit", label: t("reports.tab_audit"), icon: <ShieldAlert className="h-4 w-4" /> },
   ];
 
   return (
-    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.reports_title")}>
+    <DashboardShell
+      role={t("admin.role_label")}
+      navItems={nav}
+      accentTitle={t("admin.reports_title")}
+    >
       {/* Tab bar */}
       <div className="flex gap-1 mb-6 border-b border-border/60 pb-0">
         {tabs.map((tb) => (
@@ -66,9 +74,9 @@ function AdminReports() {
         ))}
       </div>
 
-      {tab === "stats"     && <StatsTab />}
+      {tab === "stats" && <StatsTab />}
       {tab === "protocols" && <ProtocolsTab />}
-      {tab === "audit"     && <AuditTab />}
+      {tab === "audit" && <AuditTab />}
     </DashboardShell>
   );
 }
@@ -84,38 +92,63 @@ function StatsTab() {
   if (stats.isLoading) return <LoadingState />;
 
   const tournamentByStatus = (stats.data?.tournaments ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }), {},
+    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }),
+    {},
   );
   const usersByRole = (stats.data?.users ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.role]: item._count.id }), {},
+    (acc: any, item: any) => ({ ...acc, [item.role]: item._count.id }),
+    {},
   );
   const matchesByStatus = (stats.data?.matches ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }), {},
+    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }),
+    {},
   );
 
   return (
     <>
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <StatCard label={t("reports.stat_clubs")}         value={String(stats.data?.clubsCount ?? 0)} accent />
-        <StatCard label={t("reports.stat_tournaments")}   value={String((stats.data?.tournaments ?? []).reduce((s: number, item: any) => s + item._count.id, 0))} />
-        <StatCard label={t("reports.stat_matches")}       value={String((stats.data?.matches    ?? []).reduce((s: number, item: any) => s + item._count.id, 0))} />
-        <StatCard label={t("reports.stat_rating_entries")} value={String(stats.data?.ratingEntriesCount ?? 0)} />
+        <StatCard
+          label={t("reports.stat_clubs")}
+          value={String(stats.data?.clubsCount ?? 0)}
+          accent
+        />
+        <StatCard
+          label={t("reports.stat_tournaments")}
+          value={String(
+            (stats.data?.tournaments ?? []).reduce((s: number, item: any) => s + item._count.id, 0),
+          )}
+        />
+        <StatCard
+          label={t("reports.stat_matches")}
+          value={String(
+            (stats.data?.matches ?? []).reduce((s: number, item: any) => s + item._count.id, 0),
+          )}
+        />
+        <StatCard
+          label={t("reports.stat_rating_entries")}
+          value={String(stats.data?.ratingEntriesCount ?? 0)}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Panel title={t("reports.tournaments_panel")}>
           <div className="space-y-2">
-            {([
-              ["DRAFT",               t("status.DRAFT")],
-              ["REGISTRATION_OPEN",   t("status.REGISTRATION_OPEN")],
-              ["REGISTRATION_CLOSED", t("status.REGISTRATION_CLOSED")],
-              ["IN_PROGRESS",         "LIVE"],
-              ["COMPLETED",           t("status.COMPLETED")],
-              ["CANCELLED",           t("status.CANCELLED")],
-            ] as [string, string][]).map(([k, l]) => {
+            {(
+              [
+                ["DRAFT", t("status.DRAFT")],
+                ["REGISTRATION_OPEN", t("status.REGISTRATION_OPEN")],
+                ["REGISTRATION_CLOSED", t("status.REGISTRATION_CLOSED")],
+                ["IN_PROGRESS", "LIVE"],
+                ["COMPLETED", t("status.COMPLETED")],
+                ["CANCELLED", t("status.CANCELLED")],
+              ] as [string, string][]
+            ).map(([k, l]) => {
               const count = tournamentByStatus[k] ?? 0;
-              const total = Object.values(tournamentByStatus).reduce((s: number, x: any) => s + x, 0);
-              const pct   = total ? Math.round((count / total) * 100) : 0;
+              const total = Object.values(tournamentByStatus).reduce(
+                (s: number, x: any) => s + x,
+                0,
+              );
+              const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
           </div>
@@ -123,14 +156,16 @@ function StatsTab() {
 
         <Panel title={t("reports.users_panel")}>
           <div className="space-y-2">
-            {([
-              ["ATHLETE", t("admin.users_athletes")],
-              ["COACH",   t("admin.users_coaches")],
-              ["ADMIN",   t("admin.role_label")],
-            ] as [string, string][]).map(([k, l]) => {
+            {(
+              [
+                ["ATHLETE", t("admin.users_athletes")],
+                ["COACH", t("admin.users_coaches")],
+                ["ADMIN", t("admin.role_label")],
+              ] as [string, string][]
+            ).map(([k, l]) => {
               const count = usersByRole[k] ?? 0;
               const total = Object.values(usersByRole).reduce((s: number, x: any) => s + x, 0);
-              const pct   = total ? Math.round((count / total) * 100) : 0;
+              const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
           </div>
@@ -138,15 +173,17 @@ function StatsTab() {
 
         <Panel title={t("reports.matches_panel")}>
           <div className="space-y-2">
-            {([
-              ["PENDING",     t("status.PENDING")],
-              ["IN_PROGRESS", "LIVE"],
-              ["COMPLETED",   t("status.COMPLETED")],
-              ["CANCELLED",   t("status.CANCELLED")],
-            ] as [string, string][]).map(([k, l]) => {
+            {(
+              [
+                ["PENDING", t("status.PENDING")],
+                ["IN_PROGRESS", "LIVE"],
+                ["COMPLETED", t("status.COMPLETED")],
+                ["CANCELLED", t("status.CANCELLED")],
+              ] as [string, string][]
+            ).map(([k, l]) => {
               const count = matchesByStatus[k] ?? 0;
               const total = Object.values(matchesByStatus).reduce((s: number, x: any) => s + x, 0);
-              const pct   = total ? Math.round((count / total) * 100) : 0;
+              const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
           </div>
@@ -165,7 +202,10 @@ const VISIBLE_STATUSES = ["IN_PROGRESS", "COMPLETED", "REGISTRATION_CLOSED"];
 function ProtocolsTab() {
   const { t } = useTranslation();
   const [openTournament, setOpenTournament] = useState<string | null>(null);
-  const [openBracket, setOpenBracket] = useState<{ tournamentId: string; categoryId: string } | null>(null);
+  const [openBracket, setOpenBracket] = useState<{
+    tournamentId: string;
+    categoryId: string;
+  } | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ["admin-protocols-tournaments"],
@@ -179,12 +219,7 @@ function ProtocolsTab() {
   if (tournamentsQuery.isLoading) return <LoadingState />;
 
   if (tournaments.length === 0) {
-    return (
-      <EmptyState
-        title={t("reports.no_protocols")}
-        hint={t("reports.no_protocols_hint")}
-      />
-    );
+    return <EmptyState title={t("reports.no_protocols")} hint={t("reports.no_protocols_hint")} />;
   }
 
   return (
@@ -199,7 +234,9 @@ function ProtocolsTab() {
           openBracket={openBracket}
           onToggleBracket={(catId) =>
             setOpenBracket(
-              openBracket !== null && openBracket.tournamentId === tourney.id && openBracket.categoryId === catId
+              openBracket !== null &&
+                openBracket.tournamentId === tourney.id &&
+                openBracket.categoryId === catId
                 ? null
                 : { tournamentId: tourney.id, categoryId: catId },
             )
@@ -243,7 +280,9 @@ function TournamentProtocolCard({
         <div className="flex items-center gap-3 min-w-0">
           <div className={`shrink-0 h-2.5 w-2.5 rounded-full ${statusDot(tourney.status)}`} />
           <div className="min-w-0">
-            <div className="font-display text-lg font-semibold truncate">{localizeName(tourney.name)}</div>
+            <div className="font-display text-lg font-semibold truncate">
+              {localizeName(tourney.name)}
+            </div>
             <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3 w-3 text-gold/60" /> {tourney.city}
@@ -313,7 +352,8 @@ function TournamentProtocolCard({
           ) : (
             <div className="space-y-3">
               {brackets.map((b: any) => {
-                const genderLabel = b.category?.gender === "MALE" ? t("common.male") : t("common.female");
+                const genderLabel =
+                  b.category?.gender === "MALE" ? t("common.male") : t("common.female");
                 const catLabel = `${genderLabel} ${b.category?.weightMin ?? ""}–${b.category?.weightMax ?? ""} ${t("common.kg")} · ${b.category?.ageMin ?? ""}–${b.category?.ageMax ?? ""} ${t("common.years_short")}`;
                 const isShowingBracket =
                   openBracket !== null &&
@@ -326,11 +366,15 @@ function TournamentProtocolCard({
                       <div>
                         <div className="font-medium text-sm">{catLabel}</div>
                         <div className="mt-0.5 flex gap-2 text-xs text-muted-foreground">
-                          <span>{b.size} {t("common.participant").toLowerCase()}</span>
+                          <span>
+                            {b.size} {t("common.participant").toLowerCase()}
+                          </span>
                           <span>·</span>
                           <span>{b.format === "ROUND_ROBIN" ? "Round-Robin" : "Olympic / SE"}</span>
                           <span>·</span>
-                          <span>{b.matches?.length ?? 0} {t("reports.matches_count")}</span>
+                          <span>
+                            {b.matches?.length ?? 0} {t("reports.matches_count")}
+                          </span>
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-2">
@@ -355,11 +399,7 @@ function TournamentProtocolCard({
 
                     {isShowingBracket && (
                       <div className="border-t border-border/40 p-4">
-                        <OlympicBracket
-                          matches={b.matches ?? []}
-                          size={b.size}
-                          format={b.format}
-                        />
+                        <OlympicBracket matches={b.matches ?? []} size={b.size} format={b.format} />
                       </div>
                     )}
                   </div>
@@ -388,21 +428,29 @@ function AuditTab() {
     queryFn: () =>
       api.admin.auditLogs({
         targetEntity: entityFilter || undefined,
-        action:       actionFilter || undefined,
-        limit:        200,
+        action: actionFilter || undefined,
+        limit: 200,
       }),
   });
 
   const toggleExpand = (id: string) => {
     const s = new Set(expanded);
-    if (s.has(id)) s.delete(id); else s.add(id);
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
     setExpanded(s);
   };
 
   const exportCSV = () => {
     const items = query.data?.items ?? [];
     const rows = [
-      [t("audit.col_time"), t("audit.col_who"), t("common.role"), t("audit.col_action"), t("audit.col_entity"), "ID"],
+      [
+        t("audit.col_time"),
+        t("audit.col_who"),
+        t("common.role"),
+        t("audit.col_action"),
+        t("audit.col_entity"),
+        "ID",
+      ],
       ...items.map((a: any) => [
         new Date(a.createdAt).toLocaleString("kk-KZ"),
         `${a.actor?.name ?? "-"} ${a.actor?.surname ?? ""}`.trim(),
@@ -412,11 +460,13 @@ function AuditTab() {
         a.targetId,
       ]),
     ];
-    const csv  = rows.map((r) => r.map((c: unknown) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows
+      .map((r) => r.map((c: unknown) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
     a.download = `audit-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
@@ -480,14 +530,16 @@ function AuditTab() {
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {open ? (
-                        <ChevronDown  className="h-3 w-3 text-muted-foreground" />
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
                       ) : (
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       )}
                       <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                         {new Date(auditItem.createdAt).toLocaleString("kk-KZ")}
                       </span>
-                      <span className="text-xs text-gold truncate">{auditItem.actor?.name ?? "—"}</span>
+                      <span className="text-xs text-gold truncate">
+                        {auditItem.actor?.name ?? "—"}
+                      </span>
                       <span className="text-xs font-mono truncate">{auditItem.action}</span>
                       <span className="text-xs text-muted-foreground truncate">
                         {auditItem.targetEntity}#{auditItem.targetId.slice(-6)}
@@ -531,7 +583,8 @@ function AuditTab() {
 
       {(query.data?.total ?? 0) > 0 && (
         <div className="mt-3 text-xs text-muted-foreground text-right">
-          {t("audit.showing")}: {(query.data?.items ?? []).length} / {query.data?.total ?? 0} {t("audit.records")}
+          {t("audit.showing")}: {(query.data?.items ?? []).length} / {query.data?.total ?? 0}{" "}
+          {t("audit.records")}
           {(query.data?.total ?? 0) > 200 && (
             <span className="ml-2 text-amber-400">⚠ {t("audit.max_warning")}</span>
           )}
@@ -549,7 +602,9 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
   return (
     <div className={`glass rounded-xl p-5 ${accent ? "border-gold/40" : ""}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={`mt-2 font-display text-3xl font-bold ${accent ? "text-gradient-gold" : ""}`}>{value}</div>
+      <div className={`mt-2 font-display text-3xl font-bold ${accent ? "text-gradient-gold" : ""}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -559,7 +614,9 @@ function Bar({ label, value, pct }: { label: string; value: number; pct: number 
     <div>
       <div className="flex justify-between text-xs mb-1">
         <span className="text-muted-foreground">{label}</span>
-        <span>{value} ({pct}%)</span>
+        <span>
+          {value} ({pct}%)
+        </span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div className="h-full bg-gradient-gold" style={{ width: `${pct}%` }} />
@@ -571,9 +628,18 @@ function Bar({ label, value, pct }: { label: string; value: number; pct: number 
 function TournamentStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
   const m: Record<string, { c: string; l: string }> = {
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30", l: t("status.REGISTRATION_CLOSED") },
-    IN_PROGRESS:         { c: "bg-destructive/20 text-destructive border border-destructive/40", l: "LIVE" },
-    COMPLETED:           { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", l: t("status.COMPLETED") },
+    REGISTRATION_CLOSED: {
+      c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+      l: t("status.REGISTRATION_CLOSED"),
+    },
+    IN_PROGRESS: {
+      c: "bg-destructive/20 text-destructive border border-destructive/40",
+      l: "LIVE",
+    },
+    COMPLETED: {
+      c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+      l: t("status.COMPLETED"),
+    },
   };
   const x = m[status] ?? { c: "bg-muted text-muted-foreground", l: status };
   return <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] ${x.c}`}>{x.l}</span>;
@@ -581,7 +647,7 @@ function TournamentStatusBadge({ status }: { status: string }) {
 
 function statusDot(status: string): string {
   if (status === "IN_PROGRESS") return "bg-destructive animate-pulse";
-  if (status === "COMPLETED")   return "bg-emerald-400";
+  if (status === "COMPLETED") return "bg-emerald-400";
   return "bg-amber-400";
 }
 

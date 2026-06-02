@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Building2,
+  //   Building2,
   Check,
   Crown,
   Image as ImageIcon,
@@ -13,11 +13,16 @@ import {
   Trash2,
   Upload,
   UserPlus,
-  Users,
+  //   Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
-import { DashboardShell, EmptyState, LoadingState, Panel } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  EmptyState,
+  LoadingState,
+  Panel,
+} from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { api, ApiError, mediaUrl } from "@/lib/api";
 import { Avatar, LazyImage } from "@/components/ui/avatar-image";
@@ -107,7 +112,11 @@ function CoachClub() {
   });
 
   return (
-    <DashboardShell role={t("dashboard.coach")} navItems={nav} accentTitle={t("coach_club.my_club")}>
+    <DashboardShell
+      role={t("dashboard.coach")}
+      navItems={nav}
+      accentTitle={t("coach_club.my_club")}
+    >
       {!clubId && (
         <div className="mb-6 rounded-md border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">
           {t("coach_club.no_club_hint")}
@@ -159,7 +168,9 @@ function CoachClub() {
           <Panel title={t("coach_club.preview")}>
             <ClubPreview club={clubQuery.data} fallback={formInitial} />
             <div className="mt-5 border-t border-border/40 pt-5">
-              <h3 className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">{t("coach_club.club_coaches")}</h3>
+              <h3 className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
+                {t("coach_club.club_coaches")}
+              </h3>
               <ClubCoaches
                 clubId={clubId}
                 currentUserId={user?.id}
@@ -180,7 +191,9 @@ function CoachClub() {
 
       {clubId && isOwner && (
         <div className="mt-6">
-          <Panel title={`${t("coach_club.coach_requests")} ${incomingCoachRequestsQuery.data?.length ?? 0}`}>
+          <Panel
+            title={`${t("coach_club.coach_requests")} ${incomingCoachRequestsQuery.data?.length ?? 0}`}
+          >
             <IncomingCoachRequests
               requests={incomingCoachRequestsQuery.data ?? []}
               isLoading={incomingCoachRequestsQuery.isLoading}
@@ -199,7 +212,10 @@ function CoachClub() {
         <div className="mt-6">
           <Panel title={`${t("coach_club.age_groups")} ${groupsQuery.data?.length ?? 0}`}>
             {!clubId ? (
-              <EmptyState title={t("coach_club.create_club_first")} hint={t("coach_club.groups_after_save")} />
+              <EmptyState
+                title={t("coach_club.create_club_first")}
+                hint={t("coach_club.groups_after_save")}
+              />
             ) : groupsQuery.isLoading ? (
               <LoadingState />
             ) : (
@@ -215,7 +231,10 @@ function CoachClub() {
 
       {clubId && (
         <div className="mt-6">
-          <BulkImportPanel clubId={clubId} onImported={() => qc.invalidateQueries({ queryKey: ["club-members", clubId] })} />
+          <BulkImportPanel
+            clubId={clubId}
+            onImported={() => qc.invalidateQueries({ queryKey: ["club-members", clubId] })}
+          />
         </div>
       )}
     </DashboardShell>
@@ -226,18 +245,24 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
-  const [result, setResult] = useState<{ created: number; skipped: number; errors: any[] } | null>(null);
-  const qc = useQueryClient();
+  const [result, setResult] = useState<{ created: number; skipped: number; errors: any[] } | null>(
+    null,
+  );
+  //   const _qc = useQueryClient();
 
   const importMut = useMutation({
     mutationFn: (rows: any[]) => api.clubs.bulkImportAthletes(clubId, rows),
     onSuccess: (r) => {
       setResult(r);
       onImported();
-      import("sonner").then(({ toast }) => toast.success(t("coach_club.import_success", { count: r.created })));
+      import("sonner").then(({ toast }) =>
+        toast.success(t("coach_club.import_success", { count: r.created })),
+      );
     },
     onError: (e: any) => {
-      import("sonner").then(({ toast }) => toast.error(e instanceof ApiError ? e.message : t("error.generic")));
+      import("sonner").then(({ toast }) =>
+        toast.error(e instanceof ApiError ? e.message : t("error.generic")),
+      );
     },
   });
 
@@ -248,7 +273,9 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
     return lines.slice(1).map((line) => {
       const vals = line.split(",").map((v) => v.trim());
       const obj: Record<string, string> = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
+      headers.forEach((h, i) => {
+        obj[h] = vals[i] ?? "";
+      });
       return {
         email: obj.email,
         password: obj.password,
@@ -257,8 +284,10 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
         nameLatin: obj.namelatin || obj.name_latin || undefined,
         surnameLatin: obj.surnamelatin || obj.surname_latin || undefined,
         dateOfBirth: obj.dateofbirth || obj.date_of_birth || undefined,
-        gender: (obj.gender?.toUpperCase() === "MALE" || obj.gender?.toUpperCase() === "FEMALE")
-          ? obj.gender.toUpperCase() : undefined,
+        gender:
+          obj.gender?.toUpperCase() === "MALE" || obj.gender?.toUpperCase() === "FEMALE"
+            ? obj.gender.toUpperCase()
+            : undefined,
         weightKg: obj.weightkg || obj.weight ? parseFloat(obj.weightkg || obj.weight) : undefined,
         beltRank: obj.beltrank || obj.belt_rank || undefined,
         phone: obj.phone || undefined,
@@ -279,14 +308,21 @@ athlete2@club.kz,Pass1234!,Дина,Байжан,Dina,Baizan,2006-07-22,FEMALE,5
       ) : (
         <div className="space-y-4">
           <div className="text-xs text-muted-foreground">
-            {t("coach_club.csv_format_label")}: <code className="bg-muted px-1 rounded">email, password, name, surname, nameLatin, surnameLatin, dateOfBirth, gender, weightKg, beltRank</code>
+            {t("coach_club.csv_format_label")}:{" "}
+            <code className="bg-muted px-1 rounded">
+              email, password, name, surname, nameLatin, surnameLatin, dateOfBirth, gender,
+              weightKg, beltRank
+            </code>
           </div>
-          <button onClick={() => {
-            const a = document.createElement("a");
-            a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`;
-            a.download = "athletes_template.csv";
-            a.click();
-          }} className="text-xs text-gold hover:underline">
+          <button
+            onClick={() => {
+              const a = document.createElement("a");
+              a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`;
+              a.download = "athletes_template.csv";
+              a.click();
+            }}
+            className="text-xs text-gold hover:underline"
+          >
             {t("coach_club.csv_download_template")}
           </button>
           <textarea
@@ -300,7 +336,12 @@ athlete2@club.kz,Pass1234!,Дина,Байжан,Dina,Baizan,2006-07-22,FEMALE,5
             <button
               onClick={() => {
                 const rows = parseCsv(csvText);
-                if (!rows.length) { import("sonner").then(({ toast }) => toast.error(t("coach_club.csv_parse_error"))); return; }
+                if (!rows.length) {
+                  import("sonner").then(({ toast }) =>
+                    toast.error(t("coach_club.csv_parse_error")),
+                  );
+                  return;
+                }
                 importMut.mutate(rows);
               }}
               disabled={importMut.isPending || !csvText.trim()}
@@ -308,22 +349,38 @@ athlete2@club.kz,Pass1234!,Дина,Байжан,Dina,Baizan,2006-07-22,FEMALE,5
             >
               {importMut.isPending ? t("coach_club.importing") : t("coach_club.import_btn")}
             </button>
-            <button onClick={() => { setOpen(false); setResult(null); setCsvText(""); }}
-              className="text-sm text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => {
+                setOpen(false);
+                setResult(null);
+                setCsvText("");
+              }}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               {t("common.close")}
             </button>
           </div>
 
           {result && (
             <div className="glass rounded p-3 text-sm space-y-1">
-              <div className="text-emerald-400">✓ {t("coach_club.import_created")}: {result.created}</div>
-              {result.skipped > 0 && <div className="text-yellow-400">↷ {t("coach_club.import_skipped")}: {result.skipped}</div>}
+              <div className="text-emerald-400">
+                ✓ {t("coach_club.import_created")}: {result.created}
+              </div>
+              {result.skipped > 0 && (
+                <div className="text-yellow-400">
+                  ↷ {t("coach_club.import_skipped")}: {result.skipped}
+                </div>
+              )}
               {result.errors.length > 0 && (
                 <details className="text-xs text-destructive">
-                  <summary className="cursor-pointer">{result.errors.length} {t("coach_club.import_errors")}</summary>
+                  <summary className="cursor-pointer">
+                    {result.errors.length} {t("coach_club.import_errors")}
+                  </summary>
                   <ul className="mt-1 space-y-0.5">
                     {result.errors.map((e, i) => (
-                      <li key={i}>{t("coach_club.import_row")} {e.row}: {e.email} — {e.reason}</li>
+                      <li key={i}>
+                        {t("coach_club.import_row")} {e.row}: {e.email} — {e.reason}
+                      </li>
                     ))}
                   </ul>
                 </details>
@@ -365,7 +422,13 @@ function ClubEditor({
   };
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (!readOnly) onSubmit(form); }} className="space-y-5">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!readOnly) onSubmit(form);
+      }}
+      className="space-y-5"
+    >
       {readOnly && (
         <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
           {t("coach_club.readonly_hint")}
@@ -379,7 +442,9 @@ function ClubEditor({
             onClick={() => setLocale(lng)}
             disabled={readOnly}
             className={`rounded-md border px-3 py-1.5 text-xs uppercase transition-colors ${
-              locale === lng ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
+              locale === lng
+                ? "border-gold/50 bg-gold/15 text-gold"
+                : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
             {lng}
@@ -395,11 +460,32 @@ function ClubEditor({
           required={locale === "kk"}
           disabled={readOnly}
         />
-        <Field label={t("coach_club.short_name")} value={form.shortName} onChange={(shortName) => setForm({ ...form, shortName })} placeholder="JCL Almaty" disabled={readOnly} />
-        <Field label={t("admin.club_city")} value={form.city} onChange={(city) => setForm({ ...form, city })} required disabled={readOnly} />
-        <Field label={t("admin.club_country")} value={form.country} onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })} required maxLength={2} disabled={readOnly} />
+        <Field
+          label={t("coach_club.short_name")}
+          value={form.shortName}
+          onChange={(shortName) => setForm({ ...form, shortName })}
+          placeholder="JCL Almaty"
+          disabled={readOnly}
+        />
+        <Field
+          label={t("admin.club_city")}
+          value={form.city}
+          onChange={(city) => setForm({ ...form, city })}
+          required
+          disabled={readOnly}
+        />
+        <Field
+          label={t("admin.club_country")}
+          value={form.country}
+          onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })}
+          required
+          maxLength={2}
+          disabled={readOnly}
+        />
         <div className="md:col-span-2">
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("coach_club.logo_label")}</label>
+          <label className="text-xs uppercase tracking-widest text-muted-foreground">
+            {t("coach_club.logo_label")}
+          </label>
           <div className="mt-1.5 flex gap-2">
             <input
               value={form.logoUrl}
@@ -408,8 +494,14 @@ function ClubEditor({
               placeholder="/uploads/... or https://..."
               className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
             />
-            <label className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground ${readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:text-foreground"}`}>
-              {uploadLogo.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            <label
+              className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground ${readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:text-foreground"}`}
+            >
+              {uploadLogo.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
               {t("coach_club.upload_btn")}
               <input
                 type="file"
@@ -456,7 +548,15 @@ function ClubEditor({
   );
 }
 
-function GroupsManager({ clubId, groups, onChanged }: { clubId: string; groups: any[]; onChanged: () => void }) {
+function GroupsManager({
+  clubId,
+  groups,
+  onChanged,
+}: {
+  clubId: string;
+  groups: any[];
+  onChanged: () => void;
+}) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState({ name: "", ageMin: "6", ageMax: "8" });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -464,36 +564,71 @@ function GroupsManager({ clubId, groups, onChanged }: { clubId: string; groups: 
 
   const createGroup = useMutation({
     mutationFn: () => api.clubs.createGroup(clubId, toGroupPayload(draft)),
-    onSuccess: () => { setDraft({ name: "", ageMin: "6", ageMax: "8" }); setError(""); onChanged(); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_add_error")),
+    onSuccess: () => {
+      setDraft({ name: "", ageMin: "6", ageMax: "8" });
+      setError("");
+      onChanged();
+    },
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.group_add_error")),
   });
 
   const updateGroup = useMutation({
     mutationFn: (group: any) => api.clubs.updateGroup(group.id, toGroupPayload(group)),
-    onSuccess: () => { setEditingId(null); setError(""); onChanged(); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_save_error")),
+    onSuccess: () => {
+      setEditingId(null);
+      setError("");
+      onChanged();
+    },
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.group_save_error")),
   });
 
   const deleteGroup = useMutation({
     mutationFn: (id: string) => api.clubs.deleteGroup(id),
     onSuccess: onChanged,
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.group_delete_error")),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.group_delete_error")),
   });
 
   return (
     <div className="space-y-4">
       <form
-        onSubmit={(e) => { e.preventDefault(); createGroup.mutate(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          createGroup.mutate();
+        }}
         className="grid gap-3 rounded-md border border-border/60 bg-background/30 p-3 md:grid-cols-[minmax(180px,1fr)_110px_110px_auto]"
       >
-        <Field label={t("admin.group_name")} value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
-        <Field label={t("admin.age_from")} type="number" value={draft.ageMin} onChange={(ageMin) => setDraft({ ...draft, ageMin })} required />
-        <Field label={t("admin.age_to")} type="number" value={draft.ageMax} onChange={(ageMax) => setDraft({ ...draft, ageMax })} required />
+        <Field
+          label={t("admin.group_name")}
+          value={draft.name}
+          onChange={(name) => setDraft({ ...draft, name })}
+          required
+        />
+        <Field
+          label={t("admin.age_from")}
+          type="number"
+          value={draft.ageMin}
+          onChange={(ageMin) => setDraft({ ...draft, ageMin })}
+          required
+        />
+        <Field
+          label={t("admin.age_to")}
+          type="number"
+          value={draft.ageMax}
+          onChange={(ageMax) => setDraft({ ...draft, ageMax })}
+          required
+        />
         <button
           disabled={createGroup.isPending}
           className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-gold/15 px-4 text-sm text-gold hover:bg-gold/20 disabled:opacity-50"
         >
-          {createGroup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          {createGroup.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
           {t("common.add")}
         </button>
       </form>
@@ -522,29 +657,75 @@ function GroupsManager({ clubId, groups, onChanged }: { clubId: string; groups: 
   );
 }
 
-function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelete }: {
-  group: any; isEditing: boolean; isBusy: boolean;
-  onEdit: () => void; onCancel: () => void;
-  onSave: (data: any) => void; onDelete: () => void;
+function GroupCard({
+  group,
+  isEditing,
+  isBusy,
+  onEdit,
+  onCancel,
+  onSave,
+  onDelete,
+}: {
+  group: any;
+  isEditing: boolean;
+  isBusy: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: (data: any) => void;
+  onDelete: () => void;
 }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState({ ...group, ageMin: String(group.ageMin), ageMax: String(group.ageMax) });
+  const [form, setForm] = useState({
+    ...group,
+    ageMin: String(group.ageMin),
+    ageMax: String(group.ageMax),
+  });
 
   if (isEditing) {
     return (
-      <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="rounded-md border border-gold/30 bg-gold/5 p-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(form);
+        }}
+        className="rounded-md border border-gold/30 bg-gold/5 p-4"
+      >
         <div className="space-y-3">
-          <Field label={t("admin.group_name")} value={form.name} onChange={(name) => setForm({ ...form, name })} required />
+          <Field
+            label={t("admin.group_name")}
+            value={form.name}
+            onChange={(name) => setForm({ ...form, name })}
+            required
+          />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Min" type="number" value={form.ageMin} onChange={(ageMin) => setForm({ ...form, ageMin })} required />
-            <Field label="Max" type="number" value={form.ageMax} onChange={(ageMax) => setForm({ ...form, ageMax })} required />
+            <Field
+              label="Min"
+              type="number"
+              value={form.ageMin}
+              onChange={(ageMin) => setForm({ ...form, ageMin })}
+              required
+            />
+            <Field
+              label="Max"
+              type="number"
+              value={form.ageMax}
+              onChange={(ageMax) => setForm({ ...form, ageMax })}
+              required
+            />
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={isBusy} className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm text-gold-foreground shadow-gold disabled:opacity-50">
+          <button
+            disabled={isBusy}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm text-gold-foreground shadow-gold disabled:opacity-50"
+          >
             <Save className="h-4 w-4" /> {t("common.save")}
           </button>
-          <button type="button" onClick={onCancel} className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+          >
             {t("common.cancel")}
           </button>
         </div>
@@ -557,13 +738,24 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-medium">{group.name}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{group.ageMin}-{group.ageMax} {t("common.years_short")}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {group.ageMin}-{group.ageMax} {t("common.years_short")}
+          </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={onEdit} className="rounded-md p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label={t("common.edit")}>
+          <button
+            onClick={onEdit}
+            className="rounded-md p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            aria-label={t("common.edit")}
+          >
             <Pencil className="h-4 w-4" />
           </button>
-          <button onClick={onDelete} disabled={isBusy} className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" aria-label={t("common.delete")}>
+          <button
+            onClick={onDelete}
+            disabled={isBusy}
+            className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            aria-label={t("common.delete")}
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -575,8 +767,18 @@ function GroupCard({ group, isEditing, isBusy, onEdit, onCancel, onSave, onDelet
 function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
   const { t } = useTranslation();
   const logo = club?.logoUrl || fallback.logoUrl;
-  const name = localizeName(club?.name) || fallback.name.kk || fallback.name.ru || fallback.name.en || "Judo Club";
-  const description = localizeName(club?.description) || fallback.description.kk || fallback.description.ru || fallback.description.en || t("coach_club.description_preview_hint");
+  const name =
+    localizeName(club?.name) ||
+    fallback.name.kk ||
+    fallback.name.ru ||
+    fallback.name.en ||
+    "Judo Club";
+  const description =
+    localizeName(club?.description) ||
+    fallback.description.kk ||
+    fallback.description.ru ||
+    fallback.description.en ||
+    t("coach_club.description_preview_hint");
 
   return (
     <div className="overflow-hidden rounded-md border border-border/60 bg-background/30">
@@ -589,7 +791,10 @@ function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
       </div>
       <div className="p-4">
         <div className="font-display text-xl font-semibold">{name}</div>
-        <div className="mt-1 text-sm text-muted-foreground">{club?.city || fallback.city || t("admin.club_city")} · {club?.country || fallback.country}</div>
+        <div className="mt-1 text-sm text-muted-foreground">
+          {club?.city || fallback.city || t("admin.club_city")} ·{" "}
+          {club?.country || fallback.country}
+        </div>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -617,12 +822,19 @@ function CoachJoinClubPanel({
   const pending = requests.find((request) => request.status === "PENDING");
   const requestClub = useMutation({
     mutationFn: (clubId: string) => api.clubs.coachJoinRequest(clubId),
-    onSuccess: async () => { setError(""); await onChanged(); },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.request_error")),
+    onSuccess: async () => {
+      setError("");
+      await onChanged();
+    },
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.request_error")),
   });
   const cancelRequest = useMutation({
     mutationFn: (id: string) => api.coachClubRequests.cancel(id),
-    onSuccess: async () => { setError(""); await onChanged(); },
+    onSuccess: async () => {
+      setError("");
+      await onChanged();
+    },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
   });
 
@@ -631,20 +843,31 @@ function CoachJoinClubPanel({
       {pending && (
         <div className="rounded-md border border-gold/30 bg-gold/10 p-4">
           <div className="text-sm font-semibold text-gold">{t("coach_club.request_sent")}</div>
-          <div className="mt-1 text-sm text-muted-foreground">{localizeName(pending.club?.name)} · {pending.club?.city}</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            {localizeName(pending.club?.name)} · {pending.club?.city}
+          </div>
           <button
             type="button"
             disabled={cancelRequest.isPending}
             onClick={() => cancelRequest.mutate(pending.id)}
             className="mt-3 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
-            {cancelRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+            {cancelRequest.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <X className="h-4 w-4" />
+            )}
             {t("common.cancel")}
           </button>
         </div>
       )}
 
-      <Field label={t("coach_club.search_club")} value={search} onChange={setSearch} placeholder={t("coach_club.search_club_placeholder")} />
+      <Field
+        label={t("coach_club.search_club")}
+        value={search}
+        onChange={setSearch}
+        placeholder={t("coach_club.search_club_placeholder")}
+      />
       {error && <div className="text-sm text-destructive">{error}</div>}
 
       {isLoading || clubsQuery.isLoading ? (
@@ -654,10 +877,15 @@ function CoachJoinClubPanel({
           {(clubsQuery.data?.items ?? []).map((club: any) => {
             const isCurrentPending = pending?.clubId === club.id;
             return (
-              <div key={club.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3">
+              <div
+                key={club.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3"
+              >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold">{localizeName(club.name)}</div>
-                  <div className="truncate text-xs text-muted-foreground">{club.city} · {club._count?.members ?? 0} {t("coach_club.members")}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {club.city} · {club._count?.members ?? 0} {t("coach_club.members")}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -665,7 +893,11 @@ function CoachJoinClubPanel({
                   onClick={() => requestClub.mutate(club.id)}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-gold/15 px-3 py-2 text-sm text-gold hover:bg-gold/20 disabled:opacity-50"
                 >
-                  {requestClub.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                  {requestClub.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
                   {isCurrentPending ? t("coach_club.sent") : t("coach_club.join_btn")}
                 </button>
               </div>
@@ -691,20 +923,32 @@ function IncomingCoachRequests({
 }) {
   const { t } = useTranslation();
   const review = useMutation({
-    mutationFn: ({ id, approve }: { id: string; approve: boolean }) => api.coachClubRequests.review(id, approve),
+    mutationFn: ({ id, approve }: { id: string; approve: boolean }) =>
+      api.coachClubRequests.review(id, approve),
     onSuccess: onChanged,
   });
 
   if (isLoading) return <LoadingState />;
-  if (requests.length === 0) return <EmptyState title={t("coach_club.no_requests")} hint={t("coach_club.no_requests_hint")} />;
+  if (requests.length === 0)
+    return (
+      <EmptyState title={t("coach_club.no_requests")} hint={t("coach_club.no_requests_hint")} />
+    );
 
   return (
     <div className="space-y-2">
       {requests.map((request) => (
-        <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3">
+        <div
+          key={request.id}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3"
+        >
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{request.coach?.name} {request.coach?.surname}</div>
-            <div className="truncate text-xs text-muted-foreground">{request.coach?.email}{request.coach?.phone ? ` · ${request.coach.phone}` : ""}</div>
+            <div className="truncate text-sm font-semibold">
+              {request.coach?.name} {request.coach?.surname}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {request.coach?.email}
+              {request.coach?.phone ? ` · ${request.coach.phone}` : ""}
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -763,7 +1007,10 @@ function ClubCoaches({
   return (
     <div className="space-y-2">
       {unique.map((coach) => (
-        <div key={coach.id} className="flex items-center gap-3 rounded-md border border-border/60 bg-background/30 p-3">
+        <div
+          key={coach.id}
+          className="flex items-center gap-3 rounded-md border border-border/60 bg-background/30 p-3"
+        >
           <Avatar
             src={coach.avatarUrl ? mediaUrl(coach.avatarUrl) : null}
             name={`${coach.name ?? ""} ${coach.surname ?? ""}`}
@@ -771,7 +1018,9 @@ function ClubCoaches({
           />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-1.5">
-              <div className="truncate text-sm font-semibold">{coach.name} {coach.surname}</div>
+              <div className="truncate text-sm font-semibold">
+                {coach.name} {coach.surname}
+              </div>
               {coach.clubRole === "OWNER" ? (
                 <Crown className="h-3.5 w-3.5 shrink-0 text-gold" />
               ) : (

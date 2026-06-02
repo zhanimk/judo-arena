@@ -10,7 +10,7 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import emblem from "@/assets/jcl-logo.jpeg";

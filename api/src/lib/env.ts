@@ -12,12 +12,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: path.resolve(__dirname, "../../../.env") });
 
 const schema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
 
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
 
-  JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET слишком короткий (минимум 32 символа)"),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, "JWT_ACCESS_SECRET слишком короткий (минимум 32 символа)"),
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET слишком короткий"),
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
@@ -28,7 +32,7 @@ const schema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
 
   // Email — либо Resend API (рекомендуется для prod), либо SMTP (Mailpit в dev)
-  RESEND_API_KEY: z.string().optional(),          // если задан — использует Resend API
+  RESEND_API_KEY: z.string().optional(), // если задан — использует Resend API
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_USER: z.string().default(""),
@@ -36,7 +40,11 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("Judo-Arena <noreply@judo-arena.kz>"),
 
   UPLOADS_DIR: z.string().default("./uploads"),
-  MAX_FILE_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+  MAX_FILE_SIZE: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
   BCRYPT_ROUNDS: z.coerce.number().int().positive().default(12),
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
@@ -45,6 +53,10 @@ const schema = z.object({
   APP_URL: z.string().default("http://localhost:3000"),
 
   SENTRY_DSN: z.string().url().optional(),
+
+  // Версия приложения (задаётся при деплое через CI/CD)
+  // Render: задай в Environment Variables: APP_VERSION=${{ github.sha }}
+  APP_VERSION: z.string().default("0.1.0"),
 
   // S3-совместимое хранилище (опционально, иначе — локальная папка)
   S3_BUCKET: z.string().optional(),

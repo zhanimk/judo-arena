@@ -79,8 +79,8 @@ ok "Frontend deps OK"
 # ============================================================
 # 3. Prisma migrate + optional seed
 # ============================================================
-print "Применяем миграции Prisma"
-(cd api && npx prisma migrate dev)
+print "Синхронизируем локальную БД Prisma"
+(cd api && npx prisma db push --skip-generate)
 
 if [ "$RUN_SEED" = true ]; then
   print "Засеваем тестовые данные"

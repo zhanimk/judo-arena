@@ -35,6 +35,20 @@ export default defineConfig({
     // Enable source maps for Sentry (only in production build)
     build: {
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (id.includes("@tanstack")) return "vendor-tanstack";
+            if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
+            if (id.includes("@radix-ui") || id.includes("lucide-react")) return "vendor-ui";
+            if (id.includes("i18next") || id.includes("react-i18next")) return "vendor-i18n";
+            if (id.includes("socket.io-client")) return "vendor-realtime";
+            if (id.includes("recharts")) return "vendor-charts";
+            return "vendor";
+          },
+        },
+      },
     },
     plugins: [
       // PWA: offline support + installable app.

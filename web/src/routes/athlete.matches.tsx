@@ -5,7 +5,12 @@
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  Panel,
+  LoadingState,
+  EmptyState,
+} from "@/components/dashboard/DashboardShell";
 import { Calendar, Search, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -41,7 +46,7 @@ function AthleteMatchesList() {
     staleTime: 30_000,
   });
 
-  const matches: any[] = matchesQuery.data ?? [];
+  const matches: any[] = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
 
   const filtered = useMemo(() => {
     let list = matches;
@@ -54,32 +59,41 @@ function AthleteMatchesList() {
           opp ? `${opp.name} ${opp.surname}` : "",
           localizeName(m.tournament?.name),
           m.bracketSection ?? "",
-        ].join(" ").toLowerCase().includes(q);
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
       });
     }
     return list;
   }, [matches, statusFilter, search, athleteId]);
 
-  const total   = matches.length;
-  const wins    = matches.filter((m) => m.winnerId === athleteId).length;
-  const losses  = matches.filter((m) => m.winnerId && m.winnerId !== athleteId).length;
+  const total = matches.length;
+  const wins = matches.filter((m) => m.winnerId === athleteId).length;
+  const losses = matches.filter((m) => m.winnerId && m.winnerId !== athleteId).length;
   const pending = matches.filter((m) => m.status === "PENDING").length;
 
   const stats = [
-    { label: t("common.all"),         value: total },
-    { label: t("matches.win"),        value: wins,    cls: "text-gold" },
-    { label: t("matches.loss"),       value: losses,  cls: "text-destructive" },
+    { label: t("common.all"), value: total },
+    { label: t("matches.win"), value: wins, cls: "text-gold" },
+    { label: t("matches.loss"), value: losses, cls: "text-destructive" },
     { label: t("athlete.stat_pending"), value: pending, cls: "text-muted-foreground" },
   ];
 
   return (
-    <DashboardShell role={t("roles.ATHLETE")} navItems={nav} accentTitle={t("athlete.matches_page_title")}>
+    <DashboardShell
+      role={t("roles.ATHLETE")}
+      navItems={nav}
+      accentTitle={t("athlete.matches_page_title")}
+    >
       {/* Stat strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
         {stats.map(({ label, value, cls }) => (
           <div key={label} className="glass rounded-xl px-4 py-3 text-center">
             <div className={`font-display text-2xl font-bold ${cls ?? ""}`}>{value}</div>
-            <div className="text-[11px] uppercase tracking-widest text-muted-foreground mt-0.5">{label}</div>
+            <div className="text-[11px] uppercase tracking-widest text-muted-foreground mt-0.5">
+              {label}
+            </div>
           </div>
         ))}
       </div>
@@ -123,7 +137,11 @@ function AthleteMatchesList() {
         ) : filtered.length === 0 ? (
           <EmptyState
             title={search || statusFilter !== "all" ? t("common.no_data") : t("athlete.no_matches")}
-            hint={search || statusFilter !== "all" ? t("matches.search_hint") : t("athlete.no_matches_hint")}
+            hint={
+              search || statusFilter !== "all"
+                ? t("matches.search_hint")
+                : t("athlete.no_matches_hint")
+            }
           />
         ) : (
           <ul className="space-y-2">
@@ -148,17 +166,21 @@ function AthleteMatchesList() {
 
 function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
   const { t } = useTranslation();
-  const opp    = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
+  const opp = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
   const mySide = m.redAthlete?.id === athleteId ? "red" : "blue";
-  const myScore  = m.scoreSnapshot?.[mySide];
+  const myScore = m.scoreSnapshot?.[mySide];
   const oppScore = m.scoreSnapshot?.[mySide === "red" ? "blue" : "red"];
-  const won      = m.winnerId === athleteId;
-  const done     = m.status === "COMPLETED";
-  const live     = m.status === "IN_PROGRESS";
+  const won = m.winnerId === athleteId;
+  const done = m.status === "COMPLETED";
+  const live = m.status === "IN_PROGRESS";
 
-  const resultColor = done ? (won ? "border-gold/40 bg-gold/5" : "border-destructive/30 bg-destructive/5")
-    : live ? "border-blue-400/40 bg-blue-400/5 animate-pulse"
-    : "border-border/40";
+  const resultColor = done
+    ? won
+      ? "border-gold/40 bg-gold/5"
+      : "border-destructive/30 bg-destructive/5"
+    : live
+      ? "border-blue-400/40 bg-blue-400/5 animate-pulse"
+      : "border-border/40";
 
   return (
     <li>
@@ -170,13 +192,19 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
         {/* Result badge */}
         <div className="w-14 shrink-0 text-center">
           {live ? (
-            <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">LIVE</span>
+            <span className="rounded-full bg-blue-500/20 border border-blue-400/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">
+              LIVE
+            </span>
           ) : done ? (
-            <span className={`font-display text-sm font-bold ${won ? "text-gold" : "text-destructive"}`}>
+            <span
+              className={`font-display text-sm font-bold ${won ? "text-gold" : "text-destructive"}`}
+            >
               {won ? t("matches.win") : t("matches.loss")}
             </span>
           ) : (
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">{String(t("status.PENDING"))}</span>
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+              {String(t("status.PENDING"))}
+            </span>
           )}
         </div>
 
@@ -190,8 +218,14 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
               <Trophy className="h-3 w-3 text-gold/50" />
               {localizeName(m.tournament?.name) ?? "—"}
             </span>
-            <span>{sectionLabel(m.bracketSection, t)} · {t("matches.round")} {m.round}</span>
-            {m.tatamiNumber && <span>{t("common.tatami")} {m.tatamiNumber}</span>}
+            <span>
+              {sectionLabel(m.bracketSection, t)} · {t("matches.round")} {m.round}
+            </span>
+            {m.tatamiNumber && (
+              <span>
+                {t("common.tatami")} {m.tatamiNumber}
+              </span>
+            )}
           </div>
         </div>
 
@@ -220,12 +254,30 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
   );
 }
 
-function ScoreChip({ label, value, won, bad }: { label: string; value: number; won?: boolean; bad?: boolean }) {
-  const color = bad ? (value > 0 ? "text-destructive" : "text-muted-foreground/40")
-    : value > 0 ? (won ? "text-gold" : "text-foreground") : "text-muted-foreground/40";
+function ScoreChip({
+  label,
+  value,
+  won,
+  bad,
+}: {
+  label: string;
+  value: number;
+  won?: boolean;
+  bad?: boolean;
+}) {
+  const color = bad
+    ? value > 0
+      ? "text-destructive"
+      : "text-muted-foreground/40"
+    : value > 0
+      ? won
+        ? "text-gold"
+        : "text-foreground"
+      : "text-muted-foreground/40";
   return (
     <span className={`${color}`}>
-      {label}{value}
+      {label}
+      {value}
     </span>
   );
 }
@@ -241,11 +293,11 @@ function localizeName(n: any): string {
 function sectionLabel(s: string | null, t: (key: string) => string): string {
   if (!s) return "—";
   const m: Record<string, string> = {
-    main:      t("bracket.section_main"),
+    main: t("bracket.section_main"),
     repechage: t("bracket.section_repechage"),
-    bronze1:   t("bracket.section_bronze1"),
-    bronze2:   t("bracket.section_bronze2"),
-    final:     t("bracket.section_final"),
+    bronze1: t("bracket.section_bronze1"),
+    bronze2: t("bracket.section_bronze2"),
+    final: t("bracket.section_final"),
   };
   return m[s] ?? s;
 }

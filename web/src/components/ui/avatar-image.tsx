@@ -11,6 +11,11 @@
 
 import { useState } from "react";
 
+type FetchPriority = "high" | "low" | "auto";
+type ImgPropsWithFetchPriority = React.ImgHTMLAttributes<HTMLImageElement> & {
+  fetchPriority?: FetchPriority;
+};
+
 interface AvatarProps {
   src?: string | null;
   /** Full name for initials fallback. E.g. "Алия Қалиева" → "АҚ" */
@@ -21,7 +26,7 @@ interface AvatarProps {
   /** Override alt text. Default: name or "" */
   alt?: string;
   /** Use "high" for above-the-fold avatars (e.g. current user in nav) */
-  fetchpriority?: "high" | "low" | "auto";
+  fetchpriority?: FetchPriority;
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -63,21 +68,21 @@ export function Avatar({
   };
 
   if (showImage) {
-    return (
-      <img
-        src={src!}
-        alt={alt ?? name ?? ""}
-        width={size}
-        height={size}
-        loading={fetchpriority === "high" ? "eager" : "lazy"}
-        decoding="async"
-        // @ts-ignore — fetchpriority is a valid HTML attribute
-        fetchpriority={fetchpriority}
-        onError={() => setImgError(true)}
-        style={{ ...baseStyle, objectFit: "cover" }}
-        className={className}
-      />
-    );
+    const imageSrc = src ?? "";
+    const imgProps: ImgPropsWithFetchPriority = {
+      src: imageSrc,
+      alt: alt ?? name ?? "",
+      width: size,
+      height: size,
+      loading: fetchpriority === "high" ? "eager" : "lazy",
+      decoding: "async",
+      fetchPriority: fetchpriority,
+      onError: () => setImgError(true),
+      style: { ...baseStyle, objectFit: "cover" },
+      className,
+    };
+
+    return <img {...imgProps} />;
   }
 
   // Initials fallback
@@ -110,15 +115,14 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 }
 
 export function LazyImage({ src, alt, priority = false, ...props }: LazyImageProps) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading={priority ? "eager" : "lazy"}
-      decoding={priority ? "sync" : "async"}
-      // @ts-ignore
-      fetchpriority={priority ? "high" : "auto"}
-      {...props}
-    />
-  );
+  const imgProps: ImgPropsWithFetchPriority = {
+    src,
+    alt,
+    loading: priority ? "eager" : "lazy",
+    decoding: priority ? "sync" : "async",
+    fetchPriority: priority ? "high" : "auto",
+    ...props,
+  };
+
+  return <img {...imgProps} />;
 }

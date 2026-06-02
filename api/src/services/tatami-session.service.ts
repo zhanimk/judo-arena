@@ -5,7 +5,8 @@
  * Через эту ссылку судья работает весь день: видит текущий матч, очередь,
  * и после завершения матча автоматически переходит к следующему.
  *
- * Токен действует ~14 часов (настраивается), привязан к турниру + номер татами.
+ * Токен действует 24 часа (по умолчанию), привязан к турниру + номер татами.
+ * Автоматически считается истёкшим, если турнир завершился более 2 часов назад.
  */
 
 import { nanoid } from "nanoid";
@@ -13,7 +14,11 @@ import { prisma } from "../lib/prisma.js";
 import { MatchStatus, UserRole } from "@prisma/client";
 
 export class TatamiSessionError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "TatamiSessionError";
   }
@@ -33,12 +38,22 @@ export async function createTatamiSession(
 ) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new TatamiSessionError("FORBIDDEN", "Создавать сессии может только админ", 403);
+    throw new TatamiSessionError(
+      "FORBIDDEN",
+      "Создавать сессии может только админ",
+      403,
+    );
   }
 
-  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+  });
   if (!tournament) {
-    throw new TatamiSessionError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+    throw new TatamiSessionError(
+      "TOURNAMENT_NOT_FOUND",
+      "Турнир не найден",
+      404,
+    );
   }
   if (input.tatamiNumber < 1 || input.tatamiNumber > tournament.tatamiCount) {
     throw new TatamiSessionError(
@@ -59,7 +74,7 @@ export async function createTatamiSession(
   });
 
   const token = nanoid(32);
-  const ttlHours = input.ttlHours ?? 14;
+  const ttlHours = input.ttlHours ?? 24; // 24 часа по умолчанию (один турнирный день)
   const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
   return prisma.tatamiSession.create({
@@ -79,14 +94,41 @@ export async function getValidTatamiSession(token: string) {
   const session = await prisma.tatamiSession.findUnique({
     where: { token },
     include: {
-      tournament: { select: { id: true, name: true, tatamiCount: true, status: true } },
+      tournament: {
+        select: {
+          id: true,
+          name: true,
+          tatamiCount: true,
+          status: true,
+          endDate: true,
+        },
+      },
     },
   });
 
-  if (!session) throw new TatamiSessionError("INVALID_TOKEN", "Невалидный токен", 401);
-  if (session.isRevoked) throw new TatamiSessionError("REVOKED", "Сессия отозвана", 403);
+  if (!session)
+    throw new TatamiSessionError("INVALID_TOKEN", "Невалидный токен", 401);
+  if (session.isRevoked)
+    throw new TatamiSessionError("REVOKED", "Сессия отозвана", 403);
   if (session.expiresAt < new Date()) {
     throw new TatamiSessionError("EXPIRED", "Срок действия сессии истёк", 403);
+  }
+
+  // Auto-invalidate: турнир завершён более 2 часов назад → сессия больше не нужна
+  if (session.tournament.status === "COMPLETED" && session.tournament.endDate) {
+    const tournamentEndedMs = session.tournament.endDate.getTime();
+    const gracePeriodMs = 2 * 60 * 60 * 1000; // 2 часа grace period
+    if (Date.now() > tournamentEndedMs + gracePeriodMs) {
+      // Отзываем сессию в фоне (не блокируем ответ)
+      prisma.tatamiSession
+        .update({ where: { id: session.id }, data: { isRevoked: true } })
+        .catch(() => {});
+      throw new TatamiSessionError(
+        "TOURNAMENT_ENDED",
+        "Турнир завершён — сессия судьи деактивирована",
+        403,
+      );
+    }
   }
 
   // Текущий матч (IN_PROGRESS) или первый PENDING
@@ -97,8 +139,24 @@ export async function getValidTatamiSession(token: string) {
       status: MatchStatus.IN_PROGRESS,
     },
     include: {
-      redAthlete: { select: { id: true, name: true, surname: true, clubId: true, club: { select: { name: true, shortName: true } } } },
-      blueAthlete: { select: { id: true, name: true, surname: true, clubId: true, club: { select: { name: true, shortName: true } } } },
+      redAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          clubId: true,
+          club: { select: { name: true, shortName: true } },
+        },
+      },
+      blueAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          clubId: true,
+          club: { select: { name: true, shortName: true } },
+        },
+      },
       bracket: { include: { category: true } },
     },
   });
@@ -115,10 +173,30 @@ export async function getValidTatamiSession(token: string) {
           redAthleteId: { not: null },
           blueAthleteId: { not: null },
         },
-        orderBy: [{ queuePosition: "asc" }, { round: "asc" }, { position: "asc" }],
+        orderBy: [
+          { queuePosition: "asc" },
+          { round: "asc" },
+          { position: "asc" },
+        ],
         include: {
-          redAthlete: { select: { id: true, name: true, surname: true, clubId: true, club: { select: { name: true, shortName: true } } } },
-          blueAthlete: { select: { id: true, name: true, surname: true, clubId: true, club: { select: { name: true, shortName: true } } } },
+          redAthlete: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              club: { select: { name: true, shortName: true } },
+            },
+          },
+          blueAthlete: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              club: { select: { name: true, shortName: true } },
+            },
+          },
           bracket: { include: { category: true } },
         },
       });
@@ -187,11 +265,21 @@ export async function revokeTatamiSession(
 ): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new TatamiSessionError("FORBIDDEN", "Только админ может отзывать сессии", 403);
+    throw new TatamiSessionError(
+      "FORBIDDEN",
+      "Только админ может отзывать сессии",
+      403,
+    );
   }
-  const session = await prisma.tatamiSession.findUnique({ where: { id: sessionId } });
-  if (!session) throw new TatamiSessionError("NOT_FOUND", "Сессия не найдена", 404);
-  await prisma.tatamiSession.update({ where: { id: sessionId }, data: { isRevoked: true } });
+  const session = await prisma.tatamiSession.findUnique({
+    where: { id: sessionId },
+  });
+  if (!session)
+    throw new TatamiSessionError("NOT_FOUND", "Сессия не найдена", 404);
+  await prisma.tatamiSession.update({
+    where: { id: sessionId },
+    data: { isRevoked: true },
+  });
 }
 
 /** Список активных сессий для турнира (ADMIN). */

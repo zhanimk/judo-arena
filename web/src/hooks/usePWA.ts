@@ -22,13 +22,13 @@ export function usePWA(): PWAState {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const isInstalled =
-    typeof window !== "undefined" &&
-    window.matchMedia("(display-mode: standalone)").matches;
+    typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches;
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    // sw.js is only generated in production build — skip in dev
+    if (import.meta.env.DEV) return;
 
-    // vite-plugin-pwa injects /sw.js
     navigator.serviceWorker
       .register("/sw.js", { scope: "/" })
       .then((reg) => {

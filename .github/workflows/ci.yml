@@ -92,9 +92,9 @@ jobs:
       - name: Run migrations
         working-directory: api
         run: npx prisma migrate deploy
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: api
-        run: npm test -- --reporter=verbose
+        run: npm run test:coverage -- --reporter=verbose
 
   api-build:
     name: API — Build
@@ -116,6 +116,19 @@ jobs:
         run: npm run build
 
   # ─── WEB ───────────────────────────────────────────────────────────────────
+  web-lint:
+    name: Web — Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run lint -w tanstack_start_ts
+
   web-typecheck:
     name: Web — Type Check
     runs-on: ubuntu-latest
@@ -134,7 +147,7 @@ jobs:
   web-build:
     name: Web — Build
     runs-on: ubuntu-latest
-    needs: [web-typecheck]
+    needs: [web-lint, web-typecheck]
     env:
       VITE_API_URL: https://api.judo-arena.kz
       VITE_WS_URL: wss://api.judo-arena.kz
@@ -151,4 +164,103 @@ jobs:
         with:
           name: web-dist
           path: web/dist/
+          retention-days: 7
+
+  # ─── E2E ───────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E — Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [api-test, web-build]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: judo
+          POSTGRES_PASSWORD: judo_e2e
+          POSTGRES_DB: judo_arena_e2e
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://judo:judo_e2e@localhost:5433/judo_arena_e2e
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: e2e_access_secret_at_least_32_chars_long_x
+      JWT_REFRESH_SECRET: e2e_refresh_secret_at_least_32_chars_long_x
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
+      NODE_ENV: test
+      CORS_ORIGIN: http://localhost:8080
+      PORT: 4000
+      VITE_API_URL: http://localhost:4000
+      VITE_WS_URL: ws://localhost:4000
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
+
+      - name: Run migrations
+        working-directory: api
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        working-directory: api
+        run: npx tsx prisma/seed.ts
+
+      # Start frontend against the local API used by the smoke tests.
+      - name: Start web dev server
+        run: npm run dev -w tanstack_start_ts -- --host 0.0.0.0 --port 8080 &
+
+      # Start API in background
+      - name: Build API
+        working-directory: api
+        run: npm run build
+
+      - name: Start API server
+        working-directory: api
+        run: node dist/server.js &
+
+      - name: Wait for services to be ready
+        run: |
+          npx wait-on http://localhost:4000/health http://localhost:8080 --timeout 30000
+
+      - name: Run E2E smoke tests
+        run: npx playwright test --reporter=github
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:4000
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
           retention-days: 7

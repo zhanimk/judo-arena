@@ -1,12 +1,24 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
-import heroImg from "@/assets/hero-judo.jpg";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
 import { ApiError } from "@/lib/api";
 import {
-  Lock, UserPlus, Loader2, Eye, EyeOff,
-  Mail, KeyRound, User, Shield, Trophy, Zap,
+  Lock,
+  UserPlus,
+  Loader2,
+  Eye,
+  EyeOff,
+  Mail,
+  KeyRound,
+  User,
+  Shield,
+  Trophy,
+  ClipboardList,
+  Medal,
+  UsersRound,
+  ArrowUpRight,
+  Zap,
 } from "lucide-react";
 import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 import { RedirectIfAuthenticated } from "@/lib/protected-route";
@@ -14,7 +26,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Кіру — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Judo-Arena — вход и регистрация" }] }),
   validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
     mode: search.mode === "register" ? "register" : search.mode === "login" ? "login" : undefined,
   }),
@@ -27,12 +39,15 @@ export const Route = createFileRoute("/login")({
 
 type Mode = "login" | "register";
 
+/* inputs use dark: prefix so they respond to Tailwind's dark-mode class */
 const INPUT_CLS =
-  "w-full bg-input border border-border rounded-xl px-4 py-3 pl-11 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-gold focus:ring-2 focus:ring-gold/20 focus:outline-none transition-all";
+  "w-full rounded-xl border px-4 py-3 pl-11 text-sm shadow-inner transition-all focus:outline-none focus:ring-2 backdrop-blur-sm " +
+  "border-black/10 bg-black/[0.04] text-foreground placeholder:text-foreground/40 focus:border-gold/50 focus:bg-black/[0.07] focus:ring-gold/15 " +
+  "dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40 dark:focus:border-gold/60 dark:focus:bg-white/10 dark:focus:ring-gold/20";
 
 function InputIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/50">
+    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground/35 dark:text-white/40">
       {children}
     </span>
   );
@@ -46,22 +61,44 @@ function Login() {
   const [mode, setMode] = useState<Mode>(search.mode ?? "login");
   const [role, setRole] = useState<"ATHLETE" | "COACH">("ATHLETE");
 
-  const [email,    setEmail]    = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name,     setName]     = useState("");
-  const [surname,  setSurname]  = useState("");
-  const [showPwd,  setShowPwd]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
-  const [leaving,  setLeaving]  = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [leaving, setLeaving] = useState(false);
+  const [tick, setTick] = useState(0);
 
-  const features = [
-    { icon: Trophy, textKey: "home.feature_live_title" },
-    { icon: Zap, textKey: "home.feature_bracket_title" },
-    { icon: Shield, textKey: "home.feature_tatami_title" },
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 60);
+    return () => clearInterval(id);
+  }, []);
+  void tick;
+
+  const roleOptions = [
+    {
+      key: "ATHLETE" as const,
+      label: t("roles.athlete"),
+      icon: Medal,
+      hint: t("athlete.register_cta"),
+    },
+    {
+      key: "COACH" as const,
+      label: t("roles.coach"),
+      icon: ClipboardList,
+      hint: t("coach.club_title"),
+    },
   ];
 
-  const switchMode = (m: Mode) => { setMode(m); setError(""); };
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError("");
+    setConfirmPassword("");
+  };
 
   const redirectToDashboard = (userRole: "ATHLETE" | "COACH" | "ADMIN") => {
     setLeaving(true);
@@ -79,6 +116,10 @@ function Login() {
       setError(t("auth.pwd_strength_weak"));
       return;
     }
+    if (mode === "register" && password !== confirmPassword) {
+      setError(t("auth.pwd_no_match") || "Құпиясөздер сәйкес келмейді");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
@@ -86,7 +127,14 @@ function Login() {
         toast.success(`${t("auth.welcome_back")} ${user.name} 👋`);
         redirectToDashboard(user.role);
       } else {
-        const user = await register({ email, password, role, name, surname, preferredLocale: "kk" });
+        const user = await register({
+          email,
+          password,
+          role,
+          name,
+          surname,
+          preferredLocale: "kk",
+        });
         toast.success(t("auth.welcome_back") + " 🎉");
         redirectToDashboard(user.role);
       }
@@ -105,231 +153,740 @@ function Login() {
     if (!isDev) return;
     switchMode("login");
     setPassword("password123");
-    if (kind === "admin")   setEmail("admin@judo-arena.kz");
-    if (kind === "coach")   setEmail("coach.almaty@judo-arena.kz");
+    if (kind === "admin") setEmail("admin@judo-arena.kz");
+    if (kind === "coach") setEmail("coach.almaty@judo-arena.kz");
     if (kind === "athlete") setEmail("m0-0@almaty-judo.judo-arena.kz");
   };
 
   return (
     <div
-      className={`min-h-screen grid lg:grid-cols-[1fr_480px] xl:grid-cols-[1fr_520px] transition-opacity duration-400 ${leaving ? "opacity-0 scale-[0.99]" : "opacity-100 scale-100"}`}
-      style={{ transition: "opacity 0.42s ease, transform 0.42s ease" }}
+      className="lp-root min-h-screen overflow-hidden"
+      style={{
+        transition: "opacity 0.42s ease, transform 0.42s ease",
+        opacity: leaving ? 0 : 1,
+        transform: leaving ? "scale(0.99)" : "scale(1)",
+      }}
     >
-      {/* ── LEFT PANEL ── */}
-      <div className="relative hidden lg:flex flex-col overflow-hidden" style={{ background: "#09090f" }}>
-        <img src={heroImg} alt="" className="absolute inset-0 h-full w-full object-cover object-center" style={{ opacity: 0.45 }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(9,9,15,0.92) 0%, rgba(9,9,15,0.65) 60%, rgba(9,9,15,0.40) 100%)" }} />
-        <div className="absolute bottom-1/4 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(212,160,55,0.18) 0%, transparent 70%)", filter: "blur(50px)" }} />
+      {/* ambient orbs */}
+      <div className="lp-orb1 absolute h-[600px] w-[600px] rounded-full blur-3xl pointer-events-none -top-40 -left-40" />
+      <div className="lp-orb2 absolute h-[500px] w-[500px] rounded-full blur-3xl pointer-events-none bottom-0 right-0" />
 
-        <div className="relative px-12 pt-10">
-          <Link to="/" className="inline-flex items-center gap-3" style={{ textDecoration: "none" }}>
-            <img src={emblem} alt="" className="h-10 w-10 rounded-xl shadow-lg" />
-            <span style={{ fontFamily: "'Sora','Inter',sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "0.06em", color: "#fff" }}>
-              JUDO·ARENA
-            </span>
-          </Link>
-        </div>
+      <div className="relative min-h-screen grid lg:grid-cols-[minmax(0,1fr)_480px] xl:grid-cols-[minmax(0,1fr)_520px]">
+        {/* ══════════════════ LEFT – SHOWCASE ══════════════════ */}
+        <div className="relative hidden lg:flex flex-col justify-between overflow-hidden px-14 py-10">
+          {/* grid lines */}
+          <div className="lp-grid absolute inset-0 pointer-events-none" />
+          {/* ambient glow */}
+          <div className="lp-glow absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none" />
 
-        <div className="relative flex-1 flex flex-col justify-center px-12 pb-20">
-          <div className="inline-flex items-center gap-2 mb-6" style={{ color: "#d4a037", fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-            <span style={{ height: 1, width: 32, background: "#d4a037", opacity: 0.6 }} />
-            {t("app.tagline")}
-          </div>
-          <h2 style={{ fontFamily: "'Sora','Inter',sans-serif", fontSize: 52, fontWeight: 800, lineHeight: 1.12, margin: "0 0 20px", color: "#fff" }}>
-            {t("app.name")}<br />
-            <span style={{ background: "linear-gradient(135deg,#f0c56d,#c48b1a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontStyle: "italic" }}>
-              {t("app.tagline")}
-            </span>
-          </h2>
-          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, lineHeight: 1.75, maxWidth: 380, marginBottom: 36 }}>
-            {t("home.hero_subtitle")}
-          </p>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-            {features.map(({ icon: Icon, textKey }) => (
-              <li key={textKey} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 32, width: 32, borderRadius: 8, background: "rgba(212,160,55,0.14)", border: "1px solid rgba(212,160,55,0.25)", flexShrink: 0 }}>
-                  <Icon className="h-3.5 w-3.5" style={{ color: "#d4a037" }} />
-                </span>
-                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.68)" }}>{t(textKey)}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div style={{ display: "flex", gap: 36, marginTop: 44 }}>
-            {[["500+", t("home.stats_athletes")], ["50+", t("home.stats_tournaments")], ["3", t("common.role")]].map(([val, label]) => (
-              <div key={label}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#d4a037", fontFamily: "'Sora','Inter',sans-serif" }}>{val}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative px-12 pb-8" style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
-          © 2026 Judo-Arena · {t("app.tagline")}
-        </div>
-      </div>
-
-      {/* ── RIGHT PANEL ── */}
-      <div className="flex items-center justify-center bg-background p-6 lg:p-10 lg:border-l lg:border-border/40 min-h-screen">
-        <div className="w-full max-w-sm">
-
-          <Link to="/" className="lg:hidden inline-flex items-center gap-2.5 mb-8">
-            <img src={emblem} alt="" className="h-9 w-9 rounded-lg" />
-            <span className="font-display text-xl font-bold">JUDO·ARENA</span>
-          </Link>
-
-          <div className="mb-7">
-            <h1 className="font-display text-2xl font-bold text-foreground">
-              {mode === "login" ? t("auth.login_title") : t("auth.register_title")}
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1.5">
-              {mode === "login" ? t("auth.login_subtitle") : t("auth.register_subtitle")}
-            </p>
+          {/* TOP: badge */}
+          <div className="relative z-10 pt-2">
+            <div
+              className="lp-badge inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest"
+              style={{ color: "#e8a93a" }}
+            >
+              <Zap className="h-3 w-3" />
+              Judo-Arena Platform
+            </div>
           </div>
 
-          <div className="flex gap-1 p-1.5 rounded-2xl bg-muted/60 border border-border/60 mb-7">
-            {([["login", Lock, "auth.login_title"], ["register", UserPlus, "auth.register_title"]] as const).map(([m, Icon, labelKey]) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => switchMode(m)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  mode === m
-                    ? "bg-gradient-gold text-gold-foreground shadow-gold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+          {/* MIDDLE: title + medal */}
+          <div className="relative z-10 flex items-center justify-between gap-8 flex-1 py-8">
+            {/* title block */}
+            <div className="flex-1 min-w-0">
+              <h1
+                className="lp-heading font-black uppercase leading-[0.84]"
+                style={{ fontSize: "clamp(3.6rem,5.8vw,5rem)", letterSpacing: "-0.025em" }}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {t(labelKey)}
-              </button>
-            ))}
+                {mode === "register" && role === "COACH" ? (
+                  <>
+                    Командаңды
+                    <span
+                      className="block"
+                      style={{ WebkitTextStroke: "2px #c8922a", color: "transparent" }}
+                    >
+                      Бапта
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Чемпион
+                    <span className="block" style={{ color: "#e8a93a" }}>
+                      Бол
+                    </span>
+                  </>
+                )}
+              </h1>
+              <p
+                className="mt-5 text-base font-semibold leading-relaxed max-w-[300px]"
+                style={{ color: "rgba(255,255,255,0.78)" }}
+              >
+                Қазақстандағы ең заманауи
+                <br />
+                жекпе-жек турнир платформасы
+              </p>
+
+              {/* stats chips */}
+              <div className="mt-8 flex gap-3">
+                {[
+                  ["1,240+", "Турнирлер"],
+                  ["8,500+", "Спортшылар"],
+                ].map(([n, l]) => (
+                  <div key={l} className="lp-chip rounded-2xl px-5 py-3.5">
+                    <div
+                      className="text-[11px] font-bold uppercase tracking-widest mb-1.5"
+                      style={{ color: "rgba(255,255,255,0.55)" }}
+                    >
+                      {l}
+                    </div>
+                    <div className="text-2xl font-black leading-none" style={{ color: "#e8a93a" }}>
+                      {n}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* medal column */}
+            <div
+              className="relative flex-shrink-0 flex flex-col items-center"
+              style={{ width: 220 }}
+            >
+              {/* orbit ring */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  className="rounded-full lp-orbit"
+                  style={{
+                    width: 210,
+                    height: 210,
+                    position: "relative",
+                    animation: "spinRing 20s linear infinite",
+                  }}
+                >
+                  <div
+                    className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full"
+                    style={{ background: "#c8922a", boxShadow: "0 0 12px #c8922a" }}
+                  />
+                </div>
+              </div>
+
+              {/* medal */}
+              <div
+                className="relative z-10 flex flex-col items-center"
+                style={{
+                  animation: "floatMedal 4.5s ease-in-out infinite",
+                  filter: "drop-shadow(0 20px 40px rgba(200,146,42,0.55))",
+                }}
+              >
+                <div className="relative h-14 w-20 mb-[-4px]">
+                  <div
+                    className="absolute bottom-0 left-[42%] w-8 h-12 rounded-t-full"
+                    style={{
+                      background: "linear-gradient(180deg,#2554b0,#173070)",
+                      transform: "rotate(10deg)",
+                      transformOrigin: "bottom center",
+                      boxShadow: "inset -2px 0 6px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                  <div
+                    className="absolute bottom-0 left-[36%] w-8 h-12 rounded-t-full"
+                    style={{
+                      background: "linear-gradient(180deg,#eef0ff,#c0caee)",
+                      transform: "rotate(-8deg)",
+                      transformOrigin: "bottom center",
+                    }}
+                  />
+                </div>
+                <div
+                  className="relative flex items-center justify-center"
+                  style={{
+                    width: 140,
+                    height: 140,
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle at 33% 28%, #fffbe0 0%, #e8a93a 50%, #7a4e10 100%)",
+                    border: "3px solid rgba(255,255,255,0.30)",
+                    boxShadow:
+                      "0 20px 50px rgba(200,146,42,0.60), inset 0 -8px 20px rgba(0,0,0,0.20), inset 0 4px 12px rgba(255,255,255,0.28)",
+                  }}
+                >
+                  <div
+                    className="absolute rounded-full"
+                    style={{ inset: 11, border: "1.5px solid rgba(255,255,255,0.28)" }}
+                  />
+                  <Trophy
+                    className="relative z-10 text-[#3a1e00]"
+                    style={{ width: 52, height: 52 }}
+                  />
+                  <div
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      top: 14,
+                      left: 16,
+                      background:
+                        "radial-gradient(circle,rgba(255,255,255,0.52) 0%,transparent 70%)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* cube */}
+              <div
+                className="absolute -right-4 top-[20%] pointer-events-none"
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 11,
+                  background: "linear-gradient(135deg,#f5c842,#a86510)",
+                  border: "1.5px solid rgba(255,255,255,0.20)",
+                  boxShadow: "0 12px 28px rgba(200,146,42,0.50)",
+                  transform: "rotate(-20deg)",
+                  animation: "floatCube 5s ease-in-out infinite",
+                }}
+              />
+              {/* diamond */}
+              <div
+                className="absolute -left-2 bottom-[22%] pointer-events-none"
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 4,
+                  background: "rgba(200,146,42,0.40)",
+                  border: "1px solid rgba(200,146,42,0.55)",
+                  transform: "rotate(45deg)",
+                  animation: "floatCube 6s ease-in-out infinite 0.8s",
+                  boxShadow: "0 6px 16px rgba(200,146,42,0.30)",
+                }}
+              />
+            </div>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {mode === "register" && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <InputIcon><User className="h-4 w-4" /></InputIcon>
-                    <input type="text" required placeholder={t("auth.first_name")} value={name}
-                      onChange={(e) => setName(e.target.value)} className={INPUT_CLS} />
-                  </div>
-                  <div className="relative">
-                    <InputIcon><User className="h-4 w-4" /></InputIcon>
-                    <input type="text" required placeholder={t("auth.last_name")} value={surname}
-                      onChange={(e) => setSurname(e.target.value)} className={INPUT_CLS} />
-                  </div>
-                </div>
+          {/* BOTTOM: tatami + belt */}
+          <div className="relative z-10 pb-2">
+            <div
+              className="relative mx-auto"
+              style={{ width: "100%", maxWidth: 440, height: 130, perspective: 700 }}
+            >
+              <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-6 rounded-full"
+                style={{ background: "rgba(0,0,0,0.25)", filter: "blur(14px)" }}
+              />
+              <div
+                className="absolute inset-x-0 top-0 rounded-[1.4rem]"
+                style={{
+                  height: 110,
+                  transform: "rotateX(52deg)",
+                  transformOrigin: "bottom center",
+                  background: "linear-gradient(135deg,#1a2d68,#0c1840)",
+                  border: "7px solid rgba(200,146,42,0.68)",
+                  boxShadow:
+                    "0 0 40px rgba(200,146,42,0.18), inset 0 0 0 1px rgba(255,255,255,0.05)",
+                }}
+              >
+                {[28, 50, 72].map((p) => (
+                  <div
+                    key={p}
+                    className="absolute top-2 bottom-2 w-px"
+                    style={{ left: `${p}%`, background: "rgba(200,146,42,0.18)" }}
+                  />
+                ))}
+                <div
+                  className="absolute inset-x-3 top-1/2 h-px -translate-y-1/2"
+                  style={{ background: "rgba(200,146,42,0.15)" }}
+                />
+              </div>
+            </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    ["ATHLETE", t("roles.athlete"), "🥋", t("athlete.register_cta")],
-                    ["COACH",   t("roles.coach"),   "📋", t("coach.club_title")],
-                  ] as const).map(([k, label, emoji, hint]) => (
-                    <button
-                      key={k} type="button"
-                      onClick={() => setRole(k)}
-                      className={`flex flex-col items-center gap-1.5 py-3.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                        role === k
-                          ? "border-gold bg-gold/10 text-gold"
-                          : "border-border bg-muted/40 text-muted-foreground hover:border-gold/40 hover:text-foreground"
+            <div className="mt-5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                {["#1a0a00", "#1a0a00", "#c8922a", "#c8922a", "#c8922a"].map((c, i) => (
+                  <div
+                    key={i}
+                    className="rounded-full"
+                    style={{
+                      width: 10,
+                      height: 10,
+                      background: c,
+                      boxShadow: c === "#c8922a" ? "0 0 8px rgba(200,146,42,0.75)" : "none",
+                    }}
+                  />
+                ))}
+                <span className="lp-dan ml-2 text-[10px] font-bold uppercase tracking-widest">
+                  Dan Rank
+                </span>
+              </div>
+              <div className="lp-brand-badge flex items-center gap-2.5 rounded-xl px-3 py-2">
+                <img
+                  src={emblem}
+                  alt=""
+                  className="h-7 w-7 rounded-lg object-cover"
+                  style={{ boxShadow: "0 0 10px rgba(200,146,42,0.45)" }}
+                />
+                <span className="lp-brand-text text-xs font-black uppercase tracking-[0.12em]">
+                  Judo-Arena
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ══════════════════ RIGHT – FORM PANEL ══════════════════ */}
+        <div className="lp-right relative flex min-h-screen items-center justify-center p-4 lg:p-8">
+          <div className="lp-right-glow absolute inset-0 pointer-events-none" />
+
+          <div
+            className="lp-card relative w-full max-w-[440px]"
+            style={{ borderRadius: 24, backdropFilter: "blur(32px)", padding: "2rem 1.75rem" }}
+          >
+            {/* mobile logo */}
+            <Link to="/" className="mb-6 inline-flex items-center gap-2.5 lg:hidden">
+              <img
+                src={emblem}
+                alt=""
+                className="h-10 w-10 rounded-xl object-cover"
+                style={{ boxShadow: "0 0 16px rgba(200,146,42,0.5)" }}
+              />
+              <span className="lp-mobile-brand font-black text-xl tracking-tight">
+                JUDO<span style={{ color: "#c8922a" }}>·</span>ARENA
+              </span>
+            </Link>
+
+            {/* header */}
+            <div className="mb-7 flex items-start justify-between gap-4">
+              <div>
+                <div
+                  className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl text-[#c8922a]"
+                  style={{
+                    background: "rgba(200,146,42,0.12)",
+                    border: "1px solid rgba(200,146,42,0.25)",
+                  }}
+                >
+                  {mode === "login" ? (
+                    <Lock className="h-5 w-5" />
+                  ) : (
+                    <UserPlus className="h-5 w-5" />
+                  )}
+                </div>
+                <h2
+                  className="lp-title font-black text-3xl leading-tight"
+                  style={{ letterSpacing: "-0.02em" }}
+                >
+                  {mode === "login" ? t("auth.login_title") : t("auth.register_title")}
+                </h2>
+                <p className="lp-subtitle mt-1.5 text-sm">
+                  {mode === "login" ? t("auth.login_subtitle") : t("auth.register_subtitle")}
+                </p>
+              </div>
+              <Link
+                to="/"
+                className="lp-home-btn hidden h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:text-[#c8922a] sm:inline-flex"
+                aria-label="Judo-Arena"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            {/* mode tabs */}
+            <div className="lp-tabs mb-6 flex gap-1 rounded-2xl p-1">
+              {(
+                [
+                  ["login", Lock, "auth.login_title"],
+                  ["register", UserPlus, "auth.register_title"],
+                ] as const
+              ).map(([m, Icon, labelKey]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all duration-200"
+                  style={
+                    mode === m
+                      ? {
+                          background: "linear-gradient(135deg,#e8a93a,#c8922a)",
+                          color: "#1a0e00",
+                          boxShadow: "0 6px 20px rgba(200,146,42,0.40)",
+                        }
+                      : undefined
+                  }
+                  data-inactive={mode !== m ? "true" : undefined}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {t(labelKey)}
+                </button>
+              ))}
+            </div>
+
+            <form className="space-y-3.5" onSubmit={handleSubmit}>
+              {mode === "register" && (
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="relative">
+                      <InputIcon>
+                        <User className="h-4 w-4" />
+                      </InputIcon>
+                      <input
+                        type="text"
+                        required
+                        placeholder={t("auth.first_name")}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className={INPUT_CLS}
+                      />
+                    </div>
+                    <div className="relative">
+                      <InputIcon>
+                        <User className="h-4 w-4" />
+                      </InputIcon>
+                      <input
+                        type="text"
+                        required
+                        placeholder={t("auth.last_name")}
+                        value={surname}
+                        onChange={(e) => setSurname(e.target.value)}
+                        className={INPUT_CLS}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {roleOptions.map(({ key, label, icon: Icon, hint }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRole(key)}
+                        className="lp-role flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-center text-sm font-bold transition-all"
+                        data-active={role === key ? "true" : undefined}
+                      >
+                        <span className="lp-role-icon flex h-9 w-9 items-center justify-center rounded-xl">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span>{label}</span>
+                        <span className="text-[10px] leading-4 opacity-55">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="relative">
+                <InputIcon>
+                  <Mail className="h-4 w-4" />
+                </InputIcon>
+                <input
+                  type="email"
+                  required
+                  placeholder={t("common.email")}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className={INPUT_CLS}
+                />
+              </div>
+
+              <div>
+                <div className="relative">
+                  <InputIcon>
+                    <KeyRound className="h-4 w-4" />
+                  </InputIcon>
+                  <input
+                    type={showPwd ? "text" : "password"}
+                    required
+                    placeholder={t("common.password")}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={mode === "register" ? 8 : 1}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className={`${INPUT_CLS} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 lp-eye-btn transition-colors"
+                  >
+                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {mode === "login" ? (
+                  <div className="mt-2 text-right">
+                    <Link
+                      to="/forgot-password"
+                      className="lp-forgot text-xs transition-colors hover:text-[#c8922a]"
+                    >
+                      {t("auth.forgot_password")}
+                    </Link>
+                  </div>
+                ) : (
+                  <PasswordStrength password={password} />
+                )}
+              </div>
+
+              {/* confirm password — only on register */}
+              {mode === "register" && (
+                <div className="relative">
+                  <InputIcon>
+                    <KeyRound className="h-4 w-4" />
+                  </InputIcon>
+                  <input
+                    type={showConfirm ? "text" : "password"}
+                    required
+                    placeholder={t("auth.confirm_password") || "Құпиясөзді растаңыз"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                    className={`${INPUT_CLS} pr-11 ${
+                      confirmPassword.length > 0
+                        ? password === confirmPassword
+                          ? "border-green-500/50 focus:border-green-500/70"
+                          : "border-red-500/50 focus:border-red-500/70"
+                        : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 lp-eye-btn transition-colors"
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  {/* match indicator */}
+                  {confirmPassword.length > 0 && (
+                    <div
+                      className={`mt-1.5 flex items-center gap-1.5 text-[11px] font-medium ${
+                        password === confirmPassword ? "text-green-500" : "text-red-400"
                       }`}
                     >
-                      <span className="text-2xl leading-none">{emoji}</span>
-                      <span className="font-semibold">{label}</span>
-                      <span className="text-[11px] opacity-60">{hint}</span>
+                      {password === confirmPassword ? (
+                        <>
+                          <span className="text-base leading-none">✓</span> Құпиясөздер сәйкес
+                          келеді
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-base leading-none">✗</span> Сәйкес келмейді
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {error && (
+                <div
+                  className="flex items-start gap-2.5 text-sm rounded-xl p-3"
+                  style={{
+                    color: "#e05555",
+                    background: "rgba(220,50,50,0.08)",
+                    border: "1px solid rgba(220,50,50,0.20)",
+                  }}
+                >
+                  <span className="mt-0.5 shrink-0">⚠</span>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-black text-sm transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg,#f0c040 0%,#c8922a 50%,#a87020 100%)",
+                  color: "#1a0e00",
+                  boxShadow: "0 8px 32px rgba(200,146,42,0.45), 0 2px 6px rgba(0,0,0,0.15)",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loading
+                  ? mode === "login"
+                    ? t("auth.signing_in")
+                    : t("auth.registering")
+                  : mode === "login"
+                    ? t("nav.login")
+                    : t("nav.register")}
+              </button>
+            </form>
+
+            {isDev && (
+              <div className="lp-demo-section mt-5 pt-4">
+                <p className="lp-demo-label mb-3 text-center text-[11px] uppercase tracking-widest">
+                  Demo
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ["admin", Shield, t("roles.admin")],
+                      ["coach", ClipboardList, t("roles.coach")],
+                      ["athlete", UsersRound, t("roles.athlete")],
+                    ] as const
+                  ).map(([k, Icon, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => fillDemo(k)}
+                      className="lp-demo-btn group flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-xl transition-all"
+                    >
+                      <Icon className="h-5 w-5 lp-demo-icon transition-colors group-hover:text-[#c8922a]" />
+                      <span className="lp-demo-text text-[11px] transition-colors">{label}</span>
                     </button>
                   ))}
                 </div>
-              </>
-            )}
-
-            <div className="relative">
-              <InputIcon><Mail className="h-4 w-4" /></InputIcon>
-              <input type="email" required placeholder={t("common.email")} value={email}
-                onChange={(e) => setEmail(e.target.value)} autoComplete="email"
-                className={INPUT_CLS} />
-            </div>
-
-            <div>
-              <div className="relative">
-                <InputIcon><KeyRound className="h-4 w-4" /></InputIcon>
-                <input
-                  type={showPwd ? "text" : "password"}
-                  required
-                  placeholder={t("common.password")}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={mode === "register" ? 8 : 1}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  className={`${INPUT_CLS} pr-11`}
-                />
-                <button type="button" onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors">
-                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {mode === "login" ? (
-                <div className="mt-2 text-right">
-                  <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-gold transition-colors">
-                    {t("auth.forgot_password")}
-                  </Link>
-                </div>
-              ) : (
-                <PasswordStrength password={password} />
-              )}
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2.5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3">
-                <span className="mt-0.5 shrink-0">⚠</span>
-                {error}
+                <p className="lp-demo-pwd mt-2.5 text-center text-[10px]">
+                  {t("common.password")}:{" "}
+                  <span className="font-mono" style={{ color: "#c8922a" }}>
+                    password123
+                  </span>
+                </p>
               </div>
             )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-gold text-gold-foreground font-semibold py-3.5 rounded-xl shadow-gold hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2 mt-1"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading
-                ? (mode === "login" ? t("auth.signing_in") : t("auth.registering"))
-                : (mode === "login" ? t("nav.login") : t("nav.register"))
-              }
-            </button>
-          </form>
-
-          {isDev && (
-            <div className="mt-7 pt-6 border-t border-border/60">
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground/60 text-center mb-3">
-                Demo
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  ["admin",   "🛡️", t("roles.admin")],
-                  ["coach",   "📋", t("roles.coach")],
-                  ["athlete", "🥋", t("roles.athlete")],
-                ] as const).map(([k, emoji, label]) => (
-                  <button
-                    key={k}
-                    onClick={() => fillDemo(k)}
-                    className="flex flex-col items-center gap-1 py-3 rounded-xl bg-muted/50 border border-border/60 hover:border-gold/40 hover:bg-gold/8 transition-all group"
-                  >
-                    <span className="text-xl">{emoji}</span>
-                    <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">{label}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2.5 text-center text-[10px] text-muted-foreground/50">
-                {t("common.password")}:{" "}
-                <span className="font-mono text-gold/80">password123</span>
-              </p>
-            </div>
-          )}
-
+          </div>
         </div>
+
+        <style>{`
+        /* ── LIGHT (default) ── */
+        :root {
+          --lp-page-bg:   linear-gradient(135deg,#fdf8f0 0%,#f5edd8 45%,#faf6ef 100%);
+          --lp-orb1:      rgba(200,146,42,0.18);
+          --lp-orb2:      rgba(200,146,42,0.10);
+          --lp-grid:      rgba(200,146,42,0.09) 1px, transparent 1px;
+          --lp-glow:      radial-gradient(circle,rgba(200,146,42,0.12) 0%,transparent 65%);
+          --lp-badge-bg:  rgba(200,146,42,0.12);
+          --lp-badge-bdr: rgba(200,146,42,0.30);
+          --lp-heading:   #1a1005;
+          --lp-sub:       rgba(26,16,5,0.52);
+          --lp-chip-bg:   rgba(0,0,0,0.05);
+          --lp-chip-bdr:  rgba(0,0,0,0.09);
+          --lp-chip-lbl:  rgba(26,16,5,0.40);
+          --lp-orbit-bdr: rgba(200,146,42,0.28);
+          --lp-dan:       rgba(26,16,5,0.35);
+          --lp-brand-bg:  rgba(0,0,0,0.05);
+          --lp-brand-bdr: rgba(0,0,0,0.09);
+          --lp-brand-fg:  #1a1005;
+          --lp-right-bdr: rgba(0,0,0,0.07);
+          --lp-right-glow:radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.09) 0%,transparent 60%);
+          --lp-card-bg:   rgba(255,255,255,0.82);
+          --lp-card-bdr:  rgba(0,0,0,0.08);
+          --lp-card-shad: 0 40px 100px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.9) inset;
+          --lp-mobile-fg: #1a1005;
+          --lp-title:     #1a1005;
+          --lp-subtitle:  rgba(26,16,5,0.50);
+          --lp-home-btn:  rgba(0,0,0,0.09);
+          --lp-home-fg:   rgba(26,16,5,0.40);
+          --lp-tabs-bg:   rgba(0,0,0,0.05);
+          --lp-tabs-bdr:  rgba(0,0,0,0.07);
+          --lp-tab-inactive: rgba(26,16,5,0.45);
+          --lp-role-bg:   rgba(0,0,0,0.03);
+          --lp-role-bdr:  rgba(0,0,0,0.10);
+          --lp-role-fg:   rgba(26,16,5,0.45);
+          --lp-role-icon: rgba(0,0,0,0.07);
+          --lp-eye:       rgba(26,16,5,0.35);
+          --lp-forgot:    rgba(26,16,5,0.40);
+          --lp-sep:       rgba(0,0,0,0.07);
+          --lp-demo-lbl:  rgba(26,16,5,0.35);
+          --lp-demo-bg:   rgba(0,0,0,0.03);
+          --lp-demo-bdr:  rgba(0,0,0,0.08);
+          --lp-demo-icon: rgba(26,16,5,0.35);
+          --lp-demo-text: rgba(26,16,5,0.40);
+          --lp-demo-pwd:  rgba(26,16,5,0.30);
+        }
+
+        /* ── DARK ── */
+        html.dark {
+          --lp-page-bg:   linear-gradient(135deg,#050814 0%,#0a1128 40%,#060d1e 100%);
+          --lp-orb1:      rgba(200,146,42,0.12);
+          --lp-orb2:      rgba(26,58,122,0.30);
+          --lp-grid:      rgba(200,146,42,0.05) 1px, transparent 1px;
+          --lp-glow:      radial-gradient(circle,rgba(200,146,42,0.10) 0%,transparent 65%);
+          --lp-badge-bg:  rgba(200,146,42,0.12);
+          --lp-badge-bdr: rgba(200,146,42,0.28);
+          --lp-heading:   #ffffff;
+          --lp-sub:       rgba(255,255,255,0.45);
+          --lp-chip-bg:   rgba(255,255,255,0.06);
+          --lp-chip-bdr:  rgba(255,255,255,0.10);
+          --lp-chip-lbl:  rgba(255,255,255,0.35);
+          --lp-orbit-bdr: rgba(200,146,42,0.22);
+          --lp-dan:       rgba(255,255,255,0.30);
+          --lp-brand-bg:  rgba(255,255,255,0.05);
+          --lp-brand-bdr: rgba(255,255,255,0.08);
+          --lp-brand-fg:  #ffffff;
+          --lp-right-bdr: rgba(255,255,255,0.06);
+          --lp-right-glow:radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.07) 0%,transparent 60%);
+          --lp-card-bg:   rgba(255,255,255,0.04);
+          --lp-card-bdr:  rgba(255,255,255,0.09);
+          --lp-card-shad: 0 40px 100px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.05) inset;
+          --lp-mobile-fg: #ffffff;
+          --lp-title:     #ffffff;
+          --lp-subtitle:  rgba(255,255,255,0.45);
+          --lp-home-btn:  rgba(255,255,255,0.10);
+          --lp-home-fg:   rgba(255,255,255,0.40);
+          --lp-tabs-bg:   rgba(255,255,255,0.04);
+          --lp-tabs-bdr:  rgba(255,255,255,0.07);
+          --lp-tab-inactive: rgba(255,255,255,0.45);
+          --lp-role-bg:   rgba(255,255,255,0.03);
+          --lp-role-bdr:  rgba(255,255,255,0.08);
+          --lp-role-fg:   rgba(255,255,255,0.45);
+          --lp-role-icon: rgba(255,255,255,0.07);
+          --lp-eye:       rgba(255,255,255,0.35);
+          --lp-forgot:    rgba(255,255,255,0.40);
+          --lp-sep:       rgba(255,255,255,0.07);
+          --lp-demo-lbl:  rgba(255,255,255,0.30);
+          --lp-demo-bg:   rgba(255,255,255,0.03);
+          --lp-demo-bdr:  rgba(255,255,255,0.07);
+          --lp-demo-icon: rgba(255,255,255,0.35);
+          --lp-demo-text: rgba(255,255,255,0.35);
+          --lp-demo-pwd:  rgba(255,255,255,0.25);
+        }
+
+        .lp-root           { background: var(--lp-page-bg); }
+        .lp-orb1           { background: var(--lp-orb1); }
+        .lp-orb2           { background: var(--lp-orb2); }
+        .lp-grid           { background-image: linear-gradient(var(--lp-grid)),linear-gradient(90deg,var(--lp-grid)); background-size: 56px 56px; }
+        .lp-glow           { background: var(--lp-glow); }
+        .lp-badge          { background: var(--lp-badge-bg); border: 1px solid var(--lp-badge-bdr); }
+        .lp-heading        { color: var(--lp-heading); }
+        .lp-sub            { color: var(--lp-sub); }
+        .lp-chip           { background: var(--lp-chip-bg); border: 1px solid var(--lp-chip-bdr); backdrop-filter: blur(12px); }
+        .lp-chip-label     { color: var(--lp-chip-lbl); }
+        .lp-orbit          { border: 1px solid var(--lp-orbit-bdr); }
+        .lp-dan            { color: var(--lp-dan); }
+        .lp-brand-badge    { background: var(--lp-brand-bg); border: 1px solid var(--lp-brand-bdr); }
+        .lp-brand-text     { color: var(--lp-brand-fg); }
+        .lp-right          { border-left: 1px solid var(--lp-right-bdr); }
+        .lp-right-glow     { background: var(--lp-right-glow); }
+        .lp-card           { background: var(--lp-card-bg); border: 1px solid var(--lp-card-bdr); box-shadow: var(--lp-card-shad); }
+        .lp-mobile-brand   { color: var(--lp-mobile-fg); }
+        .lp-title          { color: var(--lp-title); }
+        .lp-subtitle       { color: var(--lp-subtitle); }
+        .lp-home-btn       { border: 1px solid var(--lp-home-btn); color: var(--lp-home-fg); }
+        .lp-tabs           { background: var(--lp-tabs-bg); border: 1px solid var(--lp-tabs-bdr); }
+        .lp-tabs button[data-inactive] { color: var(--lp-tab-inactive); }
+        .lp-role           { background: var(--lp-role-bg); border: 1.5px solid var(--lp-role-bdr); color: var(--lp-role-fg); }
+        .lp-role[data-active] { border-color: #c8922a; background: rgba(200,146,42,0.12); color: #e8a93a; }
+        .lp-role-icon      { background: var(--lp-role-icon); }
+        .lp-eye-btn        { color: var(--lp-eye); }
+        .lp-eye-btn:hover  { color: var(--lp-heading); }
+        .lp-forgot         { color: var(--lp-forgot); }
+        .lp-demo-section   { border-top: 1px solid var(--lp-sep); }
+        .lp-demo-label     { color: var(--lp-demo-lbl); }
+        .lp-demo-btn       { background: var(--lp-demo-bg); border: 1px solid var(--lp-demo-bdr); }
+        .lp-demo-btn:hover { border-color: rgba(200,146,42,0.40); background: rgba(200,146,42,0.08); }
+        .lp-demo-icon      { color: var(--lp-demo-icon); }
+        .lp-demo-text      { color: var(--lp-demo-text); }
+        .lp-demo-pwd       { color: var(--lp-demo-pwd); }
+
+        @keyframes floatMedal {
+          0%,100% { transform: translateY(0px) rotate(0deg); }
+          50%      { transform: translateY(-18px) rotate(3deg); }
+        }
+        @keyframes floatCube {
+          0%,100% { transform: rotate(-20deg) translateY(0px); }
+          50%      { transform: rotate(-14deg) translateY(-12px); }
+        }
+        @keyframes spinRing {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}</style>
       </div>
     </div>
   );

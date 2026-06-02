@@ -12,7 +12,11 @@ import { UserRole } from "@prisma/client";
 import type { CreateJudgeSessionInput } from "../validators/match.schema.js";
 
 export class JudgeSessionError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "JudgeSessionError";
   }
@@ -25,14 +29,21 @@ export async function createJudgeSession(
 ) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new JudgeSessionError("FORBIDDEN", "Создавать судейские сессии может только админ", 403);
+    throw new JudgeSessionError(
+      "FORBIDDEN",
+      "Создавать судейские сессии может только админ",
+      403,
+    );
   }
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
-  if (!match) throw new JudgeSessionError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (!match)
+    throw new JudgeSessionError("MATCH_NOT_FOUND", "Матч не найден", 404);
 
   const token = nanoid(32);
-  const expiresAt = new Date(Date.now() + (input.ttlHours ?? 12) * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + (input.ttlHours ?? 12) * 60 * 60 * 1000,
+  );
 
   return prisma.judgeSession.create({
     data: {
@@ -51,27 +62,62 @@ export async function getValidSession(token: string) {
     include: {
       match: {
         include: {
-          redAthlete: { select: { id: true, name: true, surname: true, clubId: true } },
-          blueAthlete: { select: { id: true, name: true, surname: true, clubId: true } },
+          redAthlete: {
+            select: { id: true, name: true, surname: true, clubId: true },
+          },
+          blueAthlete: {
+            select: { id: true, name: true, surname: true, clubId: true },
+          },
           bracket: { include: { category: true } },
-          tournament: { select: { id: true, name: true } },
+          tournament: {
+            select: { id: true, name: true, status: true, endDate: true },
+          },
         },
       },
     },
   });
 
-  if (!session) throw new JudgeSessionError("INVALID_TOKEN", "Невалидный токен", 401);
-  if (session.isRevoked) throw new JudgeSessionError("REVOKED", "Сессия отозвана", 403);
+  if (!session)
+    throw new JudgeSessionError("INVALID_TOKEN", "Невалидный токен", 401);
+  if (session.isRevoked)
+    throw new JudgeSessionError("REVOKED", "Сессия отозвана", 403);
   if (session.expiresAt < new Date()) {
     throw new JudgeSessionError("EXPIRED", "Срок действия токена истёк", 403);
   }
+
+  // Auto-invalidate: турнир завершён более 2 часов назад
+  const tournament = session.match?.tournament;
+  if (tournament?.status === "COMPLETED" && tournament.endDate) {
+    const gracePeriodMs = 2 * 60 * 60 * 1000;
+    if (Date.now() > tournament.endDate.getTime() + gracePeriodMs) {
+      prisma.judgeSession
+        .update({ where: { id: session.id }, data: { isRevoked: true } })
+        .catch(() => {});
+      throw new JudgeSessionError(
+        "TOURNAMENT_ENDED",
+        "Турнир завершён — сессия судьи деактивирована",
+        403,
+      );
+    }
+  }
+
   return session;
 }
 
-export async function revokeSession(actorUserId: string, sessionId: string): Promise<void> {
+export async function revokeSession(
+  actorUserId: string,
+  sessionId: string,
+): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new JudgeSessionError("FORBIDDEN", "Только админ может отзывать сессии", 403);
+    throw new JudgeSessionError(
+      "FORBIDDEN",
+      "Только админ может отзывать сессии",
+      403,
+    );
   }
-  await prisma.judgeSession.update({ where: { id: sessionId }, data: { isRevoked: true } });
+  await prisma.judgeSession.update({
+    where: { id: sessionId },
+    data: { isRevoked: true },
+  });
 }

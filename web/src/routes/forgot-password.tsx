@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Loader2, Mail, ArrowLeft, KeyRound } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -11,14 +11,14 @@ export const Route = createFileRoute("/forgot-password")({
 });
 
 const INPUT_CLS =
-  "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-11 text-sm placeholder:text-white/30 focus:border-gold/60 focus:outline-none transition-all";
+  "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pl-11 text-sm text-white placeholder:text-white/35 transition-all focus:border-gold/60 focus:bg-white/8 focus:outline-none focus:ring-2 focus:ring-gold/20 backdrop-blur-sm";
 
 function ForgotPassword() {
   const { t } = useTranslation();
-  const [email, setEmail]     = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent]       = useState(false);
-  const [error, setError]     = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,72 +35,186 @@ function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-deep p-6">
-      <div className="w-full max-w-sm">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 sm:p-6"
+      style={{ background: "linear-gradient(135deg,#050814 0%,#0a1128 40%,#060d1e 100%)" }}
+    >
+      {/* bg orbs */}
+      <div className="pointer-events-none fixed inset-0">
+        <div
+          className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full"
+          style={{
+            background: "radial-gradient(circle,rgba(200,146,42,0.10) 0%,transparent 65%)",
+            filter: "blur(48px)",
+          }}
+        />
+        <div
+          className="absolute -bottom-24 -right-24 w-[400px] h-[400px] rounded-full"
+          style={{
+            background: "radial-gradient(circle,rgba(26,58,122,0.22) 0%,transparent 65%)",
+            filter: "blur(40px)",
+          }}
+        />
+      </div>
 
-        <Link to="/" className="inline-flex items-center gap-2.5 mb-10">
-          <img src={emblem} alt="" className="h-9 w-9 rounded-lg" />
-          <span className="font-display text-xl font-bold">JUDO·ARENA</span>
+      <div className="relative w-full max-w-[420px]">
+        {/* logo */}
+        <Link to="/" className="mb-8 flex items-center gap-3 group">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/30 transition-transform group-hover:scale-105">
+            <img src={emblem} alt="JCL" className="h-full w-full object-cover" />
+          </span>
+          <span className="font-display text-lg font-black text-white tracking-tight">
+            JUDO<span style={{ color: "#c8922a" }}>·</span>ARENA
+          </span>
         </Link>
 
-        {sent ? (
-          <div className="rounded-2xl bg-white/4 border border-white/8 p-8 text-center">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/12 border border-emerald-500/20">
-              <Mail className="h-7 w-7 text-emerald-400" />
-            </div>
-            <h2 className="font-display text-2xl font-bold mb-2">{t("auth.reset_link_sent").split(".")[0]}</h2>
-            <p className="text-white/50 text-sm leading-relaxed mb-6">
-              <span className="text-white/80 font-medium">{email}</span>
-              {" "}{t("auth.reset_link_sent")}
-            </p>
-            <Link to="/login" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-gold transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> {t("common.back")}
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/10 border border-gold/20">
-              <KeyRound className="h-6 w-6 text-gold" />
-            </div>
+        {/* card */}
+        <div
+          className="rounded-3xl p-6 sm:p-8"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            backdropFilter: "blur(32px)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset",
+          }}
+        >
+          {sent ? (
+            /* ── SUCCESS STATE ── */
+            <div className="text-center py-4">
+              <div
+                className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full"
+                style={{
+                  background: "rgba(34,197,94,0.12)",
+                  border: "1px solid rgba(34,197,94,0.25)",
+                }}
+              >
+                <CheckCircle2 className="h-9 w-9 text-emerald-400" />
+              </div>
+              <h2
+                className="font-black text-2xl text-white mb-3"
+                style={{ letterSpacing: "-0.02em" }}
+              >
+                Хат жіберілді!
+              </h2>
+              <p
+                className="text-sm leading-relaxed mb-2"
+                style={{ color: "rgba(255,255,255,0.50)" }}
+              >
+                Нұсқаулар мына мекенжайға жіберілді:
+              </p>
+              <p className="font-semibold text-base mb-6" style={{ color: "#e8a93a" }}>
+                {email}
+              </p>
+              <p
+                className="text-xs leading-relaxed mb-8"
+                style={{ color: "rgba(255,255,255,0.38)" }}
+              >
+                Хатты таппасаңыз — <span className="text-white/60">спам</span> қалтасын тексеріңіз.
+                Сілтеме <span className="text-white/60">1 сағат</span> бойы жарамды.
+              </p>
 
-            <h1 className="font-display text-2xl font-bold mb-1.5">{t("auth.forgot_password")}</h1>
-            <p className="text-white/45 text-sm mb-8">{t("auth.reset_password_subtitle")}</p>
+              {/* resend */}
+              <button
+                onClick={() => setSent(false)}
+                className="mb-4 text-xs transition-colors hover:text-[#c8922a]"
+                style={{ color: "rgba(255,255,255,0.40)" }}
+              >
+                Қайта жіберу
+              </button>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <input
-                  type="email" required placeholder={t("common.email")}
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  className={INPUT_CLS}
-                />
+              <div className="h-px mb-6" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:text-[#c8922a]"
+                style={{ color: "rgba(255,255,255,0.50)" }}
+              >
+                <ArrowLeft className="h-4 w-4" /> Кіру бетіне оралу
+              </Link>
+            </div>
+          ) : (
+            /* ── FORM STATE ── */
+            <>
+              {/* header */}
+              <div className="mb-7">
+                <div
+                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
+                  style={{
+                    background: "rgba(200,146,42,0.12)",
+                    border: "1px solid rgba(200,146,42,0.25)",
+                  }}
+                >
+                  <KeyRound className="h-5 w-5 text-[#c8922a]" />
+                </div>
+                <h1
+                  className="font-black text-2xl text-white mb-2"
+                  style={{ letterSpacing: "-0.02em" }}
+                >
+                  {t("auth.forgot_password")}
+                </h1>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  Email енгізіңіз — парольді қалпына келтіру сілтемесін жіберміз
+                </p>
               </div>
 
-              {error && (
-                <div className="flex items-start gap-2.5 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                  <span className="mt-0.5 shrink-0">⚠</span>
-                  {error}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    placeholder={t("common.email")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className={INPUT_CLS}
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-gold text-[#1a1204] font-semibold py-3 rounded-xl shadow-lg shadow-gold/25 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {t("auth.send_reset_link")}
-              </button>
-            </form>
+                {error && (
+                  <div
+                    className="flex items-start gap-2.5 rounded-xl p-3 text-sm"
+                    style={{
+                      color: "#f87171",
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.20)",
+                    }}
+                  >
+                    <span className="mt-0.5 shrink-0">⚠</span>
+                    {error}
+                  </div>
+                )}
 
-            <Link to="/login" className="mt-6 inline-flex items-center gap-2 text-sm text-white/40 hover:text-white/80 transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> {t("common.back")}
-            </Link>
-          </>
-        )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                  style={{
+                    background: "linear-gradient(135deg,#f0c040,#c8922a)",
+                    color: "#1a0e00",
+                    boxShadow: "0 8px 28px rgba(200,146,42,0.40)",
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {loading ? "Жіберілуде..." : t("auth.send_reset_link")}
+                </button>
+              </form>
+
+              <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 text-sm transition-colors hover:text-[#c8922a]"
+                  style={{ color: "rgba(255,255,255,0.40)" }}
+                >
+                  <ArrowLeft className="h-4 w-4" /> {t("common.back")}
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

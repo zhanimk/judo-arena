@@ -8,7 +8,7 @@ import {
   Phone,
   Search,
   ShieldCheck,
-  UserRound,
+  //   UserRound,
   XCircle,
   AlertTriangle,
   X,
@@ -302,7 +302,9 @@ function CoachOnboarding() {
               {agreed ? (
                 <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                  <span className="text-sm font-medium">{t("coach_onboarding.rules_accepted")}</span>
+                  <span className="text-sm font-medium">
+                    {t("coach_onboarding.rules_accepted")}
+                  </span>
                 </div>
               ) : (
                 <button
@@ -375,9 +377,7 @@ function RulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => 
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-amber-400" />
-            <h2 className="font-display text-lg font-bold">
-              {t("coach_onboarding.modal_title")}
-            </h2>
+            <h2 className="font-display text-lg font-bold">{t("coach_onboarding.modal_title")}</h2>
           </div>
           <button
             onClick={onClose}
@@ -513,9 +513,7 @@ function ClubStep({
           <div className="flex items-center gap-3">
             <Clock className="h-5 w-5 text-gold shrink-0" />
             <div>
-              <div className="text-sm font-semibold">
-                {localizeName(activeRequest.club?.name)}
-              </div>
+              <div className="text-sm font-semibold">{localizeName(activeRequest.club?.name)}</div>
               <div className="text-xs text-muted-foreground">
                 {activeRequest.club?.city ?? ""} · {t("coach_onboarding.request_pending")}
               </div>

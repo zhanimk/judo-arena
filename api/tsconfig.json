@@ -16,7 +16,7 @@
     "allowSyntheticDefaultImports": true,
     "declaration": false,
     "sourceMap": true,
-    "noEmitOnError": false,
+    "noEmitOnError": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export function useScrollReveal(rootMargin = "0px 0px -60px 0px") {
+export function useScrollReveal(rootMargin = "0px 0px -40px 0px") {
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -19,10 +19,19 @@ export function useScrollReveal(rootMargin = "0px 0px -60px 0px") {
           }
         }
       },
-      { rootMargin, threshold: 0.08 },
+      { rootMargin, threshold: 0.05 },
     );
 
-    for (const t of targets) observer.observe(t);
+    for (const t of targets) {
+      // Already in viewport on mount → make visible immediately, no animation needed
+      const rect = t.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        t.classList.add("visible");
+      } else {
+        observer.observe(t);
+      }
+    }
+
     return () => observer.disconnect();
   }, [rootMargin]);
 

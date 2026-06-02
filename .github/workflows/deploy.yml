@@ -22,6 +22,10 @@ jobs:
       - name: Trigger Render deploy
         if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
         run: |
+          # Передаём SHA коммита как версию для /health endpoint
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{"env": {"APP_VERSION": "${{ github.event.workflow_run.head_sha }}"}}' || \
           curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || exit 1
 
   deploy-frontend:

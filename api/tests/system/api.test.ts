@@ -159,7 +159,11 @@ describe("POST /api/auth/register", () => {
 
 describe("POST /api/auth/login", () => {
   it("returns 400 for missing body", async () => {
-    const res = await app.inject({ method: "POST", url: "/api/auth/login", payload: {} });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: {},
+    });
     expect(res.statusCode).toBe(400);
   });
 
@@ -211,9 +215,12 @@ vi.mock("../../src/lib/prisma.js", () => ({
 describe("Judge token security — getValidSession()", () => {
   it("throws INVALID_TOKEN (401) for unknown token", async () => {
     const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
-    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(null);
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(
+      null,
+    );
 
-    const { getValidSession, JudgeSessionError } = await import("../../src/services/judge-session.service.js");
+    const { getValidSession, JudgeSessionError } =
+      await import("../../src/services/judge-session.service.js");
     await expect(getValidSession("no-such-token")).rejects.toMatchObject({
       code: "INVALID_TOKEN",
       httpStatus: 401,
@@ -230,7 +237,8 @@ describe("Judge token security — getValidSession()", () => {
       expiresAt: new Date(Date.now() + 3600_000),
     });
 
-    const { getValidSession, JudgeSessionError } = await import("../../src/services/judge-session.service.js");
+    const { getValidSession, JudgeSessionError } =
+      await import("../../src/services/judge-session.service.js");
     await expect(getValidSession("tok-revoked")).rejects.toMatchObject({
       code: "REVOKED",
       httpStatus: 403,
@@ -247,7 +255,8 @@ describe("Judge token security — getValidSession()", () => {
       expiresAt: new Date(Date.now() - 1000), // expired 1 second ago
     });
 
-    const { getValidSession } = await import("../../src/services/judge-session.service.js");
+    const { getValidSession } =
+      await import("../../src/services/judge-session.service.js");
     await expect(getValidSession("tok-expired")).rejects.toMatchObject({
       code: "EXPIRED",
       httpStatus: 403,
@@ -261,11 +270,23 @@ describe("Judge token security — getValidSession()", () => {
       matchId: "m-1",
       isRevoked: false,
       expiresAt: new Date(Date.now() + 3600_000),
+      // include match.tournament for auto-invalidate check
+      match: {
+        tournament: {
+          id: "t-1",
+          name: "Test Tournament",
+          status: "IN_PROGRESS",
+          endDate: new Date(Date.now() + 86400_000),
+        },
+      },
     };
     const { prisma: mockPrisma } = await import("../../src/lib/prisma.js");
-    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(session);
+    vi.mocked((mockPrisma as any).judgeSession.findUnique).mockResolvedValue(
+      session,
+    );
 
-    const { getValidSession } = await import("../../src/services/judge-session.service.js");
+    const { getValidSession } =
+      await import("../../src/services/judge-session.service.js");
     const result = await getValidSession("tok-valid");
     expect(result.id).toBe("sess-3");
     expect(result.matchId).toBe("m-1");

@@ -1,13 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter,
-  HeadContent, Scripts, useRouterState,
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
+import { bootstrap } from "@/lib/auth-store";
 import { initSentry, Sentry } from "@/lib/sentry";
 import { usePWA } from "@/hooks/usePWA";
 import { useTranslation } from "react-i18next";
@@ -19,7 +25,9 @@ initSentry();
 /** Render children only after client-side hydration to avoid SSR/portal conflicts. */
 function ClientOnly({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return mounted ? <>{children}</> : null;
 }
 
@@ -31,7 +39,10 @@ function NotFoundComponent() {
         <h1 className="font-display text-8xl font-bold text-gradient-gold">404</h1>
         <h2 className="mt-4 text-xl font-semibold">{t("error.not_found")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t("error.not_found_desc")}</p>
-        <Link to="/" className="mt-6 inline-flex bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium shadow-gold">
+        <Link
+          to="/"
+          className="mt-6 inline-flex bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium shadow-gold"
+        >
           {t("error.go_home")}
         </Link>
       </div>
@@ -50,9 +61,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         <button
-          onClick={() => { router.invalidate(); reset(); }}
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
           className="mt-6 bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium"
-        >{t("error.reload")}</button>
+        >
+          {t("error.reload")}
+        </button>
       </div>
     </div>
   );
@@ -64,14 +80,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
-      { name: "description", content: "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже." },
+      {
+        name: "description",
+        content:
+          "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже.",
+      },
       { property: "og:title", content: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
-      { property: "og:description", content: "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже." },
+      {
+        property: "og:description",
+        content:
+          "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
-      { name: "twitter:description", content: "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/701e16dc-8548-4334-b32d-89729d10108e/id-preview-4951deee--a9962790-e058-4141-bcbb-53a075002025.lovable.app-1778479143923.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
       // PWA / mobile
       { name: "theme-color", content: "#C9A84C" },
@@ -84,11 +120,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap",
+      },
       // PWA
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      { rel: "icon", href: emblem, type: "image/jpeg" },
+      { rel: "apple-touch-icon", href: emblem },
     ],
   }),
   shellComponent: RootShell,
@@ -100,8 +139,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="kk" className="dark">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
@@ -128,11 +172,17 @@ function SplashScreen() {
 
   useEffect(() => {
     const shown = sessionStorage.getItem("splash-shown");
-    if (shown) { setPhase("done"); return; }
+    if (shown) {
+      setPhase("done");
+      return;
+    }
     sessionStorage.setItem("splash-shown", "1");
     const t1 = setTimeout(() => setPhase("fading"), 1800);
     const t2 = setTimeout(() => setPhase("done"), 2500);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   if (phase === "done") return null;
@@ -153,15 +203,31 @@ function SplashScreen() {
       </div>
 
       {/* Animated ring */}
-      <div className="relative mb-8" style={{ animation: "splashLogoIn 0.7s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-        <div className="absolute inset-0 rounded-full border border-gold/30" style={{ animation: "splashRing1 2s ease-in-out infinite" }} />
-        <div className="absolute -inset-4 rounded-full border border-gold/15" style={{ animation: "splashRing2 2s ease-in-out 0.3s infinite" }} />
-        <div className="absolute -inset-8 rounded-full border border-gold/8" style={{ animation: "splashRing2 2s ease-in-out 0.6s infinite" }} />
+      <div
+        className="relative mb-8"
+        style={{ animation: "splashLogoIn 0.7s cubic-bezier(0.34,1.56,0.64,1) both" }}
+      >
+        <div
+          className="absolute inset-0 rounded-full border border-gold/30"
+          style={{ animation: "splashRing1 2s ease-in-out infinite" }}
+        />
+        <div
+          className="absolute -inset-4 rounded-full border border-gold/15"
+          style={{ animation: "splashRing2 2s ease-in-out 0.3s infinite" }}
+        />
+        <div
+          className="absolute -inset-8 rounded-full border border-gold/8"
+          style={{ animation: "splashRing2 2s ease-in-out 0.6s infinite" }}
+        />
         {/* Logo */}
         <span className="relative inline-flex h-24 w-24 items-center justify-center">
           <span className="absolute inset-0 rounded-[28px] conic-gold opacity-80 blur-[14px]" />
           <span className="absolute inset-[3px] rounded-[26px] bg-card" />
-          <img src={emblem} alt="" className="relative h-20 w-20 rounded-[22px] object-cover shadow-gold" />
+          <img
+            src={emblem}
+            alt=""
+            className="relative h-20 w-20 rounded-[22px] object-cover shadow-gold"
+          />
         </span>
       </div>
 
@@ -176,8 +242,17 @@ function SplashScreen() {
       </div>
 
       {/* Loading bar */}
-      <div className="mt-10 h-[2px] w-48 overflow-hidden rounded-full bg-border/40" style={{ animation: "splashFadeIn 0.4s 0.5s both" }}>
-        <div className="h-full rounded-full bg-gradient-to-r from-gold/60 via-gold to-gold/60" style={{ animation: "splashBar 1.4s cubic-bezier(0.4,0,0.2,1) 0.5s forwards", width: "0%" }} />
+      <div
+        className="mt-10 h-[2px] w-48 overflow-hidden rounded-full bg-border/40"
+        style={{ animation: "splashFadeIn 0.4s 0.5s both" }}
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-gold/60 via-gold to-gold/60"
+          style={{
+            animation: "splashBar 1.4s cubic-bezier(0.4,0,0.2,1) 0.5s forwards",
+            width: "0%",
+          }}
+        />
       </div>
 
       <style>{`
@@ -245,9 +320,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }}>
-      {children}
-    </div>
+    <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }}>{children}</div>
   );
 }
 
@@ -255,8 +328,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <ClientOnly><SplashScreen /></ClientOnly>
-      <ClientOnly><ScrollProgress /></ClientOnly>
+      <ClientOnly>
+        <SplashScreen />
+      </ClientOnly>
+      <ClientOnly>
+        <ScrollProgress />
+      </ClientOnly>
       {/* Grain texture overlay */}
       <div
         className="pointer-events-none fixed inset-0 z-[9990] opacity-[0.025]"
@@ -267,15 +344,23 @@ function RootComponent() {
         }}
       />
       <AuthBootstrap />
-      <PageTransition><Outlet /></PageTransition>
-      <ClientOnly><PWAUpdateBanner /></ClientOnly>
+      <PageTransition>
+        <Outlet />
+      </PageTransition>
+      <ClientOnly>
+        <PWAUpdateBanner />
+      </ClientOnly>
       <ClientOnly>
         <Toaster
           position="top-right"
           richColors
           closeButton
           toastOptions={{
-            style: { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" },
+            style: {
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
+              color: "hsl(var(--foreground))",
+            },
             className: "font-sans text-sm",
           }}
         />
@@ -291,9 +376,7 @@ function AuthBootstrap() {
     hydrateThemeFromStorage();
     hydrateLocaleFromStorage();
     if (pathname === "/login") return;
-    import("@/lib/auth-store").then(({ bootstrap }) => {
-      bootstrap();
-    });
+    bootstrap();
   }, [pathname]);
   return null;
 }

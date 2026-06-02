@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { Award, Building2, Loader2, MapPin, Search, Star, Trophy, User, Users } from "lucide-react";
+import { Award, Building2, Loader2, Search, Star, User, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -53,8 +53,8 @@ function Rankings() {
     staleTime: 60_000,
   });
 
-  const rows = leaderboardQuery.data ?? [];
-  const clubRows = clubLeaderboardQuery.data ?? [];
+  const rows = useMemo(() => leaderboardQuery.data ?? [], [leaderboardQuery.data]);
+  const clubRows = useMemo(() => clubLeaderboardQuery.data ?? [], [clubLeaderboardQuery.data]);
 
   const genderRows = useMemo(() => {
     if (gender === "ALL") return rows;
@@ -66,7 +66,15 @@ function Rankings() {
     if (!q) return genderRows;
     return genderRows.filter((row: any) => {
       const a = row.athlete;
-      return [athleteName(a), a?.club ? localizeName(a.club.name) : "", a?.club?.city ?? "", a?.weightKg ? `${a.weightKg}` : ""].join(" ").toLowerCase().includes(q);
+      return [
+        athleteName(a),
+        a?.club ? localizeName(a.club.name) : "",
+        a?.club?.city ?? "",
+        a?.weightKg ? `${a.weightKg}` : "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
     });
   }, [genderRows, search]);
 
@@ -92,7 +100,8 @@ function Rankings() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-3xl font-bold">
-                {t("rankings.title_prefix")} <span className="text-gradient-gold">{t("rankings.title_suffix")}</span>
+                {t("rankings.title_prefix")}{" "}
+                <span className="text-gradient-gold">{t("rankings.title_suffix")}</span>
               </h1>
               <p className="mt-1 text-sm text-muted-foreground max-w-xl">
                 {t("rankings.subtitle")}
@@ -100,15 +109,20 @@ function Rankings() {
             </div>
             {/* ── Points legend ── */}
             <div className="flex items-center gap-1.5 rounded-xl border border-border/50 bg-card/60 px-3 py-2">
-              <span className="mr-1.5 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{t("rankings.points_label")}:</span>
-              {([
+              <span className="mr-1.5 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                {t("rankings.points_label")}:
+              </span>
+              {[
                 { p: 100, l: "1", c: "bg-yellow-400/20 text-yellow-500 border-yellow-400/40" },
-                { p: 80,  l: "2", c: "bg-zinc-300/20 text-zinc-400 border-zinc-300/40" },
-                { p: 50,  l: "3", c: "bg-amber-700/20 text-amber-600 border-amber-700/40" },
-                { p: 30,  l: "5", c: "bg-muted text-muted-foreground border-border/50" },
-                { p: 15,  l: "7", c: "bg-muted text-muted-foreground border-border/50" },
-              ]).map((s) => (
-                <div key={s.l} className={`flex items-center gap-1 rounded-md border px-2 py-1 ${s.c}`}>
+                { p: 80, l: "2", c: "bg-zinc-300/20 text-zinc-400 border-zinc-300/40" },
+                { p: 50, l: "3", c: "bg-amber-700/20 text-amber-600 border-amber-700/40" },
+                { p: 30, l: "5", c: "bg-muted text-muted-foreground border-border/50" },
+                { p: 15, l: "7", c: "bg-muted text-muted-foreground border-border/50" },
+              ].map((s) => (
+                <div
+                  key={s.l}
+                  className={`flex items-center gap-1 rounded-md border px-2 py-1 ${s.c}`}
+                >
                   <span className="text-[10px] font-semibold uppercase tracking-wide">{s.l}·</span>
                   <span className="font-display text-sm font-bold tabular-nums">{s.p}</span>
                 </div>
@@ -123,13 +137,17 @@ function Rankings() {
         <div className="mb-6 flex flex-wrap items-center gap-3">
           {/* Main tabs */}
           <div className="flex gap-1 rounded-lg border border-border/50 bg-card/40 p-1">
-            {([
+            {[
               { id: "athletes" as Tab, label: t("rankings.tab_athletes"), icon: User },
               { id: "clubs" as Tab, label: t("rankings.tab_clubs"), icon: Building2 },
-            ]).map(({ id, label, icon: Icon }) => (
+            ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => { setTab(id); setSearch(""); setGender("ALL"); }}
+                onClick={() => {
+                  setTab(id);
+                  setSearch("");
+                  setGender("ALL");
+                }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
                   tab === id
                     ? "bg-gradient-gold text-gold-foreground shadow-sm"
@@ -147,11 +165,11 @@ function Rankings() {
             <>
               <div className="h-5 w-px bg-border/50 hidden sm:block" />
               <div className="flex gap-1">
-                {([
+                {[
                   { id: "ALL" as Gender, label: t("rankings.filter_all") },
                   { id: "MALE" as Gender, label: t("rankings.filter_male") },
                   { id: "FEMALE" as Gender, label: t("rankings.filter_female") },
-                ]).map(({ id, label }) => (
+                ].map(({ id, label }) => (
                   <button
                     key={id}
                     onClick={() => setGender(id)}
@@ -199,11 +217,24 @@ function Rankings() {
                   <div className="mb-6 grid gap-3 sm:grid-cols-3">
                     {topThree.map((row: any, i: number) => {
                       const a = row.athlete;
-                      const accent = i === 0 ? "border-yellow-400/40 bg-yellow-400/5" : i === 1 ? "border-zinc-300/30 bg-zinc-200/5" : "border-amber-600/30 bg-amber-600/5";
-                      const medal = i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-400" : "text-amber-600";
+                      const accent =
+                        i === 0
+                          ? "border-yellow-400/40 bg-yellow-400/5"
+                          : i === 1
+                            ? "border-zinc-300/30 bg-zinc-200/5"
+                            : "border-amber-600/30 bg-amber-600/5";
+                      const medal =
+                        i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-400" : "text-amber-600";
                       return (
-                        <div key={a.id} className={`flex items-center gap-3 rounded-xl border p-3 ${accent}`}>
-                          <div className={`font-display text-2xl font-bold ${medal} shrink-0 w-8 text-center`}>{i + 1}</div>
+                        <div
+                          key={a.id}
+                          className={`flex items-center gap-3 rounded-xl border p-3 ${accent}`}
+                        >
+                          <div
+                            className={`font-display text-2xl font-bold ${medal} shrink-0 w-8 text-center`}
+                          >
+                            {i + 1}
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="font-semibold text-sm truncate">{athleteName(a)}</div>
                             <div className="text-xs text-muted-foreground truncate">
@@ -238,13 +269,18 @@ function Rankings() {
                   >
                     <option value="">{t("common.all_clubs")}</option>
                     {(clubsQuery.data?.items ?? []).map((club: any) => (
-                      <option key={club.id} value={club.id}>{localizeName(club.name)}</option>
+                      <option key={club.id} value={club.id}>
+                        {localizeName(club.name)}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 {/* Table */}
-                <div id="rating-table" className="rounded-xl border border-border/50 overflow-hidden">
+                <div
+                  id="rating-table"
+                  className="rounded-xl border border-border/50 overflow-hidden"
+                >
                   <div className="hidden sm:grid grid-cols-[56px_1fr_1fr_90px_100px] gap-3 px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div>#</div>
                     <div>{t("rankings.col_athlete")}</div>
@@ -257,16 +293,21 @@ function Rankings() {
                       const a = row.athlete;
                       const rank = gender !== "ALL" ? idx + 1 : row.rank;
                       const medal =
-                        rank === 1 ? "text-yellow-400" :
-                        rank === 2 ? "text-zinc-400" :
-                        rank === 3 ? "text-amber-600" :
-                        "text-muted-foreground";
+                        rank === 1
+                          ? "text-yellow-400"
+                          : rank === 2
+                            ? "text-zinc-400"
+                            : rank === 3
+                              ? "text-amber-600"
+                              : "text-muted-foreground";
                       return (
                         <div
                           key={a.id}
                           className="grid gap-3 px-4 py-3 hover:bg-muted/30 transition-colors sm:grid-cols-[56px_1fr_1fr_90px_100px] sm:px-5 sm:items-center"
                         >
-                          <div className={`flex items-center gap-1.5 font-display text-lg font-bold ${medal}`}>
+                          <div
+                            className={`flex items-center gap-1.5 font-display text-lg font-bold ${medal}`}
+                          >
                             {rank <= 3 && <Star className="h-3 w-3 fill-current" />}
                             {rank}
                           </div>
@@ -303,7 +344,8 @@ function Rankings() {
                 </div>
 
                 <div className="mt-3 text-xs text-muted-foreground text-right tabular-nums">
-                  {gender !== "ALL" && <>{genderRows.length} / </>}{rows.length} {t("rankings.tab_athletes").toLowerCase()}
+                  {gender !== "ALL" && <>{genderRows.length} / </>}
+                  {rows.length} {t("rankings.tab_athletes").toLowerCase()}
                 </div>
               </>
             )}
@@ -315,15 +357,31 @@ function Rankings() {
                 {topThreeClubs.length > 0 && (
                   <div className="mb-6 grid gap-3 sm:grid-cols-3">
                     {topThreeClubs.map((row: any, i: number) => {
-                      const accent = i === 0 ? "border-yellow-400/40 bg-yellow-400/5" : i === 1 ? "border-zinc-300/30 bg-zinc-200/5" : "border-amber-600/30 bg-amber-600/5";
-                      const medal = i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-400" : "text-amber-600";
+                      const accent =
+                        i === 0
+                          ? "border-yellow-400/40 bg-yellow-400/5"
+                          : i === 1
+                            ? "border-zinc-300/30 bg-zinc-200/5"
+                            : "border-amber-600/30 bg-amber-600/5";
+                      const medal =
+                        i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-400" : "text-amber-600";
                       return (
-                        <div key={row.club.id} className={`flex items-center gap-3 rounded-xl border p-3 ${accent}`}>
-                          <div className={`font-display text-2xl font-bold ${medal} shrink-0 w-8 text-center`}>{row.rank}</div>
+                        <div
+                          key={row.club.id}
+                          className={`flex items-center gap-3 rounded-xl border p-3 ${accent}`}
+                        >
+                          <div
+                            className={`font-display text-2xl font-bold ${medal} shrink-0 w-8 text-center`}
+                          >
+                            {row.rank}
+                          </div>
                           <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-sm truncate">{localizeName(row.club.name)}</div>
+                            <div className="font-semibold text-sm truncate">
+                              {localizeName(row.club.name)}
+                            </div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {row.club.city || "—"} · {row.athleteCount} {t("rankings.tab_athletes").toLowerCase()}
+                              {row.club.city || "—"} · {row.athleteCount}{" "}
+                              {t("rankings.tab_athletes").toLowerCase()}
                             </div>
                           </div>
                           <div className="shrink-0 font-display text-lg font-bold text-gradient-gold tabular-nums">
@@ -349,7 +407,10 @@ function Rankings() {
                 </div>
 
                 {/* Table */}
-                <div id="rating-table" className="rounded-xl border border-border/50 overflow-hidden">
+                <div
+                  id="rating-table"
+                  className="rounded-xl border border-border/50 overflow-hidden"
+                >
                   <div className="hidden sm:grid grid-cols-[56px_1fr_140px_100px_100px] gap-3 px-5 py-3 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div>#</div>
                     <div>{t("rankings.col_club")}</div>
@@ -360,16 +421,21 @@ function Rankings() {
                   <div className="divide-y divide-border/30">
                     {filteredClubRows.map((row: any) => {
                       const medal =
-                        row.rank === 1 ? "text-yellow-400" :
-                        row.rank === 2 ? "text-zinc-400" :
-                        row.rank === 3 ? "text-amber-600" :
-                        "text-muted-foreground";
+                        row.rank === 1
+                          ? "text-yellow-400"
+                          : row.rank === 2
+                            ? "text-zinc-400"
+                            : row.rank === 3
+                              ? "text-amber-600"
+                              : "text-muted-foreground";
                       return (
                         <div
                           key={row.club.id}
                           className="grid gap-3 px-4 py-3 hover:bg-muted/30 transition-colors sm:grid-cols-[56px_1fr_140px_100px_100px] sm:px-5 sm:items-center"
                         >
-                          <div className={`flex items-center gap-1.5 font-display text-lg font-bold ${medal}`}>
+                          <div
+                            className={`flex items-center gap-1.5 font-display text-lg font-bold ${medal}`}
+                          >
                             {row.rank <= 3 && <Star className="h-3 w-3 fill-current" />}
                             {row.rank}
                           </div>
@@ -378,9 +444,12 @@ function Rankings() {
                               <Building2 className="h-3.5 w-3.5 text-gold-foreground" />
                             </div>
                             <div className="min-w-0">
-                              <div className="font-medium text-sm truncate">{localizeName(row.club.name)}</div>
+                              <div className="font-medium text-sm truncate">
+                                {localizeName(row.club.name)}
+                              </div>
                               <div className="text-[11px] text-muted-foreground sm:hidden truncate">
-                                {row.club.city || "—"} · {row.athleteCount} {t("rankings.tab_athletes").toLowerCase()}
+                                {row.club.city || "—"} · {row.athleteCount}{" "}
+                                {t("rankings.tab_athletes").toLowerCase()}
                               </div>
                             </div>
                           </div>
