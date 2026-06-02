@@ -13,11 +13,19 @@ import {
   MapPin,
   Plus,
   Send,
+  ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMemo, useState } from "react";
-import { DashboardShell, EmptyState, LoadingState, Panel } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  EmptyState,
+  LoadingState,
+  Panel,
+} from "@/components/dashboard/DashboardShell";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
@@ -47,9 +55,13 @@ function CoachTournamentDetail() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
   const [responsibilityAccepted, setResponsibilityAccepted] = useState(false);
+  const [showCompRulesModal, setShowCompRulesModal] = useState(false);
   const [error, setError] = useState("");
 
-  const tQuery = useQuery({ queryKey: ["coach-tournament", id], queryFn: () => api.tournaments.get(id) });
+  const tQuery = useQuery({
+    queryKey: ["coach-tournament", id],
+    queryFn: () => api.tournaments.get(id),
+  });
   const appsQuery = useQuery({
     queryKey: ["coach-tournament-application", id],
     queryFn: () => api.tournaments.applications(id),
@@ -68,18 +80,15 @@ function CoachTournamentDetail() {
     queryFn: () => api.matches.list({ tournamentId: id }),
   });
 
-  useRealtime(
-    [`tournament:${id}`],
-    {
-      "bracket:update":    () => {
-        qc.invalidateQueries({ queryKey: ["coach-tournament-brackets", id] });
-        qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] });
-      },
-      "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
-      "match:finished":    () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
-      "match:started":     () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+  useRealtime([`tournament:${id}`], {
+    "bracket:update": () => {
+      qc.invalidateQueries({ queryKey: ["coach-tournament-brackets", id] });
+      qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] });
     },
-  );
+    "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+    "match:finished": () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+    "match:started": () => qc.invalidateQueries({ queryKey: ["coach-tournament-matches", id] }),
+  });
 
   const createApplication = useMutation({
     mutationFn: () => api.tournaments.createApplication(id),
@@ -88,12 +97,13 @@ function CoachTournamentDetail() {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
       navigate({ to: "/coach/applications/$id", params: { id: app.id } });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.application_open_error")),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach.application_open_error")),
   });
 
   const addEntry = useMutation({
     mutationFn: async ({ athleteId, categoryId }: { athleteId: string; categoryId: string }) => {
-      const app = ownApplication ?? await api.tournaments.createApplication(id);
+      const app = ownApplication ?? (await api.tournaments.createApplication(id));
       return api.applications.addEntry(app.id, athleteId, categoryId);
     },
     onMutate: ({ athleteId, categoryId }) => {
@@ -109,7 +119,7 @@ function CoachTournamentDetail() {
 
   const addEligible = useMutation({
     mutationFn: async ({ athletes, categoryId }: { athletes: any[]; categoryId: string }) => {
-      const app = ownApplication ?? await api.tournaments.createApplication(id);
+      const app = ownApplication ?? (await api.tournaments.createApplication(id));
       for (const athlete of athletes) {
         await api.applications.addEntry(app.id, athlete.id, categoryId);
       }
@@ -122,7 +132,8 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.athletes_add_error")),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach.athletes_add_error")),
     onSettled: () => setAdding(null),
   });
 
@@ -135,7 +146,8 @@ function CoachTournamentDetail() {
       setError("");
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.application_submit_error")),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("coach.application_submit_error")),
   });
 
   const ownApplication = appsQuery.data?.[0] ?? null;
@@ -149,11 +161,17 @@ function CoachTournamentDetail() {
     }
     return map;
   }, [entries]);
-  const entryIssues = useMemo(() => entries.map((entry: any) => ({
-    entry,
-    issues: validateApplicationEntry(entry, t),
-  })), [entries, t]);
-  const invalidEntryCount = entryIssues.filter((item: { entry: any; issues: string[] }) => item.issues.length > 0).length;
+  const entryIssues = useMemo(
+    () =>
+      entries.map((entry: any) => ({
+        entry,
+        issues: validateApplicationEntry(entry, t),
+      })),
+    [entries, t],
+  );
+  const invalidEntryCount = entryIssues.filter(
+    (item: { entry: any; issues: string[] }) => item.issues.length > 0,
+  ).length;
   const enteredCategoryCount = enteredByCategory.size;
 
   if (tQuery.isLoading) {
@@ -167,29 +185,47 @@ function CoachTournamentDetail() {
   const tournament = tQuery.data;
   if (!tournament) {
     return (
-      <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={t("tournament.not_found")}>
+      <DashboardShell
+        role={t("coach.role_label")}
+        navItems={nav}
+        accentTitle={t("tournament.not_found")}
+      >
         <EmptyState title={t("tournament.not_found")} />
       </DashboardShell>
     );
   }
 
-  const categories = (tournament.categories ?? []).filter((category: any) => filter === "ALL" || category.gender === filter);
+  const categories = (tournament.categories ?? []).filter(
+    (category: any) => filter === "ALL" || category.gender === filter,
+  );
   const categoryCount = tournament.categories?.length ?? 0;
   const deadline = tournament.applicationDeadline ?? tournament.startDate;
   const deadlinePassed = new Date(deadline).getTime() < Date.now();
   const myAthleteIds = new Set((membersQuery.data ?? []).map((athlete: any) => athlete.id));
-  const clubMatches = (matchesQuery.data ?? []).filter((match: any) =>
-    (match.redAthlete?.id && myAthleteIds.has(match.redAthlete.id)) ||
-    (match.blueAthlete?.id && myAthleteIds.has(match.blueAthlete.id)),
+  const clubMatches = (matchesQuery.data ?? []).filter(
+    (match: any) =>
+      (match.redAthlete?.id && myAthleteIds.has(match.redAthlete.id)) ||
+      (match.blueAthlete?.id && myAthleteIds.has(match.blueAthlete.id)),
   );
 
   return (
-    <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={localizeName(tournament.name)}>
-      <Link to="/coach/tournaments" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold">
+    <DashboardShell
+      role={t("coach.role_label")}
+      navItems={nav}
+      accentTitle={localizeName(tournament.name)}
+    >
+      <Link
+        to="/coach/tournaments"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold"
+      >
         <ArrowLeft className="h-4 w-4" /> {t("tournaments_page.all_tournaments")}
       </Link>
 
-      {error && <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {!user?.clubId && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
@@ -197,9 +233,7 @@ function CoachTournamentDetail() {
             <AlertTriangle className="h-4 w-4" />
             {t("coach.no_club_warning_title")}
           </div>
-          <div className="mt-1 text-amber-100/80">
-            {t("coach.no_club_warning_desc")}
-          </div>
+          <div className="mt-1 text-amber-100/80">{t("coach.no_club_warning_desc")}</div>
         </div>
       )}
 
@@ -209,11 +243,17 @@ function CoachTournamentDetail() {
             <StatusBadge status={tournament.status} />
             <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
               <Info icon={Calendar}>{dateRange(tournament.startDate, tournament.endDate)}</Info>
-              <Info icon={Calendar}>{t("coach.deadline_label")}: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
-              <Info icon={MapPin}>{tournament.location}, {tournament.city}</Info>
+              <Info icon={Calendar}>
+                {t("coach.deadline_label")}: {new Date(deadline).toLocaleString("kk-KZ")}
+              </Info>
+              <Info icon={MapPin}>
+                {tournament.location}, {tournament.city}
+              </Info>
               <Info icon={Clock}>{formatWeighIn(tournament, t)}</Info>
               <Info icon={Users}>{t("coach.my_athletes_info", { count: entries.length })}</Info>
-              <Info icon={GitBranch}>{t("coach.brackets_info", { count: bracketsQuery.data?.length ?? 0 })}</Info>
+              <Info icon={GitBranch}>
+                {t("coach.brackets_info", { count: bracketsQuery.data?.length ?? 0 })}
+              </Info>
             </div>
             {tournament.posterUrl && (
               <a
@@ -247,13 +287,20 @@ function CoachTournamentDetail() {
               >
                 <ClipboardList className="h-4 w-4" /> {t("coach.open_application")}
               </Link>
-            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && canManageApplications && categoryCount > 0 ? (
+            ) : tournament.status === "REGISTRATION_OPEN" &&
+              !deadlinePassed &&
+              canManageApplications &&
+              categoryCount > 0 ? (
               <button
                 onClick={() => createApplication.mutate()}
                 disabled={createApplication.isPending}
                 className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm text-gold-foreground shadow-gold disabled:opacity-60"
               >
-                {createApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {createApplication.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 {t("coach.create_application")}
               </button>
             ) : tournament.status === "DRAFT" ? (
@@ -262,7 +309,9 @@ function CoachTournamentDetail() {
               <ApplyUnavailable reason={t("coach.no_categories_to_apply")} />
             ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && !user?.clubId ? (
               <ApplyUnavailable reason={t("coach.no_club_short")} />
-            ) : tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && !canManageApplications ? (
+            ) : tournament.status === "REGISTRATION_OPEN" &&
+              !deadlinePassed &&
+              !canManageApplications ? (
               <ApplyUnavailable reason={t("coach.only_owner_can_apply")} />
             ) : tournament.status === "REGISTRATION_OPEN" && deadlinePassed ? (
               <ApplyUnavailable reason={t("coach.deadline_passed")} danger />
@@ -277,8 +326,12 @@ function CoachTournamentDetail() {
         <Panel title={t("coach.tournament_full_info")}>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <Info icon={Calendar}>{dateRange(tournament.startDate, tournament.endDate)}</Info>
-            <Info icon={Calendar}>{t("tournament.deadline")}: {new Date(deadline).toLocaleString("kk-KZ")}</Info>
-            <Info icon={MapPin}>{tournament.location}, {tournament.city}</Info>
+            <Info icon={Calendar}>
+              {t("tournament.deadline")}: {new Date(deadline).toLocaleString("kk-KZ")}
+            </Info>
+            <Info icon={MapPin}>
+              {tournament.location}, {tournament.city}
+            </Info>
             <Info icon={Clock}>{formatWeighIn(tournament, t)}</Info>
           </div>
           {localizeName(tournament.description) && (
@@ -298,9 +351,18 @@ function CoachTournamentDetail() {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <MiniStat label={t("tournament.stat_categories")} value={tournament.categories?.length ?? 0} />
-        <MiniStat label={t("coach.male_count")} value={(tournament.categories ?? []).filter((c: any) => c.gender === "MALE").length} />
-        <MiniStat label={t("coach.female_count")} value={(tournament.categories ?? []).filter((c: any) => c.gender === "FEMALE").length} />
+        <MiniStat
+          label={t("tournament.stat_categories")}
+          value={tournament.categories?.length ?? 0}
+        />
+        <MiniStat
+          label={t("coach.male_count")}
+          value={(tournament.categories ?? []).filter((c: any) => c.gender === "MALE").length}
+        />
+        <MiniStat
+          label={t("coach.female_count")}
+          value={(tournament.categories ?? []).filter((c: any) => c.gender === "FEMALE").length}
+        />
         <MiniStat label={t("dashboard.matches")} value={clubMatches.length} />
       </div>
 
@@ -314,23 +376,35 @@ function CoachTournamentDetail() {
             <ApplicationMetric label={t("common.category")} value={enteredCategoryCount} />
             <ApplicationMetric
               label={t("coach.check_label")}
-              value={invalidEntryCount ? t("coach.issues_count", { count: invalidEntryCount }) : "OK"}
+              value={
+                invalidEntryCount ? t("coach.issues_count", { count: invalidEntryCount }) : "OK"
+              }
               tone={invalidEntryCount ? "red" : "green"}
             />
             <ApplicationMetric
               label={t("common.status")}
               value={String(t(`status.${ownApplication.status}`, ownApplication.status))}
-              tone={ownApplication.status === "APPROVED" ? "green" : ownApplication.status === "REJECTED" ? "red" : "gold"}
+              tone={
+                ownApplication.status === "APPROVED"
+                  ? "green"
+                  : ownApplication.status === "REJECTED"
+                    ? "red"
+                    : "gold"
+              }
             />
           </div>
           {ownApplication.reviewerNotes && (
-            <div className={`mt-4 rounded-md border p-3 text-sm ${
-              ownApplication.status === "REJECTED"
-                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : "border-gold/30 bg-gold/10 text-gold"
-            }`}>
+            <div
+              className={`mt-4 rounded-md border p-3 text-sm ${
+                ownApplication.status === "REJECTED"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-gold/30 bg-gold/10 text-gold"
+              }`}
+            >
               <div className="mb-1 text-xs uppercase tracking-widest">
-                {ownApplication.status === "REJECTED" ? t("coach.admin_rejection_reason") : t("coach.admin_note")}
+                {ownApplication.status === "REJECTED"
+                  ? t("coach.admin_rejection_reason")
+                  : t("coach.admin_note")}
               </div>
               {ownApplication.reviewerNotes}
             </div>
@@ -358,10 +432,16 @@ function CoachTournamentDetail() {
                 key={value}
                 onClick={() => setFilter(value)}
                 className={`rounded-md border px-3 py-1.5 text-xs ${
-                  filter === value ? "border-gold/50 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"
+                  filter === value
+                    ? "border-gold/50 bg-gold/15 text-gold"
+                    : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {value === "ALL" ? t("common.all") : value === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")}
+                {value === "ALL"
+                  ? t("common.all")
+                  : value === "MALE"
+                    ? t("tournament.gender_male_abbr")
+                    : t("tournament.gender_female_abbr")}
               </button>
             ))}
           </div>
@@ -374,34 +454,65 @@ function CoachTournamentDetail() {
             {categories.map((category: any) => {
               const bracket = bracketsQuery.data?.find((b: any) => b.categoryId === category.id);
               const categoryEntries = enteredByCategory.get(category.id) ?? [];
-              const eligible = (membersQuery.data ?? []).filter((athlete: any) => fitsCategory(athlete, category));
-              const ineligiblePreview = (membersQuery.data ?? []).filter((athlete: any) => !fitsCategory(athlete, category)).slice(0, 4);
+              const eligible = (membersQuery.data ?? []).filter((athlete: any) =>
+                fitsCategory(athlete, category),
+              );
+              const ineligiblePreview = (membersQuery.data ?? [])
+                .filter((athlete: any) => !fitsCategory(athlete, category))
+                .slice(0, 4);
               const enteredIds = new Set(categoryEntries.map((entry: any) => entry.athleteId));
               const eligibleToAdd = eligible.filter((athlete: any) => !enteredIds.has(athlete.id));
-              const categoryMatches = clubMatches.filter((match: any) => match.bracket?.categoryId === category.id);
-              const isOpenDraft = canManageApplications && tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && (!ownApplication || ownApplication.status === "DRAFT");
+              const categoryMatches = clubMatches.filter(
+                (match: any) => match.bracket?.categoryId === category.id,
+              );
+              const isOpenDraft =
+                canManageApplications &&
+                tournament.status === "REGISTRATION_OPEN" &&
+                !deadlinePassed &&
+                (!ownApplication || ownApplication.status === "DRAFT");
 
               return (
-                <div key={category.id} className="rounded-xl border border-border/60 bg-background/30 p-4">
+                <div
+                  key={category.id}
+                  className="rounded-xl border border-border/60 bg-background/30 p-4"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-display text-lg font-semibold">{categoryTitle(category)}</div>
+                        <div className="font-display text-lg font-semibold">
+                          {categoryTitle(category)}
+                        </div>
                         <FormatBadge format={category.format} />
-                        {bracket && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">{t("coach.bracket_ready")}</span>}
+                        {bracket && (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
+                            {t("coach.bracket_ready")}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {category.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} · {category.ageMin}-{category.ageMax} {t("common.years_short")} · ({category.weightMin}, {category.weightMax}] {t("common.kg")} · {category.matchDurationSec}с
+                        {category.gender === "MALE"
+                          ? t("tournament.gender_male_abbr")
+                          : t("tournament.gender_female_abbr")}{" "}
+                        · {category.ageMin}-{category.ageMax} {t("common.years_short")} · (
+                        {category.weightMin}, {category.weightMax}] {t("common.kg")} ·{" "}
+                        {category.matchDurationSec}с
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {bracket && (
                         <>
                           <button
-                            onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                            onClick={() =>
+                              setSelectedCategoryId(
+                                selectedCategoryId === category.id ? null : category.id,
+                              )
+                            }
                             className="inline-flex items-center gap-1 rounded-md border border-gold/30 px-3 py-1.5 text-xs text-gold hover:bg-gold/10"
                           >
-                            <GitBranch className="h-3.5 w-3.5" /> {selectedCategoryId === category.id ? t("common.close") : t("coach.bracket")}
+                            <GitBranch className="h-3.5 w-3.5" />{" "}
+                            {selectedCategoryId === category.id
+                              ? t("common.close")
+                              : t("coach.bracket")}
                           </button>
                           <a
                             href={api.admin.bracketPdfUrl(bracket.id)}
@@ -418,15 +529,23 @@ function CoachTournamentDetail() {
 
                   <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
                     <div>
-                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{t("coach.my_athletes_section")}</div>
+                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                        {t("coach.my_athletes_section")}
+                      </div>
                       {isOpenDraft && eligibleToAdd.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => addEligible.mutate({ athletes: eligibleToAdd, categoryId: category.id })}
+                          onClick={() =>
+                            addEligible.mutate({ athletes: eligibleToAdd, categoryId: category.id })
+                          }
                           disabled={!!adding}
                           className="mb-3 inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-xs text-gold hover:bg-gold/15 disabled:opacity-50"
                         >
-                          {adding === `all:${category.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                          {adding === `all:${category.id}` ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Plus className="h-3.5 w-3.5" />
+                          )}
                           {t("coach.add_all_eligible", { count: eligibleToAdd.length })}
                         </button>
                       )}
@@ -437,7 +556,8 @@ function CoachTournamentDetail() {
                             <div className="mt-3 space-y-1 text-xs">
                               {ineligiblePreview.map((athlete: any) => (
                                 <div key={athlete.id}>
-                                  {athlete.name} {athlete.surname}: {categoryMismatchReason(athlete, category, t)}
+                                  {athlete.name} {athlete.surname}:{" "}
+                                  {categoryMismatchReason(athlete, category, t)}
                                 </div>
                               ))}
                             </div>
@@ -449,21 +569,46 @@ function CoachTournamentDetail() {
                             const alreadyIn = enteredIds.has(athlete.id);
                             const isAdding = adding === `${athlete.id}:${category.id}`;
                             return (
-                              <div key={athlete.id} className="rounded-md border border-border/50 p-3">
+                              <div
+                                key={athlete.id}
+                                className="rounded-md border border-border/50 p-3"
+                              >
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
-                                    <div className="font-medium text-sm">{athlete.name} {athlete.surname}</div>
-                                    <div className="text-xs text-muted-foreground">{getAge(athlete.dateOfBirth)} {t("common.years_short")} · {athlete.weightKg} {t("common.kg")} · {athlete.beltRank ?? "—"}</div>
+                                    <div className="font-medium text-sm">
+                                      {athlete.name} {athlete.surname}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {getAge(athlete.dateOfBirth)} {t("common.years_short")} ·{" "}
+                                      {athlete.weightKg} {t("common.kg")} ·{" "}
+                                      {athlete.beltRank ?? "—"}
+                                    </div>
                                   </div>
                                   {alreadyIn ? (
-                                    <EntryCheckBadge issues={validateApplicationEntry(categoryEntries.find((entry: any) => entry.athleteId === athlete.id) ?? { athlete, category }, t)} />
+                                    <EntryCheckBadge
+                                      issues={validateApplicationEntry(
+                                        categoryEntries.find(
+                                          (entry: any) => entry.athleteId === athlete.id,
+                                        ) ?? { athlete, category },
+                                        t,
+                                      )}
+                                    />
                                   ) : isOpenDraft ? (
                                     <button
-                                      onClick={() => addEntry.mutate({ athleteId: athlete.id, categoryId: category.id })}
+                                      onClick={() =>
+                                        addEntry.mutate({
+                                          athleteId: athlete.id,
+                                          categoryId: category.id,
+                                        })
+                                      }
                                       disabled={!!adding}
                                       className="inline-flex items-center gap-1 rounded-md bg-gold/15 px-2 py-1 text-xs text-gold hover:bg-gold/20 disabled:opacity-50"
                                     >
-                                      {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                      {isAdding ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Plus className="h-3 w-3" />
+                                      )}
                                       {t("common.add")}
                                     </button>
                                   ) : null}
@@ -476,21 +621,47 @@ function CoachTournamentDetail() {
                     </div>
 
                     <div>
-                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{t("dashboard.matches")}</div>
+                      <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                        {t("dashboard.matches")}
+                      </div>
                       {categoryMatches.length === 0 ? (
-                        <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">{t("coach.no_club_matches")}</div>
+                        <div className="rounded-md border border-border/50 p-3 text-sm text-muted-foreground">
+                          {t("coach.no_club_matches")}
+                        </div>
                       ) : (
                         <div className="space-y-2">
                           {categoryMatches.map((match: any) => (
-                            <div key={match.id} className="rounded-md border border-border/50 p-3 text-xs">
+                            <div
+                              key={match.id}
+                              className="rounded-md border border-border/50 p-3 text-xs"
+                            >
                               <div className="flex justify-between gap-2">
-                                <span className="text-muted-foreground">{t("tournament.metric_tatami")} {match.tatamiNumber ?? "—"} · R{match.round}</span>
+                                <span className="text-muted-foreground">
+                                  {t("tournament.metric_tatami")} {match.tatamiNumber ?? "—"} · R
+                                  {match.round}
+                                </span>
                                 <MatchStatusBadge status={match.status} />
                               </div>
                               <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
-                                <span className={myAthleteIds.has(match.redAthlete?.id) ? "font-medium text-gold" : ""}>{athleteName(match.redAthlete)}</span>
+                                <span
+                                  className={
+                                    myAthleteIds.has(match.redAthlete?.id)
+                                      ? "font-medium text-gold"
+                                      : ""
+                                  }
+                                >
+                                  {athleteName(match.redAthlete)}
+                                </span>
                                 <span className="text-muted-foreground">vs</span>
-                                <span className={myAthleteIds.has(match.blueAthlete?.id) ? "font-medium text-gold" : ""}>{athleteName(match.blueAthlete)}</span>
+                                <span
+                                  className={
+                                    myAthleteIds.has(match.blueAthlete?.id)
+                                      ? "font-medium text-gold"
+                                      : ""
+                                  }
+                                >
+                                  {athleteName(match.blueAthlete)}
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -513,22 +684,40 @@ function CoachTournamentDetail() {
 
       {ownApplication?.status === "DRAFT" && canManageApplications && (
         <Panel title={t("coach.finalize_application")}>
+          {showCompRulesModal && (
+            <CompetitionRulesModal
+              onAgree={() => {
+                setResponsibilityAccepted(true);
+                setShowCompRulesModal(false);
+              }}
+              onClose={() => setShowCompRulesModal(false)}
+            />
+          )}
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
             {entries.length > 0 && (
               <div className="mb-4 space-y-2">
                 {entryIssues.map(({ entry, issues }: { entry: any; issues: string[] }) => (
-                  <div key={entry.id} className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}>
+                  <div
+                    key={entry.id}
+                    className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <div className="font-medium">{entry.athlete?.name} {entry.athlete?.surname}</div>
-                        <div className="text-xs text-muted-foreground">{categoryTitle(entry.category)}</div>
+                        <div className="font-medium">
+                          {entry.athlete?.name} {entry.athlete?.surname}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {categoryTitle(entry.category)}
+                        </div>
                       </div>
                       <EntryCheckBadge issues={issues} />
                     </div>
                     {issues.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
                         {issues.map((issue: string) => (
-                          <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">{issue}</span>
+                          <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">
+                            {issue}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -536,29 +725,81 @@ function CoachTournamentDetail() {
                 ))}
               </div>
             )}
-            <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={responsibilityAccepted}
-                onChange={(e) => setResponsibilityAccepted(e.target.checked)}
-                className="mt-1 h-4 w-4 accent-gold"
-              />
-              <span className="text-muted-foreground">
-                {t("coach.responsibility_text")}
-              </span>
-            </label>
+
+            {/* Responsibility / Rules block */}
+            {responsibilityAccepted ? (
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-3 text-sm">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
+                <span className="font-medium">
+                  Жарыс ережелері мен жауапкершілік шарттары қабылданды
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setResponsibilityAccepted(false)}
+                  className="ml-auto text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Өзгерту
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-semibold text-amber-200">
+                      Жауапкершілік шарттарымен танысу міндетті
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Өтінімді жіберу үшін жарыс ережелері мен тренер жауапкершілігін растауыңыз
+                      керек.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowCompRulesModal(true)}
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/20 transition-colors"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Ережелермен танысу және растау
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={() => submitApplication.mutate()}
-              disabled={submitApplication.isPending || entries.length === 0 || !responsibilityAccepted || deadlinePassed || invalidEntryCount > 0}
+              disabled={
+                submitApplication.isPending ||
+                entries.length === 0 ||
+                !responsibilityAccepted ||
+                deadlinePassed ||
+                invalidEntryCount > 0
+              }
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
-              {submitApplication.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {submitApplication.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               {t("coach.submit_application")}
             </button>
-            {entries.length === 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.add_athlete_first")}</div>}
-            {deadlinePassed && <div className="mt-2 text-xs text-destructive">{t("coach.deadline_passed_msg")}</div>}
-            {invalidEntryCount > 0 && <div className="mt-2 text-xs text-amber-200">{t("coach.fix_invalid_entries")}</div>}
-            {!responsibilityAccepted && entries.length > 0 && <div className="mt-2 text-xs text-muted-foreground">{t("coach.accept_responsibility_first")}</div>}
+            {entries.length === 0 && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                {t("coach.add_athlete_first")}
+              </div>
+            )}
+            {deadlinePassed && (
+              <div className="mt-2 text-xs text-destructive">{t("coach.deadline_passed_msg")}</div>
+            )}
+            {invalidEntryCount > 0 && (
+              <div className="mt-2 text-xs text-amber-200">{t("coach.fix_invalid_entries")}</div>
+            )}
+            {!responsibilityAccepted && entries.length > 0 && (
+              <div className="mt-2 text-xs text-amber-300">
+                ⚠ Жіберу үшін алдымен ережелермен танысып, растаңыз
+              </div>
+            )}
           </div>
         </Panel>
       )}
@@ -576,7 +817,9 @@ function CoachTournamentDetail() {
 function ApplyUnavailable({ reason, danger }: { reason: string; danger?: boolean }) {
   const { t } = useTranslation();
   return (
-    <div className={`rounded-md border px-3 py-2 text-sm ${danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"}`}>
+    <div
+      className={`rounded-md border px-3 py-2 text-sm ${danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"}`}
+    >
       <div className="font-medium">{t("coach.apply_tournament")}</div>
       <div className="mt-0.5 text-xs">{reason}</div>
     </div>
@@ -584,7 +827,11 @@ function ApplyUnavailable({ reason, danger }: { reason: string; danger?: boolean
 }
 
 function Info({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
-  return <span className="inline-flex items-center gap-2"><Icon className="h-4 w-4 text-gold/70" /> {children}</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Icon className="h-4 w-4 text-gold/70" /> {children}
+    </span>
+  );
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
@@ -596,14 +843,23 @@ function MiniStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ApplicationMetric({ label, value, tone }: { label: string; value: string | number; tone?: "gold" | "green" | "red" }) {
-  const toneClass = tone === "gold"
-    ? "text-gold"
-    : tone === "green"
-      ? "text-emerald-300"
-      : tone === "red"
-        ? "text-destructive"
-        : "text-foreground";
+function ApplicationMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  tone?: "gold" | "green" | "red";
+}) {
+  const toneClass =
+    tone === "gold"
+      ? "text-gold"
+      : tone === "green"
+        ? "text-emerald-300"
+        : tone === "red"
+          ? "text-destructive"
+          : "text-foreground";
 
   return (
     <div className="rounded-md border border-border/60 bg-background/30 p-3">
@@ -616,27 +872,53 @@ function ApplicationMetric({ label, value, tone }: { label: string; value: strin
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
   const map: Record<string, { c: string; key: string }> = {
-    DRAFT:               { c: "bg-muted text-muted-foreground",                                  key: "status.DRAFT" },
-    REGISTRATION_OPEN:   { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.REGISTRATION_OPEN" },
-    REGISTRATION_CLOSED: { c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",       key: "status.REGISTRATION_CLOSED" },
-    IN_PROGRESS:         { c: "bg-destructive/20 text-destructive border border-destructive/40", key: "status.IN_PROGRESS" },
-    COMPLETED:           { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.COMPLETED" },
+    DRAFT: { c: "bg-muted text-muted-foreground", key: "status.DRAFT" },
+    REGISTRATION_OPEN: {
+      c: "bg-gold/15 text-gold border border-gold/30",
+      key: "status.REGISTRATION_OPEN",
+    },
+    REGISTRATION_CLOSED: {
+      c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+      key: "status.REGISTRATION_CLOSED",
+    },
+    IN_PROGRESS: {
+      c: "bg-destructive/20 text-destructive border border-destructive/40",
+      key: "status.IN_PROGRESS",
+    },
+    COMPLETED: {
+      c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+      key: "status.COMPLETED",
+    },
   };
   const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>
+      {item.key ? String(t(item.key, status)) : status}
+    </span>
+  );
 }
 
 function ApplicationStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
   const map: Record<string, { c: string; key: string }> = {
-    DRAFT:     { c: "bg-muted text-muted-foreground",                                  key: "status.DRAFT" },
-    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.SUBMITTED" },
-    APPROVED:  { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.APPROVED" },
-    REJECTED:  { c: "bg-destructive/15 text-destructive border border-destructive/30", key: "status.REJECTED" },
-    WITHDRAWN: { c: "bg-muted text-muted-foreground",                                  key: "status.WITHDRAWN" },
+    DRAFT: { c: "bg-muted text-muted-foreground", key: "status.DRAFT" },
+    SUBMITTED: { c: "bg-gold/15 text-gold border border-gold/30", key: "status.SUBMITTED" },
+    APPROVED: {
+      c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+      key: "status.APPROVED",
+    },
+    REJECTED: {
+      c: "bg-destructive/15 text-destructive border border-destructive/30",
+      key: "status.REJECTED",
+    },
+    WITHDRAWN: { c: "bg-muted text-muted-foreground", key: "status.WITHDRAWN" },
   };
   const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs ${item.c}`}>
+      {item.key ? String(t(item.key, status)) : status}
+    </span>
+  );
 }
 
 function EntryCheckBadge({ issues }: { issues: string[] }) {
@@ -648,23 +930,38 @@ function EntryCheckBadge({ issues }: { issues: string[] }) {
       </span>
     );
   }
-  return <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{t("coach.issues_count", { count: issues.length })}</span>;
+  return (
+    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">
+      {t("coach.issues_count", { count: issues.length })}
+    </span>
+  );
 }
 
 function MatchStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
   const map: Record<string, { c: string; key: string }> = {
-    PENDING:     { c: "bg-muted text-muted-foreground",                                  key: "status.PENDING" },
-    IN_PROGRESS: { c: "bg-gold/15 text-gold border border-gold/30",                      key: "status.IN_PROGRESS" },
-    COMPLETED:   { c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30", key: "status.COMPLETED" },
+    PENDING: { c: "bg-muted text-muted-foreground", key: "status.PENDING" },
+    IN_PROGRESS: { c: "bg-gold/15 text-gold border border-gold/30", key: "status.IN_PROGRESS" },
+    COMPLETED: {
+      c: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+      key: "status.COMPLETED",
+    },
   };
   const item = map[status] ?? { c: "bg-muted text-muted-foreground", key: "" };
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] ${item.c}`}>{item.key ? String(t(item.key, status)) : status}</span>;
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] ${item.c}`}>
+      {item.key ? String(t(item.key, status)) : status}
+    </span>
+  );
 }
 
 function FormatBadge({ format }: { format: string }) {
   const { t } = useTranslation();
-  return <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{String(t(`format.${format}`, format))}</span>;
+  return (
+    <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">
+      {String(t(`format.${format}`, format))}
+    </span>
+  );
 }
 
 function categoryTitle(category: any): string {
@@ -677,11 +974,13 @@ function categoryTitle(category: any): string {
 function fitsCategory(athlete: any, category: any): boolean {
   if (!athlete.dateOfBirth || !athlete.weightKg) return false;
   const age = getAge(athlete.dateOfBirth);
-  return athlete.gender === category.gender &&
+  return (
+    athlete.gender === category.gender &&
     age >= category.ageMin &&
     age <= category.ageMax &&
     athlete.weightKg > category.weightMin &&
-    athlete.weightKg <= category.weightMax;
+    athlete.weightKg <= category.weightMax
+  );
 }
 
 function validateApplicationEntry(entry: any, t: any): string[] {
@@ -698,9 +997,14 @@ function categoryMismatchReason(athlete: any, category: any, t: any): string {
   if (!athlete.dateOfBirth) return t("coach.mismatch_no_dob");
   if (!athlete.weightKg) return t("coach.mismatch_no_weight");
   const age = getAge(athlete.dateOfBirth);
-  if (age < category.ageMin || age > category.ageMax) return t("coach.mismatch_age", { age, min: category.ageMin, max: category.ageMax });
+  if (age < category.ageMin || age > category.ageMax)
+    return t("coach.mismatch_age", { age, min: category.ageMin, max: category.ageMax });
   if (athlete.weightKg <= category.weightMin || athlete.weightKg > category.weightMax) {
-    return t("coach.mismatch_weight", { weight: athlete.weightKg, min: category.weightMin, max: category.weightMax });
+    return t("coach.mismatch_weight", {
+      weight: athlete.weightKg,
+      min: category.weightMin,
+      max: category.weightMax,
+    });
   }
   return "OK";
 }
@@ -720,7 +1024,9 @@ function dateRange(start: string, end: string): string {
 
 function formatWeighIn(tournament: any, t: any): string {
   const place = tournament.weighInLocation || tournament.location;
-  const start = tournament.weighInStart ? new Date(tournament.weighInStart).toLocaleString("kk-KZ") : "";
+  const start = tournament.weighInStart
+    ? new Date(tournament.weighInStart).toLocaleString("kk-KZ")
+    : "";
   const end = tournament.weighInEnd ? new Date(tournament.weighInEnd).toLocaleString("kk-KZ") : "";
   const time = start && end ? `${start} - ${end}` : start || t("coach.weigh_in_tbd");
   return t("coach.weigh_in_format", { place, time });
@@ -734,4 +1040,147 @@ function localizeName(value: any): string {
   if (!value) return "";
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || "";
+}
+
+const COMPETITION_RULES = [
+  {
+    icon: "🔇",
+    title: "Төрешілерге қарсы шықпаймын",
+    text: "Жарыс барысында және одан кейін төрешілер шешімін ашық немесе жабық күйде сынамаймын, дауыс көтермеймін, дауыстап наразылық білдірмеймін. Апелляция тек ресми жазбаша тәртіппен ғана жіберіледі.",
+  },
+  {
+    icon: "🤫",
+    title: "Татами жанында тыныш тәртіп сақтаймын",
+    text: "Жекпе-жек кезінде дауыс көтеріп нұсқау беруге, балағат сөз айтуға, татами шетіне кіруге тыйым салынған. Бұл ережені бұзған жағдайда менің клубым жарыстан шетелтіледі.",
+  },
+  {
+    icon: "⚖️",
+    title: "Нәтижеге заңсыз ықпал жасамаймын",
+    text: "Жарыс хаттамасын, торды немесе ұпайларды алдау арқылы өзгертуге немесе сатып алуға қандай да бір әрекет жасамаймын. Мұндай жағдай табылса, клуб пен тренер тұрақты дисквалификацияланады.",
+  },
+  {
+    icon: "👥",
+    title: "Клубымның спортшылары үшін жауаппын",
+    text: "Менің клубымнан қатысатын барлық спортшылардың мінез-құлқы, тәртібі, этикасы және жарысқа дайындығы (медициналық рұқсат, салмақ, жас) үшін жеке жауапкершілік алам.",
+  },
+  {
+    icon: "🏥",
+    title: "Медициналық және салмақ деректерінің дұрыстығын растаймын",
+    text: "Өтінімге енгізілген әр спортшының медициналық рұқсаты, туу датасы, салмағы және жынысы дұрыс екенін растаймын. Жалған деректер берілсе, барлық нәтижелер анулдана алады.",
+  },
+  {
+    icon: "🏗️",
+    title: "Мүлік бүлдіруге жол бермеймін",
+    text: "Жарыс ғимараты, жабдықтары, татами мен инфрақұрылымын бүлдіруден сақтаймын. Зиян келтірілген жағдайда клуб жауапты болады және нақты залалды өтейді.",
+  },
+  {
+    icon: "🚫",
+    title: "Дисквалификация шарттарын білемін",
+    text: "Жоғарыда аталған кез келген ережені бұзу тренерді уақытша немесе тұрақты жарыстарға жіберуден шектеуге, ал клубты рейтингтен шығаруға негіз береді.",
+  },
+];
+
+function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => void }) {
+  const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const ref = useRef<HTMLDivElement>(null);
+  const allChecked = COMPETITION_RULES.every((_, i) => checked[i]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <div
+        ref={ref}
+        className="relative z-10 w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl"
+        style={{ animation: "scale-in 0.18s ease" }}
+      >
+        <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-400" />
+            <div>
+              <h2 className="font-display text-base font-bold">
+                Жарыс ережелері мен жауапкершілік
+              </h2>
+              <p className="text-xs text-muted-foreground">Әр тармақты оқып, растаңыз</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[55vh] overflow-y-auto px-6 py-4 space-y-3">
+          {COMPETITION_RULES.map((rule, i) => (
+            <label
+              key={i}
+              className={`flex cursor-pointer gap-3 rounded-xl border p-3.5 transition-all ${
+                checked[i]
+                  ? "border-emerald-500/30 bg-emerald-500/8"
+                  : "border-border/60 bg-background/30 hover:border-gold/30"
+              }`}
+            >
+              <div
+                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors
+                  ${checked[i] ? 'border-emerald-500 bg-emerald-500/20' : 'border-border'}"
+              >
+                {checked[i] && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+              </div>
+              <input
+                type="checkbox"
+                checked={!!checked[i]}
+                onChange={(e) => setChecked((p) => ({ ...p, [i]: e.target.checked }))}
+                className="sr-only"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <span>{rule.icon}</span>
+                  {rule.title}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{rule.text}</p>
+              </div>
+            </label>
+          ))}
+
+          <div className="rounded-xl border border-destructive/25 bg-destructive/8 p-3 text-xs text-destructive">
+            ⚠️ Жоғарыдағы барлық ережелерді бұзу Judo-Arena жүйесінен тренерді тұрақты шектеуге
+            әкелуі мүмкін.
+          </div>
+        </div>
+
+        <div className="border-t border-border/50 px-6 py-4 flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            {Object.values(checked).filter(Boolean).length} / {COMPETITION_RULES.length} расталды
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Болдырмау
+            </button>
+            <button
+              type="button"
+              onClick={onAgree}
+              disabled={!allChecked}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-gold px-5 py-2 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-40 transition"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Барлығын растаймын
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

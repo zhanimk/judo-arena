@@ -1,7 +1,16 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { ReactNode, useState } from "react";
 import emblem from "@/assets/jcl-logo.jpeg";
-import { LogOut, Loader2, Menu, X, PanelLeftClose, PanelLeftOpen, Bell, PackageOpen } from "lucide-react";
+import {
+  LogOut,
+  Loader2,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Bell,
+  PackageOpen,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, logout as doLogout } from "@/lib/auth-store";
 import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
@@ -10,34 +19,38 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtime } from "@/lib/socket";
 import { api } from "@/lib/api";
 
-export interface NavItem { to: string; label: string; icon: React.ComponentType<{ className?: string }>; }
+export interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
 
 const navLabelKeys: Record<string, string> = {
-  "Шолу": "dashboard.overview",
-  "Профиль": "dashboard.profile",
-  "Спортшылар": "dashboard.athletes",
-  "Өтінімдер": "dashboard.applications",
+  Шолу: "dashboard.overview",
+  Профиль: "dashboard.profile",
+  Спортшылар: "dashboard.athletes",
+  Өтінімдер: "dashboard.applications",
   "Live матчтар": "dashboard.live_matches",
   "LIVE матчтар": "dashboard.live_matches",
-  "Жарыстар": "dashboard.tournaments",
-  "Клуб": "dashboard.clubs",
-  "Клубтар": "dashboard.clubs",
-  "Пайдаланушылар": "dashboard.users",
-  "Аудит": "dashboard.audit",
-  "Баптаулар": "dashboard.settings",
+  Жарыстар: "dashboard.tournaments",
+  Клуб: "dashboard.clubs",
+  Клубтар: "dashboard.clubs",
+  Пайдаланушылар: "dashboard.users",
+  Аудит: "dashboard.audit",
+  Баптаулар: "dashboard.settings",
   "Жекпе-жектер": "dashboard.live_matches",
-  "Нәтижелер": "dashboard.results",
-  "Хабарландырулар": "dashboard.notifications",
-  "Рейтинг": "nav.rankings",
-  "Матчтар": "dashboard.matches",
-  "Есептер": "dashboard.reports",
+  Нәтижелер: "dashboard.results",
+  Хабарландырулар: "dashboard.notifications",
+  Рейтинг: "nav.rankings",
+  Матчтар: "dashboard.matches",
+  Есептер: "dashboard.reports",
   "Менің клубым": "dashboard.my_club",
 };
 
 const roleKeys: Record<string, string> = {
-  "Әкімші": "roles.admin",
-  "Жаттықтырушы": "roles.coach",
-  "Спортшы": "roles.athlete",
+  Әкімші: "roles.admin",
+  Жаттықтырушы: "roles.coach",
+  Спортшы: "roles.athlete",
 };
 
 const dashboardRoot = (role?: string) => {
@@ -53,8 +66,16 @@ const profileRoot = (role?: string) => {
 };
 
 export function DashboardShell({
-  role, navItems, children, accentTitle,
-}: { role: string; navItems: NavItem[]; children: ReactNode; accentTitle: string }) {
+  role,
+  navItems,
+  children,
+  accentTitle,
+}: {
+  role: string;
+  navItems: NavItem[];
+  children: ReactNode;
+  accentTitle: string;
+}) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -73,20 +94,20 @@ export function DashboardShell({
   const unreadCount = unreadQuery.data?.count ?? 0;
 
   // N2: подписка на личную Socket.IO комнату — мгновенно обновляет бейдж уведомлений
-  useRealtime(
-    user?.id ? [`user:${user.id}`] : [],
-    {
-      "notification:new": () => {
-        qc.invalidateQueries({ queryKey: ["notifications"] });
-        qc.invalidateQueries({ queryKey: ["unread-count"] });
-      },
+  useRealtime(user?.id ? [`user:${user.id}`] : [], {
+    "notification:new": () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["unread-count"] });
     },
-  );
+  });
 
   // Desktop: collapsed = icon-only mode, persisted
   const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem("sidebar-collapsed") === "true"; }
-    catch { return false; }
+    try {
+      return localStorage.getItem("sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
   });
   // Mobile: overlay open state
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -94,7 +115,11 @@ export function DashboardShell({
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       const next = !v;
-      try { localStorage.setItem("sidebar-collapsed", String(next)); } catch { /* */ }
+      try {
+        localStorage.setItem("sidebar-collapsed", String(next));
+      } catch {
+        /* */
+      }
       return next;
     });
   };
@@ -106,7 +131,6 @@ export function DashboardShell({
 
   return (
     <div className="min-h-screen flex bg-gradient-hero">
-
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
@@ -129,27 +153,46 @@ export function DashboardShell({
         ].join(" ")}
       >
         {/* Logo row */}
-        <div className={`flex h-16 items-center border-b border-border/40 ${collapsed ? "justify-center px-2" : "px-4 gap-2"}`}>
+        <div
+          className={`flex h-16 items-center border-b border-border/40 ${collapsed ? "justify-center px-2" : "px-4 gap-2"}`}
+        >
           {collapsed ? (
-            <Link to={dashboardRoot(user?.role)} title="JUDO·ARENA" className="group flex items-center justify-center">
+            <Link
+              to={dashboardRoot(user?.role)}
+              title="JUDO·ARENA"
+              className="group flex items-center justify-center"
+            >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
                 <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
                 <span className="absolute inset-[2px] rounded-[10px] bg-card" />
-                <img src={emblem} alt="" className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:scale-105" />
+                <img
+                  src={emblem}
+                  alt=""
+                  className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:scale-105"
+                />
               </span>
             </Link>
           ) : (
-            <Link to={dashboardRoot(user?.role)} className="group flex flex-1 min-w-0 items-center gap-2.5">
+            <Link
+              to={dashboardRoot(user?.role)}
+              className="group flex flex-1 min-w-0 items-center gap-2.5"
+            >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
                 <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
                 <span className="absolute inset-[2px] rounded-[10px] bg-card" />
-                <img src={emblem} alt="" className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105" />
+                <img
+                  src={emblem}
+                  alt=""
+                  className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105"
+                />
               </span>
               <span className="min-w-0">
                 <span className="block font-display text-sm font-bold leading-none tracking-wide truncate">
                   JUDO<span className="text-gradient-gold">·</span>ARENA
                 </span>
-                <span className="block text-[9px] uppercase tracking-[0.2em] text-muted-foreground mt-0.5 truncate">management</span>
+                <span className="block text-[9px] uppercase tracking-[0.2em] text-muted-foreground mt-0.5 truncate">
+                  management
+                </span>
               </span>
             </Link>
           )}
@@ -160,10 +203,11 @@ export function DashboardShell({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
           >
-            {collapsed
-              ? <PanelLeftOpen className="h-4 w-4" />
-              : <PanelLeftClose className="h-4 w-4" />
-            }
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
 
           {/* Mobile close button */}
@@ -183,17 +227,26 @@ export function DashboardShell({
               title={`${translatedRole}${user ? ` · ${user.email}` : ""}`}
               className="h-9 w-9 rounded-full bg-gradient-gold flex items-center justify-center text-xs font-bold text-[#1a1204] select-none"
             >
-              {user ? `${user.name?.[0] ?? ""}${user.surname?.[0] ?? ""}`.toUpperCase() : translatedRole.charAt(0)}
+              {user
+                ? `${user.name?.[0] ?? ""}${user.surname?.[0] ?? ""}`.toUpperCase()
+                : translatedRole.charAt(0)}
             </Link>
           </div>
         ) : (
-          <Link to={profileRoot(user?.role)} className="px-4 py-4 flex items-center gap-3 border-b border-border/40 hover:bg-muted/30 transition-colors">
+          <Link
+            to={profileRoot(user?.role)}
+            className="px-4 py-4 flex items-center gap-3 border-b border-border/40 hover:bg-muted/30 transition-colors"
+          >
             <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center text-sm font-bold text-[#1a1204] shrink-0">
               {user ? `${user.name?.[0] ?? ""}${user.surname?.[0] ?? ""}`.toUpperCase() : "?"}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{user ? `${user.name} ${user.surname}` : "—"}</div>
-              <div className="text-[11px] text-gold uppercase tracking-widest">{translatedRole}</div>
+              <div className="text-sm font-semibold truncate">
+                {user ? `${user.name} ${user.surname}` : "—"}
+              </div>
+              <div className="text-[11px] text-gold uppercase tracking-widest">
+                {translatedRole}
+              </div>
             </div>
           </Link>
         )}
@@ -220,15 +273,15 @@ export function DashboardShell({
                 <span className="relative shrink-0">
                   <n.icon className="h-4 w-4" />
                   {isNotif && unreadCount > 0 && (
-                    <span aria-label={`${unreadCount} unread`}
-                      className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                    <span
+                      aria-label={`${unreadCount} unread`}
+                      className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+                    >
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </span>
-                {!collapsed && (
-                  <span className="flex-1">{navLabel(n.label)}</span>
-                )}
+                {!collapsed && <span className="flex-1">{navLabel(n.label)}</span>}
                 {!collapsed && isNotif && unreadCount > 0 && (
                   <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-white">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -278,7 +331,9 @@ export function DashboardShell({
               <Menu className="h-5 w-5" />
             </button>
 
-            <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold md:text-2xl">{accentTitle}</h1>
+            <h1 className="min-w-0 flex-1 truncate font-display text-lg font-semibold md:text-2xl">
+              {accentTitle}
+            </h1>
 
             <div className="flex items-center gap-2">
               {/* Notification bell — always visible in top bar */}
@@ -334,13 +389,6 @@ export function DashboardShell({
               );
             })}
           </nav>
-
-          <div className="mt-3 sm:hidden lg:hidden">
-            <div className="grid grid-cols-[auto_1fr] gap-2">
-              <ThemeToggle className="bg-card/60" />
-              <LanguageSwitcher className="w-full justify-center" />
-            </div>
-          </div>
         </header>
 
         <div className="p-4 sm:p-6 lg:p-10">{children}</div>
@@ -349,17 +397,65 @@ export function DashboardShell({
   );
 }
 
-export function StatCard({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  accent,
+  icon: Icon,
+  trend,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+  trend?: { value: number; label?: string };
+}) {
   return (
-    <div className={`glass rounded-xl p-4 sm:p-6 ${accent ? "border-gold/40" : ""}`}>
-      <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={`mt-2 break-words font-display text-3xl font-bold sm:text-4xl ${accent ? "text-gradient-gold" : ""}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+    <div
+      className={`glass rounded-xl p-4 sm:p-5 relative overflow-hidden ${accent ? "border-gold/40" : ""}`}
+    >
+      {accent && <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-gold" />}
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
+        {Icon && (
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${accent ? "bg-gold/15 text-gold" : "bg-muted/50 text-muted-foreground"}`}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+      </div>
+      <div
+        className={`mt-3 break-words font-display text-3xl font-bold sm:text-4xl ${accent ? "text-gradient-gold" : ""}`}
+      >
+        {value}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2">
+        {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+        {trend && (
+          <span
+            className={`ml-auto inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${trend.value >= 0 ? "bg-emerald-500/12 text-emerald-500" : "bg-destructive/12 text-destructive"}`}
+          >
+            {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value)}
+            {trend.label ?? "%"}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
-export function Panel({ title, children, action }: { title: string | ReactNode; children: ReactNode; action?: ReactNode }) {
+export function Panel({
+  title,
+  children,
+  action,
+}: {
+  title: string | ReactNode;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <section className="glass rounded-xl p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -381,7 +477,10 @@ export function LoadingState({ message }: { message?: string }) {
 }
 
 export function EmptyState({
-  title, hint, icon: Icon, action,
+  title,
+  hint,
+  icon: Icon,
+  action,
 }: {
   title: string;
   hint?: string;
@@ -397,8 +496,10 @@ export function EmptyState({
       <div className="text-sm font-medium text-foreground">{title}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground max-w-xs">{hint}</div>}
       {action && (
-        <Link to={action.to}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold/10 border border-gold/20 px-4 py-2 text-xs font-medium text-gold hover:bg-gold/20 transition-colors">
+        <Link
+          to={action.to}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold/10 border border-gold/20 px-4 py-2 text-xs font-medium text-gold hover:bg-gold/20 transition-colors"
+        >
           {action.label}
         </Link>
       )}
@@ -426,12 +527,17 @@ export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
   return (
     <div className="mt-4 space-y-2">
       <div className="flex gap-4 pb-2 border-b border-border/40">
-        {Array.from({ length: cols }).map((_, i) => <Skeleton key={i} className="h-3 flex-1" />)}
+        {Array.from({ length: cols }).map((_, i) => (
+          <Skeleton key={i} className="h-3 flex-1" />
+        ))}
       </div>
       {Array.from({ length: rows }).map((_, r) => (
         <div key={r} className="flex gap-4 py-2.5">
           {Array.from({ length: cols }).map((_, c) => (
-            <Skeleton key={c} className={`h-4 flex-1 ${c === 0 ? "max-w-[160px]" : c === cols - 1 ? "max-w-[80px]" : ""}`} />
+            <Skeleton
+              key={c}
+              className={`h-4 flex-1 ${c === 0 ? "max-w-[160px]" : c === cols - 1 ? "max-w-[80px]" : ""}`}
+            />
           ))}
         </div>
       ))}

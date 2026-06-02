@@ -50,22 +50,60 @@ function NotFoundComponent() {
   );
 }
 
+function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
+      <div className="absolute inset-0 grid-bg opacity-25" />
+      <div className="absolute left-1/2 top-1/2 h-[38rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/10 blur-[110px]" />
+      <div className="relative text-center">
+        <div className="relative mx-auto mb-7 h-28 w-28">
+          <div className="absolute inset-0 rounded-full border border-gold/25 animate-ping" />
+          <div className="absolute inset-3 rounded-full border border-gold/35" />
+          <div className="absolute inset-6 rounded-2xl bg-card shadow-elegant" />
+          <img
+            src={emblem}
+            alt=""
+            className="absolute inset-7 h-14 w-14 rounded-xl object-cover shadow-gold"
+          />
+        </div>
+        <div className="font-display text-3xl font-bold">
+          Judo<span className="text-gradient-gold">·</span>Arena
+        </div>
+        <p className="mt-2 text-xs uppercase tracking-[0.35em] text-muted-foreground">{label}</p>
+        <div className="mx-auto mt-7 h-1 w-56 overflow-hidden rounded-full bg-border/50">
+          <div className="h-full w-1/2 rounded-full bg-gradient-gold shadow-gold animate-[loadingSlide_1.1s_ease-in-out_infinite]" />
+        </div>
+      </div>
+      <style>{`
+        @keyframes loadingSlide {
+          0% { transform: translateX(-120%); }
+          100% { transform: translateX(240%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   console.error(error);
   Sentry.captureException(error);
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md text-center">
+    <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
+      <div className="absolute inset-0 grid-bg opacity-25" />
+      <div className="relative max-w-md rounded-2xl border border-gold/25 bg-card/70 p-8 text-center shadow-elegant backdrop-blur">
+        <img src={emblem} alt="" className="mx-auto mb-5 h-16 w-16 rounded-2xl object-cover" />
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {error.message || "Бетті қайта жүктеп көріңіз."}
+        </p>
         <button
           onClick={() => {
             router.invalidate();
             reset();
           }}
-          className="mt-6 bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded-md font-medium"
+          className="mt-6 rounded-md bg-gradient-gold px-5 py-2.5 font-medium text-gold-foreground shadow-gold"
         >
           {t("error.reload")}
         </button>
@@ -134,6 +172,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
+  pendingComponent: () => <AppLoadingScreen label="Бет дайындалып жатыр" />,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {

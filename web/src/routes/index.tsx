@@ -35,7 +35,6 @@ import {
   BarChart,
   Search,
   GitBranch,
-  PlayCircle,
   BookOpen,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -277,54 +276,6 @@ const topAthletes = [
   },
 ];
 
-const techniqueVideos = [
-  {
-    title: "5 КЮ техника бейнесі",
-    level: "5 КЮ",
-    date: "12.11.2021",
-    focus: "Базалық лақтырулар",
-    duration: "18 мин",
-    moves: ["De-ashi-barai", "Hiza-guruma", "O-goshi"],
-    image: techniqueKyu,
-  },
-  {
-    title: "4 КЮ техника бейнесі",
-    level: "4 КЮ",
-    date: "22.11.2021",
-    focus: "Қорғаныс және ауысу",
-    duration: "22 мин",
-    moves: ["Sasae-tsurikomi-ashi", "Tai-otoshi", "Kesa-gatame"],
-    image: athleteBlue1,
-  },
-  {
-    title: "3 КЮ техника бейнесі",
-    level: "3 КЮ",
-    date: "23.11.2021",
-    focus: "Комбинация",
-    duration: "26 мин",
-    moves: ["Uchi-mata", "Harai-goshi", "Okuri-eri-jime"],
-    image: athleteBlue2,
-  },
-  {
-    title: "2 КЮ техника бейнесі",
-    level: "2 КЮ",
-    date: "23.11.2021",
-    focus: "Татамидегі бақылау",
-    duration: "24 мин",
-    moves: ["Tomoe-nage", "Ude-garami", "Sumi-gaeshi"],
-    image: teamLineup,
-  },
-  {
-    title: "1 КЮ техника бейнесі",
-    level: "1 КЮ",
-    date: "23.11.2021",
-    focus: "Жарысқа дайындық",
-    duration: "31 мин",
-    moves: ["Kata-guruma", "Sode-tsurikomi-goshi", "Juji-gatame"],
-    image: athleteWomanWhite,
-  },
-];
-
 function localizeName(name: unknown): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
@@ -548,9 +499,7 @@ function Home() {
     el.style.transform = "perspective(800px) rotateY(0) rotateX(0) translateY(0) scale(1)";
   };
 
-  const [activeTechnique, setActiveTechnique] = useState(0);
   const [activeBelt, setActiveBelt] = useState(3);
-  const currentTechnique = techniqueVideos[activeTechnique];
   const beltPath = [
     {
       label: "Ақ",
@@ -559,6 +508,7 @@ function Home() {
       text: "text-navy-deep",
       progress: 14,
       skills: "Ұстау, құлау, негізгі тұрыс",
+      techniques: ["Ukemi", "Shizen-hontai", "Kumi-kata", "Tai-sabaki", "Kesa-gatame"],
     },
     {
       label: "Сары",
@@ -567,6 +517,16 @@ function Home() {
       text: "text-navy-deep",
       progress: 28,
       skills: "De-ashi-barai, Hiza-guruma",
+      techniques: [
+        "De-ashi-barai",
+        "Hiza-guruma",
+        "Sasae-tsurikomi-ashi",
+        "O-goshi",
+        "O-soto-gari",
+        "O-uchi-gari",
+        "Seoi-nage",
+        "Kesa-gatame",
+      ],
     },
     {
       label: "Қызғылт сары",
@@ -575,6 +535,16 @@ function Home() {
       text: "text-navy-deep",
       progress: 42,
       skills: "Tai-otoshi, Kesa-gatame",
+      techniques: [
+        "Ko-soto-gari",
+        "Ko-uchi-gari",
+        "Koshi-guruma",
+        "Tsurikomi-goshi",
+        "Okuri-ashi-barai",
+        "Tai-otoshi",
+        "Harai-goshi",
+        "Uchi-mata",
+      ],
     },
     {
       label: "Жасыл",
@@ -583,6 +553,16 @@ function Home() {
       text: "text-white",
       progress: 57,
       skills: "Uchi-mata, комбинация",
+      techniques: [
+        "Ko-soto-gake",
+        "Tsuri-goshi",
+        "Yoko-otoshi",
+        "Ashi-guruma",
+        "Hane-goshi",
+        "Harai-tsurikomi-ashi",
+        "Tomoe-nage",
+        "Kata-guruma",
+      ],
     },
     {
       label: "Көк",
@@ -591,6 +571,16 @@ function Home() {
       text: "text-white",
       progress: 71,
       skills: "Tomoe-nage, ne-waza бақылау",
+      techniques: [
+        "Sumi-gaeshi",
+        "Tani-otoshi",
+        "Hane-makikomi",
+        "Sukui-nage",
+        "Utsuri-goshi",
+        "O-guruma",
+        "Soto-makikomi",
+        "Uki-otoshi",
+      ],
     },
     {
       label: "Қоңыр",
@@ -599,6 +589,16 @@ function Home() {
       text: "text-white",
       progress: 86,
       skills: "Sode, Juji-gatame, тактика",
+      techniques: [
+        "O-soto-guruma",
+        "Uki-waza",
+        "Yoko-wakare",
+        "Yoko-guruma",
+        "Ushiro-goshi",
+        "Ura-nage",
+        "Sumi-otoshi",
+        "Yoko-gake",
+      ],
     },
     {
       label: "Қара",
@@ -607,6 +607,14 @@ function Home() {
       text: "text-gold",
       progress: 100,
       skills: "Шеберлік, жарыс тәжірибесі",
+      techniques: [
+        "Nage-no-kata",
+        "Katame-no-kata",
+        "Ude-hishigi-juji-gatame",
+        "Hadaka-jime",
+        "Okuri-eri-jime",
+        "Yoko-shiho-gatame",
+      ],
     },
   ];
   const currentBelt = beltPath[activeBelt];
@@ -729,21 +737,21 @@ function Home() {
 
   return (
     <div
-      className="min-h-screen flex flex-col cursor-none"
+      className="min-h-screen flex flex-col md:cursor-none"
       ref={revealRef as React.RefObject<HTMLDivElement>}
     >
       {/* Mouse trail container */}
       <div ref={trailContainerRef} className="pointer-events-none" />
 
-      {/* Custom cursor — dot + ring */}
+      {/* Custom cursor — dot + ring (desktop only) */}
       <div
         ref={cursorDotRef}
-        className="pointer-events-none fixed left-0 top-0 z-[9998] h-2 w-2 rounded-full bg-gold shadow-[0_0_8px_oklch(0.76_0.15_80/0.9)]"
+        className="pointer-events-none fixed left-0 top-0 z-[9998] hidden h-2 w-2 rounded-full bg-gold shadow-[0_0_8px_oklch(0.76_0.15_80/0.9)] md:block"
         style={{ willChange: "transform" }}
       />
       <div
         ref={cursorRingRef}
-        className="pointer-events-none fixed left-0 top-0 z-[9997] h-10 w-10 rounded-full border border-gold/50"
+        className="pointer-events-none fixed left-0 top-0 z-[9997] hidden h-10 w-10 rounded-full border border-gold/50 md:block"
         style={{ willChange: "transform", transition: "border-color 0.2s" }}
       />
 
@@ -1096,7 +1104,7 @@ function Home() {
                   key={c.name}
                   onMouseMove={cardTilt}
                   onMouseLeave={cardTiltLeave}
-                  className={`group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
+                  className="group relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 p-5 shadow-elegant backdrop-blur card-glow-border shimmer-card"
                   style={{ willChange: "transform", transformStyle: "preserve-3d" }}
                 >
                   <LazyImage
@@ -1172,7 +1180,7 @@ function Home() {
               )}
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur reveal">
+            <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/55 shadow-elegant backdrop-blur">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
               <div className="flex items-center justify-between border-b border-border/40 bg-background/30 px-4 py-4 sm:px-5">
                 <div>
@@ -1655,99 +1663,6 @@ function Home() {
         </div>
       </section>
 
-      {/* TOURNAMENT ENTRY — team registration flow */}
-      <section className="container mx-auto px-4 -mt-6 relative z-10">
-        <div className="relative overflow-hidden rounded-2xl gradient-border bg-gradient-navy border border-gold/30 p-5 sm:p-7 shadow-elegant">
-          <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gold/20 blur-3xl animate-float" />
-          <div className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute inset-0 grid-bg opacity-25" />
-
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:items-center">
-            <div className="reveal-left">
-              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-gold">
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("home.entry_badge")}
-              </div>
-              <h3 className="mt-4 font-display text-2xl font-bold leading-tight sm:text-3xl">
-                {t("home.entry_title")}
-              </h3>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                {t("home.entry_desc")}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  to="/tournaments"
-                  className="inline-flex items-center gap-2 bg-gradient-gold text-gold-foreground px-5 py-3 rounded-md font-semibold shadow-gold hover:scale-105 transition-transform"
-                >
-                  {t("home.select_tournament")} <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 glass border border-gold/30 px-5 py-3 rounded-md font-medium hover:border-gold/60 transition-colors"
-                >
-                  {t("home.submit_entry")}
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 reveal-right">
-              {[
-                {
-                  icon: Trophy,
-                  n: "01",
-                  t: t("home.step_tournament"),
-                  d: t("home.step_tournament_desc"),
-                },
-                {
-                  icon: Users,
-                  n: "02",
-                  t: t("home.step_participants"),
-                  d: t("home.step_participants_desc"),
-                },
-                {
-                  icon: Shield,
-                  n: "03",
-                  t: t("home.step_approve"),
-                  d: t("home.step_approve_desc"),
-                },
-              ].map((step) => (
-                <div
-                  key={step.n}
-                  className="group relative min-h-[10rem] overflow-hidden rounded-xl border border-gold/20 bg-background/45 p-4 backdrop-blur transition-all hover:-translate-y-1 hover:border-gold/50"
-                >
-                  <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gold/10 blur-2xl group-hover:bg-gold/20 transition-colors" />
-                  <div className="relative flex items-center justify-between">
-                    <div className="h-11 w-11 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold">
-                      <step.icon className="h-5 w-5 text-gold-foreground" />
-                    </div>
-                    <span className="font-display text-3xl font-bold text-gold/25">{step.n}</span>
-                  </div>
-                  <div className="relative mt-4 font-display text-lg font-semibold">{step.t}</div>
-                  <p className="relative mt-2 text-xs leading-relaxed text-muted-foreground">
-                    {step.d}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative mt-5 grid gap-3 border-t border-border/40 pt-5 text-xs text-muted-foreground sm:grid-cols-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              {t("home.entry_feat_1")}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              {t("home.entry_feat_2")}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-              {t("home.entry_feat_3")}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* PARTNERS MARQUEE */}
       <section className="border-y border-border/40 bg-navy-deep/40 py-6 overflow-hidden">
         <div className="flex gap-12 animate-marquee whitespace-nowrap">
@@ -1760,7 +1675,7 @@ function Home() {
         </div>
       </section>
 
-      {/* TECHNIQUE VIDEO LIBRARY */}
+      {/* BELT PATH */}
       <section
         id="tehnika"
         ref={cineRef}
@@ -1792,217 +1707,127 @@ function Home() {
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-1.5">
               <BookOpen className="h-3.5 w-3.5 text-gold" />
               <span className="text-[10px] uppercase tracking-[0.28em] text-gold">
-                {t("home.technique_section")}
+                Белбеу жүйесі
               </span>
             </div>
             <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl md:text-6xl">
-              {t("home.technique_title")}
+              Спортшының белбеу жолы
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {t("home.technique_desc")}
+              Деңгей, техника және жарысқа дайындық бір экранда: спортшы қай белбеуде екенін, келесі
+              қадамын және прогресін анық көреді.
             </p>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1.35fr_0.95fr]">
-            <div className="relative min-h-[34rem] overflow-hidden rounded-2xl border border-gold/20 bg-navy-deep shadow-elegant">
-              <img
-                src={currentTechnique.image}
-                alt={currentTechnique.title}
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover opacity-70"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/5" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_30%,oklch(0.76_0.15_80/0.24),transparent_32%)]" />
-
-              <div
-                className="absolute right-6 top-24 hidden h-52 w-52 md:block"
-                style={{ perspective: "900px" }}
-              >
-                <div
-                  className="relative h-full w-full preserve-3d"
-                  style={{ transform: "rotateX(62deg) rotateZ(-28deg)" }}
-                >
-                  {[0, 1, 2, 3].map((layer) => (
-                    <div
-                      key={layer}
-                      className="absolute inset-0 rounded-xl border border-gold/25 bg-gradient-to-br from-gold/25 via-white/10 to-navy-deep/70 shadow-gold"
-                      style={{
-                        transform: `translateZ(${layer * 14}px) scale(${1 - layer * 0.07})`,
-                      }}
-                    />
-                  ))}
-                  <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-gold/35" />
-                  <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-gold/35" />
-                </div>
-              </div>
-
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white backdrop-blur">
-                  internal media
-                </span>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gold text-gold-foreground shadow-gold">
-                  <PlayCircle className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                <div className="mb-3 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-gold px-4 py-1.5 text-xs font-bold text-gold-foreground shadow-gold">
-                    {currentTechnique.level}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    {currentTechnique.duration}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    {currentTechnique.date}
-                  </span>
-                </div>
-                <h3 className="font-display text-3xl font-bold leading-tight sm:text-5xl">
-                  {currentTechnique.title}
-                </h3>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {currentTechnique.focus}. Бұл жерде кейін нақты бейне файл немесе YouTube
-                  қойылады, ал қазір дайын ойнатқыш күйінде көрсетілген.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {currentTechnique.moves.map((move) => (
-                    <span
-                      key={move}
-                      className="rounded-full border border-gold/20 bg-background/55 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur"
-                    >
-                      {move}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-medium text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
-                  >
-                    <PlayCircle className="h-4 w-4" />
-                    {t("home.play_lesson")}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-md border border-gold/30 bg-background/50 px-6 py-3 font-medium backdrop-blur transition-colors hover:border-gold/60"
-                  >
-                    {t("home.technique_list")}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-gold/20 bg-card/80 p-4 shadow-elegant backdrop-blur">
-                <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/70 p-5 shadow-elegant backdrop-blur sm:p-8">
+            <div className="absolute inset-0 grid-bg opacity-25" />
+            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gold/15 blur-3xl" />
+            <div className="absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div className="relative">
+              {/* Top: belt name + level badge */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`h-12 w-12 shrink-0 rounded-xl border border-white/20 bg-gradient-to-br ${currentBelt.color} shadow-elegant sm:h-16 sm:w-16 sm:rounded-2xl`}
+                  />
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.26em] text-gold">
-                      бейне тізімі
+                    <div className="whitespace-nowrap text-[10px] uppercase tracking-[0.2em] text-gold">
+                      белбеу жолы
                     </div>
-                    <div className="font-display text-xl font-bold">КЮ бейнелері</div>
-                  </div>
-                  <div className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs text-gold">
-                    {techniqueVideos.length} сабақ
+                    <h3 className="mt-0.5 font-display text-4xl font-black leading-none sm:text-6xl">
+                      {currentBelt.label}
+                    </h3>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  {techniqueVideos.map((video, i) => (
-                    <button
-                      key={video.title}
-                      type="button"
-                      onClick={() => setActiveTechnique(i)}
-                      className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                        activeTechnique === i
-                          ? "border-gold/60 bg-gold/15 shadow-gold"
-                          : "border-border/60 bg-background/45 hover:border-gold/40 hover:bg-gold/10"
-                      }`}
+                <div className="shrink-0 rounded-xl border border-gold/25 bg-background/55 px-3 py-2 text-right sm:rounded-2xl sm:px-5 sm:py-3">
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                    ағымдағы деңгей
+                  </div>
+                  <div className="mt-0.5 font-display text-2xl font-bold text-gradient-gold sm:text-3xl">
+                    {currentBelt.level}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress bar + stats */}
+              <div className="mt-7 rounded-2xl border border-border/50 bg-background/35 p-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                    жалпы прогресс
+                  </span>
+                  <span className="font-display text-2xl font-bold text-gradient-gold">
+                    {currentBelt.progress}%
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full border border-border/50 bg-background/70">
+                  <div
+                    className="h-full rounded-full bg-gradient-gold shadow-gold transition-all duration-700"
+                    style={{ width: `${currentBelt.progress}%` }}
+                  />
+                </div>
+                <div className="mt-4 grid gap-2 grid-cols-3">
+                  {(["Техника", "Тәртіп", "Жарыс"] as const).map((item, idx) => (
+                    <div
+                      key={item}
+                      className="rounded-xl border border-border/50 bg-card/45 px-3 py-2.5"
                     >
-                      <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg">
-                        <LazyImage
-                          src={video.image}
-                          alt=""
-                          className="h-full w-full object-cover opacity-80 transition-transform group-hover:scale-105"
-                        />
-                        <span className="absolute inset-0 bg-background/20" />
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold text-gold-foreground">
-                            <PlayCircle className="h-4 w-4" />
-                          </span>
-                        </span>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {item}
+                      </div>
+                      <div className="mt-1 font-display text-xl font-bold text-gold">
+                        {Math.min(100, currentBelt.progress + idx * 7)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Techniques grid */}
+              <div className="mt-7">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border/50" />
+                  <span className="text-[10px] uppercase tracking-[0.28em] text-gold">
+                    {currentBelt.label} белбеуінің техникалары
+                  </span>
+                  <div className="h-px flex-1 bg-border/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {currentBelt.techniques.map((tech, idx) => (
+                    <div
+                      key={tech}
+                      className="group flex items-center gap-2.5 rounded-xl border border-border/50 bg-background/40 px-3 py-2.5 transition-all hover:border-gold/40 hover:bg-gold/8"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10 text-[9px] font-bold text-gold">
+                        {idx + 1}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="font-display font-semibold">{video.level}</span>
-                          <span className="text-xs text-muted-foreground">{video.duration}</span>
-                        </span>
-                        <span className="mt-1 block truncate text-sm text-muted-foreground">
-                          {video.title}
-                        </span>
-                      </span>
+                      <span className="text-xs font-medium leading-tight">{tech}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Belt selector */}
+              <div className="-mx-5 mt-7 sm:mx-0">
+                <div className="flex gap-2.5 overflow-x-auto px-5 pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-7 [scrollbar-width:none]">
+                  {beltPath.map((belt, i) => (
+                    <button
+                      key={belt.label}
+                      type="button"
+                      onClick={() => setActiveBelt(i)}
+                      className={`group shrink-0 rounded-2xl border p-3 text-left transition-all hover:-translate-y-1 sm:shrink ${
+                        activeBelt === i
+                          ? "border-gold/70 bg-gold/15 shadow-gold"
+                          : "border-border/60 bg-background/35 hover:border-gold/40 hover:bg-gold/8"
+                      }`}
+                      style={{ minWidth: "4.5rem" }}
+                    >
+                      <span
+                        className={`mb-2.5 block h-8 rounded-xl border border-white/20 bg-gradient-to-r ${belt.color} transition-transform group-hover:scale-[1.03]`}
+                      />
+                      <span className="block font-display text-sm font-bold">{belt.label}</span>
+                      <span className="text-[10px] text-gold">{belt.level}</span>
                     </button>
                   ))}
-                </div>
-              </div>
-
-              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/80 p-4 shadow-elegant backdrop-blur">
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gold/15 blur-2xl" />
-                <div className="relative">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.26em] text-gold">
-                        белбеу жолы
-                      </div>
-                      <div className="font-display text-xl font-bold">КЮ жүйесі</div>
-                    </div>
-                    <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
-                      {currentBelt.level}
-                    </span>
-                  </div>
-
-                  <div className="mb-4 rounded-xl border border-border/60 bg-background/40 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`h-8 w-16 rounded-md bg-gradient-to-r ${currentBelt.color} shadow-elegant`}
-                        />
-                        <div>
-                          <div className="font-display text-xl font-bold">{currentBelt.label}</div>
-                          <div className="text-xs text-muted-foreground">{currentBelt.skills}</div>
-                        </div>
-                      </div>
-                      <div className="font-display text-2xl font-bold text-gradient-gold">
-                        {currentBelt.progress}%
-                      </div>
-                    </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full border border-border/50 bg-background/60">
-                      <div
-                        className="h-full rounded-full bg-gradient-gold transition-all duration-500"
-                        style={{ width: `${currentBelt.progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-                    {beltPath.map((belt, i) => (
-                      <button
-                        key={belt.label}
-                        type="button"
-                        onClick={() => setActiveBelt(i)}
-                        className={`rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 ${
-                          activeBelt === i
-                            ? "border-gold/70 bg-gold/15 shadow-gold"
-                            : "border-border/60 bg-background/40 hover:border-gold/40"
-                        }`}
-                      >
-                        <span
-                          className={`mb-2 block h-3 rounded-full bg-gradient-to-r ${belt.color}`}
-                        />
-                        <span className="block truncate font-display text-sm font-semibold">
-                          {belt.label}
-                        </span>
-                        <span className="text-[10px] text-gold">{belt.level}</span>
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>

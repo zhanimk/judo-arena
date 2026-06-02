@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  Panel,
+  LoadingState,
+  EmptyState,
+} from "@/components/dashboard/DashboardShell";
 import { Check, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
@@ -51,63 +56,94 @@ function CoachNotifications() {
   });
   const markOne = useMutation({
     mutationFn: (id: string) => api.notifications.markRead(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-notifications"] }),
-    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : t("error.generic")),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["my-notifications", filter] });
+      const prev = qc.getQueryData<any[]>(["my-notifications", filter]);
+      qc.setQueryData(["my-notifications", filter], (old: any[]) =>
+        (old ?? []).map((n) => (n.id === id ? { ...n, read: true } : n)),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx: any) => {
+      if (ctx?.prev) qc.setQueryData(["my-notifications", filter], ctx.prev);
+      toast.error(t("error.generic"));
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-notifications"] });
+      qc.invalidateQueries({ queryKey: ["unread-count"] });
+    },
   });
 
   const items = query.data ?? [];
   const unread = items.filter((n: any) => !n.read).length;
 
   return (
-    <DashboardShell role={t("coach.role_label")} navItems={nav} accentTitle={`${t("dashboard.notifications")}${unread > 0 ? ` (${unread})` : ""}`}>
+    <DashboardShell
+      role={t("coach.role_label")}
+      navItems={nav}
+      accentTitle={`${t("dashboard.notifications")}${unread > 0 ? ` (${unread})` : ""}`}
+    >
       <Panel
         title={`${items.length} ${t("dashboard.notifications").toLowerCase()}`}
-        action={unread > 0 && (
-          <button onClick={() => markAll.mutate()} disabled={markAll.isPending}
-            className="text-sm text-gold hover:underline inline-flex items-center gap-1">
-            {markAll.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-            {t("notification.mark_all_read")}
-          </button>
-        )}
+        action={
+          unread > 0 && (
+            <button
+              onClick={() => markAll.mutate()}
+              disabled={markAll.isPending}
+              className="text-sm text-gold hover:underline inline-flex items-center gap-1"
+            >
+              {markAll.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+              {t("notification.mark_all_read")}
+            </button>
+          )
+        }
       >
         <div className="mb-4 flex flex-wrap gap-2">
           {Object.entries(filterLabels).map(([key, label]) => (
-            <button key={key} onClick={() => setFilter(key)}
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
               className={`px-3 py-1 rounded-full text-xs border transition-colors ${
                 filter === key
                   ? "bg-gold/15 text-gold border-gold/40"
                   : "glass border-border text-muted-foreground hover:text-foreground"
-              }`}>
+              }`}
+            >
               {label}
             </button>
           ))}
         </div>
 
-        {query.isLoading ? <LoadingState /> :
-          items.length === 0 ? (
-            <EmptyState title={t("notification.empty")} hint={t("notification.empty_hint")} />
-          ) : (
-            <ul className="space-y-2">
-              {items.map((n: any) => (
-                <li key={n.id}
-                  className={`glass rounded-md p-4 flex justify-between items-start gap-3 ${n.read ? "opacity-60" : "border-gold/30"}`}>
-                  <div>
-                    <div className="font-medium text-sm">{n.titleKey}</div>
-                    <div className="text-xs text-muted-foreground mt-1">{n.bodyKey}</div>
-                    <div className="text-[10px] text-muted-foreground mt-2">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </div>
+        {query.isLoading ? (
+          <LoadingState />
+        ) : items.length === 0 ? (
+          <EmptyState title={t("notification.empty")} hint={t("notification.empty_hint")} />
+        ) : (
+          <ul className="space-y-2">
+            {items.map((n: any) => (
+              <li
+                key={n.id}
+                className={`glass rounded-md p-4 flex justify-between items-start gap-3 ${n.read ? "opacity-60" : "border-gold/30"}`}
+              >
+                <div>
+                  <div className="font-medium text-sm">{n.titleKey}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{n.bodyKey}</div>
+                  <div className="text-[10px] text-muted-foreground mt-2">
+                    {new Date(n.createdAt).toLocaleString()}
                   </div>
-                  {!n.read && (
-                    <button onClick={() => markOne.mutate(n.id)}
-                      className="text-xs text-gold hover:bg-gold/10 px-2 py-1 rounded inline-flex items-center gap-1 shrink-0">
-                      <Check className="h-3 w-3" /> {t("notification.mark_read")}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                </div>
+                {!n.read && (
+                  <button
+                    onClick={() => markOne.mutate(n.id)}
+                    className="text-xs text-gold hover:bg-gold/10 px-2 py-1 rounded inline-flex items-center gap-1 shrink-0"
+                  >
+                    <Check className="h-3 w-3" /> {t("notification.mark_read")}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </Panel>
     </DashboardShell>
   );

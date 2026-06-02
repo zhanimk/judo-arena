@@ -70,7 +70,6 @@ function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [leaving, setLeaving] = useState(false);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -101,12 +100,9 @@ function Login() {
   };
 
   const redirectToDashboard = (userRole: "ATHLETE" | "COACH" | "ADMIN") => {
-    setLeaving(true);
-    setTimeout(() => {
-      if (userRole === "ADMIN") navigate({ to: "/admin" });
-      else if (userRole === "COACH") navigate({ to: "/coach/onboarding" });
-      else navigate({ to: "/athlete/onboarding" });
-    }, 420);
+    if (userRole === "ADMIN") navigate({ to: "/admin" });
+    else if (userRole === "COACH") navigate({ to: "/coach/onboarding" });
+    else navigate({ to: "/athlete/onboarding" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,14 +155,7 @@ function Login() {
   };
 
   return (
-    <div
-      className="lp-root min-h-screen overflow-hidden"
-      style={{
-        transition: "opacity 0.42s ease, transform 0.42s ease",
-        opacity: leaving ? 0 : 1,
-        transform: leaving ? "scale(0.99)" : "scale(1)",
-      }}
-    >
+    <div className="lp-root min-h-screen overflow-hidden">
       {/* ambient orbs */}
       <div className="lp-orb1 absolute h-[600px] w-[600px] rounded-full blur-3xl pointer-events-none -top-40 -left-40" />
       <div className="lp-orb2 absolute h-[500px] w-[500px] rounded-full blur-3xl pointer-events-none bottom-0 right-0" />

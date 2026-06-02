@@ -31,6 +31,34 @@ export const Route = createFileRoute("/coach/onboarding")({
 
 const AGREED_KEY = "coach_rules_agreed";
 
+const KZ_CITIES = [
+  "Алматы",
+  "Астана",
+  "Шымкент",
+  "Қарағанды",
+  "Ақтөбе",
+  "Тараз",
+  "Павлодар",
+  "Өскемен",
+  "Семей",
+  "Атырау",
+  "Қостанай",
+  "Орал",
+  "Петропавл",
+  "Қызылорда",
+  "Ақтау",
+  "Теміртау",
+  "Түркістан",
+  "Көкшетау",
+  "Талдықорған",
+  "Жезқазған",
+  "Балқаш",
+  "Рудный",
+  "Қонаев",
+  "Степногорск",
+  "Екібастұз",
+];
+
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold";
 
@@ -645,13 +673,19 @@ function ClubStep({
                   <label className="text-xs uppercase tracking-widest text-muted-foreground">
                     {t("common.city")}
                   </label>
-                  <input
+                  <select
                     required
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Алматы"
                     className={`mt-1.5 ${INPUT_CLS}`}
-                  />
+                  >
+                    <option value="">Қаланы таңдаңыз</option>
+                    {KZ_CITIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs uppercase tracking-widest text-muted-foreground">

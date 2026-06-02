@@ -35,9 +35,7 @@ export function ProtectedRoute({
       if (!allowedRoles.includes(user.role)) {
         // Не та роль — отправим на дашборд их роли
         const target =
-          user.role === "ADMIN" ? "/admin" :
-          user.role === "COACH" ? "/coach" :
-          "/athlete";
+          user.role === "ADMIN" ? "/admin" : user.role === "COACH" ? "/coach" : "/athlete";
         navigate({ to: target });
       }
     }
@@ -49,10 +47,13 @@ export function ProtectedRoute({
     let alive = true;
     setHasClubRequest(null);
     setCheckingOnboarding(true);
-    api.joinRequests.myList()
+    api.joinRequests
+      .myList()
       .then((requests) => {
         if (!alive) return;
-        const hasPendingOrApproved = requests.some((r: any) => r.status === "PENDING" || r.status === "APPROVED");
+        const hasPendingOrApproved = requests.some(
+          (r: any) => r.status === "PENDING" || r.status === "APPROVED",
+        );
         setHasClubRequest(Boolean(user.clubId || hasPendingOrApproved));
       })
       .catch(() => {
@@ -87,8 +88,9 @@ export function ProtectedRoute({
 
   useEffect(() => {
     if (!mounted || status !== "authenticated" || !user || user.role !== "COACH") return;
-    const agreed = Boolean(localStorage.getItem("coach_rules_agreed"));
-    const onboardingDone = Boolean(user.clubId) && agreed;
+    // Onboarding is complete once the coach has a club — localStorage rules flag is only
+    // for the onboarding wizard itself (to require agreement before finishing).
+    const onboardingDone = Boolean(user.clubId);
     const onboardingPaths = ["/coach/onboarding", "/coach/club", "/coach/profile"];
     if (!onboardingDone && !onboardingPaths.includes(path)) {
       navigate({ to: "/coach/onboarding" });
@@ -97,7 +99,12 @@ export function ProtectedRoute({
 
   if (!mounted) return null;
 
-  if (status === "loading" || status === "idle" || checkingOnboarding || (user?.role === "ATHLETE" && hasClubRequest === null)) {
+  if (
+    status === "loading" ||
+    status === "idle" ||
+    checkingOnboarding ||
+    (user?.role === "ATHLETE" && hasClubRequest === null)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="text-muted-foreground text-sm animate-pulse">Жүктелуде...</div>
@@ -124,11 +131,14 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
     if (!mounted) return;
 
     if (status === "authenticated" && user) {
-      const agreed = Boolean(localStorage.getItem("coach_rules_agreed"));
       const target =
-        user.role === "ADMIN" ? "/admin" :
-        user.role === "COACH" ? (user.clubId && agreed ? "/coach" : "/coach/onboarding") :
-        "/athlete/onboarding";
+        user.role === "ADMIN"
+          ? "/admin"
+          : user.role === "COACH"
+            ? user.clubId
+              ? "/coach"
+              : "/coach/onboarding"
+            : "/athlete/onboarding";
       navigate({ to: target });
     }
   }, [mounted, status, user, navigate]);

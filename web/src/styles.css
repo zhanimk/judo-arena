@@ -345,11 +345,11 @@
   .animate-scale-in { animation: scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
   /* Scroll-reveal animations */
-  .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal { opacity: 1; transform: translateY(0); transition: opacity 0.7s ease, transform 0.7s ease; }
   .reveal.visible { opacity: 1; transform: translateY(0); }
-  .reveal-left { opacity: 0; transform: translateX(-32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal-left { opacity: 1; transform: translateX(0); transition: opacity 0.7s ease, transform 0.7s ease; }
   .reveal-left.visible { opacity: 1; transform: translateX(0); }
-  .reveal-right { opacity: 0; transform: translateX(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal-right { opacity: 1; transform: translateX(0); transition: opacity 0.7s ease, transform 0.7s ease; }
   .reveal-right.visible { opacity: 1; transform: translateX(0); }
   .reveal-delay-1 { transition-delay: 0.1s; }
   .reveal-delay-2 { transition-delay: 0.2s; }
@@ -465,9 +465,9 @@
 
   /* 6. Blur-to-sharp reveal */
   .blur-reveal {
-    opacity: 0;
-    filter: blur(8px);
-    transform: translateY(16px);
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
     transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s ease;
   }
   .blur-reveal.visible {
