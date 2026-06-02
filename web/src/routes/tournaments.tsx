@@ -1,7 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { LazyImage } from "@/components/ui/avatar-image";
-import { SiteFooter } from "@/components/site/SiteFooter";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteBlue from "@/assets/athlete-blue-2.jpg";
@@ -305,8 +304,6 @@ function Tournaments() {
           </div>
         )}
       </section>
-
-      <SiteFooter />
     </div>
   );
 }

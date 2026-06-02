@@ -44,12 +44,12 @@ function Rankings() {
   });
   const leaderboardQuery = useQuery({
     queryKey: ["leaderboard", clubId],
-    queryFn: () => api.ratings.leaderboard({ clubId: clubId || undefined, limit: 100 }),
+    queryFn: () => api.ratings.leaderboard({ clubId: clubId || undefined, limit: 20 }),
     staleTime: 60_000,
   });
   const clubLeaderboardQuery = useQuery({
     queryKey: ["club-leaderboard"],
-    queryFn: () => api.ratings.clubLeaderboard({ limit: 100 }),
+    queryFn: () => api.ratings.clubLeaderboard({ limit: 20 }),
     staleTime: 60_000,
   });
 
