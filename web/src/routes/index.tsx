@@ -1561,22 +1561,12 @@ function Home() {
                   {t("home.live_center_desc")}
                 </p>
               </div>
-              {featuredTournament ? (
-                <Link
-                  to="/live-wall/$tournamentId"
-                  params={{ tournamentId: featuredTournament.id }}
-                  className="inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-4 py-2 text-sm font-semibold text-destructive hover:border-destructive/70 hover:bg-destructive/20"
-                >
-                  Қонақ LIVE табло <ArrowRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <Link
-                  to="/tournaments"
-                  className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60"
-                >
-                  Жарыстарды көру <ArrowRight className="h-4 w-4" />
-                </Link>
-              )}
+              <Link
+                to="/tournaments"
+                className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:border-gold/60"
+              >
+                Жарыс хаттамасы <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
@@ -1659,19 +1649,6 @@ function Home() {
                     </div>
                   ))}
                 </div>
-                {featuredTournament && (
-                  <Link
-                    to="/live-wall/$tournamentId"
-                    params={{ tournamentId: featuredTournament.id }}
-                    className="mt-5 flex items-center justify-between rounded-xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive transition-colors hover:border-destructive/60 hover:bg-destructive/15"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Radio className="h-4 w-4 animate-pulse" />
-                      Барлық татами live
-                    </span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
               </div>
             </div>
           </div>

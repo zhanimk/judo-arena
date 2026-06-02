@@ -17,9 +17,9 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { Avatar } from "@/components/ui/avatar-image";
-import { SiteFooter } from "@/components/site/SiteFooter";
 import { api, mediaUrl } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
+import { buildTatamiState } from "@/lib/tatami-state";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/tournaments/$id")({
@@ -39,9 +39,9 @@ function TournamentDetail() {
   const [selectedCategoryId, setSelectedCategoryIdRaw] = useState<string | null>(
     urlCategoryId ?? null,
   );
-  const [activeTab, setActiveTab] = useState<"overview" | "categories" | "protocol" | "results">(
-    "overview",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "categories" | "wall" | "protocol" | "results"
+  >("overview");
 
   function setSelectedCategoryId(catId: string | null) {
     setSelectedCategoryIdRaw(catId);
@@ -74,6 +74,7 @@ function TournamentDetail() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash === "#sanattar") setActiveTab("categories");
+    if (hash === "#tatami-live") setActiveTab("wall");
     if (hash === "#hattamalar") setActiveTab("protocol");
     if (hash === "#natijeler") setActiveTab("results");
     if (hash === "#overview") setActiveTab("overview");
@@ -121,7 +122,6 @@ function TournamentDetail() {
             </Link>
           </div>
         </div>
-        <SiteFooter />
       </div>
     );
   }
@@ -194,9 +194,10 @@ function TournamentDetail() {
             [
               { id: "overview" as const, label: t("tournament.tab_overview") },
               { id: "categories" as const, label: t("tournament.tab_categories") },
-              { id: "protocol" as const, label: t("tournament.tab_live") },
+              { id: "wall" as const, label: "3 · Татами live" },
+              { id: "protocol" as const, label: "4 · Live-тор" },
               ...(tourney?.status === "COMPLETED"
-                ? [{ id: "results" as const, label: t("tournament.tab_results") }]
+                ? [{ id: "results" as const, label: "5 · Нәтижелер" }]
                 : []),
             ] as const
           ).map((item) => (
@@ -503,6 +504,14 @@ function TournamentDetail() {
         </section>
       )}
 
+      {activeTab === "wall" && (
+        <TatamiLiveTab
+          tournamentId={id}
+          matches={matches}
+          tatamiCount={Number(tourney.tatamiCount ?? 1)}
+        />
+      )}
+
       {activeTab === "protocol" && (
         <section
           id="hattamalar"
@@ -714,9 +723,119 @@ function TournamentDetail() {
           tournamentId={id}
         />
       )}
-
-      <SiteFooter />
     </div>
+  );
+}
+
+function TatamiLiveTab({
+  tournamentId,
+  matches,
+  tatamiCount,
+}: {
+  tournamentId: string;
+  matches: any[];
+  tatamiCount: number;
+}) {
+  const tatamis = useMemo(
+    () => buildTatamiState(matches, Math.max(1, tatamiCount || 1)),
+    [matches, tatamiCount],
+  );
+
+  return (
+    <section id="tatami-live" className="container mx-auto px-4 py-12">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-destructive">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            Public live
+          </div>
+          <h2 className="mt-4 font-display text-3xl font-bold sm:text-5xl">
+            Барлық татами кестесі
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Қонақтар логинсіз көре алады: қай татамиде кім күресіп жатыр және келесі кім шығады.
+          </p>
+        </div>
+        <Link
+          to="/live-wall/$tournamentId"
+          params={{ tournamentId }}
+          className="inline-flex items-center rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold"
+        >
+          Үлкен экранға ашу
+        </Link>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {tatamis.map((tatami) => {
+          const current = tatami.current;
+          const next = tatami.queue[0];
+          const waiting = tatami.queue.slice(1, 4);
+          return (
+            <div
+              key={tatami.number}
+              className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur"
+            >
+              <div className="flex items-center justify-between border-b border-border/40 bg-background/35 px-5 py-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Tatami</div>
+                  <h3 className="font-display text-3xl font-black text-gradient-gold">
+                    #{tatami.number}
+                  </h3>
+                </div>
+                <StatusBadge status={current?.status ?? "PENDING"} />
+              </div>
+
+              <div className="p-5">
+                <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
+                  <div className="text-[10px] uppercase tracking-widest text-destructive">
+                    Қазір
+                  </div>
+                  <div className="mt-2 min-h-[3.25rem] font-display text-xl font-bold leading-tight">
+                    {current ? matchTitle(current) : "Әзірше схватка жоқ"}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {current ? matchMeta(current) : "Кесте дайындалған кезде осы жерде көрінеді"}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-gold/25 bg-gold/10 p-4">
+                  <div className="text-[10px] uppercase tracking-widest text-gold">Келесі</div>
+                  <div className="mt-2 min-h-[2.75rem] text-sm font-semibold leading-tight">
+                    {next ? matchTitle(next) : "Кезекте матч жоқ"}
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {next ? matchMeta(next) : "—"}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Күтіп тұрғандар
+                  </div>
+                  {waiting.length ? (
+                    waiting.map((match: any) => (
+                      <div
+                        key={match.id}
+                        className="rounded-lg border border-border/50 bg-background/35 px-3 py-2 text-xs"
+                      >
+                        <div className="truncate font-semibold">{matchTitle(match)}</div>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {matchMeta(match)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2 text-xs text-muted-foreground">
+                      Қосымша кезек жоқ
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -1016,6 +1135,24 @@ function categoryTitle(category: any, t: any): string {
 
 function athleteName(athlete: any): string {
   return `${athlete?.name ?? ""} ${athlete?.surname ?? ""}`.trim() || "—";
+}
+
+function matchTitle(match: any): string {
+  return `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`;
+}
+
+function matchMeta(match: any): string {
+  const category = categoryTitle(match.bracket?.category, (key: string, fallback?: string) => {
+    const labels: Record<string, string> = {
+      "tournament.male_label": "Ер адамдар",
+      "tournament.female_label": "Әйелдер",
+      "common.kg": "кг",
+    };
+    return labels[key] ?? fallback ?? key;
+  });
+  const round = match.round ? `Раунд ${match.round}` : "Раунд —";
+  const position = match.queuePosition ? `Кезек #${match.queuePosition}` : null;
+  return [category, round, position].filter(Boolean).join(" · ");
 }
 
 function dateRange(start: string | Date, end: string | Date): string {
