@@ -740,6 +740,15 @@ function TatamiLiveTab({
     () => buildTatamiState(matches, Math.max(1, tatamiCount || 1)),
     [matches, tatamiCount],
   );
+  const [selectedTatami, setSelectedTatami] = useState(1);
+  const activeTatami = tatamis.find((tatami) => tatami.number === selectedTatami) ?? tatamis[0];
+  const otherTatamis = tatamis.filter((tatami) => tatami.number !== activeTatami?.number);
+
+  useEffect(() => {
+    if (!tatamis.some((tatami) => tatami.number === selectedTatami)) {
+      setSelectedTatami(tatamis[0]?.number ?? 1);
+    }
+  }, [selectedTatami, tatamis]);
 
   return (
     <section id="tatami-live" className="container mx-auto px-4 py-12">
@@ -765,77 +774,141 @@ function TatamiLiveTab({
         </Link>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {tatamis.map((tatami) => {
-          const current = tatami.current;
-          const next = tatami.queue[0];
-          const waiting = tatami.queue.slice(1, 4);
-          return (
-            <div
-              key={tatami.number}
-              className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur"
-            >
-              <div className="flex items-center justify-between border-b border-border/40 bg-background/35 px-5 py-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Tatami</div>
-                  <h3 className="font-display text-3xl font-black text-gradient-gold">
-                    #{tatami.number}
-                  </h3>
-                </div>
-                <StatusBadge status={current?.status ?? "PENDING"} />
-              </div>
-
-              <div className="p-5">
-                <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
-                  <div className="text-[10px] uppercase tracking-widest text-destructive">
-                    Қазір
-                  </div>
-                  <div className="mt-2 min-h-[3.25rem] font-display text-xl font-bold leading-tight">
-                    {current ? matchTitle(current) : "Әзірше схватка жоқ"}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {current ? matchMeta(current) : "Кесте дайындалған кезде осы жерде көрінеді"}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-xl border border-gold/25 bg-gold/10 p-4">
-                  <div className="text-[10px] uppercase tracking-widest text-gold">Келесі</div>
-                  <div className="mt-2 min-h-[2.75rem] text-sm font-semibold leading-tight">
-                    {next ? matchTitle(next) : "Кезекте матч жоқ"}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {next ? matchMeta(next) : "—"}
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Күтіп тұрғандар
-                  </div>
-                  {waiting.length ? (
-                    waiting.map((match: any) => (
-                      <div
-                        key={match.id}
-                        className="rounded-lg border border-border/50 bg-background/35 px-3 py-2 text-xs"
-                      >
-                        <div className="truncate font-semibold">{matchTitle(match)}</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
-                          {matchMeta(match)}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-border/50 bg-background/35 px-3 py-2 text-xs text-muted-foreground">
-                      Қосымша кезек жоқ
-                    </div>
-                  )}
-                </div>
-              </div>
+      <div className="mb-5 flex gap-2 overflow-x-auto rounded-2xl border border-border/50 bg-card/45 p-2 [scrollbar-width:none]">
+        {tatamis.map((tatami) => (
+          <button
+            key={tatami.number}
+            type="button"
+            onClick={() => setSelectedTatami(tatami.number)}
+            className={`shrink-0 rounded-xl border px-4 py-3 text-left transition-all ${
+              activeTatami?.number === tatami.number
+                ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
+                : "border-border/60 bg-background/45 text-muted-foreground hover:border-gold/40 hover:text-gold"
+            }`}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-widest">Tatami</div>
+            <div className="mt-1 flex items-end gap-2">
+              <span className="font-display text-2xl font-black">#{tatami.number}</span>
+              <span className="pb-1 text-[11px] font-semibold">
+                {tatami.current ? "LIVE" : `${tatami.queue.length} кезек`}
+              </span>
             </div>
-          );
-        })}
+          </button>
+        ))}
       </div>
+
+      {activeTatami && (
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <TatamiDetailCard tatami={activeTatami} />
+
+          <div className="hidden space-y-3 xl:block">
+            <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+              Басқа татамилер
+            </div>
+            {otherTatamis.map((tatami) => (
+              <button
+                key={tatami.number}
+                type="button"
+                onClick={() => setSelectedTatami(tatami.number)}
+                className="w-full rounded-xl border border-border/60 bg-card/45 p-4 text-left transition hover:border-gold/40 hover:bg-gold/5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-display text-xl font-black text-gradient-gold">
+                    Tatami #{tatami.number}
+                  </span>
+                  <StatusBadge status={tatami.current?.status ?? "PENDING"} />
+                </div>
+                <div className="mt-3 truncate text-sm font-semibold">
+                  {tatami.current ? matchTitle(tatami.current) : "Қазір бос"}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {tatami.queue.length} матч кезекте
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function TatamiDetailCard({
+  tatami,
+}: {
+  tatami: ReturnType<typeof buildTatamiState<any>>[number];
+}) {
+  const current = tatami.current;
+  const next = tatami.queue[0];
+  const waiting = tatami.queue.slice(1);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-background/35 px-5 py-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Таңдалған татами</div>
+          <h3 className="font-display text-4xl font-black text-gradient-gold">#{tatami.number}</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <SmallMetric label="Қазір" value={current ? 1 : 0} />
+          <SmallMetric label="Келесі" value={next ? 1 : 0} />
+          <SmallMetric label="Кезек" value={waiting.length} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-5 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest text-destructive">Қазір</div>
+          <div className="mt-2 min-h-[3.25rem] font-display text-2xl font-bold leading-tight">
+            {current ? matchTitle(current) : "Әзірше схватка жоқ"}
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            {current ? matchMeta(current) : "Кесте дайындалған кезде осы жерде көрінеді"}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gold/25 bg-gold/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest text-gold">Келесі</div>
+          <div className="mt-2 min-h-[3.25rem] font-display text-xl font-bold leading-tight">
+            {next ? matchTitle(next) : "Кезекте матч жоқ"}
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">{next ? matchMeta(next) : "—"}</div>
+        </div>
+      </div>
+
+      <div className="border-t border-border/40 px-5 pb-5">
+        <div className="sticky top-36 z-10 -mx-5 mb-3 border-b border-border/40 bg-card/95 px-5 py-3 backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Толық кезек
+            </div>
+            <div className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-[10px] text-muted-foreground">
+              {waiting.length} матч
+            </div>
+          </div>
+        </div>
+
+        {waiting.length ? (
+          <div className="max-h-[34rem] overflow-y-auto pr-1">
+            <div className="divide-y divide-border/30 overflow-hidden rounded-xl border border-border/50 bg-background/30">
+              {waiting.map((match: any, index: number) => (
+                <div key={match.id} className="grid grid-cols-[2.5rem_1fr] gap-3 px-3 py-3 text-sm">
+                  <div className="font-display text-lg font-black text-gold/70">{index + 2}</div>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">{matchTitle(match)}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{matchMeta(match)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/50 bg-background/35 px-4 py-8 text-center text-sm text-muted-foreground">
+            Қосымша кезек жоқ
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
