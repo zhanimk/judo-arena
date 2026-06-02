@@ -49,6 +49,12 @@ const schema = z.object({
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW: z.string().default("1 minute"),
+  SOCKET_CONNECTION_LIMIT_MAX: z.coerce.number().int().positive().default(120),
+  SOCKET_CONNECTION_LIMIT_WINDOW_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60),
 
   APP_URL: z.string().default("http://localhost:3000"),
 

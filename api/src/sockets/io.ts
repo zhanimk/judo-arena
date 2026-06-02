@@ -21,8 +21,13 @@ import { Server as SocketIOServer } from "socket.io";
 import type { Server as HTTPServer } from "node:http";
 import { env } from "../lib/env.js";
 import { verifyAccessToken } from "../lib/jwt.js";
+import { redis } from "../lib/redis.js";
 
 let io: SocketIOServer | null = null;
+
+const MAX_ROOMS_PER_SUBSCRIBE = 20;
+const MAX_ROOMS_PER_SOCKET = 50;
+const MAX_SUBSCRIBE_EVENTS_PER_MINUTE = 120;
 
 export function getIO(): SocketIOServer {
   if (!io) throw new Error("Socket.IO не инициализирован");
@@ -35,6 +40,25 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
     cors: {
       origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
       credentials: true,
+    },
+    maxHttpBufferSize: 16 * 1024,
+    pingTimeout: 20_000,
+    pingInterval: 25_000,
+    connectionStateRecovery: {
+      maxDisconnectionDuration: 2 * 60 * 1000,
+      skipMiddlewares: true,
+    },
+    allowRequest: (req, callback) => {
+      const ip = clientIp(req);
+      const key = `socket:connect:${ip}`;
+      redis
+        .incr(key)
+        .then(async (count) => {
+          if (count === 1)
+            await redis.expire(key, env.SOCKET_CONNECTION_LIMIT_WINDOW_SEC);
+          callback(null, count <= env.SOCKET_CONNECTION_LIMIT_MAX);
+        })
+        .catch(() => callback(null, true));
     },
   });
 
@@ -63,9 +87,26 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
     );
 
     // Клиент подписывается на комнаты
-    socket.on("subscribe", (rooms: string[] | string) => {
-      const list = Array.isArray(rooms) ? rooms : [rooms];
+    socket.on("subscribe", async (rooms: string[] | string) => {
+      const subscribeCount = await incrementSocketCounter(
+        socket.id,
+        "subscribe",
+      ).catch(() => 1);
+      if (subscribeCount > MAX_SUBSCRIBE_EVENTS_PER_MINUTE) {
+        socket.emit("subscribe:error", { reason: "RATE_LIMITED" });
+        return;
+      }
+
+      const list = (Array.isArray(rooms) ? rooms : [rooms]).slice(
+        0,
+        MAX_ROOMS_PER_SUBSCRIBE,
+      );
       for (const room of list) {
+        if (socket.rooms.size >= MAX_ROOMS_PER_SOCKET) {
+          socket.emit("subscribe:error", { room, reason: "ROOM_LIMIT" });
+          break;
+        }
+
         if (!isValidRoom(room)) {
           app.log.warn(
             { socketId: socket.id, room },
@@ -117,6 +158,28 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
 
 function isValidRoom(room: string): boolean {
   return /^(tournament|bracket|tatami|user):[a-zA-Z0-9_-]{1,64}$/.test(room);
+}
+
+function clientIp(req: {
+  headers: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
+}): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.length > 0)
+    return forwarded.split(",")[0].trim();
+  if (Array.isArray(forwarded) && forwarded[0])
+    return forwarded[0].split(",")[0].trim();
+  return req.socket?.remoteAddress ?? "unknown";
+}
+
+async function incrementSocketCounter(
+  socketId: string,
+  action: string,
+): Promise<number> {
+  const key = `socket:${action}:${socketId}`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, 60);
+  return count;
 }
 
 // ============================================================

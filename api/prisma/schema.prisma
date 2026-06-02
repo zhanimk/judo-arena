@@ -47,9 +47,9 @@ enum TournamentStatus {
 }
 
 enum BracketFormat {
-  SE_IJF        // Single Elimination с IJF Repechage
-  ROUND_ROBIN   // Круговая
-  MIXED         // Группы + плей-офф (опционально)
+  SE_IJF // Single Elimination с IJF Repechage
+  ROUND_ROBIN // Круговая
+  MIXED // Группы + плей-офф (опционально)
 }
 
 enum ApplicationStatus {
@@ -77,25 +77,25 @@ enum MatchStatus {
 }
 
 enum MatchEventType {
-  HAJIME           // Начало
-  MATE             // Пауза
-  SORE_MADE        // Конец матча
+  HAJIME // Начало
+  MATE // Пауза
+  SORE_MADE // Конец матча
   IPPON
   WAZA_ARI
-  YUKO             // Опционально (старые правила)
+  YUKO // Опционально (старые правила)
   SHIDO
   HANSOKU_MAKE
-  GOLDEN_SCORE     // Переход в Golden Score
-  REPLAY           // Видеоповтор/пересмотр
+  GOLDEN_SCORE // Переход в Golden Score
+  REPLAY // Видеоповтор/пересмотр
   END
-  OSAEKOMI         // Начало удержания
-  TOKETA           // Конец удержания
+  OSAEKOMI // Начало удержания
+  TOKETA // Конец удержания
 }
 
 enum MatchSide {
-  RED              // Красный (или синий — в дзюдо обычно синий)
+  RED // Красный (или синий — в дзюдо обычно синий)
   BLUE
-  WHITE            // Белый
+  WHITE // Белый
   SYSTEM
 }
 
@@ -108,79 +108,81 @@ model User {
   email           String    @unique
   passwordHash    String
   role            UserRole
-  name            String    // Имя (кириллица или родной)
-  surname         String    // Фамилия
-  nameLatin       String?   // Имя латиницей (для международных протоколов)
+  name            String // Имя (кириллица или родной)
+  surname         String // Фамилия
+  nameLatin       String? // Имя латиницей (для международных протоколов)
   surnameLatin    String?
   dateOfBirth     DateTime?
   gender          Gender?
   weightKg        Float?
-  beltRank        String?   // 6 kyu ... 10 dan
+  beltRank        String? // 6 kyu ... 10 dan
   preferredLocale Locale    @default(kk)
   avatarUrl       String?
   phone           String?
   isActive        Boolean   @default(true)
 
-  clubId          String?
-  club            Club?     @relation(fields: [clubId], references: [id])
-  clubRole        ClubRole?
+  clubId   String?
+  club     Club?     @relation(fields: [clubId], references: [id])
+  clubRole ClubRole?
 
   // Связи
-  createdClubs       Club[]            @relation("ClubCreator")
-  createdTournaments Tournament[]      @relation("TournamentCreator")
-  applicationEntries ApplicationEntry[]
-  weighedEntries     ApplicationEntry[] @relation("WeighInReviewer")
-  clubJoinRequests   ClubJoinRequest[]
+  createdClubs          Club[]                 @relation("ClubCreator")
+  createdTournaments    Tournament[]           @relation("TournamentCreator")
+  applicationEntries    ApplicationEntry[]
+  weighedEntries        ApplicationEntry[]     @relation("WeighInReviewer")
+  clubJoinRequests      ClubJoinRequest[]
   coachClubJoinRequests CoachClubJoinRequest[] @relation("CoachClubJoinRequests")
-  bluematches        Match[]           @relation("BlueAthlete")
-  redmatches         Match[]           @relation("RedAthlete")
-  wonMatches         Match[]           @relation("WinnerAthlete")
-  ratingEntries      RatingEntry[]
-  notifications      Notification[]
-  auditLogs          AuditLog[]
-  tatamiSessions     TatamiSession[]   @relation("TatamiSessionCreator")
+  bluematches           Match[]                @relation("BlueAthlete")
+  redmatches            Match[]                @relation("RedAthlete")
+  wonMatches            Match[]                @relation("WinnerAthlete")
+  ratingEntries         RatingEntry[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  tatamiSessions        TatamiSession[]        @relation("TatamiSessionCreator")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clubId])
   @@index([role])
+  @@index([role, isActive])
 }
 
 model Club {
-  id          String  @id @default(cuid())
-  name        Json    // { ru, kk, en }
-  shortName   String?
-  city        String
-  country     String  @default("KZ")
-  logoUrl     String?
-  description Json?   // { ru, kk, en }
-  isActive    Boolean @default(true)
-  isBlocked   Boolean @default(false)
+  id            String  @id @default(cuid())
+  name          Json // { ru, kk, en }
+  shortName     String?
+  city          String
+  country       String  @default("KZ")
+  logoUrl       String?
+  description   Json? // { ru, kk, en }
+  isActive      Boolean @default(true)
+  isBlocked     Boolean @default(false)
   blockedReason String?
 
   createdById String
-  createdBy   User    @relation("ClubCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("ClubCreator", fields: [createdById], references: [id])
 
-  members     User[]
-  groups      ClubGroup[]
-  applications Application[]
-  joinRequests ClubJoinRequest[]
+  members           User[]
+  groups            ClubGroup[]
+  applications      Application[]
+  joinRequests      ClubJoinRequest[]
   coachJoinRequests CoachClubJoinRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([city])
+  @@index([isActive, isBlocked])
 }
 
 model ClubGroup {
-  id        String @id @default(cuid())
-  clubId    String
-  club      Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  name      String        // "Дети", "Юниоры", "Взрослые"
-  ageMin    Int
-  ageMax    Int
+  id     String @id @default(cuid())
+  clubId String
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name   String // "Дети", "Юниоры", "Взрослые"
+  ageMin Int
+  ageMax Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -193,33 +195,33 @@ model ClubGroup {
 // ============================================================
 
 model Tournament {
-  id           String           @id @default(cuid())
-  name         Json             // { ru, kk, en }
-  description  Json?
-  location     String
-  city         String
-  startDate    DateTime
-  endDate      DateTime
+  id                  String           @id @default(cuid())
+  name                Json // { ru, kk, en }
+  description         Json?
+  location            String
+  city                String
+  startDate           DateTime
+  endDate             DateTime
   applicationDeadline DateTime?
-  mapUrl       String?
-  weighInLocation String?
-  weighInStart DateTime?
-  weighInEnd   DateTime?
-  status       TournamentStatus @default(DRAFT)
-  tatamiCount  Int              @default(1)
-  primaryLocale Locale          @default(kk)
-  posterUrl    String?
-  isFeatured   Boolean          @default(false)
-  isArchived   Boolean          @default(false)
+  mapUrl              String?
+  weighInLocation     String?
+  weighInStart        DateTime?
+  weighInEnd          DateTime?
+  status              TournamentStatus @default(DRAFT)
+  tatamiCount         Int              @default(1)
+  primaryLocale       Locale           @default(kk)
+  posterUrl           String?
+  isFeatured          Boolean          @default(false)
+  isArchived          Boolean          @default(false)
 
   createdById String
-  createdBy   User @relation("TournamentCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("TournamentCreator", fields: [createdById], references: [id])
 
-  categories   Category[]
-  applications Application[]
-  brackets     Bracket[]
-  matches      Match[]
-  ratingEntries RatingEntry[]
+  categories     Category[]
+  applications   Application[]
+  brackets       Bracket[]
+  matches        Match[]
+  ratingEntries  RatingEntry[]
   tatamiSessions TatamiSession[]
 
   createdAt DateTime @default(now())
@@ -227,32 +229,35 @@ model Tournament {
 
   @@index([status])
   @@index([startDate])
+  @@index([status, isArchived, startDate])
+  @@index([city, status])
 }
 
 model Category {
-  id               String        @id @default(cuid())
-  tournamentId     String
-  tournament       Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  name             Json?         // Опциональное название категории
+  name             Json? // Опциональное название категории
   gender           Gender
   ageMin           Int
   ageMax           Int
   weightMin        Float
   weightMax        Float
-  matchDurationSec Int           @default(240)   // 4 минуты по умолчанию
-  goldenScoreSec   Int           @default(0)     // 0 = без лимита
+  matchDurationSec Int           @default(240) // 4 минуты по умолчанию
+  goldenScoreSec   Int           @default(0) // 0 = без лимита
   format           BracketFormat @default(SE_IJF)
-  allowYuko        Boolean       @default(true)  // Юко оценка (по умолчанию включена)
+  allowYuko        Boolean       @default(true) // Юко оценка (по умолчанию включена)
 
   applicationEntries ApplicationEntry[]
-  brackets         Bracket[]
-  ratingEntries    RatingEntry[]
+  brackets           Bracket[]
+  ratingEntries      RatingEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tournamentId])
+  @@index([tournamentId, gender, ageMin, ageMax])
 }
 
 // ============================================================
@@ -260,15 +265,15 @@ model Category {
 // ============================================================
 
 model Application {
-  id           String            @id @default(cuid())
-  tournamentId String
-  tournament   Tournament        @relation(fields: [tournamentId], references: [id])
-  clubId       String
-  club         Club              @relation(fields: [clubId], references: [id])
-  status       ApplicationStatus @default(DRAFT)
-  notes        String?
-  submittedAt  DateTime?
-  reviewedAt   DateTime?
+  id            String            @id @default(cuid())
+  tournamentId  String
+  tournament    Tournament        @relation(fields: [tournamentId], references: [id])
+  clubId        String
+  club          Club              @relation(fields: [clubId], references: [id])
+  status        ApplicationStatus @default(DRAFT)
+  notes         String?
+  submittedAt   DateTime?
+  reviewedAt    DateTime?
   reviewerNotes String?
 
   entries ApplicationEntry[]
@@ -278,22 +283,24 @@ model Application {
 
   @@unique([tournamentId, clubId])
   @@index([status])
+  @@index([tournamentId, status])
+  @@index([clubId, status])
 }
 
 model ApplicationEntry {
-  id            String @id @default(cuid())
-  applicationId String
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  athleteId     String
-  athlete       User   @relation(fields: [athleteId], references: [id])
-  categoryId    String
-  category      Category @relation(fields: [categoryId], references: [id])
-  weighInStatus WeighInStatus @default(PENDING)
+  id             String        @id @default(cuid())
+  applicationId  String
+  application    Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  athleteId      String
+  athlete        User          @relation(fields: [athleteId], references: [id])
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id])
+  weighInStatus  WeighInStatus @default(PENDING)
   actualWeightKg Float?
   weighInNotes   String?
   weighedAt      DateTime?
   weighedById    String?
-  weighedBy      User? @relation("WeighInReviewer", fields: [weighedById], references: [id])
+  weighedBy      User?         @relation("WeighInReviewer", fields: [weighedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -302,6 +309,8 @@ model ApplicationEntry {
   @@index([categoryId])
   @@index([weighInStatus])
   @@index([weighedById])
+  @@index([athleteId])
+  @@index([categoryId, weighInStatus])
 }
 
 // ============================================================
@@ -315,51 +324,53 @@ model Bracket {
   categoryId   String
   category     Category      @relation(fields: [categoryId], references: [id])
   format       BracketFormat
-  size         Int           // Размер сетки (4/8/16/32/64) или N для round-robin
-  metadata     Json?         // MIXED: { groups: [{ label, athleteIds }] }
+  size         Int // Размер сетки (4/8/16/32/64) или N для round-robin
+  metadata     Json? // MIXED: { groups: [{ label, athleteIds }] }
 
   generatedAt DateTime @default(now())
 
   matches Match[]
 
   @@unique([tournamentId, categoryId])
+  @@index([tournamentId])
+  @@index([categoryId])
 }
 
 model Match {
-  id              String      @id @default(cuid())
-  tournamentId    String
-  tournament      Tournament  @relation(fields: [tournamentId], references: [id])
-  bracketId       String
-  bracket         Bracket     @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  bracketId    String
+  bracket      Bracket    @relation(fields: [bracketId], references: [id], onDelete: Cascade)
 
-  round           Int         // Номер раунда: 1, 2, 3... для SE; для RR — "тур"
-  position        Int         // Позиция матча в раунде (от 0)
-  bracketSection  String?     // "main" | "repechage" | "bronze1" | "bronze2" | "final"
+  round          Int // Номер раунда: 1, 2, 3... для SE; для RR — "тур"
+  position       Int // Позиция матча в раунде (от 0)
+  bracketSection String? // "main" | "repechage" | "bronze1" | "bronze2" | "final"
 
-  redAthleteId    String?
-  redAthlete      User?       @relation("RedAthlete", fields: [redAthleteId], references: [id])
-  blueAthleteId   String?
-  blueAthlete     User?       @relation("BlueAthlete", fields: [blueAthleteId], references: [id])
+  redAthleteId  String?
+  redAthlete    User?   @relation("RedAthlete", fields: [redAthleteId], references: [id])
+  blueAthleteId String?
+  blueAthlete   User?   @relation("BlueAthlete", fields: [blueAthleteId], references: [id])
 
-  tatamiNumber    Int?
-  queuePosition   Int?
-  status          MatchStatus @default(PENDING)
+  tatamiNumber  Int?
+  queuePosition Int?
+  status        MatchStatus @default(PENDING)
 
-  winnerId        String?
-  winner          User?       @relation("WinnerAthlete", fields: [winnerId], references: [id])
-  scoreSnapshot   Json?       // { red:{ippon,wazaari,yuko,shido}, blue:{...}, totalTimeSec }
+  winnerId      String?
+  winner        User?   @relation("WinnerAthlete", fields: [winnerId], references: [id])
+  scoreSnapshot Json? // { red:{ippon,wazaari,yuko,shido}, blue:{...}, totalTimeSec }
 
-  isGoldenScore   Boolean     @default(false)
-  isReplay        Boolean     @default(false)
-  replayReason    String?
+  isGoldenScore Boolean @default(false)
+  isReplay      Boolean @default(false)
+  replayReason  String?
 
-  startedAt       DateTime?
-  finishedAt      DateTime?
+  startedAt  DateTime?
+  finishedAt DateTime?
 
-  version         Int         @default(0)  // Optimistic locking
+  version Int @default(0) // Optimistic locking
 
-  judgeSessions   JudgeSession[]
-  events          MatchEvent[]
+  judgeSessions JudgeSession[]
+  events        MatchEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -369,17 +380,22 @@ model Match {
   @@index([status])
   @@index([tatamiNumber])
   @@index([tatamiNumber, queuePosition])
+  @@index([tournamentId, status])
+  @@index([tournamentId, tatamiNumber, queuePosition])
+  @@index([redAthleteId])
+  @@index([blueAthleteId])
+  @@index([winnerId])
 }
 
 model MatchEvent {
-  id        String         @id @default(cuid())
-  matchId   String
-  match     Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  type      MatchEventType
-  side      MatchSide?     // Кому начислили (если применимо)
-  actorJudgeSessionId String?  // Какая судейская сессия зафиксировала
-  scoreSnapshot Json?      // Состояние счёта после события
-  meta      Json?
+  id                  String         @id @default(cuid())
+  matchId             String
+  match               Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  type                MatchEventType
+  side                MatchSide? // Кому начислили (если применимо)
+  actorJudgeSessionId String? // Какая судейская сессия зафиксировала
+  scoreSnapshot       Json? // Состояние счёта после события
+  meta                Json?
 
   occurredAt DateTime @default(now())
 
@@ -387,36 +403,38 @@ model MatchEvent {
 }
 
 model JudgeSession {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   matchId   String
-  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  judgeName String?  // Имя судьи (опционально, без аккаунта)
+  match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  judgeName String? // Имя судьи (опционально, без аккаунта)
   expiresAt DateTime
   usedAt    DateTime?
-  isRevoked Boolean  @default(false)
+  isRevoked Boolean   @default(false)
 
   createdAt DateTime @default(now())
 
   @@index([matchId])
+  @@index([expiresAt, isRevoked])
 }
 
 /// Сессия судьи на целый татами (один токен = все матчи татами за день).
 model TatamiSession {
-  id            String   @id @default(cuid())
-  token         String   @unique
-  tournamentId  String
-  tournament    Tournament @relation(fields: [tournamentId], references: [id])
-  tatamiNumber  Int
-  judgeName     String?
-  createdById   String
-  createdBy     User     @relation("TatamiSessionCreator", fields: [createdById], references: [id])
-  expiresAt     DateTime // default: +14 часов
-  isRevoked     Boolean  @default(false)
+  id           String     @id @default(cuid())
+  token        String     @unique
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tatamiNumber Int
+  judgeName    String?
+  createdById  String
+  createdBy    User       @relation("TatamiSessionCreator", fields: [createdById], references: [id])
+  expiresAt    DateTime // default: +14 часов
+  isRevoked    Boolean    @default(false)
 
   createdAt DateTime @default(now())
 
   @@index([tournamentId, tatamiNumber])
+  @@index([expiresAt, isRevoked])
 }
 
 // ============================================================
@@ -431,25 +449,28 @@ model RatingEntry {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   categoryId   String
   category     Category   @relation(fields: [categoryId], references: [id])
-  place        Int        // 1, 2, 3, 3, 5, 5, 7, 7
-  points       Float      // Поддерживает бонусы (десятичные)
+  place        Int // 1, 2, 3, 3, 5, 5, 7, 7
+  points       Float // Поддерживает бонусы (десятичные)
 
   awardedAt DateTime @default(now())
 
   @@unique([athleteId, tournamentId, categoryId])
   @@index([athleteId])
+  @@index([tournamentId])
+  @@index([categoryId])
+  @@index([points])
 }
 
 model Notification {
-  id      String  @id @default(cuid())
-  userId  String
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type    String  // "application_approved", "match_scheduled", и т.д.
-  titleKey  String  // i18n-ключ
-  bodyKey   String
-  payload Json?
-  read    Boolean @default(false)
-  locale  Locale  @default(kk)
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type     String // "application_approved", "match_scheduled", и т.д.
+  titleKey String // i18n-ключ
+  bodyKey  String
+  payload  Json?
+  read     Boolean @default(false)
+  locale   Locale  @default(kk)
 
   createdAt DateTime @default(now())
 
@@ -457,11 +478,11 @@ model Notification {
 }
 
 model AuditLog {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   actorUserId  String?
-  actor        User?    @relation(fields: [actorUserId], references: [id])
-  action       String   // "match.override", "bracket.regenerate", и т.д.
-  targetEntity String   // "Match" | "Bracket" | ...
+  actor        User?   @relation(fields: [actorUserId], references: [id])
+  action       String // "match.override", "bracket.regenerate", и т.д.
+  targetEntity String // "Match" | "Bracket" | ...
   targetId     String
   before       Json?
   after        Json?

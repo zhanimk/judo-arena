@@ -16,7 +16,9 @@ import { attachErrorHandler } from "../lib/error-handler.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Convert draft-07 boolean exclusiveMinimum/Maximum to numeric form (AJV 8 compatible)
-function toSchema(s: Parameters<typeof zodToJsonSchema>[0]): Record<string, unknown> {
+function toSchema(
+  s: Parameters<typeof zodToJsonSchema>[0],
+): Record<string, unknown> {
   function fix(node: unknown): unknown {
     if (!node || typeof node !== "object") return node;
     if (Array.isArray(node)) return node.map(fix);
@@ -32,7 +34,10 @@ function toSchema(s: Parameters<typeof zodToJsonSchema>[0]): Record<string, unkn
     }
     return obj;
   }
-  return fix(zodToJsonSchema(s, { target: "openApi3" })) as Record<string, unknown>;
+  return fix(zodToJsonSchema(s, { target: "openApi3" })) as Record<
+    string,
+    unknown
+  >;
 }
 import {
   registerSchema,
@@ -104,11 +109,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // ---- POST /login — 50 попыток / минуту на IP ----
+  // ---- POST /login — strict brute-force protection per IP ----
   app.post(
     "/login",
     {
-      config: { rateLimit: { max: 50, timeWindow: "1 minute" } },
+      config: { rateLimit: { max: 10, timeWindow: "5 minutes" } },
       schema: {
         tags: ["auth"],
         summary: "Вход по email + пароль",
@@ -136,19 +141,30 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- POST /refresh ----
-  app.post("/refresh", async (request, reply) => {
-    const refreshToken = (request.cookies as Record<string, string | undefined>)[REFRESH_COOKIE];
-    if (!refreshToken) {
-      return reply.code(401).send({ error: "MISSING_REFRESH", message: "Отсутствует refresh-токен" });
-    }
-    const tokens = await refresh(refreshToken);
-    reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
-    return reply.send({ accessToken: tokens.accessToken });
-  });
+  app.post(
+    "/refresh",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const refreshToken = (
+        request.cookies as Record<string, string | undefined>
+      )[REFRESH_COOKIE];
+      if (!refreshToken) {
+        return reply.code(401).send({
+          error: "MISSING_REFRESH",
+          message: "Отсутствует refresh-токен",
+        });
+      }
+      const tokens = await refresh(refreshToken);
+      reply.setCookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
+      return reply.send({ accessToken: tokens.accessToken });
+    },
+  );
 
   // ---- POST /logout ----
   app.post("/logout", async (request, reply) => {
-    const refreshToken = (request.cookies as Record<string, string | undefined>)[REFRESH_COOKIE];
+    const refreshToken = (
+      request.cookies as Record<string, string | undefined>
+    )[REFRESH_COOKIE];
     if (refreshToken) {
       try {
         const payload = verifyRefreshToken(refreshToken);
@@ -184,60 +200,89 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ---- PATCH /me/locale ----
-  app.patch("/me/locale", { preHandler: [authenticate] }, async (request, reply) => {
-    const { locale } = updateLocaleSchema.parse(request.body);
-    await updateLocale(request.user!.sub, locale);
-    return reply.send({ ok: true, locale });
-  });
+  app.patch(
+    "/me/locale",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const { locale } = updateLocaleSchema.parse(request.body);
+      await updateLocale(request.user!.sub, locale);
+      return reply.send({ ok: true, locale });
+    },
+  );
 
   // ---- PATCH /me/profile ----
-  app.patch("/me/profile", { preHandler: [authenticate] }, async (request, reply) => {
-    const input = updateMeProfileSchema.parse(request.body);
-    const user = await updateMeProfile(request.user!.sub, input);
-    return reply.send({ user: publicUser(user) });
-  });
+  app.patch(
+    "/me/profile",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const input = updateMeProfileSchema.parse(request.body);
+      const user = await updateMeProfile(request.user!.sub, input);
+      return reply.send({ user: publicUser(user) });
+    },
+  );
 
   // ---- POST /forgot-password — 3 попытки / час на IP ----
-  app.post("/forgot-password", { config: { rateLimit: { max: 3, timeWindow: "1 hour" } } }, async (request, reply) => {
-    const { email } = z.object({ email: z.string().email() }).parse(request.body);
-    const user = await prisma.user.findUnique({ where: { email } });
-    // Always return 200 to avoid user enumeration
-    if (!user) return reply.send({ ok: true });
+  app.post(
+    "/forgot-password",
+    { config: { rateLimit: { max: 3, timeWindow: "1 hour" } } },
+    async (request, reply) => {
+      const { email } = z
+        .object({ email: z.string().email() })
+        .parse(request.body);
+      const user = await prisma.user.findUnique({ where: { email } });
+      // Always return 200 to avoid user enumeration
+      if (!user) return reply.send({ ok: true });
 
-    const token = crypto.randomBytes(32).toString("hex");
-    await redis.set(`pwd_reset:${token}`, user.id, "EX", 3600);
+      const token = crypto.randomBytes(32).toString("hex");
+      await redis.set(`pwd_reset:${token}`, user.id, "EX", 3600);
 
-    const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
-    await sendEmail({
-      to: email,
-      subject: "Judo-Arena: Құпиясөзді қалпына келтіру",
-      html: passwordResetHtml(resetUrl),
-    });
+      const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
+      await sendEmail({
+        to: email,
+        subject: "Judo-Arena: Құпиясөзді қалпына келтіру",
+        html: passwordResetHtml(resetUrl),
+      });
 
-    return reply.send({ ok: true });
-  });
+      return reply.send({ ok: true });
+    },
+  );
 
   // ---- POST /reset-password — 5 попыток / час на IP ----
-  app.post("/reset-password", { config: { rateLimit: { max: 5, timeWindow: "1 hour" } } }, async (request, reply) => {
-    const { token, password } = z.object({
-      token: z.string().min(1),
-      password: z.string().min(8, "Құпиясөз кемінде 8 таңба болуы керек").max(128)
-        .regex(/[A-Z]/, "Кем дегенде бір бас әріп болуы керек")
-        .regex(/[a-z]/, "Кем дегенде бір кіші әріп болуы керек")
-        .regex(/[0-9]/, "Кем дегенде бір цифр болуы керек"),
-    }).parse(request.body);
+  app.post(
+    "/reset-password",
+    { config: { rateLimit: { max: 5, timeWindow: "1 hour" } } },
+    async (request, reply) => {
+      const { token, password } = z
+        .object({
+          token: z.string().min(1),
+          password: z
+            .string()
+            .min(8, "Құпиясөз кемінде 8 таңба болуы керек")
+            .max(128)
+            .regex(/[A-Z]/, "Кем дегенде бір бас әріп болуы керек")
+            .regex(/[a-z]/, "Кем дегенде бір кіші әріп болуы керек")
+            .regex(/[0-9]/, "Кем дегенде бір цифр болуы керек"),
+        })
+        .parse(request.body);
 
-    const userId = await redis.get(`pwd_reset:${token}`);
-    if (!userId) {
-      return reply.code(400).send({ error: "INVALID_TOKEN", message: "Сілтеме жарамсыз немесе мерзімі өткен" });
-    }
+      const userId = await redis.get(`pwd_reset:${token}`);
+      if (!userId) {
+        return reply.code(400).send({
+          error: "INVALID_TOKEN",
+          message: "Сілтеме жарамсыз немесе мерзімі өткен",
+        });
+      }
 
-    const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
-    await redis.del(`pwd_reset:${token}`);
-    // Invalidate all active sessions so old tokens cannot be reused after password change
-    await revokeAllUserTokens(userId);
+      const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      });
+      await redis.del(`pwd_reset:${token}`);
+      // Invalidate all active sessions so old tokens cannot be reused after password change
+      await revokeAllUserTokens(userId);
 
-    return reply.send({ ok: true });
-  });
+      return reply.send({ ok: true });
+    },
+  );
 }

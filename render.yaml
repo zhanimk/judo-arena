@@ -52,6 +52,10 @@ services:
         value: "100"
       - key: RATE_LIMIT_WINDOW
         value: "1 minute"
+      - key: SOCKET_CONNECTION_LIMIT_MAX
+        value: "120"
+      - key: SOCKET_CONNECTION_LIMIT_WINDOW_SEC
+        value: "60"
       - key: UPLOADS_DIR
         value: ./uploads
 

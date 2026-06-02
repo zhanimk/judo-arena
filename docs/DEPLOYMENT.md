@@ -23,13 +23,13 @@ Browser → Cloudflare Pages (web) → Render (API) → Render PostgreSQL + Redi
 
 **Secrets to fill manually:**
 
-| Variable | How to get |
-|---|---|
-| `JWT_ACCESS_SECRET` | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| `JWT_REFRESH_SECRET` | Same command, different output |
-| `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys |
-| `CORS_ORIGIN` | Fill after step 2 |
-| `APP_URL` | Same as CORS_ORIGIN |
+| Variable             | How to get                                                                 |
+| -------------------- | -------------------------------------------------------------------------- |
+| `JWT_ACCESS_SECRET`  | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `JWT_REFRESH_SECRET` | Same command, different output                                             |
+| `RESEND_API_KEY`     | [resend.com](https://resend.com) → API Keys                                |
+| `CORS_ORIGIN`        | Fill after step 2                                                          |
+| `APP_URL`            | Same as CORS_ORIGIN                                                        |
 
 > `DATABASE_URL` and `REDIS_URL` are auto-injected — do NOT set manually.
 
@@ -55,6 +55,7 @@ Frontend URL: `https://judo-arena.pages.dev`
 ### Step 3 — Update CORS on Render
 
 Render → API service → Environment:
+
 - `CORS_ORIGIN` = `https://judo-arena.pages.dev`
 - `APP_URL` = `https://judo-arena.pages.dev`
 
@@ -80,35 +81,37 @@ Broken code cannot reach production — deploy is blocked if CI fails.
 
 ### Backend (Render)
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `NODE_ENV` | ✅ | — | `production` |
-| `DATABASE_URL` | ✅ | auto | PostgreSQL (auto from render.yaml) |
-| `REDIS_URL` | ✅ | auto | Redis (auto from render.yaml) |
-| `JWT_ACCESS_SECRET` | ✅ | — | ≥32 chars |
-| `JWT_REFRESH_SECRET` | ✅ | — | Different ≥32 chars |
-| `JWT_ACCESS_TTL` | — | `15m` | Access token lifetime |
-| `JWT_REFRESH_TTL` | — | `7d` | Refresh token lifetime |
-| `CORS_ORIGIN` | ✅ | — | Frontend URL |
-| `APP_URL` | ✅ | — | Same as CORS_ORIGIN (used in email links) |
-| `RESEND_API_KEY` | ✅ | — | Email sending via Resend |
-| `EMAIL_FROM` | — | `Judo-Arena <onboarding@resend.dev>` | Sender |
-| `BCRYPT_ROUNDS` | — | `12` | Password hashing rounds |
-| `RATE_LIMIT_MAX` | — | `100` | Requests per window per IP |
-| `SENTRY_DSN` | — | — | Error tracking (optional) |
-| `S3_BUCKET` | — | — | File storage (optional, local if blank) |
-| `S3_ENDPOINT` | — | — | R2/MinIO endpoint |
-| `S3_PUBLIC_URL` | — | — | CDN base URL |
-| `AWS_ACCESS_KEY_ID` | — | — | S3 credentials |
-| `AWS_SECRET_ACCESS_KEY` | — | — | S3 credentials |
+| Variable                             | Required | Default                              | Description                                 |
+| ------------------------------------ | -------- | ------------------------------------ | ------------------------------------------- |
+| `NODE_ENV`                           | ✅       | —                                    | `production`                                |
+| `DATABASE_URL`                       | ✅       | auto                                 | PostgreSQL (auto from render.yaml)          |
+| `REDIS_URL`                          | ✅       | auto                                 | Redis (auto from render.yaml)               |
+| `JWT_ACCESS_SECRET`                  | ✅       | —                                    | ≥32 chars                                   |
+| `JWT_REFRESH_SECRET`                 | ✅       | —                                    | Different ≥32 chars                         |
+| `JWT_ACCESS_TTL`                     | —        | `15m`                                | Access token lifetime                       |
+| `JWT_REFRESH_TTL`                    | —        | `7d`                                 | Refresh token lifetime                      |
+| `CORS_ORIGIN`                        | ✅       | —                                    | Frontend URL                                |
+| `APP_URL`                            | ✅       | —                                    | Same as CORS_ORIGIN (used in email links)   |
+| `RESEND_API_KEY`                     | ✅       | —                                    | Email sending via Resend                    |
+| `EMAIL_FROM`                         | —        | `Judo-Arena <onboarding@resend.dev>` | Sender                                      |
+| `BCRYPT_ROUNDS`                      | —        | `12`                                 | Password hashing rounds                     |
+| `RATE_LIMIT_MAX`                     | —        | `100`                                | Requests per window per IP                  |
+| `SOCKET_CONNECTION_LIMIT_MAX`        | —        | `120`                                | New Socket.IO connections per window per IP |
+| `SOCKET_CONNECTION_LIMIT_WINDOW_SEC` | —        | `60`                                 | Socket.IO connection limit window           |
+| `SENTRY_DSN`                         | —        | —                                    | Error tracking (optional)                   |
+| `S3_BUCKET`                          | —        | —                                    | File storage (optional, local if blank)     |
+| `S3_ENDPOINT`                        | —        | —                                    | R2/MinIO endpoint                           |
+| `S3_PUBLIC_URL`                      | —        | —                                    | CDN base URL                                |
+| `AWS_ACCESS_KEY_ID`                  | —        | —                                    | S3 credentials                              |
+| `AWS_SECRET_ACCESS_KEY`              | —        | —                                    | S3 credentials                              |
 
 ### Frontend (Cloudflare Pages)
 
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_API_URL` | ✅ | Backend URL |
-| `VITE_WS_URL` | ✅ | WebSocket URL (same as API) |
-| `VITE_SENTRY_DSN` | — | Frontend Sentry DSN |
+| Variable          | Required | Description                 |
+| ----------------- | -------- | --------------------------- |
+| `VITE_API_URL`    | ✅       | Backend URL                 |
+| `VITE_WS_URL`     | ✅       | WebSocket URL (same as API) |
+| `VITE_SENTRY_DSN` | —        | Frontend Sentry DSN         |
 
 ---
 
@@ -120,6 +123,16 @@ GET /health
 ```
 
 If DB or Redis is down: `"status": "degraded"`.
+
+## Production Rehearsal
+
+Before a real event, follow [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md):
+
+```bash
+npm run prod:smoke
+npm run load:api
+npm run load:socket
+```
 
 ---
 
@@ -149,6 +162,7 @@ Set `BACKUP_S3_BUCKET` + AWS credentials → backup.sh uploads to S3 after each 
 **Frontend:** Cloudflare Pages → Deployments → find previous → Rollback
 
 **Backend:**
+
 ```bash
 git revert HEAD && git push origin main
 # CI runs → auto-deploys
@@ -160,10 +174,10 @@ Or Render dashboard → Deploys → previous deploy → **Redeploy**
 
 ## Free Tier Limits (Render)
 
-| Resource | Limit |
-|---|---|
+| Resource    | Limit                                           |
+| ----------- | ----------------------------------------------- |
 | Web service | Spins down after 15 min idle; 30-60s cold start |
-| PostgreSQL | 1 GB storage, 90-day auto-expiry |
-| Redis | 25 MB, no persistence |
+| PostgreSQL  | 1 GB storage, 90-day auto-expiry                |
+| Redis       | 25 MB, no persistence                           |
 
 For production: upgrade to Render Starter (~$7/month/service).
