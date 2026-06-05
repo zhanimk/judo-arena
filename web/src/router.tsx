@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "@/lib/api";
 import { sentryTrackNavigation } from "@/lib/sentry";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    defaultErrorComponent: ({ error }) => <ErrorFallback error={error} />,
   });
 
   // Track route navigations in Sentry as breadcrumbs
