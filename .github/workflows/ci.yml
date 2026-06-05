@@ -204,9 +204,10 @@ jobs:
       JWT_REFRESH_SECRET: e2e_refresh_secret_at_least_32_chars_long_x
       JWT_ACCESS_TTL: 15m
       JWT_REFRESH_TTL: 7d
-      NODE_ENV: test
+      NODE_ENV: development
+      API_PORT: 4000
       CORS_ORIGIN: http://localhost:8080
-      PORT: 4000
+      APP_URL: http://localhost:8080
       VITE_API_URL: http://localhost:4000
       VITE_WS_URL: ws://localhost:4000
 
@@ -234,11 +235,7 @@ jobs:
         working-directory: api
         run: npx tsx prisma/seed.ts
 
-      # Start frontend against the local API used by the smoke tests.
-      - name: Start web dev server
-        run: npm run dev -w tanstack_start_ts -- --host 0.0.0.0 --port 8080 &
-
-      # Start API in background
+      # Build and start API first so the frontend can proxy to it during dev startup
       - name: Build API
         working-directory: api
         run: npm run build
@@ -247,9 +244,15 @@ jobs:
         working-directory: api
         run: node dist/server.js &
 
-      - name: Wait for services to be ready
-        run: |
-          npx wait-on http://localhost:4000/health http://localhost:8080 --timeout 30000
+      - name: Wait for API to be ready
+        run: npx wait-on http://localhost:4000/health --timeout 30000 --interval 1000
+
+      # Start frontend dev server after API is confirmed up
+      - name: Start web dev server
+        run: npm run dev -w tanstack_start_ts -- --host 0.0.0.0 --port 8080 &
+
+      - name: Wait for web to be ready
+        run: npx wait-on http://localhost:8080 --timeout 120000 --interval 2000
 
       - name: Run E2E smoke tests
         run: npx playwright test --reporter=github

@@ -8,7 +8,7 @@
  * Тестовые аккаунты из seed:
  *   admin@judo-arena.kz   / password123
  *   coach.almaty@judo-arena.kz / password123
- *   m0-0@alm.judo-arena.kz / password123
+ *   rr.01@almaty-demo.demo.judo-arena.kz / password123
  */
 
 import { test, expect, type Page } from "@playwright/test";
@@ -16,7 +16,7 @@ import { test, expect, type Page } from "@playwright/test";
 const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 const ADMIN_EMAIL = "admin@judo-arena.kz";
 const COACH_EMAIL = "coach.almaty@judo-arena.kz";
-const ATHLETE_EMAIL = "m0-0@almaty-judo.judo-arena.kz";
+const ATHLETE_EMAIL = "rr.01@almaty-demo.demo.judo-arena.kz";
 const PASSWORD = "password123";
 
 // ============================================================
@@ -56,12 +56,16 @@ test.describe("Public pages", () => {
 
   test("tournaments list is accessible", async ({ page }) => {
     await page.goto(`${BASE}/tournaments`);
-    await expect(page.locator("body")).toContainText(/жарыс|турнир|tournament/i);
+    await expect(page.locator("body")).toContainText(
+      /жарыс|турнир|tournament/i,
+    );
   });
 
   test("rankings page loads", async ({ page }) => {
     await page.goto(`${BASE}/rankings`);
-    await expect(page.locator("body")).toContainText(/рейтинг|рэйтинг|ranking/i);
+    await expect(page.locator("body")).toContainText(
+      /рейтинг|рэйтинг|ranking/i,
+    );
   });
 
   test("login page renders form", async ({ page }) => {
@@ -73,7 +77,9 @@ test.describe("Public pages", () => {
 
   test("404 page shows not-found message", async ({ page }) => {
     await page.goto(`${BASE}/this-page-does-not-exist-xyz`);
-    await expect(page.locator("body")).toContainText(/404|табылмады|не найден/i);
+    await expect(page.locator("body")).toContainText(
+      /404|табылмады|не найден/i,
+    );
   });
 });
 
@@ -88,7 +94,10 @@ test.describe("Authentication", () => {
     await page.getByPlaceholder(/құпиясөз|password/i).fill("wrongpassword");
     await page.locator('button[type="submit"]').click();
     // Should stay on login or show error toast/message
-    await expect(page.locator("body")).toContainText(/қате|ошибка|неверный|incorrect|invalid|error/i, { timeout: 6000 });
+    await expect(page.locator("body")).toContainText(
+      /қате|ошибка|неверный|incorrect|invalid|error/i,
+      { timeout: 6000 },
+    );
   });
 
   test("admin can log in and see dashboard", async ({ page }) => {
@@ -100,10 +109,14 @@ test.describe("Authentication", () => {
   test("coach can log in and see dashboard", async ({ page }) => {
     // Agree to rules so coach lands on /coach, not /coach/onboarding
     await page.goto(`${BASE}/login`);
-    await page.evaluate(() => localStorage.setItem("coach_rules_agreed", "true"));
+    await page.evaluate(() =>
+      localStorage.setItem("coach_rules_agreed", "true"),
+    );
     await login(page, COACH_EMAIL);
     await expect(page).toHaveURL(/\/coach/, { timeout: 10000 });
-    await expect(page.locator("body")).toContainText(/жаттықтырушы|тренер|coach/i);
+    await expect(page.locator("body")).toContainText(
+      /жаттықтырушы|тренер|coach/i,
+    );
   });
 
   test("athlete can log in and see dashboard", async ({ page }) => {
@@ -144,7 +157,9 @@ test.describe("Admin dashboard", () => {
 
   test("admin can navigate to users", async ({ page }) => {
     await page.goto(`${BASE}/admin/users`);
-    await expect(page.locator("body")).toContainText(/пайдаланушы|пользователь|user/i);
+    await expect(page.locator("body")).toContainText(
+      /пайдаланушы|пользователь|user/i,
+    );
   });
 
   test("admin can navigate to audit log", async ({ page }) => {
@@ -166,7 +181,9 @@ test.describe("Admin dashboard", () => {
   test("admin can navigate to settings", async ({ page }) => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("body")).toContainText(/параметр|настройки|settings|жүйе/i);
+    await expect(page.locator("body")).toContainText(
+      /параметр|настройки|settings|жүйе/i,
+    );
   });
 });
 
@@ -177,13 +194,17 @@ test.describe("Admin dashboard", () => {
 test.describe("Coach dashboard", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}/login`);
-    await page.evaluate(() => localStorage.setItem("coach_rules_agreed", "true"));
+    await page.evaluate(() =>
+      localStorage.setItem("coach_rules_agreed", "true"),
+    );
     await login(page, COACH_EMAIL);
   });
 
   test("coach index renders", async ({ page }) => {
     await page.goto(`${BASE}/coach`);
-    await expect(page.locator("body")).toContainText(/клуб|жаттықтырушы|coach/i);
+    await expect(page.locator("body")).toContainText(
+      /клуб|жаттықтырушы|coach/i,
+    );
   });
 
   test("coach club page loads", async ({ page }) => {
@@ -193,7 +214,9 @@ test.describe("Coach dashboard", () => {
 
   test("coach athletes page loads", async ({ page }) => {
     await page.goto(`${BASE}/coach/athletes`);
-    await expect(page.locator("body")).toContainText(/спортшы|спортсмен|athlete/i);
+    await expect(page.locator("body")).toContainText(
+      /спортшы|спортсмен|athlete/i,
+    );
   });
 
   test("coach tournaments page loads", async ({ page }) => {
@@ -203,14 +226,18 @@ test.describe("Coach dashboard", () => {
 
   test("coach applications page loads", async ({ page }) => {
     await page.goto(`${BASE}/coach/applications`);
-    await expect(page.locator("body")).toContainText(/өтінім|заявка|application/i);
+    await expect(page.locator("body")).toContainText(
+      /өтінім|заявка|application/i,
+    );
   });
 
   test("coach notifications page shows filter chips", async ({ page }) => {
     await page.goto(`${BASE}/coach/notifications`);
     await expect(page.locator("body")).toContainText(/барлығы|all/i);
     // Filter buttons should be visible
-    const filterChips = page.locator("button").filter({ hasText: /барлығы|оқылмаған/i });
+    const filterChips = page
+      .locator("button")
+      .filter({ hasText: /барлығы|оқылмаған/i });
     await expect(filterChips.first()).toBeVisible();
   });
 });
@@ -229,16 +256,20 @@ test.describe("Athlete dashboard", () => {
   test("athlete page renders (onboarding or dashboard)", async ({ page }) => {
     await page.goto(`${BASE}/athlete`);
     // May redirect to onboarding — either way athlete content appears
-    await expect(page.locator("body")).toContainText(/спортшы|спортсмен|профиль|онбординг|onboard/i);
+    await expect(page.locator("body")).toContainText(
+      /спортшы|спортсмен|профиль|онбординг|onboard/i,
+    );
   });
 
   test("athlete notifications page shows filter chips", async ({ page }) => {
     await page.goto(`${BASE}/athlete/notifications`);
     // If redirected to onboarding that's also fine — just check we're on /athlete/*
     await expect(page).toHaveURL(/\/athlete/);
-    const body = await page.locator("body").textContent() ?? "";
+    const body = (await page.locator("body").textContent()) ?? "";
     if (body.match(/хабарландыру|notification/i)) {
-      const filterChips = page.locator("button").filter({ hasText: /барлығы|оқылмаған/i });
+      const filterChips = page
+        .locator("button")
+        .filter({ hasText: /барлығы|оқылмаған/i });
       await expect(filterChips.first()).toBeVisible();
     }
   });
@@ -256,7 +287,9 @@ test.describe("Route protection", () => {
     await expect(page).toHaveURL(/\/login|\/$/);
   });
 
-  test("unauthenticated user is redirected from athlete dashboard", async ({ page }) => {
+  test("unauthenticated user is redirected from athlete dashboard", async ({
+    page,
+  }) => {
     await page.context().clearCookies();
     await page.goto(`${BASE}/athlete`);
     await expect(page).toHaveURL(/\/login|\/$/);
@@ -265,7 +298,9 @@ test.describe("Route protection", () => {
   test("coach cannot access admin routes", async ({ page }) => {
     await page.context().clearCookies();
     await page.goto(`${BASE}/login`);
-    await page.evaluate(() => localStorage.setItem("coach_rules_agreed", "true"));
+    await page.evaluate(() =>
+      localStorage.setItem("coach_rules_agreed", "true"),
+    );
     await login(page, COACH_EMAIL);
     await expect(page).toHaveURL(/\/coach/, { timeout: 12000 });
     await page.goto(`${BASE}/admin/users`);
@@ -296,7 +331,9 @@ test.describe("API health", () => {
     expect(res.status()).toBe(401);
   });
 
-  test("POST /api/auth/login with wrong credentials returns 401 or 429", async ({ request }) => {
+  test("POST /api/auth/login with wrong credentials returns 401 or 429", async ({
+    request,
+  }) => {
     const res = await request.post(`${API_BASE}/api/auth/login`, {
       data: { email: `nobody-${Date.now()}@example.com`, password: "wrong" },
     });
@@ -304,11 +341,15 @@ test.describe("API health", () => {
     expect([401, 429]).toContain(res.status());
   });
 
-  test("POST /api/auth/login rate limit header present", async ({ request }) => {
+  test("POST /api/auth/login rate limit header present", async ({
+    request,
+  }) => {
     const res = await request.post(`${API_BASE}/api/auth/login`, {
       data: { email: "test@test.com", password: "test" },
     });
     // Rate limit headers should be present
-    expect(res.headers()["x-ratelimit-limit"] || res.headers()["ratelimit-limit"]).toBeTruthy();
+    expect(
+      res.headers()["x-ratelimit-limit"] || res.headers()["ratelimit-limit"],
+    ).toBeTruthy();
   });
 });
