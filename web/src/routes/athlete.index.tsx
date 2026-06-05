@@ -15,6 +15,8 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
 
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
 export const Route = createFileRoute("/athlete/")({
   head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
   component: () => (
@@ -120,6 +122,28 @@ const NEXT_LEVEL_TECHNIQUES: Record<string, { next: string; techniques: string[]
   },
 };
 
+function nextLevelLabel(belt: string, t: TranslateFn): string {
+  const keyByBelt: Record<string, string> = {
+    "6 КЮ": "athlete_dashboard.next_5_kyu",
+    "5 КЮ": "athlete_dashboard.next_4_kyu",
+    "4 КЮ": "athlete_dashboard.next_3_kyu",
+    "3 КЮ": "athlete_dashboard.next_2_kyu",
+    "2 КЮ": "athlete_dashboard.next_1_kyu",
+    "1 КЮ": "athlete_dashboard.next_1_dan",
+  };
+  return t(keyByBelt[belt] ?? "athlete_dashboard.next_5_kyu");
+}
+
+function techniqueLabel(technique: string, t: TranslateFn): string {
+  const keyByTechnique: Record<string, string> = {
+    "Барлық техниканы кемелдендіру": "athlete_dashboard.technique_master_previous",
+    "Комбинация жасау": "athlete_dashboard.technique_combinations",
+    "Не-вадза меңгеру": "athlete_dashboard.technique_ne_waza",
+    "Жарыста тұрақты нәтиже": "athlete_dashboard.technique_competition_consistency",
+  };
+  return keyByTechnique[technique] ? t(keyByTechnique[technique]) : technique;
+}
+
 function AthleteOverview() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -163,6 +187,7 @@ function AthleteOverview() {
   const beltGrad = BELT_GRADIENT[belt] ?? "from-zinc-300 to-zinc-500";
   const beltProgress = BELT_PROGRESS[belt] ?? 0;
   const nextTournament = (tournamentsQuery.data?.items ?? [])[0];
+  const nextLevel = NEXT_LEVEL_TECHNIQUES[belt];
 
   const circumference = 2 * Math.PI * 28;
   const winArc = circumference - (circumference * winRate) / 100;
@@ -206,14 +231,14 @@ function AthleteOverview() {
               </div>
             </div>
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Жеңіс
+              {t("athlete_dashboard.win_rate")}
             </span>
           </div>
 
           {/* Name + belt */}
           <div className="min-w-0 flex-1">
             <div className="text-xs text-muted-foreground">
-              Сәлем, <span className="font-semibold text-foreground">{user.name}</span>! 👋
+              {t("athlete_dashboard.hello", { name: user.name })}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <span
@@ -230,7 +255,7 @@ function AthleteOverview() {
             {/* Belt progress */}
             <div className="mt-3 max-w-xs">
               <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>БЕЛБЕУ ПРОГРЕСІ</span>
+                <span>{t("athlete_dashboard.belt_progress")}</span>
                 <span className="font-semibold text-gold">{beltProgress}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-border/40">
@@ -249,7 +274,7 @@ function AthleteOverview() {
               className="group shrink-0 rounded-xl border border-gold/20 bg-gold/5 p-3 hover:border-gold/40 hover:bg-gold/10 transition-all sm:w-44"
             >
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-gold">
-                <Calendar className="h-3 w-3" /> Келесі жарыс
+                <Calendar className="h-3 w-3" /> {t("athlete_dashboard.next_tournament")}
               </div>
               <div className="mt-1.5 text-sm font-semibold leading-snug line-clamp-2 group-hover:text-gold transition-colors">
                 {localizeName(nextTournament.name) ?? "—"}
@@ -304,7 +329,7 @@ function AthleteOverview() {
       </div>
 
       {/* ── Next level techniques ── */}
-      {belt && NEXT_LEVEL_TECHNIQUES[belt] && (
+      {belt && nextLevel && (
         <div className="mt-6 relative overflow-hidden rounded-2xl border border-gold/25 bg-card p-5 sm:p-6">
           <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${beltGrad}`} />
           <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-gold/6 blur-3xl" />
@@ -312,19 +337,21 @@ function AthleteOverview() {
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
-                  Белбеу дайындығы
+                  {t("athlete_dashboard.belt_preparation")}
                 </div>
-                <h3 className="mt-1 font-display text-lg font-bold">Келесі деңгейге дайындық</h3>
+                <h3 className="mt-1 font-display text-lg font-bold">
+                  {t("athlete_dashboard.next_level_preparation")}
+                </h3>
               </div>
               <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-bold text-gold">
-                Мақсат: {NEXT_LEVEL_TECHNIQUES[belt].next}
+                {t("athlete_dashboard.target")}: {nextLevelLabel(belt, t)}
               </span>
             </div>
             <div className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
-              {belt} белбеуінен өту үшін үйренетін техникалар:
+              {t("athlete_dashboard.techniques_for_next_belt", { belt })}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {NEXT_LEVEL_TECHNIQUES[belt].techniques.map((tech, i) => (
+              {nextLevel.techniques.map((tech, i) => (
                 <div
                   key={tech}
                   className="flex items-center gap-2 rounded-xl border border-border/50 bg-background/50 px-3 py-2.5 transition-all hover:border-gold/30 hover:bg-gold/5"
@@ -332,13 +359,15 @@ function AthleteOverview() {
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10 text-[9px] font-bold text-gold">
                     {i + 1}
                   </span>
-                  <span className="text-xs font-medium leading-tight">{tech}</span>
+                  <span className="text-xs font-medium leading-tight">
+                    {techniqueLabel(tech, t)}
+                  </span>
                 </div>
               ))}
             </div>
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-gold/15 bg-gold/5 p-3 text-xs text-muted-foreground">
               <span className="text-base">💡</span>
-              <span>Осы техникаларды тренеріңменен жаттықтыр — келесі белбеуге ойдағыдай жет!</span>
+              <span>{t("athlete_dashboard.practice_hint")}</span>
             </div>
           </div>
         </div>

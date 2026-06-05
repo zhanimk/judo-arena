@@ -33,7 +33,7 @@ export const Route = createFileRoute("/admin/matches")({
   validateSearch: (search: Record<string, unknown>) => ({
     tournamentId: typeof search.tournamentId === "string" ? search.tournamentId : undefined,
   }),
-  head: () => ({ meta: [{ title: "Табло басқару — Әкімші" }] }),
+  head: () => ({ meta: [{ title: "Управление матчами — Админ" }] }),
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminScoreboard />
@@ -62,6 +62,7 @@ export function TournamentScoreboardPanel({
   initialTournamentId?: string;
   fixedTournamentId?: string;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [selectedTournamentId, setSelectedTournamentId] = useState(
@@ -85,6 +86,17 @@ export function TournamentScoreboardPanel({
   });
 
   const tournaments = useMemo(() => tournamentsQuery.data?.items ?? [], [tournamentsQuery.data]);
+  const defaultTournament = useMemo(() => {
+    const byStartDesc = [...tournaments].sort(
+      (a: any, b: any) =>
+        new Date(b.startDate ?? 0).getTime() - new Date(a.startDate ?? 0).getTime(),
+    );
+    return (
+      byStartDesc.find((item: any) => item.status === "IN_PROGRESS") ??
+      byStartDesc.find((item: any) => item.status === "REGISTRATION_CLOSED") ??
+      byStartDesc[0]
+    );
+  }, [tournaments]);
   const selectedTournament = tournaments.find((t: any) => t.id === selectedTournamentId);
   const tatamiCount = Math.max(3, Number(selectedTournament?.tatamiCount ?? 3));
 
@@ -102,13 +114,11 @@ export function TournamentScoreboardPanel({
 
   useEffect(() => {
     if (!fixedTournamentId && !selectedTournamentId && tournaments.length > 0) {
-      const live = tournaments.find((t: any) => t.status === "IN_PROGRESS");
-      const ready = tournaments.find((t: any) => t.status === "REGISTRATION_CLOSED");
-      const nextId = (live ?? ready ?? tournaments[0]).id;
+      const nextId = defaultTournament.id;
       setSelectedTournamentId(nextId);
       navigate({ to: "/admin/matches", search: { tournamentId: nextId }, replace: true });
     }
-  }, [fixedTournamentId, navigate, selectedTournamentId, tournaments]);
+  }, [defaultTournament, fixedTournamentId, navigate, selectedTournamentId, tournaments]);
 
   const invalidateBoard = () => {
     qc.invalidateQueries({ queryKey: ["admin-scoreboard-matches", selectedTournamentId] });
@@ -139,7 +149,7 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
     onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : "Татами тағайындау кезінде қате шықты"),
+      setError(e instanceof ApiError ? e.message : t("matches_admin.assign_error")),
   });
   const reorderQueue = useMutation({
     mutationFn: ({ matchId, direction }: { matchId: string; direction: "up" | "down" }) =>
@@ -147,7 +157,7 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
     onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : "Кезекті өзгерту кезінде қате шықты"),
+      setError(e instanceof ApiError ? e.message : t("matches_admin.queue_error")),
   });
 
   const resetMatchMutation = useMutation({
@@ -155,7 +165,7 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
     onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : "Матчты қайта бастау кезінде қате"),
+      setError(e instanceof ApiError ? e.message : t("matches_admin.reset_error")),
   });
 
   const overrideMatch = useMutation({
@@ -170,7 +180,8 @@ export function TournamentScoreboardPanel({
     }) => api.admin.override(matchId, winnerSide, reason),
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : "Override кезінде қате"),
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("matches_admin.override_error")),
   });
 
   // Татами сессия (1 ссылка на весь татами)
@@ -206,7 +217,7 @@ export function TournamentScoreboardPanel({
       qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] });
     },
     onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : "Татами сессиясын құру кезінде қате шықты"),
+      setError(e instanceof ApiError ? e.message : t("matches_admin.session_create_error")),
   });
 
   const revokeTatamiSession = useMutation({
@@ -215,7 +226,7 @@ export function TournamentScoreboardPanel({
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] }),
     onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : "Татами сессиясын өшіру кезінде қате шықты"),
+      setError(e instanceof ApiError ? e.message : t("matches_admin.session_revoke_error")),
   });
 
   const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
@@ -273,15 +284,17 @@ export function TournamentScoreboardPanel({
         <div className="mb-4 flex items-center gap-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
           <div className="text-3xl">🏆</div>
           <div>
-            <div className="font-display text-lg font-bold text-emerald-300">ЖАРЫС АЯҚТАЛДЫ</div>
+            <div className="font-display text-lg font-bold text-emerald-300">
+              {t("matches_admin.tournament_completed")}
+            </div>
             <div className="text-sm text-muted-foreground">
-              {localizeName(selectedTournament?.name)} — барлық матчтар аяқталды.{" "}
+              {localizeName(selectedTournament?.name)} — {t("matches_admin.all_matches_finished")}{" "}
               <Link
                 to="/admin/tournaments/$id"
                 params={{ id: selectedTournamentId }}
                 className="text-gold hover:underline"
               >
-                Нәтижелерді қарау →
+                {t("matches_admin.view_results")} →
               </Link>
             </div>
           </div>
@@ -289,13 +302,15 @@ export function TournamentScoreboardPanel({
             <div className="font-display text-2xl font-bold text-emerald-300">
               {completed.length}
             </div>
-            <div className="text-xs text-muted-foreground">аяқталған матч</div>
+            <div className="text-xs text-muted-foreground">
+              {t("matches_admin.finished_matches")}
+            </div>
           </div>
         </div>
       )}
 
       <Panel
-        title="Жалпы басқару панелі"
+        title={t("matches_admin.control_panel")}
         action={
           selectedTournamentId && (
             <div className="flex flex-wrap gap-2">
@@ -304,7 +319,7 @@ export function TournamentScoreboardPanel({
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-card/70 px-3 py-2 text-sm hover:bg-muted/60"
               >
                 {wallCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                Табло сілтемесі
+                {t("matches_admin.wall_link")}
               </button>
               <Link
                 to="/live-wall/$tournamentId"
@@ -313,7 +328,7 @@ export function TournamentScoreboardPanel({
                 className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm font-medium text-gold-foreground shadow-gold"
               >
                 <MonitorPlay className="h-4 w-4" />
-                Проекторға ашу
+                {t("matches_admin.open_projector")}
                 <ExternalLink className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -322,12 +337,14 @@ export function TournamentScoreboardPanel({
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(240px,360px)_1fr]">
           <div>
-            <label className="text-xs uppercase tracking-widest text-muted-foreground">Жарыс</label>
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("common.tournament")}
+            </label>
             {fixedTournamentId ? (
               <div className="mt-1 rounded-md border border-border bg-card/60 px-3 py-2 text-sm">
                 {selectedTournament
-                  ? `${localizeName(selectedTournament.name)} · ${statusLabel(selectedTournament.status)}`
-                  : "Жүктелуде..."}
+                  ? `${localizeName(selectedTournament.name)} · ${statusLabel(selectedTournament.status, t)}`
+                  : t("common.loading")}
               </div>
             ) : (
               <select
@@ -335,33 +352,33 @@ export function TournamentScoreboardPanel({
                 onChange={(e) => changeTournament(e.target.value)}
                 className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
               >
-                <option value="">Жарысты таңдаңыз</option>
-                {tournaments.map((t: any) => (
-                  <option key={t.id} value={t.id}>
-                    {localizeName(t.name)} · {statusLabel(t.status)}
+                <option value="">{t("matches_admin.select_tournament")}</option>
+                {tournaments.map((item: any) => (
+                  <option key={item.id} value={item.id}>
+                    {localizeName(item.name)} · {statusLabel(item.status, t)}
                   </option>
                 ))}
               </select>
             )}
             {selectedTournament && (
               <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                <Metric label="Татами" value={String(tatamiCount)} />
+                <Metric label={t("common.tatami")} value={String(tatamiCount)} />
                 <Metric label="LIVE" value={String(liveCount)} accent />
-                <Metric label="Матч" value={String(matches.length)} />
+                <Metric label={t("dashboard.matches")} value={String(matches.length)} />
               </div>
             )}
           </div>
 
           <DropZone
-            title="Тағайындалмаған матчтар"
-            hint="Карточканы 1, 2 немесе 3 татамиге сүйреп апарыңыз"
+            title={t("matches_admin.unassigned_title")}
+            hint={t("matches_admin.unassigned_hint")}
             onDrop={() => dropOnTatami(null)}
             active={Boolean(draggedMatchId)}
           >
             {matchesQuery.isLoading ? (
               <LoadingState />
             ) : unassigned.length === 0 ? (
-              <EmptyState title="Бәрі татамиге қойылған" />
+              <EmptyState title={t("matches_admin.all_assigned")} />
             ) : (
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {unassigned.slice(0, 18).map((m) => (
@@ -372,7 +389,7 @@ export function TournamentScoreboardPanel({
                     onDragStart={() => setDraggedMatchId(m.id)}
                     onDragEnd={() => setDraggedMatchId(null)}
                     onReset={() => {
-                      if (window.confirm("Матчты қайта бастайсыз ба?"))
+                      if (window.confirm(t("matches_admin.reset_confirm")))
                         resetMatchMutation.mutate(m.id);
                     }}
                     onOverride={(side) =>
@@ -399,8 +416,8 @@ export function TournamentScoreboardPanel({
             return (
               <DropZone
                 key={tatami.number}
-                title={`Татами ${tatami.number}`}
-                hint={`${tatami.live.length} live · ${tatami.queue.length} кезекте${tatami.pendingResult ? " · нәтиже күтіп тұр" : ""}${session ? ` · судья: ${session.judgeName || "сілтеме дайын"}` : ""}`}
+                title={`${t("common.tatami")} ${tatami.number}`}
+                hint={`${tatami.live.length} live · ${tatami.queue.length} ${t("matches_admin.in_queue")}${tatami.pendingResult ? ` · ${t("matches_admin.result_pending")}` : ""}${session ? ` · ${t("matches_admin.judge")}: ${session.judgeName || t("matches_admin.link_ready")}` : ""}`}
                 action={
                   <div className="flex flex-wrap gap-1.5">
                     {session && (
@@ -413,20 +430,24 @@ export function TournamentScoreboardPanel({
                         ) : (
                           <Copy className="h-3.5 w-3.5" />
                         )}
-                        {copiedTatamiSessionId === session.id ? "Көшірілді" : "Сілтеме"}
+                        {copiedTatamiSessionId === session.id
+                          ? t("common.copied")
+                          : t("common.link")}
                       </button>
                     )}
                     <button
                       onClick={() => {
                         setTatamiSessionFor({ tatamiNumber: tatami.number });
                         setTatamiSessionResult(null);
-                        setTatamiJudgeName(session?.judgeName || `Татами ${tatami.number}`);
+                        setTatamiJudgeName(
+                          session?.judgeName || `${t("common.tatami")} ${tatami.number}`,
+                        );
                         setError("");
                       }}
                       className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                     >
                       <UserCheck className="h-3.5 w-3.5" />
-                      {session ? "Жаңарту" : "Құру"}
+                      {session ? t("common.update") : t("common.create")}
                     </button>
                     {session ? (
                       <Link
@@ -436,7 +457,7 @@ export function TournamentScoreboardPanel({
                         className="inline-flex items-center gap-1 rounded-md border border-gold/40 bg-gold/10 px-2.5 py-1.5 text-xs text-gold hover:bg-gold/15"
                       >
                         <Tv className="h-3.5 w-3.5" />
-                        Табло
+                        {t("matches_admin.scoreboard")}
                       </Link>
                     ) : null}
                   </div>
@@ -462,7 +483,7 @@ export function TournamentScoreboardPanel({
                             reorderQueue.mutate({ matchId: m.id, direction: "down" })
                           }
                           onReset={() => {
-                            if (window.confirm("Матчты қайта бастайсыз ба?"))
+                            if (window.confirm(t("matches_admin.reset_confirm")))
                               resetMatchMutation.mutate(m.id);
                           }}
                           onOverride={(side) =>
@@ -481,8 +502,8 @@ export function TournamentScoreboardPanel({
 
                   {tatami.queue.length === 0 && tatami.live.length === 0 ? (
                     <EmptyState
-                      title="Бұл татамиде матч жоқ"
-                      hint="Матчты осында сүйреп әкеліңіз"
+                      title={t("matches_admin.no_tatami_matches")}
+                      hint={t("matches_admin.drag_match_here")}
                     />
                   ) : (
                     (() => {
@@ -500,12 +521,12 @@ export function TournamentScoreboardPanel({
                               <div key={m.id}>
                                 {isJudgeNext && (
                                   <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
-                                    <span>▶</span> Судья панелінде осы
+                                    <span>▶</span> {t("matches_admin.visible_for_judge")}
                                   </div>
                                 )}
                                 {isMissingAthlete && (
                                   <div className="mb-1 text-[10px] text-amber-500 opacity-70">
-                                    ⚠ Спортшы тағайындалмаған — судья өткізіп жібереді
+                                    {t("matches_admin.missing_athlete_warning")}
                                   </div>
                                 )}
                                 <MatchCard
@@ -517,7 +538,7 @@ export function TournamentScoreboardPanel({
                                     assignTatami.mutate({ matchId: m.id, tatamiNumber: null })
                                   }
                                   onReset={() => {
-                                    if (window.confirm("Матчты қайта бастайсыз ба?"))
+                                    if (window.confirm(t("matches_admin.reset_confirm")))
                                       resetMatchMutation.mutate(m.id);
                                   }}
                                   onOverride={(side) =>
@@ -545,9 +566,9 @@ export function TournamentScoreboardPanel({
       </Panel>
 
       <div className="mt-6">
-        <Panel title={`Аяқталған матчтар тарихы (${completed.length})`}>
+        <Panel title={`${t("matches_admin.completed_history")} (${completed.length})`}>
           {completed.length === 0 ? (
-            <EmptyState title="Әлі аяқталған матч жоқ" />
+            <EmptyState title={t("matches_admin.no_completed_matches")} />
           ) : (
             <div className="space-y-2">
               {completed.map((m: Match) => {
@@ -593,9 +614,9 @@ export function TournamentScoreboardPanel({
                               }
                               disabled={m.winnerId === m.redAthlete?.id}
                               className="px-2 py-1 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
-                              title="АҚ жеңді деп белгілеу"
+                              title={t("matches_admin.mark_white_winner")}
                             >
-                              АҚ
+                              {t("matches_admin.white")}
                             </button>
                             <button
                               onClick={() =>
@@ -609,9 +630,9 @@ export function TournamentScoreboardPanel({
                               }
                               disabled={m.winnerId === m.blueAthlete?.id}
                               className="border-l border-sky-500/40 px-2 py-1 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
-                              title="КӨК жеңді деп белгілеу"
+                              title={t("matches_admin.mark_blue_winner")}
                             >
-                              КӨК
+                              {t("matches_admin.blue")}
                             </button>
                           </div>
                         )}
@@ -620,7 +641,10 @@ export function TournamentScoreboardPanel({
                           onClick={() => {
                             if (
                               window.confirm(
-                                `"${athleteName(m.redAthlete)} vs ${athleteName(m.blueAthlete)}" матчын қайта бастайсыз ба? Нәтиже өшіріледі.`,
+                                t("matches_admin.reset_match_confirm_named", {
+                                  red: athleteName(m.redAthlete),
+                                  blue: athleteName(m.blueAthlete),
+                                }),
                               )
                             ) {
                               resetMatchMutation.mutate(m.id);
@@ -628,10 +652,10 @@ export function TournamentScoreboardPanel({
                           }}
                           disabled={resetMatchMutation.isPending}
                           className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-500 hover:bg-amber-500/20 disabled:opacity-40"
-                          title="Матчты қайта бастау — нәтиже өшіріліп, спортшылар алдыңғы орнына оралады"
+                          title={t("matches_admin.reset_match_title")}
                         >
                           <RotateCcw className="h-3 w-3" />
-                          Қайтару
+                          {t("matches_admin.reset")}
                         </button>
                       </div>
                     </div>
@@ -641,8 +665,8 @@ export function TournamentScoreboardPanel({
                         className={`rounded-md border p-2 ${redWon ? "border-gold/50 bg-gold/8" : "border-border/50 bg-muted/20"}`}
                       >
                         <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                          <span>АҚ</span>
-                          {redWon && <span className="text-gold">★ Жеңді</span>}
+                          <span>{t("matches_admin.white")}</span>
+                          {redWon && <span className="text-gold">★ {t("matches_admin.won")}</span>}
                         </div>
                         <div className="truncate text-sm font-semibold">
                           {athleteName(m.redAthlete)}
@@ -656,8 +680,10 @@ export function TournamentScoreboardPanel({
                         className={`rounded-md border p-2 ${blueWon ? "border-sky-500/50 bg-sky-500/8" : "border-border/50 bg-muted/20"}`}
                       >
                         <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                          <span>КӨК</span>
-                          {blueWon && <span className="text-sky-400">★ Жеңді</span>}
+                          <span>{t("matches_admin.blue")}</span>
+                          {blueWon && (
+                            <span className="text-sky-400">★ {t("matches_admin.won")}</span>
+                          )}
                         </div>
                         <div className="truncate text-sm font-semibold">
                           {athleteName(m.blueAthlete)}
@@ -687,21 +713,23 @@ export function TournamentScoreboardPanel({
             className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-1 font-display text-lg font-bold">Нәтижені өзгерту</h3>
+            <h3 className="mb-1 font-display text-lg font-bold">
+              {t("matches_admin.change_result")}
+            </h3>
             <p className="mb-4 text-sm text-muted-foreground">
-              Жеңімпаз:{" "}
+              {t("matches_admin.winner")}:{" "}
               <b className={overrideDialog.side === "RED" ? "text-foreground" : "text-sky-400"}>
                 {overrideDialog.side === "RED" ? overrideDialog.redName : overrideDialog.blueName}
               </b>
             </p>
             <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-widest">
-              Себебі *
+              {t("matches_admin.reason")} *
             </div>
             <textarea
               autoFocus
               value={overrideDialog.reason}
               onChange={(e) => setOverrideDialog({ ...overrideDialog, reason: e.target.value })}
-              placeholder="Мысалы: судья қатесі, видео қайта қарау..."
+              placeholder={t("matches_admin.reason_placeholder")}
               rows={3}
               className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold resize-none"
             />
@@ -710,7 +738,7 @@ export function TournamentScoreboardPanel({
                 onClick={() => setOverrideDialog(null)}
                 className="flex-1 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-muted/60"
               >
-                Болдырмау
+                {t("common.cancel")}
               </button>
               <button
                 disabled={overrideDialog.reason.trim().length < 3 || overrideMatch.isPending}
@@ -727,7 +755,7 @@ export function TournamentScoreboardPanel({
                 }}
                 className="flex-1 rounded-lg bg-sky-500/20 py-2 text-sm font-semibold text-sky-400 hover:bg-sky-500/30 disabled:opacity-40"
               >
-                {overrideMatch.isPending ? "Сақталуда..." : "Растау"}
+                {overrideMatch.isPending ? t("common.saving") : t("common.confirm")}
               </button>
             </div>
           </div>
@@ -744,17 +772,18 @@ export function TournamentScoreboardPanel({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-display text-lg font-semibold">
-              Татами #{tatamiSessionFor.tatamiNumber} — Табло және басқару
+              {t("common.tatami")} #{tatamiSessionFor.tatamiNumber} —{" "}
+              {t("matches_admin.scoreboard_and_control")}
             </h3>
             <p className="mb-4 mt-1 text-xs text-muted-foreground">
-              Бір сілтеме — бүкіл күн. Осы жерде табло да, басқару батырмалары да бірге ашылады.
+              {t("matches_admin.session_hint")}
             </p>
 
             {tatamiSessionResult ? (
               <div className="space-y-3">
                 <div>
                   <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Табло және басқару сілтемесі
+                    {t("matches_admin.scoreboard_control_link")}
                   </label>
                   <div className="mt-1 flex gap-2">
                     <input
@@ -774,7 +803,7 @@ export function TournamentScoreboardPanel({
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
-                      {tatamiSessionResult.copied ? "Көшірілді" : "Көшіру"}
+                      {tatamiSessionResult.copied ? t("common.copied") : t("common.copy")}
                     </button>
                   </div>
                 </div>
@@ -787,26 +816,26 @@ export function TournamentScoreboardPanel({
                   className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold py-2 font-medium text-gold-foreground shadow-gold"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Таблоны ашу
+                  {t("matches_admin.open_scoreboard")}
                 </button>
               </div>
             ) : (
               <>
                 <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Төреші аты (міндетті емес)
+                  {t("matches_admin.judge_name_optional")}
                 </label>
                 <input
                   value={tatamiJudgeName}
                   onChange={(e: any) => setTatamiJudgeName(e.target.value)}
                   className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  placeholder="Мысалы Берік Сериков"
+                  placeholder={t("matches_admin.judge_placeholder")}
                 />
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={() => setTatamiSessionFor(null)}
                     className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted/60"
                   >
-                    Болдырмау
+                    {t("common.cancel")}
                   </button>
                   {tatamiSessions.find(
                     (s: any) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber,
@@ -822,7 +851,7 @@ export function TournamentScoreboardPanel({
                       disabled={revokeTatamiSession.isPending}
                       className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive hover:bg-destructive/15 disabled:opacity-50"
                     >
-                      Өшіру
+                      {t("common.delete")}
                     </button>
                   )}
                   <button
@@ -836,7 +865,7 @@ export function TournamentScoreboardPanel({
                     disabled={createTatamiSession.isPending || !selectedTournamentId}
                     className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
                   >
-                    Сілтеме құру
+                    {t("matches_admin.create_link")}
                   </button>
                 </div>
               </>
@@ -911,6 +940,7 @@ function MatchCard({
   onReset?: () => void;
   onOverride?: (winnerSide: "RED" | "BLUE") => void;
 }) {
+  const { t } = useTranslation();
   const catName = match.bracket?.category ? categoryShort(match.bracket.category) : "";
   const isDone = match.status === "COMPLETED";
   const pendingResult = match.scoreSnapshot?.pendingResult;
@@ -964,13 +994,13 @@ function MatchCard({
                   : "bg-muted text-muted-foreground"
           }`}
         >
-          {pendingResult ? "Бекіту керек" : statusLabel(match.status)}
+          {pendingResult ? t("matches_admin.needs_confirm") : statusLabel(match.status, t)}
         </span>
       </div>
 
       {pendingResult && (
         <div className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/10 p-2 text-xs text-amber-600">
-          Жеңімпаз:{" "}
+          {t("matches_admin.winner")}:{" "}
           <b>
             {pendingResult.winnerSide === "RED"
               ? athleteName(match.redAthlete)
@@ -1005,7 +1035,7 @@ function MatchCard({
               onClick={onMoveUp}
               disabled={!onMoveUp}
               className="px-2 py-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
-              title="Кезекте жоғары"
+              title={t("matches_admin.queue_up")}
             >
               <ChevronUp className="h-3.5 w-3.5" />
             </button>
@@ -1014,7 +1044,7 @@ function MatchCard({
               onClick={onMoveDown}
               disabled={!onMoveDown}
               className="border-l border-border px-2 py-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
-              title="Кезекте төмен"
+              title={t("matches_admin.queue_down")}
             >
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
@@ -1022,17 +1052,17 @@ function MatchCard({
         )}
         {pendingResult && (
           <div className="inline-flex items-center gap-1 rounded-md border border-amber-400/50 bg-amber-400/10 px-2.5 py-1.5 text-xs text-amber-600">
-            Судья бекітуін күтуде
+            {t("matches_admin.waiting_judge_confirm")}
           </div>
         )}
         {onReset && (match.status === "IN_PROGRESS" || isDone) && (
           <button
             onClick={onReset}
             className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-500"
-            title="Матчты қайта бастау (барлығын тазалау)"
+            title={t("matches_admin.reset_match_title")}
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Қайта
+            {t("matches_admin.reset_short")}
           </button>
         )}
         {onOverride && isDone && match.redAthlete && match.blueAthlete && (
@@ -1041,17 +1071,17 @@ function MatchCard({
               onClick={() => onOverride("RED")}
               disabled={match.winnerId === match.redAthlete?.id}
               className="px-2 py-1.5 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
-              title={`АҚ: ${athleteName(match.redAthlete)} жеңді деп белгілеу`}
+              title={`${t("matches_admin.white")}: ${athleteName(match.redAthlete)} ${t("matches_admin.mark_winner_suffix")}`}
             >
-              АҚ
+              {t("matches_admin.white")}
             </button>
             <button
               onClick={() => onOverride("BLUE")}
               disabled={match.winnerId === match.blueAthlete?.id}
               className="border-l border-sky-500/40 px-2 py-1.5 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
-              title={`КӨК: ${athleteName(match.blueAthlete)} жеңді деп белгілеу`}
+              title={`${t("matches_admin.blue")}: ${athleteName(match.blueAthlete)} ${t("matches_admin.mark_winner_suffix")}`}
             >
-              КӨК
+              {t("matches_admin.blue")}
             </button>
           </div>
         )}
@@ -1061,7 +1091,7 @@ function MatchCard({
             className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/60"
           >
             <Unlink className="h-3.5 w-3.5" />
-            Алу
+            {t("matches_admin.unassign")}
           </button>
         )}
       </div>
@@ -1070,8 +1100,9 @@ function MatchCard({
 }
 
 function categoryShort(cat: any): string {
+  // Keep category compact and language-neutral for match cards.
   if (!cat) return "";
-  const g = cat.gender === "MALE" ? "Ер" : cat.gender === "FEMALE" ? "Қыз" : "";
+  const g = cat.gender === "MALE" ? "M" : cat.gender === "FEMALE" ? "F" : "";
   const w = cat.weightMax >= 200 ? `+${cat.weightMin}` : `-${cat.weightMax}`;
   return `${g} ${w}кг`.trim();
 }
@@ -1087,6 +1118,7 @@ function ScoreSide({
   score: any;
   isWinner?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={`rounded-md border p-2 ${
@@ -1098,7 +1130,7 @@ function ScoreSide({
       }`}
     >
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        {side === "RED" ? "АҚ" : "КӨК"}
+        {side === "RED" ? t("matches_admin.white") : t("matches_admin.blue")}
         {isWinner && <span className="ml-1 text-gold">★</span>}
       </div>
       <div className="truncate text-sm font-medium">{athleteName(athlete)}</div>
@@ -1133,17 +1165,12 @@ function athleteName(athlete: any) {
   return [athlete.name, athlete.surname].filter(Boolean).join(" ") || "TBD";
 }
 
-function statusLabel(status: string) {
-  const labels: Record<string, string> = {
-    DRAFT: "Жоба",
-    REGISTRATION_OPEN: "Тіркеу ашық",
-    REGISTRATION_CLOSED: "Дайын",
-    IN_PROGRESS: "LIVE",
-    COMPLETED: "Аяқталды",
-    CANCELLED: "Тоқтатылды",
-    PENDING: "Күтуде",
-  };
-  return labels[status] ?? status;
+function statusLabel(
+  status: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (status === "IN_PROGRESS") return "LIVE";
+  return String(t(`status.${status}`, { defaultValue: status }));
 }
 
 function localizeName(value: any) {

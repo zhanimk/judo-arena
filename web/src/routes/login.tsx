@@ -151,7 +151,7 @@ function Login() {
     setPassword("password123");
     if (kind === "admin") setEmail("admin@judo-arena.kz");
     if (kind === "coach") setEmail("coach.almaty@judo-arena.kz");
-    if (kind === "athlete") setEmail("m0-0@almaty-judo.judo-arena.kz");
+    if (kind === "athlete") setEmail("rr.01@almaty-demo.demo.judo-arena.kz");
   };
 
   return (
@@ -700,7 +700,7 @@ function Login() {
             {isDev && (
               <div className="lp-demo-section mt-5 pt-4">
                 <p className="lp-demo-label mb-3 text-center text-[11px] uppercase tracking-widest">
-                  Demo
+                  {t("auth.demo_access")}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {(

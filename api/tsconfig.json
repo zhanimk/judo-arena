@@ -17,9 +17,8 @@
     "declaration": false,
     "sourceMap": true,
     "noEmitOnError": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

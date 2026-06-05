@@ -212,6 +212,8 @@ export const api = {
 
     logout: () => request<void>("/api/auth/logout", { method: "POST" }),
 
+    cancelRegistration: () => request<void>("/api/auth/me", { method: "DELETE" }),
+
     me: () => request<{ user: any }>("/api/auth/me"),
 
     setLocale: (locale: "ru" | "kk" | "en") =>
@@ -222,6 +224,14 @@ export const api = {
 
     updateProfile: (data: any) =>
       request<{ user: any }>("/api/auth/me/profile", { method: "PATCH", json: data }),
+
+    saveDocument: (data: {
+      type: "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
+      url: string;
+      originalName?: string | null;
+      mimeType?: string | null;
+      sizeBytes?: number | null;
+    }) => request<{ document: any }>("/api/auth/me/documents", { method: "PUT", json: data }),
 
     forgotPassword: (email: string) =>
       request<{ ok: boolean }>("/api/auth/forgot-password", {
@@ -243,6 +253,19 @@ export const api = {
       const form = new FormData();
       form.append("file", file);
       return request<{ url: string }>("/api/upload/image", { method: "POST", body: form });
+    },
+    avatar: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<{ url: string }>("/api/upload/avatar", { method: "POST", body: form });
+    },
+    document: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<{ url: string; fileName: string; mimeType: string; size: number }>(
+        "/api/upload/document",
+        { method: "POST", body: form },
+      );
     },
   },
 
@@ -379,7 +402,14 @@ export const api = {
       }),
     removeEntry: (id: string, entryId: string) =>
       request<void>(`/api/applications/${id}/entries/${entryId}`, { method: "DELETE" }),
+    payKaspi: (id: string) =>
+      request<any>(`/api/applications/${id}/payment/kaspi`, { method: "POST" }),
     submit: (id: string) => request<any>(`/api/applications/${id}/submit`, { method: "POST" }),
+    markPaid: (id: string, providerReference?: string) =>
+      request<any>(`/api/applications/${id}/payment/paid`, {
+        method: "POST",
+        json: { providerReference },
+      }),
     withdraw: (id: string) => request<any>(`/api/applications/${id}/withdraw`, { method: "POST" }),
     history: (id: string) => request<any[]>(`/api/applications/${id}/history`),
     approve: (id: string, notes?: string) =>

@@ -45,7 +45,9 @@
     "reports": "Есептер",
     "broadcast": "Хабарлама жіберу",
     "my_club": "Менің клубым",
-    "panel": "Панель"
+    "panel": "Панель",
+    "coaches": "Жаттықтырушылар",
+    "coach": "Жаттықтырушы"
   },
   "status": {
     "DRAFT": "Жоба",
@@ -65,6 +67,10 @@
   },
   "common": {
     "loading": "Жүктелуде...",
+    "copy": "Көшіру",
+    "copied": "Көшірілді",
+    "link": "Сілтеме",
+    "update": "Жаңарту",
     "save": "Сақтау",
     "saving": "Сақталуда...",
     "cancel": "Болдырмау",
@@ -158,7 +164,10 @@
     "years_short": "жас",
     "kg": "кг",
     "participant": "Қатысушы",
-    "irreversible": "Бұл әрекетті кері қайтаруға болмайды."
+    "irreversible": "Бұл әрекетті кері қайтаруға болмайды.",
+    "athletes": "Спортшылар",
+    "language": "Тіл",
+    "not_found": "Табылмады"
   },
   "auth": {
     "login_title": "Жүйеге кіру",
@@ -194,7 +203,9 @@
     "signing_in": "Кіруде...",
     "registering": "Тіркелуде...",
     "welcome_back": "Қайта оралдыңыз!",
-    "date_of_birth": "Туған күн"
+    "date_of_birth": "Туған күн",
+    "pwd_no_match": "Құпиясөздер сәйкес келмеді",
+    "demo_access": "Демо кіру"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -263,7 +274,23 @@
     "male_label": "Ерлер",
     "female_label": "Қыздар",
     "no_category_here": "санат жоқ",
-    "final": "Финал"
+    "final": "Финал",
+    "finals_title": "Финалдар",
+    "semifinal": "Жартылай финал",
+    "repechage": "Жұбаныш белдесулері",
+    "repechage_n": "Жұбаныш {{n}}",
+    "bronze_matches": "Қола үшін белдесулер",
+    "group": "Топ",
+    "group_table": "Топ кестесі",
+    "standing_wins": "Жеңіс",
+    "standing_losses": "Жеңіліс",
+    "standing_played": "Ойын",
+    "advances_to_playoff": "Плей-оффқа өтеді",
+    "section_main": "Негізгі тор",
+    "section_repechage": "Жұбаныш",
+    "section_bronze1": "Қола 1",
+    "section_bronze2": "Қола 2",
+    "section_final": "Финал"
   },
   "notification": {
     "all": "Барлығы",
@@ -677,7 +704,8 @@
     "min_short": "мин",
     "est_duration": "Болжамды ұзақтық",
     "no_location": "Орын белгісіз",
-    "no_time": "Уақыт белгісіз"
+    "no_time": "Уақыт белгісіз",
+    "primary_locale": "Негізгі тіл"
   },
   "athlete": {
     "role_label": "Спортшы",
@@ -1020,7 +1048,9 @@
     "create_user_title": "Жаңа пайдаланушы қосу",
     "block_club_hint": "Блокталған клуб жаңа өтінімдер жібере алмайды.",
     "block_reason": "Себебі",
-    "block_reason_placeholder": "Блоктау себебі..."
+    "block_reason_placeholder": "Блоктау себебі...",
+    "club_not_found": "Клуб табылмады",
+    "user_details": "Пайдаланушы карточкасы"
   },
   "profile": {
     "title": "Менің профилім",
@@ -1039,6 +1069,7 @@
     "save_error": "Профиль сақталмады",
     "photo_uploaded": "Сурет жүктелді ✓",
     "photo_error": "Сурет жүктелмеді",
+    "photo_requirements": "Фото 3:4, бет ортада, фон ақ немесе өте ашық. JPG, PNG немесе WEBP.",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1091,7 +1122,10 @@
     "submit_profile": "Сақтау",
     "saved": "Профиль сақталды!",
     "error": "Сақтау мүмкін болмады",
-    "skip": "Кейінге қалдыру"
+    "skip": "Кейінге қалдыру",
+    "cancel_registration": "Тіркеуді тоқтату",
+    "cancel_registration_confirm": "Тіркеуді тоқтатсаңыз, аккаунт жойылады. Жалғастырасыз ба?",
+    "cancel_registration_error": "Тіркеуді тоқтату мүмкін болмады"
   },
   "applications": {
     "title": "Өтінімдер",
@@ -1193,7 +1227,8 @@
     "remove_error": "Жою қатесі",
     "move_error": "Жылжыту қатесі",
     "approve_error": "Өтінім бекітілмеді",
-    "reject_error": "Өтінім қайтарылмады"
+    "reject_error": "Өтінім қайтарылмады",
+    "move_to": "Жылжыту"
   },
   "matches": {
     "title": "Жекпе-жектер",
@@ -1559,7 +1594,9 @@
     "body_placeholder": "Хабарландыру мәтіні..."
   },
   "theme": {
-    "toggle": "Тақырыпты ауыстыру"
+    "toggle": "Тақырыпты ауыстыру",
+    "theme_dark": "Қараңғы",
+    "theme_light": "Жарық"
   },
   "audit": {
     "records": "жазба",
@@ -1582,5 +1619,128 @@
     "action_broadcast": "Рассылка",
     "showing": "Көрсетілген",
     "max_warning": "Тек соңғы 200 жазба көрінеді"
+  },
+  "matches_admin": {
+    "assign_error": "Татами тағайындау кезінде қате шықты",
+    "queue_error": "Кезекті өзгерту кезінде қате шықты",
+    "reset_error": "Матчты қайта бастау кезінде қате",
+    "override_error": "Нәтижені өзгерту кезінде қате",
+    "session_create_error": "Татами сілтемесін құру кезінде қате шықты",
+    "session_revoke_error": "Татами сілтемесін өшіру кезінде қате шықты",
+    "tournament_completed": "Жарыс аяқталды",
+    "all_matches_finished": "барлық матчтар аяқталды.",
+    "view_results": "Нәтижелерді қарау",
+    "finished_matches": "аяқталған матч",
+    "control_panel": "Басқару панелі",
+    "wall_link": "Табло сілтемесі",
+    "open_projector": "Проекторға ашу",
+    "select_tournament": "Жарысты таңдаңыз",
+    "unassigned_title": "Тағайындалмаған матчтар",
+    "unassigned_hint": "Карточканы қажетті татамиге сүйреп апарыңыз",
+    "all_assigned": "Бәрі татамиге қойылған",
+    "in_queue": "кезекте",
+    "result_pending": "нәтиже күтіп тұр",
+    "judge": "судья",
+    "link_ready": "сілтеме дайын",
+    "scoreboard": "Табло",
+    "reset_confirm": "Матчты қайта бастайсыз ба?",
+    "no_tatami_matches": "Бұл татамиде матч жоқ",
+    "drag_match_here": "Матчты осында сүйреп әкеліңіз",
+    "visible_for_judge": "Судья панелінде осы",
+    "missing_athlete_warning": "Спортшы тағайындалмаған — судья өткізіп жібереді",
+    "completed_history": "Аяқталған матчтар тарихы",
+    "no_completed_matches": "Әлі аяқталған матч жоқ",
+    "mark_white_winner": "Ақ жеңді деп белгілеу",
+    "mark_blue_winner": "Көк жеңді деп белгілеу",
+    "reset_match_confirm_named": "\"{{red}} vs {{blue}}\" матчын қайта бастайсыз ба? Нәтиже өшіріледі.",
+    "reset_match_title": "Матчты қайта бастау және нәтижені тазалау",
+    "reset": "Қайтару",
+    "reset_short": "Қайта",
+    "white": "Ақ",
+    "blue": "Көк",
+    "won": "Жеңді",
+    "change_result": "Нәтижені өзгерту",
+    "winner": "Жеңімпаз",
+    "reason": "Себебі",
+    "reason_placeholder": "Мысалы: судья қатесі, видео қайта қарау...",
+    "scoreboard_and_control": "Табло және басқару",
+    "session_hint": "Бір сілтеме — бүкіл күн. Осы жерде табло да, басқару батырмалары да бірге ашылады.",
+    "scoreboard_control_link": "Табло және басқару сілтемесі",
+    "open_scoreboard": "Таблоны ашу",
+    "judge_name_optional": "Төреші аты (міндетті емес)",
+    "judge_placeholder": "Мысалы Берік Сериков",
+    "create_link": "Сілтеме құру",
+    "needs_confirm": "Бекіту керек",
+    "waiting_judge_confirm": "Судья бекітуін күтуде",
+    "queue_up": "Кезекте жоғары",
+    "queue_down": "Кезекте төмен",
+    "mark_winner_suffix": "жеңді деп белгілеу",
+    "unassign": "Алу"
+  },
+  "payments": {
+    "entry_fee": "Старт жарнасы",
+    "kaspi_url": "Kaspi сілтемесі",
+    "status": "Төлем",
+    "status_NOT_REQUIRED": "Төлем қажет емес",
+    "status_PENDING": "Төлем күтілуде",
+    "status_PAID": "Төленді",
+    "status_FAILED": "Төлем қатесі",
+    "pay_kaspi": "Kaspi арқылы төлеу",
+    "reference": "Төлем нөмірі",
+    "paid_at": "Төленген уақыт",
+    "no_kaspi_url": "Әкімші бұл жарысқа Kaspi сілтемесін көрсетпеген",
+    "to_pay_after_submit": "Өтінімді жібергеннен кейін төленетін сома",
+    "to_pay_before_submit": "Өтінімді жібермес бұрын төленетін сома",
+    "pay_before_submit": "Алдымен старт жарнасын төлеңіз, содан кейін өтінімді жіберіңіз.",
+    "mark_paid": "Төленді деп белгілеу",
+    "marked_paid": "Төлем расталды"
+  },
+  "athlete_dashboard": {
+    "win_rate": "Жеңіс",
+    "hello": "Сәлем, {{name}}!",
+    "belt_progress": "Белбеу прогресі",
+    "next_tournament": "Келесі жарыс",
+    "belt_preparation": "Белбеу дайындығы",
+    "next_level_preparation": "Келесі КЮ-ге дайындық",
+    "target": "Мақсат",
+    "techniques_for_next_belt": "{{belt}} белбеуінен өту үшін үйренетін техникалар:",
+    "learn_techniques": "Үйренетін техникалар",
+    "practice_hint": "Келесі белбеуге сенімді өту үшін осы техникаларды жаттықтырушыңмен пысықта.",
+    "practice_hint_profile": "Осы техникаларды жаттықтырушымен бірге жаттық, рейтинг жарыстарына қатысып, келесі деңгейге жет.",
+    "next_5_kyu": "5 КЮ (сары)",
+    "next_4_kyu": "4 КЮ (қызғылт сары)",
+    "next_3_kyu": "3 КЮ (жасыл)",
+    "next_2_kyu": "2 КЮ (көк)",
+    "next_1_kyu": "1 КЮ (қоңыр)",
+    "next_1_dan": "1 ДАН (қара)",
+    "belt_white": "ақ белбеу",
+    "belt_yellow": "сары белбеу",
+    "belt_orange": "қызғылт сары белбеу",
+    "belt_green": "жасыл белбеу",
+    "belt_blue": "көк белбеу",
+    "belt_brown": "қоңыр белбеу",
+    "belt_black": "қара белбеу",
+    "technique_master_previous": "Барлық алдыңғы техниканы кемелдендіру",
+    "technique_combinations": "Комбинация жасау",
+    "technique_ne_waza": "Не-вадза меңгеру",
+    "technique_competition_consistency": "Жарыста тұрақты нәтиже"
+  },
+  "documents": {
+    "title": "Құжаттар",
+    "coach_documents": "Жаттықтырушы құжаттары",
+    "birth_certificate": "Туу туралы куәлік",
+    "birth_certificate_hint": "Спортшының жасын растау үшін PDF немесе сурет жүктеңіз.",
+    "study_certificate": "Оқу орнынан анықтама",
+    "study_certificate_hint": "Мектеп/колледж/оқу орнынан берілген анықтаманы жүктеңіз.",
+    "coach_id": "Жаттықтырушы куәлігі",
+    "coach_id_hint": "Жаттықтырушыны растайтын куәлік немесе құжат.",
+    "upload": "Жүктеу",
+    "replace": "Ауыстыру",
+    "saved": "Құжат сақталды",
+    "upload_error": "Құжат жүктелмеді",
+    "not_uploaded": "Әлі жүктелмеген",
+    "open_file": "Файлды ашу",
+    "no_documents": "Құжаттар жоқ",
+    "no_documents_hint": "Пайдаланушы профильден құжат жүктеген кезде осында көрінеді."
   }
 }

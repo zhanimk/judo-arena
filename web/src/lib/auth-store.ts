@@ -33,6 +33,15 @@ export interface User {
   clubId?: string | null;
   clubRole?: "OWNER" | "COACH" | null;
   club?: { id: string; name: any; shortName?: string; city: string } | null;
+  documents?: Array<{
+    id: string;
+    type: "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
+    url: string;
+    originalName?: string | null;
+    mimeType?: string | null;
+    sizeBytes?: number | null;
+    updatedAt: string;
+  }>;
   isActive: boolean;
   createdAt: string;
 }

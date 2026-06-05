@@ -14,10 +14,14 @@ import type {
   CreateCategoryInput,
   UpdateCategoryInput,
 } from "../validators/tournament.schema.js";
-import { TournamentStatus, UserRole } from "@prisma/client";
+import { Prisma, TournamentStatus, UserRole } from "@prisma/client";
 
 export class TournamentError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "TournamentError";
   }
@@ -26,8 +30,15 @@ export class TournamentError extends Error {
 // Разрешённые переходы статусов
 const ALLOWED_TRANSITIONS: Record<TournamentStatus, TournamentStatus[]> = {
   DRAFT: [TournamentStatus.REGISTRATION_OPEN, TournamentStatus.CANCELLED],
-  REGISTRATION_OPEN: [TournamentStatus.REGISTRATION_CLOSED, TournamentStatus.CANCELLED],
-  REGISTRATION_CLOSED: [TournamentStatus.IN_PROGRESS, TournamentStatus.REGISTRATION_OPEN, TournamentStatus.CANCELLED],
+  REGISTRATION_OPEN: [
+    TournamentStatus.REGISTRATION_CLOSED,
+    TournamentStatus.CANCELLED,
+  ],
+  REGISTRATION_CLOSED: [
+    TournamentStatus.IN_PROGRESS,
+    TournamentStatus.REGISTRATION_OPEN,
+    TournamentStatus.CANCELLED,
+  ],
   IN_PROGRESS: [TournamentStatus.COMPLETED, TournamentStatus.CANCELLED],
   COMPLETED: [],
   CANCELLED: [TournamentStatus.DRAFT],
@@ -71,16 +82,22 @@ export async function getTournament(id: string) {
   const t = await prisma.tournament.findUnique({
     where: { id },
     include: {
-      categories: { orderBy: [{ gender: "asc" }, { weightMin: "asc" }] },
+      categories: {
+        orderBy: [{ gender: "asc" }, { ageMin: "asc" }, { weightMin: "asc" }],
+      },
       createdBy: { select: { id: true, name: true, surname: true } },
       _count: { select: { applications: true } },
     },
   });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   return t;
 }
 
-export async function createTournament(creatorUserId: string, input: CreateTournamentInput) {
+export async function createTournament(
+  creatorUserId: string,
+  input: CreateTournamentInput,
+) {
   return prisma.tournament.create({
     data: {
       name: input.name,
@@ -97,18 +114,27 @@ export async function createTournament(creatorUserId: string, input: CreateTourn
       tatamiCount: input.tatamiCount,
       primaryLocale: input.primaryLocale,
       posterUrl: input.posterUrl,
+      entryFeeKzt: input.entryFeeKzt,
+      kaspiPaymentUrl: input.kaspiPaymentUrl,
       status: TournamentStatus.DRAFT,
       createdById: creatorUserId,
     },
   });
 }
 
-export async function updateTournament(tournamentId: string, input: UpdateTournamentInput) {
+export async function updateTournament(
+  tournamentId: string,
+  input: UpdateTournamentInput,
+) {
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
 
   // Когда турнир активен — нельзя менять даты
-  if (t.status === TournamentStatus.IN_PROGRESS || t.status === TournamentStatus.COMPLETED) {
+  if (
+    t.status === TournamentStatus.IN_PROGRESS ||
+    t.status === TournamentStatus.COMPLETED
+  ) {
     if (input.startDate || input.endDate) {
       throw new TournamentError(
         "LOCKED_FIELDS",
@@ -119,17 +145,34 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
   }
 
   if (input.startDate && input.endDate && input.endDate < input.startDate) {
-    throw new TournamentError("INVALID_RANGE", "endDate должна быть ≥ startDate", 400);
+    throw new TournamentError(
+      "INVALID_RANGE",
+      "endDate должна быть ≥ startDate",
+      400,
+    );
   }
   const nextStartDate = input.startDate ?? t.startDate;
-  const nextDeadline = input.applicationDeadline === null ? null : (input.applicationDeadline ?? t.applicationDeadline);
+  const nextDeadline =
+    input.applicationDeadline === null
+      ? null
+      : (input.applicationDeadline ?? t.applicationDeadline);
   if (nextDeadline && nextDeadline > nextStartDate) {
-    throw new TournamentError("INVALID_APPLICATION_DEADLINE", "Дедлайн заявок должен быть не позже даты начала турнира", 400);
+    throw new TournamentError(
+      "INVALID_APPLICATION_DEADLINE",
+      "Дедлайн заявок должен быть не позже даты начала турнира",
+      400,
+    );
   }
-  const nextWeighInStart = input.weighInStart === null ? null : (input.weighInStart ?? t.weighInStart);
-  const nextWeighInEnd = input.weighInEnd === null ? null : (input.weighInEnd ?? t.weighInEnd);
+  const nextWeighInStart =
+    input.weighInStart === null ? null : (input.weighInStart ?? t.weighInStart);
+  const nextWeighInEnd =
+    input.weighInEnd === null ? null : (input.weighInEnd ?? t.weighInEnd);
   if (nextWeighInStart && nextWeighInEnd && nextWeighInEnd < nextWeighInStart) {
-    throw new TournamentError("INVALID_WEIGH_IN_RANGE", "Окончание взвешивания должно быть не раньше начала", 400);
+    throw new TournamentError(
+      "INVALID_WEIGH_IN_RANGE",
+      "Окончание взвешивания должно быть не раньше начала",
+      400,
+    );
   }
 
   return prisma.tournament.update({
@@ -141,21 +184,42 @@ export async function updateTournament(tournamentId: string, input: UpdateTourna
       ...(input.city && { city: input.city }),
       ...(input.startDate && { startDate: input.startDate }),
       ...(input.endDate && { endDate: input.endDate }),
-      ...(input.applicationDeadline !== undefined && { applicationDeadline: input.applicationDeadline }),
+      ...(input.applicationDeadline !== undefined && {
+        applicationDeadline: input.applicationDeadline,
+      }),
       ...(input.mapUrl !== undefined && { mapUrl: input.mapUrl }),
-      ...(input.weighInLocation !== undefined && { weighInLocation: input.weighInLocation }),
-      ...(input.weighInStart !== undefined && { weighInStart: input.weighInStart }),
+      ...(input.weighInLocation !== undefined && {
+        weighInLocation: input.weighInLocation,
+      }),
+      ...(input.weighInStart !== undefined && {
+        weighInStart: input.weighInStart,
+      }),
       ...(input.weighInEnd !== undefined && { weighInEnd: input.weighInEnd }),
-      ...(input.tatamiCount !== undefined && { tatamiCount: input.tatamiCount }),
+      ...(input.tatamiCount !== undefined && {
+        tatamiCount: input.tatamiCount,
+      }),
       ...(input.primaryLocale && { primaryLocale: input.primaryLocale }),
       ...(input.posterUrl !== undefined && { posterUrl: input.posterUrl }),
+      ...(input.entryFeeKzt !== undefined && {
+        entryFeeKzt: input.entryFeeKzt,
+      }),
+      ...(input.kaspiPaymentUrl !== undefined && {
+        kaspiPaymentUrl: input.kaspiPaymentUrl,
+      }),
+      ...(input.youtubeUrls !== undefined && {
+        youtubeUrls: input.youtubeUrls ?? Prisma.JsonNull,
+      }),
     },
   });
 }
 
-export async function changeStatus(tournamentId: string, newStatus: TournamentStatus) {
+export async function changeStatus(
+  tournamentId: string,
+  newStatus: TournamentStatus,
+) {
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
 
   const allowed = ALLOWED_TRANSITIONS[t.status];
   if (!allowed.includes(newStatus)) {
@@ -168,7 +232,9 @@ export async function changeStatus(tournamentId: string, newStatus: TournamentSt
 
   // Бизнес-правила: чтобы открыть регистрацию — нужны категории
   if (newStatus === TournamentStatus.REGISTRATION_OPEN) {
-    const categoriesCount = await prisma.category.count({ where: { tournamentId } });
+    const categoriesCount = await prisma.category.count({
+      where: { tournamentId },
+    });
     if (categoriesCount === 0) {
       throw new TournamentError(
         "NO_CATEGORIES",
@@ -186,8 +252,12 @@ export async function changeStatus(tournamentId: string, newStatus: TournamentSt
 
 export async function deleteTournament(tournamentId: string) {
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
-  if (t.status !== TournamentStatus.DRAFT && t.status !== TournamentStatus.CANCELLED) {
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (
+    t.status !== TournamentStatus.DRAFT &&
+    t.status !== TournamentStatus.CANCELLED
+  ) {
     throw new TournamentError(
       "CANNOT_DELETE",
       "Удалить можно только турнир в статусе DRAFT или CANCELLED",
@@ -212,8 +282,12 @@ export async function deleteTournament(tournamentId: string) {
       await tx.applicationEntry.deleteMany({
         where: {
           OR: [
-            ...(applicationIds.length > 0 ? [{ applicationId: { in: applicationIds } }] : []),
-            ...(categoryIds.length > 0 ? [{ categoryId: { in: categoryIds } }] : []),
+            ...(applicationIds.length > 0
+              ? [{ applicationId: { in: applicationIds } }]
+              : []),
+            ...(categoryIds.length > 0
+              ? [{ categoryId: { in: categoryIds } }]
+              : []),
           ],
         },
       });
@@ -236,16 +310,21 @@ export async function deleteTournament(tournamentId: string) {
 
 export async function listCategories(tournamentId: string) {
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   return prisma.category.findMany({
     where: { tournamentId },
-    orderBy: [{ gender: "asc" }, { weightMin: "asc" }],
+    orderBy: [{ gender: "asc" }, { ageMin: "asc" }, { weightMin: "asc" }],
   });
 }
 
-export async function createCategory(tournamentId: string, input: CreateCategoryInput) {
+export async function createCategory(
+  tournamentId: string,
+  input: CreateCategoryInput,
+) {
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!t)
+    throw new TournamentError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   if (t.status !== TournamentStatus.DRAFT) {
     throw new TournamentError(
       "LOCKED",
@@ -271,14 +350,26 @@ export async function createCategory(tournamentId: string, input: CreateCategory
   });
 }
 
-export async function updateCategory(categoryId: string, input: UpdateCategoryInput) {
+export async function updateCategory(
+  categoryId: string,
+  input: UpdateCategoryInput,
+) {
   const cat = await prisma.category.findUnique({
     where: { id: categoryId },
     include: { tournament: true },
   });
-  if (!cat) throw new TournamentError("CATEGORY_NOT_FOUND", "Категория не найдена", 404);
+  if (!cat)
+    throw new TournamentError(
+      "CATEGORY_NOT_FOUND",
+      "Категория не найдена",
+      404,
+    );
   if (cat.tournament.status !== TournamentStatus.DRAFT) {
-    throw new TournamentError("LOCKED", "Категории можно менять только в статусе DRAFT турнира", 409);
+    throw new TournamentError(
+      "LOCKED",
+      "Категории можно менять только в статусе DRAFT турнира",
+      409,
+    );
   }
   return prisma.category.update({ where: { id: categoryId }, data: input });
 }
@@ -288,9 +379,18 @@ export async function deleteCategory(categoryId: string) {
     where: { id: categoryId },
     include: { tournament: true },
   });
-  if (!cat) throw new TournamentError("CATEGORY_NOT_FOUND", "Категория не найдена", 404);
+  if (!cat)
+    throw new TournamentError(
+      "CATEGORY_NOT_FOUND",
+      "Категория не найдена",
+      404,
+    );
   if (cat.tournament.status !== TournamentStatus.DRAFT) {
-    throw new TournamentError("LOCKED", "Удалять категории можно только в DRAFT", 409);
+    throw new TournamentError(
+      "LOCKED",
+      "Удалять категории можно только в DRAFT",
+      409,
+    );
   }
   await prisma.category.delete({ where: { id: categoryId } });
 }
@@ -302,6 +402,10 @@ export async function deleteCategory(categoryId: string) {
 export async function assertAdmin(userId: string): Promise<void> {
   const u = await prisma.user.findUnique({ where: { id: userId } });
   if (!u || u.role !== UserRole.ADMIN) {
-    throw new TournamentError("FORBIDDEN", "Операция только для администратора", 403);
+    throw new TournamentError(
+      "FORBIDDEN",
+      "Операция только для администратора",
+      403,
+    );
   }
 }

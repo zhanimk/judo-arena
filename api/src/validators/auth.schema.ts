@@ -5,10 +5,23 @@
 
 import { z } from "zod";
 
-const imageUrlSchema = z.string().refine(
-  (value) => value.startsWith("/uploads/") || z.string().url().safeParse(value).success,
-  "Невалидный URL изображения",
-);
+const imageUrlSchema = z
+  .string()
+  .refine(
+    (value) =>
+      value.startsWith("/uploads/") ||
+      z.string().url().safeParse(value).success,
+    "Невалидный URL изображения",
+  );
+
+const uploadUrlSchema = z
+  .string()
+  .refine(
+    (value) =>
+      value.startsWith("/uploads/") ||
+      z.string().url().safeParse(value).success,
+    "Невалидный URL файла",
+  );
 
 const strongPassword = z
   .string()
@@ -23,7 +36,9 @@ export const registerSchema = z
     email: z.string().email("Невалидный email"),
     password: strongPassword,
     role: z.enum(["ATHLETE", "COACH"], {
-      errorMap: () => ({ message: "Можно зарегистрировать только спортсмена или тренера" }),
+      errorMap: () => ({
+        message: "Можно зарегистрировать только спортсмена или тренера",
+      }),
     }),
     name: z.string().min(1).max(64),
     surname: z.string().min(1).max(64),
@@ -34,7 +49,10 @@ export const registerSchema = z
     weightKg: z.coerce.number().positive().max(300).optional(),
     beltRank: z.string().max(20).optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).default("kk"),
-    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона")
+      .optional(),
     // Опционально: спортсмен может сразу указать клуб (если знает id)
     clubId: z.string().optional(),
   })
@@ -65,10 +83,32 @@ export const updateMeProfileSchema = z
     surname: z.string().min(1).max(64).optional(),
     nameLatin: z.string().max(64).nullable().optional(),
     surnameLatin: z.string().max(64).nullable().optional(),
-    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").nullable().optional(),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона")
+      .nullable()
+      .optional(),
     avatarUrl: imageUrlSchema.nullable().optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
   })
   .strict();
 
 export type UpdateMeProfileInput = z.infer<typeof updateMeProfileSchema>;
+
+export const upsertUserDocumentSchema = z
+  .object({
+    type: z.enum(["BIRTH_CERTIFICATE", "STUDY_CERTIFICATE", "COACH_ID"]),
+    url: uploadUrlSchema,
+    originalName: z.string().max(255).nullable().optional(),
+    mimeType: z.string().max(120).nullable().optional(),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(20 * 1024 * 1024)
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+export type UpsertUserDocumentInput = z.infer<typeof upsertUserDocumentSchema>;

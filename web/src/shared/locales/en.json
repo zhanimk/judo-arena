@@ -45,7 +45,9 @@
     "reports": "Reports",
     "broadcast": "Broadcast",
     "my_club": "My club",
-    "panel": "Panel"
+    "panel": "Panel",
+    "coaches": "Coaches",
+    "coach": "Coach"
   },
   "status": {
     "DRAFT": "Draft",
@@ -65,6 +67,10 @@
   },
   "common": {
     "loading": "Loading...",
+    "copy": "Copy",
+    "copied": "Copied",
+    "link": "Link",
+    "update": "Update",
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel",
@@ -158,7 +164,10 @@
     "years_short": "yrs",
     "kg": "kg",
     "participant": "Participant",
-    "irreversible": "This action cannot be undone."
+    "irreversible": "This action cannot be undone.",
+    "athletes": "Athletes",
+    "language": "Language",
+    "not_found": "Not found"
   },
   "auth": {
     "login_title": "Sign in",
@@ -194,7 +203,9 @@
     "signing_in": "Signing in...",
     "registering": "Registering...",
     "welcome_back": "Welcome back!",
-    "date_of_birth": "Date of birth"
+    "date_of_birth": "Date of birth",
+    "pwd_no_match": "Passwords do not match",
+    "demo_access": "Demo access"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -263,7 +274,23 @@
     "male_label": "Men",
     "female_label": "Women",
     "no_category_here": "no categories",
-    "final": "Final"
+    "final": "Final",
+    "finals_title": "Finals",
+    "semifinal": "Semifinal",
+    "repechage": "Repechage",
+    "repechage_n": "Repechage {{n}}",
+    "bronze_matches": "Bronze matches",
+    "group": "Group",
+    "group_table": "Group table",
+    "standing_wins": "Wins",
+    "standing_losses": "Losses",
+    "standing_played": "Played",
+    "advances_to_playoff": "Advances to playoff",
+    "section_main": "Main bracket",
+    "section_repechage": "Repechage",
+    "section_bronze1": "Bronze 1",
+    "section_bronze2": "Bronze 2",
+    "section_final": "Final"
   },
   "notification": {
     "all": "All",
@@ -677,7 +704,8 @@
     "min_short": "min",
     "est_duration": "Estimated duration",
     "no_location": "Location TBD",
-    "no_time": "Time TBD"
+    "no_time": "Time TBD",
+    "primary_locale": "Primary language"
   },
   "athlete": {
     "role_label": "Athlete",
@@ -1020,7 +1048,9 @@
     "create_user_title": "New user",
     "block_club_hint": "A blocked club cannot submit applications.",
     "block_reason": "Reason",
-    "block_reason_placeholder": "Reason for blocking..."
+    "block_reason_placeholder": "Reason for blocking...",
+    "club_not_found": "Club not found",
+    "user_details": "User card"
   },
   "profile": {
     "title": "My profile",
@@ -1039,6 +1069,7 @@
     "save_error": "Profile not saved",
     "photo_uploaded": "Photo uploaded ✓",
     "photo_error": "Photo upload failed",
+    "photo_requirements": "3:4 portrait photo, face centered, white or very light background. JPG, PNG or WEBP.",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1091,7 +1122,10 @@
     "submit_profile": "Save",
     "saved": "Profile saved!",
     "error": "Could not save",
-    "skip": "Skip for now"
+    "skip": "Skip for now",
+    "cancel_registration": "Cancel registration",
+    "cancel_registration_confirm": "Canceling registration will delete this account. Continue?",
+    "cancel_registration_error": "Could not cancel registration"
   },
   "applications": {
     "title": "Applications",
@@ -1193,7 +1227,8 @@
     "remove_error": "Remove failed",
     "move_error": "Move failed",
     "approve_error": "Approval failed",
-    "reject_error": "Rejection failed"
+    "reject_error": "Rejection failed",
+    "move_to": "Move to"
   },
   "matches": {
     "title": "Matches",
@@ -1559,7 +1594,9 @@
     "body_placeholder": "Notification body..."
   },
   "theme": {
-    "toggle": "Toggle theme"
+    "toggle": "Toggle theme",
+    "theme_dark": "Dark",
+    "theme_light": "Light"
   },
   "audit": {
     "records": "records",
@@ -1582,5 +1619,128 @@
     "action_broadcast": "Broadcast",
     "showing": "Showing",
     "max_warning": "Only the last 200 records are shown"
+  },
+  "matches_admin": {
+    "assign_error": "Could not assign tatami",
+    "queue_error": "Could not update the queue",
+    "reset_error": "Could not reset the match",
+    "override_error": "Could not change the result",
+    "session_create_error": "Could not create tatami link",
+    "session_revoke_error": "Could not revoke tatami link",
+    "tournament_completed": "Tournament completed",
+    "all_matches_finished": "all matches are finished.",
+    "view_results": "View results",
+    "finished_matches": "finished matches",
+    "control_panel": "Control panel",
+    "wall_link": "Scoreboard link",
+    "open_projector": "Open projector",
+    "select_tournament": "Select tournament",
+    "unassigned_title": "Unassigned matches",
+    "unassigned_hint": "Drag a card to the target tatami",
+    "all_assigned": "All matches are assigned",
+    "in_queue": "in queue",
+    "result_pending": "result pending",
+    "judge": "judge",
+    "link_ready": "link ready",
+    "scoreboard": "Scoreboard",
+    "reset_confirm": "Reset this match?",
+    "no_tatami_matches": "No matches on this tatami",
+    "drag_match_here": "Drag a match here",
+    "visible_for_judge": "Visible in the judge panel now",
+    "missing_athlete_warning": "Athlete is missing — judge panel will skip this match",
+    "completed_history": "Completed match history",
+    "no_completed_matches": "No completed matches yet",
+    "mark_white_winner": "Mark white as winner",
+    "mark_blue_winner": "Mark blue as winner",
+    "reset_match_confirm_named": "Reset \"{{red}} vs {{blue}}\"? The result will be deleted.",
+    "reset_match_title": "Reset match and clear result",
+    "reset": "Reset",
+    "reset_short": "Reset",
+    "white": "White",
+    "blue": "Blue",
+    "won": "Won",
+    "change_result": "Change result",
+    "winner": "Winner",
+    "reason": "Reason",
+    "reason_placeholder": "For example: judge error, video review...",
+    "scoreboard_and_control": "Scoreboard and control",
+    "session_hint": "One link for the whole day. It opens both scoreboard and control buttons.",
+    "scoreboard_control_link": "Scoreboard and control link",
+    "open_scoreboard": "Open scoreboard",
+    "judge_name_optional": "Judge name (optional)",
+    "judge_placeholder": "For example Berik Serikov",
+    "create_link": "Create link",
+    "needs_confirm": "Needs confirmation",
+    "waiting_judge_confirm": "Waiting for judge confirmation",
+    "queue_up": "Move up in queue",
+    "queue_down": "Move down in queue",
+    "mark_winner_suffix": "marked as winner",
+    "unassign": "Unassign"
+  },
+  "payments": {
+    "entry_fee": "Entry fee",
+    "kaspi_url": "Kaspi link",
+    "status": "Payment",
+    "status_NOT_REQUIRED": "No payment required",
+    "status_PENDING": "Awaiting payment",
+    "status_PAID": "Paid",
+    "status_FAILED": "Payment failed",
+    "pay_kaspi": "Pay with Kaspi",
+    "reference": "Payment reference",
+    "paid_at": "Paid at",
+    "no_kaspi_url": "The admin has not set a Kaspi link for this tournament",
+    "to_pay_after_submit": "Amount due after submitting the application",
+    "to_pay_before_submit": "Amount due before submitting the application",
+    "pay_before_submit": "Pay the entry fee first, then submit the application.",
+    "mark_paid": "Mark as paid",
+    "marked_paid": "Payment confirmed"
+  },
+  "athlete_dashboard": {
+    "win_rate": "Wins",
+    "hello": "Hi, {{name}}!",
+    "belt_progress": "Belt progress",
+    "next_tournament": "Next tournament",
+    "belt_preparation": "Belt preparation",
+    "next_level_preparation": "Next KYU preparation",
+    "target": "Target",
+    "techniques_for_next_belt": "Techniques to move on from {{belt}}:",
+    "learn_techniques": "Techniques to learn",
+    "practice_hint": "Practice these techniques with your coach to move confidently to the next belt.",
+    "practice_hint_profile": "Practice these techniques with your coach, compete in ranking tournaments, and move toward the next level.",
+    "next_5_kyu": "5 KYU (yellow)",
+    "next_4_kyu": "4 KYU (orange)",
+    "next_3_kyu": "3 KYU (green)",
+    "next_2_kyu": "2 KYU (blue)",
+    "next_1_kyu": "1 KYU (brown)",
+    "next_1_dan": "1 DAN (black)",
+    "belt_white": "white belt",
+    "belt_yellow": "yellow belt",
+    "belt_orange": "orange belt",
+    "belt_green": "green belt",
+    "belt_blue": "blue belt",
+    "belt_brown": "brown belt",
+    "belt_black": "black belt",
+    "technique_master_previous": "Master all previous techniques",
+    "technique_combinations": "Combination work",
+    "technique_ne_waza": "Ne-waza mastery",
+    "technique_competition_consistency": "Consistent competition results"
+  },
+  "documents": {
+    "title": "Documents",
+    "coach_documents": "Coach documents",
+    "birth_certificate": "Birth certificate",
+    "birth_certificate_hint": "Upload a PDF or image to confirm the athlete age.",
+    "study_certificate": "Study certificate",
+    "study_certificate_hint": "Upload a certificate from school, college, or another study place.",
+    "coach_id": "Coach ID",
+    "coach_id_hint": "Upload a document that confirms coach status.",
+    "upload": "Upload",
+    "replace": "Replace",
+    "saved": "Document saved",
+    "upload_error": "Could not upload document",
+    "not_uploaded": "Not uploaded yet",
+    "open_file": "Open file",
+    "no_documents": "No documents",
+    "no_documents_hint": "Documents will appear here after the user uploads them in their profile."
   }
 }

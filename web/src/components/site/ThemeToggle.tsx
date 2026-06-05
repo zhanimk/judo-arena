@@ -38,7 +38,11 @@ export function ThemeToggle({
       ) : (
         <Moon className="h-4 w-4 text-gold" />
       )}
-      {showLabel && <span className="truncate">{theme === "dark" ? "Light" : "Dark"}</span>}
+      {showLabel && (
+        <span className="truncate">
+          {theme === "dark" ? t("theme.theme_light") : t("theme.theme_dark")}
+        </span>
+      )}
     </button>
   );
 }

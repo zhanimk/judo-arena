@@ -12,7 +12,11 @@ import { logAudit } from "./audit.service.js";
 import { env } from "../lib/env.js";
 
 export class AdminManagementError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "AdminManagementError";
   }
@@ -21,7 +25,11 @@ export class AdminManagementError extends Error {
 async function assertAdmin(userId: string) {
   const u = await prisma.user.findUnique({ where: { id: userId } });
   if (!u || u.role !== UserRole.ADMIN) {
-    throw new AdminManagementError("FORBIDDEN", "Тек әкімші орындай алады", 403);
+    throw new AdminManagementError(
+      "FORBIDDEN",
+      "Тек әкімші орындай алады",
+      403,
+    );
   }
 }
 
@@ -29,10 +37,16 @@ async function assertAdmin(userId: string) {
 // CLUBS
 // ============================================================
 
-export async function toggleClubBlock(actorId: string, clubId: string, blocked: boolean, reason?: string) {
+export async function toggleClubBlock(
+  actorId: string,
+  clubId: string,
+  blocked: boolean,
+  reason?: string,
+) {
   await assertAdmin(actorId);
   const club = await prisma.club.findUnique({ where: { id: clubId } });
-  if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+  if (!club)
+    throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
   const updated = await prisma.club.update({
     where: { id: clubId },
@@ -59,29 +73,45 @@ export async function getClubFullDetails(clubId: string) {
       groups: true,
       members: {
         select: {
-          id: true, name: true, surname: true, gender: true, dateOfBirth: true,
-          weightKg: true, beltRank: true, role: true, isActive: true, email: true,
+          id: true,
+          name: true,
+          surname: true,
+          gender: true,
+          dateOfBirth: true,
+          weightKg: true,
+          beltRank: true,
+          role: true,
+          isActive: true,
+          email: true,
           ratingEntries: { select: { points: true } },
         },
       },
       applications: {
         include: {
-          tournament: { select: { id: true, name: true, startDate: true, status: true } },
+          tournament: {
+            select: { id: true, name: true, startDate: true, status: true },
+          },
           _count: { select: { entries: true } },
         },
         orderBy: { createdAt: "desc" },
       },
-      createdBy: { select: { id: true, name: true, surname: true, email: true } },
+      createdBy: {
+        select: { id: true, name: true, surname: true, email: true },
+      },
     },
   });
-  if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+  if (!club)
+    throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
   // Total points across all members
   const memberIds = club.members.map((m) => m.id);
   const ratingEntries = await prisma.ratingEntry.findMany({
     where: { athleteId: { in: memberIds } },
   });
-  const totalPoints = ratingEntries.reduce((sum, e) => sum + Number(e.points), 0);
+  const totalPoints = ratingEntries.reduce(
+    (sum, e) => sum + Number(e.points),
+    0,
+  );
 
   const members = club.members.map((m) => ({
     ...m,
@@ -89,7 +119,12 @@ export async function getClubFullDetails(clubId: string) {
     ratingEntries: undefined,
   }));
 
-  return { ...club, members, totalPoints, ratingEntriesCount: ratingEntries.length };
+  return {
+    ...club,
+    members,
+    totalPoints,
+    ratingEntriesCount: ratingEntries.length,
+  };
 }
 
 // ============================================================
@@ -125,9 +160,19 @@ export async function listAllUsers(query: {
       take: limit,
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, email: true, role: true, name: true, surname: true,
-        gender: true, weightKg: true, beltRank: true, dateOfBirth: true,
-        isActive: true, createdAt: true, clubId: true, preferredLocale: true,
+        id: true,
+        email: true,
+        role: true,
+        name: true,
+        surname: true,
+        gender: true,
+        weightKg: true,
+        beltRank: true,
+        dateOfBirth: true,
+        isActive: true,
+        createdAt: true,
+        clubId: true,
+        preferredLocale: true,
         club: { select: { id: true, name: true, city: true } },
       },
     }),
@@ -144,26 +189,52 @@ export async function getUserDetails(userId: string) {
       ratingEntries: {
         include: {
           tournament: { select: { id: true, name: true } },
-          category: { select: { gender: true, weightMin: true, weightMax: true } },
+          category: {
+            select: { gender: true, weightMin: true, weightMax: true },
+          },
         },
         orderBy: { awardedAt: "desc" },
       },
-      _count: { select: { redmatches: true, bluematches: true, wonMatches: true } },
+      documents: { orderBy: { updatedAt: "desc" } },
+      _count: {
+        select: { redmatches: true, bluematches: true, wonMatches: true },
+      },
     },
   });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
   return user;
 }
 
-export async function toggleUserBlock(actorId: string, userId: string, active: boolean) {
+export async function toggleUserBlock(
+  actorId: string,
+  userId: string,
+  active: boolean,
+) {
   await assertAdmin(actorId);
   if (actorId === userId) {
-    throw new AdminManagementError("CANT_SELF_BLOCK", "Өзіңізді блоктай алмайсыз", 400);
+    throw new AdminManagementError(
+      "CANT_SELF_BLOCK",
+      "Өзіңізді блоктай алмайсыз",
+      400,
+    );
   }
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
 
-  const updated = await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: active },
+  });
 
   // Немедленно инвалидируем кэш в authenticate — заблокированный не должен ждать 60 сек
   await redis.del(`user-cache:${userId}`);
@@ -184,10 +255,19 @@ export async function toggleUserBlock(actorId: string, userId: string, active: b
 // TOURNAMENTS — архив + featured
 // ============================================================
 
-export async function setTournamentFeatured(actorId: string, tournamentId: string, featured: boolean) {
+export async function setTournamentFeatured(
+  actorId: string,
+  tournamentId: string,
+  featured: boolean,
+) {
   await assertAdmin(actorId);
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new AdminManagementError("TOURNAMENT_NOT_FOUND", "Жарыс табылмады", 404);
+  if (!t)
+    throw new AdminManagementError(
+      "TOURNAMENT_NOT_FOUND",
+      "Жарыс табылмады",
+      404,
+    );
 
   const updated = await prisma.tournament.update({
     where: { id: tournamentId },
@@ -206,10 +286,19 @@ export async function setTournamentFeatured(actorId: string, tournamentId: strin
   return updated;
 }
 
-export async function archiveTournament(actorId: string, tournamentId: string, archive: boolean) {
+export async function archiveTournament(
+  actorId: string,
+  tournamentId: string,
+  archive: boolean,
+) {
   await assertAdmin(actorId);
   const t = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!t) throw new AdminManagementError("TOURNAMENT_NOT_FOUND", "Жарыс табылмады", 404);
+  if (!t)
+    throw new AdminManagementError(
+      "TOURNAMENT_NOT_FOUND",
+      "Жарыс табылмады",
+      404,
+    );
 
   const updated = await prisma.tournament.update({
     where: { id: tournamentId },
@@ -236,7 +325,11 @@ export async function getSystemConfig(key: string) {
   return prisma.systemConfig.findUnique({ where: { key } });
 }
 
-export async function updateSystemConfig(actorId: string, key: string, value: unknown) {
+export async function updateSystemConfig(
+  actorId: string,
+  key: string,
+  value: unknown,
+) {
   await assertAdmin(actorId);
   const before = await prisma.systemConfig.findUnique({ where: { key } });
 
@@ -262,31 +355,38 @@ export async function updateSystemConfig(actorId: string, key: string, value: un
 // USERS — создание + редактирование + перевод + сброс пароля
 // ============================================================
 
-export async function createUserByAdmin(actorId: string, input: {
-  email: string;
-  password: string;
-  role: "ATHLETE" | "COACH" | "ADMIN";
-  name: string;
-  surname: string;
-  nameLatin?: string;
-  surnameLatin?: string;
-  dateOfBirth?: string;
-  gender?: "MALE" | "FEMALE";
-  weightKg?: number;
-  beltRank?: string;
-  phone?: string;
-  preferredLocale?: "ru" | "kk" | "en";
-  clubId?: string;
-  clubRole?: "OWNER" | "COACH";
-}) {
+export async function createUserByAdmin(
+  actorId: string,
+  input: {
+    email: string;
+    password: string;
+    role: "ATHLETE" | "COACH" | "ADMIN";
+    name: string;
+    surname: string;
+    nameLatin?: string;
+    surnameLatin?: string;
+    dateOfBirth?: string;
+    gender?: "MALE" | "FEMALE";
+    weightKg?: number;
+    beltRank?: string;
+    phone?: string;
+    preferredLocale?: "ru" | "kk" | "en";
+    clubId?: string;
+    clubRole?: "OWNER" | "COACH";
+  },
+) {
   await assertAdmin(actorId);
 
-  const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase().trim() } });
-  if (existing) throw new AdminManagementError("EMAIL_TAKEN", "Бұл email тіркелген", 409);
+  const existing = await prisma.user.findUnique({
+    where: { email: input.email.toLowerCase().trim() },
+  });
+  if (existing)
+    throw new AdminManagementError("EMAIL_TAKEN", "Бұл email тіркелген", 409);
 
   if (input.clubId) {
     const club = await prisma.club.findUnique({ where: { id: input.clubId } });
-    if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+    if (!club)
+      throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
   }
 
   const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_ROUNDS);
@@ -307,9 +407,12 @@ export async function createUserByAdmin(actorId: string, input: {
       phone: input.phone || null,
       preferredLocale: (input.preferredLocale as Locale) ?? Locale.kk,
       clubId: input.clubId || null,
-      clubRole: input.role === "COACH" && input.clubId
-        ? (input.clubRole === "OWNER" ? ClubRole.OWNER : ClubRole.COACH)
-        : null,
+      clubRole:
+        input.role === "COACH" && input.clubId
+          ? input.clubRole === "OWNER"
+            ? ClubRole.OWNER
+            : ClubRole.COACH
+          : null,
     },
   });
 
@@ -325,40 +428,56 @@ export async function createUserByAdmin(actorId: string, input: {
   return safeUser;
 }
 
-export async function updateUserByAdmin(actorId: string, userId: string, input: {
-  name?: string;
-  surname?: string;
-  nameLatin?: string | null;
-  surnameLatin?: string | null;
-  email?: string;
-  dateOfBirth?: string | null;
-  gender?: "MALE" | "FEMALE";
-  weightKg?: number | null;
-  beltRank?: string | null;
-  phone?: string | null;
-  preferredLocale?: "ru" | "kk" | "en";
-}) {
+export async function updateUserByAdmin(
+  actorId: string,
+  userId: string,
+  input: {
+    name?: string;
+    surname?: string;
+    nameLatin?: string | null;
+    surnameLatin?: string | null;
+    email?: string;
+    dateOfBirth?: string | null;
+    gender?: "MALE" | "FEMALE";
+    weightKg?: number | null;
+    beltRank?: string | null;
+    phone?: string | null;
+    preferredLocale?: "ru" | "kk" | "en";
+  },
+) {
   await assertAdmin(actorId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
 
   if (input.email && input.email.toLowerCase().trim() !== user.email) {
-    const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase().trim() } });
-    if (existing) throw new AdminManagementError("EMAIL_TAKEN", "Бұл email тіркелген", 409);
+    const existing = await prisma.user.findUnique({
+      where: { email: input.email.toLowerCase().trim() },
+    });
+    if (existing)
+      throw new AdminManagementError("EMAIL_TAKEN", "Бұл email тіркелген", 409);
   }
 
   const data: any = {};
   if (input.name !== undefined) data.name = input.name.trim();
   if (input.surname !== undefined) data.surname = input.surname.trim();
-  if (input.nameLatin !== undefined) data.nameLatin = input.nameLatin?.trim() || null;
-  if (input.surnameLatin !== undefined) data.surnameLatin = input.surnameLatin?.trim() || null;
+  if (input.nameLatin !== undefined)
+    data.nameLatin = input.nameLatin?.trim() || null;
+  if (input.surnameLatin !== undefined)
+    data.surnameLatin = input.surnameLatin?.trim() || null;
   if (input.email !== undefined) data.email = input.email.toLowerCase().trim();
-  if (input.dateOfBirth !== undefined) data.dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
+  if (input.dateOfBirth !== undefined)
+    data.dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
   if (input.gender !== undefined) data.gender = input.gender;
   if (input.weightKg !== undefined) data.weightKg = input.weightKg;
   if (input.beltRank !== undefined) data.beltRank = input.beltRank;
   if (input.phone !== undefined) data.phone = input.phone;
-  if (input.preferredLocale !== undefined) data.preferredLocale = input.preferredLocale;
+  if (input.preferredLocale !== undefined)
+    data.preferredLocale = input.preferredLocale;
 
   const updated = await prisma.user.update({ where: { id: userId }, data });
   // Инвалидируем кэш аутентификации (role/email/name могли измениться)
@@ -377,14 +496,24 @@ export async function updateUserByAdmin(actorId: string, userId: string, input: 
   return safeUser;
 }
 
-export async function changeUserClub(actorId: string, userId: string, clubId: string | null) {
+export async function changeUserClub(
+  actorId: string,
+  userId: string,
+  clubId: string | null,
+) {
   await assertAdmin(actorId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
 
   if (clubId) {
     const club = await prisma.club.findUnique({ where: { id: clubId } });
-    if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+    if (!club)
+      throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
   }
 
   const updated = await prisma.user.update({
@@ -410,10 +539,19 @@ export async function changeUserClub(actorId: string, userId: string, clubId: st
   return safeUser;
 }
 
-export async function resetUserPassword(actorId: string, userId: string, newPassword: string) {
+export async function resetUserPassword(
+  actorId: string,
+  userId: string,
+  newPassword: string,
+) {
   await assertAdmin(actorId);
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
 
   const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS);
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
@@ -432,13 +570,16 @@ export async function resetUserPassword(actorId: string, userId: string, newPass
 // CLUBS — создание + редактирование + удаление
 // ============================================================
 
-export async function createClubByAdmin(actorId: string, input: {
-  name: { ru: string; kk?: string; en?: string };
-  city: string;
-  country?: string;
-  shortName?: string;
-  description?: { ru?: string; kk?: string; en?: string };
-}) {
+export async function createClubByAdmin(
+  actorId: string,
+  input: {
+    name: { ru: string; kk?: string; en?: string };
+    city: string;
+    country?: string;
+    shortName?: string;
+    description?: { ru?: string; kk?: string; en?: string };
+  },
+) {
   await assertAdmin(actorId);
 
   const club = await prisma.club.create({
@@ -463,16 +604,21 @@ export async function createClubByAdmin(actorId: string, input: {
   return club;
 }
 
-export async function updateClubByAdmin(actorId: string, clubId: string, input: {
-  name?: { ru: string; kk?: string; en?: string };
-  city?: string;
-  country?: string;
-  shortName?: string | null;
-  description?: { ru?: string; kk?: string; en?: string } | null;
-}) {
+export async function updateClubByAdmin(
+  actorId: string,
+  clubId: string,
+  input: {
+    name?: { ru: string; kk?: string; en?: string };
+    city?: string;
+    country?: string;
+    shortName?: string | null;
+    description?: { ru?: string; kk?: string; en?: string } | null;
+  },
+) {
   await assertAdmin(actorId);
   const club = await prisma.club.findUnique({ where: { id: clubId } });
-  if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+  if (!club)
+    throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
   const data: any = {};
   if (input.name !== undefined) data.name = input.name;
@@ -501,7 +647,8 @@ export async function deleteClubByAdmin(actorId: string, clubId: string) {
     where: { id: clubId },
     include: { _count: { select: { members: true } } },
   });
-  if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+  if (!club)
+    throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
   if (club._count.members > 0) {
     throw new AdminManagementError(
@@ -528,17 +675,27 @@ export async function deleteClubByAdmin(actorId: string, clubId: string) {
 // CLUB GROUPS — создание + редактирование + удаление
 // ============================================================
 
-export async function createGroupByAdmin(actorId: string, clubId: string, input: {
-  name: string;
-  ageMin: number;
-  ageMax: number;
-}) {
+export async function createGroupByAdmin(
+  actorId: string,
+  clubId: string,
+  input: {
+    name: string;
+    ageMin: number;
+    ageMax: number;
+  },
+) {
   await assertAdmin(actorId);
   const club = await prisma.club.findUnique({ where: { id: clubId } });
-  if (!club) throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
+  if (!club)
+    throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
   const group = await prisma.clubGroup.create({
-    data: { clubId, name: input.name.trim(), ageMin: input.ageMin, ageMax: input.ageMax },
+    data: {
+      clubId,
+      name: input.name.trim(),
+      ageMin: input.ageMin,
+      ageMax: input.ageMax,
+    },
   });
 
   await logAudit({
@@ -546,27 +703,40 @@ export async function createGroupByAdmin(actorId: string, clubId: string, input:
     action: "clubgroup.create",
     targetEntity: "ClubGroup",
     targetId: group.id,
-    after: { clubId, name: group.name, ageMin: group.ageMin, ageMax: group.ageMax },
+    after: {
+      clubId,
+      name: group.name,
+      ageMin: group.ageMin,
+      ageMax: group.ageMax,
+    },
   });
 
   return group;
 }
 
-export async function updateGroupByAdmin(actorId: string, groupId: string, input: {
-  name?: string;
-  ageMin?: number;
-  ageMax?: number;
-}) {
+export async function updateGroupByAdmin(
+  actorId: string,
+  groupId: string,
+  input: {
+    name?: string;
+    ageMin?: number;
+    ageMax?: number;
+  },
+) {
   await assertAdmin(actorId);
   const group = await prisma.clubGroup.findUnique({ where: { id: groupId } });
-  if (!group) throw new AdminManagementError("GROUP_NOT_FOUND", "Топ табылмады", 404);
+  if (!group)
+    throw new AdminManagementError("GROUP_NOT_FOUND", "Топ табылмады", 404);
 
   const data: any = {};
   if (input.name !== undefined) data.name = input.name.trim();
   if (input.ageMin !== undefined) data.ageMin = input.ageMin;
   if (input.ageMax !== undefined) data.ageMax = input.ageMax;
 
-  const updated = await prisma.clubGroup.update({ where: { id: groupId }, data });
+  const updated = await prisma.clubGroup.update({
+    where: { id: groupId },
+    data,
+  });
 
   await logAudit({
     actorUserId: actorId,
@@ -583,7 +753,8 @@ export async function updateGroupByAdmin(actorId: string, groupId: string, input
 export async function deleteGroupByAdmin(actorId: string, groupId: string) {
   await assertAdmin(actorId);
   const group = await prisma.clubGroup.findUnique({ where: { id: groupId } });
-  if (!group) throw new AdminManagementError("GROUP_NOT_FOUND", "Топ табылмады", 404);
+  if (!group)
+    throw new AdminManagementError("GROUP_NOT_FOUND", "Топ табылмады", 404);
 
   await prisma.clubGroup.delete({ where: { id: groupId } });
 
@@ -606,11 +777,20 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
   await assertAdmin(actorId);
 
   if (actorId === userId) {
-    throw new AdminManagementError("CANNOT_DELETE_SELF", "Өзіңізді жоюға болмайды", 400);
+    throw new AdminManagementError(
+      "CANNOT_DELETE_SELF",
+      "Өзіңізді жоюға болмайды",
+      400,
+    );
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AdminManagementError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!user)
+    throw new AdminManagementError(
+      "USER_NOT_FOUND",
+      "Пайдаланушы табылмады",
+      404,
+    );
 
   await prisma.user.delete({ where: { id: userId } });
 
@@ -619,7 +799,12 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
     action: "user.delete",
     targetEntity: "User",
     targetId: userId,
-    before: { email: user.email, role: user.role, name: user.name, surname: user.surname },
+    before: {
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      surname: user.surname,
+    },
   });
 
   return { ok: true };
@@ -630,13 +815,15 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
 // ============================================================
 
 export async function getStats() {
-  const [tournaments, users, clubs, matches, ratingEntries] = await Promise.all([
-    prisma.tournament.groupBy({ by: ["status"], _count: { id: true } }),
-    prisma.user.groupBy({ by: ["role"], _count: { id: true } }),
-    prisma.club.count(),
-    prisma.match.groupBy({ by: ["status"], _count: { id: true } }),
-    prisma.ratingEntry.count(),
-  ]);
+  const [tournaments, users, clubs, matches, ratingEntries] = await Promise.all(
+    [
+      prisma.tournament.groupBy({ by: ["status"], _count: { id: true } }),
+      prisma.user.groupBy({ by: ["role"], _count: { id: true } }),
+      prisma.club.count(),
+      prisma.match.groupBy({ by: ["status"], _count: { id: true } }),
+      prisma.ratingEntry.count(),
+    ],
+  );
   return {
     tournaments,
     users,

@@ -509,6 +509,7 @@ function TournamentDetail() {
           tournamentId={id}
           matches={matches}
           tatamiCount={Number(tourney.tatamiCount ?? 1)}
+          youtubeUrls={Array.isArray(tourney.youtubeUrls) ? tourney.youtubeUrls : []}
         />
       )}
 
@@ -727,14 +728,30 @@ function TournamentDetail() {
   );
 }
 
+function youtubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    let videoId = u.searchParams.get("v");
+    if (!videoId && u.hostname === "youtu.be") videoId = u.pathname.slice(1);
+    if (!videoId) return null;
+    const isLive = u.searchParams.get("feature") === "share" || url.includes("live");
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0${isLive ? "&live=1" : ""}`;
+  } catch {
+    return null;
+  }
+}
+
 function TatamiLiveTab({
   tournamentId,
   matches,
   tatamiCount,
+  youtubeUrls,
 }: {
   tournamentId: string;
   matches: any[];
   tatamiCount: number;
+  youtubeUrls: string[];
 }) {
   const tatamis = useMemo(
     () => buildTatamiState(matches, Math.max(1, tatamiCount || 1)),
@@ -750,84 +767,175 @@ function TatamiLiveTab({
     }
   }, [selectedTatami, tatamis]);
 
+  const hasAnyStream = youtubeUrls.some((u) => u);
+
   return (
-    <section id="tatami-live" className="container mx-auto px-4 py-12">
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <section id="tatami-live" className="mx-auto w-full max-w-7xl px-4 py-10">
+      {/* ── Header ── */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-destructive">
             <Radio className="h-3.5 w-3.5 animate-pulse" />
             Public live
           </div>
-          <h2 className="mt-4 font-display text-3xl font-bold sm:text-5xl">
-            Барлық татами кестесі
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            Татами трансляциялары
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Қонақтар логинсіз көре алады: қай татамиде кім күресіп жатыр және келесі кім шығады.
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            Татами таңдап, тікелей эфирді қараңыз
           </p>
         </div>
         <Link
           to="/live-wall/$tournamentId"
           params={{ tournamentId }}
-          className="inline-flex items-center rounded-md bg-gradient-gold px-5 py-3 text-sm font-bold text-gold-foreground shadow-gold"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-gold px-5 py-2.5 text-sm font-bold text-gold-foreground shadow-gold"
         >
-          Үлкен экранға ашу
+          <Radio className="h-4 w-4" /> Үлкен экранға ашу
         </Link>
       </div>
 
-      <div className="mb-5 flex gap-2 overflow-x-auto rounded-2xl border border-border/50 bg-card/45 p-2 [scrollbar-width:none]">
-        {tatamis.map((tatami) => (
-          <button
-            key={tatami.number}
-            type="button"
-            onClick={() => setSelectedTatami(tatami.number)}
-            className={`shrink-0 rounded-xl border px-4 py-3 text-left transition-all ${
-              activeTatami?.number === tatami.number
-                ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
-                : "border-border/60 bg-background/45 text-muted-foreground hover:border-gold/40 hover:text-gold"
-            }`}
-          >
-            <div className="text-[10px] font-bold uppercase tracking-widest">Tatami</div>
-            <div className="mt-1 flex items-end gap-2">
-              <span className="font-display text-2xl font-black">#{tatami.number}</span>
-              <span className="pb-1 text-[11px] font-semibold">
-                {tatami.current ? "LIVE" : `${tatami.queue.length} кезек`}
-              </span>
-            </div>
-          </button>
-        ))}
+      {/* ── Tatami selector ── */}
+      <div className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-border/50 bg-card/45 p-2 [scrollbar-width:none]">
+        {tatamis.map((tatami) => {
+          const hasStream = Boolean(youtubeUrls[tatami.number - 1]);
+          return (
+            <button
+              key={tatami.number}
+              type="button"
+              onClick={() => setSelectedTatami(tatami.number)}
+              className={`relative shrink-0 rounded-xl border px-5 py-3 text-left transition-all ${
+                activeTatami?.number === tatami.number
+                  ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
+                  : "border-border/60 bg-background/45 text-muted-foreground hover:border-gold/40 hover:text-gold"
+              }`}
+            >
+              {hasStream && (
+                <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                </span>
+              )}
+              <div className="text-[10px] font-bold uppercase tracking-widest">Tatami</div>
+              <div className="mt-1 flex items-end gap-1.5">
+                <span className="font-display text-2xl font-black">#{tatami.number}</span>
+                <span className="pb-0.5 text-[11px] font-semibold">
+                  {tatami.current ? "LIVE" : `${tatami.queue.length} кезек`}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {activeTatami && (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <TatamiDetailCard tatami={activeTatami} />
-
-          <div className="hidden space-y-3 xl:block">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-              Басқа татамилер
-            </div>
-            {otherTatamis.map((tatami) => (
-              <button
-                key={tatami.number}
-                type="button"
-                onClick={() => setSelectedTatami(tatami.number)}
-                className="w-full rounded-xl border border-border/60 bg-card/45 p-4 text-left transition hover:border-gold/40 hover:bg-gold/5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-display text-xl font-black text-gradient-gold">
-                    Tatami #{tatami.number}
+        <>
+          {/* ── YouTube showcase — FULL WIDTH on top ── */}
+          {youtubeUrls[activeTatami.number - 1] ? (
+            <div className="mb-6 overflow-hidden rounded-3xl border border-red-500/40 bg-[#0d0d14] shadow-[0_0_60px_rgba(239,68,68,0.15)]">
+              {/* top bar */}
+              <div className="flex items-center justify-between gap-3 border-b border-red-500/20 bg-gradient-to-r from-red-950/60 to-transparent px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
                   </span>
-                  <StatusBadge status={tatami.current?.status ?? "PENDING"} />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-red-400">
+                    LIVE · Татами #{activeTatami.number}
+                  </span>
                 </div>
-                <div className="mt-3 truncate text-sm font-semibold">
-                  {tatami.current ? matchTitle(tatami.current) : "Қазір бос"}
+                <a
+                  href={youtubeUrls[activeTatami.number - 1]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg bg-red-600/20 px-3 py-1 text-[11px] font-semibold text-red-400 transition hover:bg-red-600/40"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  YouTube-те ашу
+                </a>
+              </div>
+              {/* 16:9 player */}
+              <div className="relative w-full" style={{ paddingTop: "42%" }}>
+                <iframe
+                  key={`yt-${activeTatami.number}`}
+                  className="absolute inset-0 h-full w-full border-0"
+                  src={youtubeEmbedUrl(youtubeUrls[activeTatami.number - 1])!}
+                  title={`Tatami ${activeTatami.number} live`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+              {/* bottom bar — current match overlay */}
+              {activeTatami.current && (
+                <div className="border-t border-red-500/20 bg-gradient-to-r from-red-950/50 to-transparent px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-md bg-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
+                      Қазір
+                    </span>
+                    <span className="font-display font-bold text-white/90">
+                      {matchTitle(activeTatami.current)}
+                    </span>
+                    <span className="hidden text-xs text-white/40 sm:block">
+                      {matchMeta(activeTatami.current)}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {tatami.queue.length} матч кезекте
-                </div>
-              </button>
-            ))}
+              )}
+            </div>
+          ) : hasAnyStream ? (
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-5 py-4 text-sm text-muted-foreground">
+              <svg
+                className="h-5 w-5 shrink-0 text-red-500/50"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+              </svg>
+              Татами #{activeTatami.number} үшін трансляция жоқ — басқа татами таңдаңыз
+            </div>
+          ) : null}
+
+          {/* ── Detail + sidebar ── */}
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <TatamiDetailCard tatami={activeTatami} />
+
+            <div className="hidden space-y-3 xl:block">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                Басқа татамилер
+              </div>
+              {otherTatamis.map((tatami) => {
+                const hasStream = Boolean(youtubeUrls[tatami.number - 1]);
+                return (
+                  <button
+                    key={tatami.number}
+                    type="button"
+                    onClick={() => setSelectedTatami(tatami.number)}
+                    className="relative w-full rounded-xl border border-border/60 bg-card/45 p-4 text-left transition hover:border-gold/40 hover:bg-gold/5"
+                  >
+                    {hasStream && (
+                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-red-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> live
+                      </span>
+                    )}
+                    <div className="flex items-center justify-between pr-12">
+                      <span className="font-display text-xl font-black text-gradient-gold">
+                        Tatami #{tatami.number}
+                      </span>
+                      <StatusBadge status={tatami.current?.status ?? "PENDING"} />
+                    </div>
+                    <div className="mt-3 truncate text-sm font-semibold">
+                      {tatami.current ? matchTitle(tatami.current) : "Қазір бос"}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {tatami.queue.length} матч кезекте
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </section>
   );

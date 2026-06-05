@@ -1,208 +1,348 @@
 /**
- * Seed-скрипт для Judo-Arena
+ * Demo seed for Judo-Arena.
  *
- * Засевает БД реалистичными тестовыми данными:
- *   • 1 ADMIN
- *   • 4 клуба (Almaty Judo Club, Astana Pro, Tigers Karaganda, Shymkent Warriors)
- *   • 4 COACH (по одному на клуб)
- *   • 32 ATHLETE (по 8 на клуб, разный пол/возраст/вес)
- *   • 1 турнир "Алматы Кубогі 2026" со статусом REGISTRATION_OPEN
- *   • 4 категории (мужские/женские, два возрастных диапазона)
- *   • SystemConfig с шкалой очков
+ * Creates a ready-to-review tournament flow:
+ * - demo accounts for ADMIN / COACH / ATHLETE
+ * - 4 clubs with coaches
+ * - 67 athletes split into four categories: 4 round-robin, 8 pools, 15 SE, 40 SE
+ * - paid and approved club applications
+ * - passed weigh-in entries
+ * - generated brackets and tatami assignment
  *
- * Запуск:
+ * Run:
  *   cd api
  *   npx prisma db seed
  *
- * Безопасно запускать многократно — использует upsert.
+ * Demo password for every account:
+ *   password123
  */
 
-import { PrismaClient, UserRole, Gender, Locale, TournamentStatus, BracketFormat, ClubRole } from "@prisma/client";
+import {
+  ApplicationStatus,
+  BracketFormat,
+  ClubRole,
+  Gender,
+  Locale,
+  MatchStatus,
+  PaymentStatus,
+  PrismaClient,
+  TournamentStatus,
+  UserDocumentType,
+  UserRole,
+  WeighInStatus,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
+import { prepareTournamentDraw } from "../src/services/bracket.service.js";
 
 const prisma = new PrismaClient();
 
-// ============================================================
-// КОНФИГ ДАННЫХ
-// ============================================================
-
-const PASSWORD = "password123"; // Один пароль для всех тестовых аккаунтов — удобно для демо
+const PASSWORD = "password123";
+const TOURNAMENT_ID = "demo-complete-flow-2026";
+const ENTRY_FEE_KZT = 5000;
 
 const CLUBS = [
   {
-    shortName: "almaty-judo",
-    name: { ru: "Алматинский клуб дзюдо", kk: "Алматы дзюдо клубы", en: "Almaty Judo Club" },
+    id: "club-demo-almaty",
+    shortName: "almaty-demo",
     city: "Алматы",
-    coach: { name: "Қанат", surname: "Серіков", email: "coach.almaty@judo-arena.kz" },
+    name: { ru: "Алматы Демо", kk: "Алматы Демо", en: "Almaty Demo" },
+    coach: {
+      email: "coach.almaty@judo-arena.kz",
+      name: "Қанат",
+      surname: "Серіков",
+    },
   },
   {
-    shortName: "astana-pro",
-    name: { ru: "Астана Про", kk: "Астана Про", en: "Astana Pro" },
+    id: "club-demo-astana",
+    shortName: "astana-demo",
     city: "Астана",
-    coach: { name: "Дамир", surname: "Жұмабек", email: "coach.astana@judo-arena.kz" },
+    name: { ru: "Астана Демо", kk: "Астана Демо", en: "Astana Demo" },
+    coach: {
+      email: "coach.astana@judo-arena.kz",
+      name: "Дамир",
+      surname: "Жұмабек",
+    },
   },
   {
-    shortName: "tigers-karaganda",
-    name: { ru: "Тигры Караганды", kk: "Қарағанды жолбарыстары", en: "Tigers Karaganda" },
+    id: "club-demo-karaganda",
+    shortName: "karaganda-demo",
     city: "Қарағанды",
-    coach: { name: "Бауыржан", surname: "Темірлан", email: "coach.karaganda@judo-arena.kz" },
+    name: { ru: "Караганда Демо", kk: "Қарағанды Демо", en: "Karaganda Demo" },
+    coach: {
+      email: "coach.karaganda@judo-arena.kz",
+      name: "Бауыржан",
+      surname: "Темірлан",
+    },
   },
   {
-    shortName: "shymkent-warriors",
-    name: { ru: "Воины Шымкента", kk: "Шымкент жауынгерлері", en: "Shymkent Warriors" },
+    id: "club-demo-shymkent",
+    shortName: "shymkent-demo",
     city: "Шымкент",
-    coach: { name: "Ержан", surname: "Сейітжан", email: "coach.shymkent@judo-arena.kz" },
+    name: { ru: "Шымкент Демо", kk: "Шымкент Демо", en: "Shymkent Demo" },
+    coach: {
+      email: "coach.shymkent@judo-arena.kz",
+      name: "Ержан",
+      surname: "Сейітжан",
+    },
   },
 ];
-
-// 8 имён+фамилий на каждый клуб (4 мужских, 4 женских)
-const ATHLETE_NAMES = {
-  male: [
-    { name: "Әлихан", surname: "Сәрсенов" },
-    { name: "Нұрбол", surname: "Қайратұлы" },
-    { name: "Дастан", surname: "Нұрлан" },
-    { name: "Санжар", surname: "Бекзат" },
-    { name: "Руслан", surname: "Олжас" },
-    { name: "Мирас", surname: "Ержан" },
-    { name: "Тимур", surname: "Алмас" },
-    { name: "Айдар", surname: "Бахыт" },
-  ],
-  female: [
-    { name: "Айгерім", surname: "Бекова" },
-    { name: "Жанна", surname: "Серікқызы" },
-    { name: "Динара", surname: "Қанатқызы" },
-    { name: "Алия", surname: "Бағдат" },
-    { name: "Камила", surname: "Ержанқызы" },
-    { name: "Сабина", surname: "Талғат" },
-    { name: "Меруерт", surname: "Айдар" },
-    { name: "Назгүл", surname: "Дәурен" },
-  ],
-};
-
-// Распределение по весовым категориям (по 2 спортсмена на категорию в клубе)
-const WEIGHT_DISTRIBUTION_M = [60, 66, 73, 81, 90, 100, 60, 73];
-const WEIGHT_DISTRIBUTION_F = [48, 52, 57, 63, 70, 78, 52, 63];
-
-const TOURNAMENT = {
-  name: {
-    ru: "Кубок Алматы 2026",
-    kk: "Алматы кубогі 2026",
-    en: "Almaty Cup 2026",
-  },
-  description: {
-    ru: "Открытый кубок города Алматы по дзюдо среди юниоров и взрослых.",
-    kk: "Алматы қаласының ашық дзюдо кубогі — жастар мен ересектер арасында.",
-    en: "Almaty City Open Judo Cup — juniors and seniors.",
-  },
-  location: "Дворец Спорта им. Балуана Шолака",
-  city: "Алматы",
-  // Через 10 дней после посева
-  startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-  endDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
-  tatamiCount: 4,
-};
 
 const CATEGORIES = [
-  // Мужские
   {
-    name: { ru: "Мужчины −73 кг", kk: "Ер адамдар −73 кг", en: "Men −73 kg" },
+    id: "cat-demo-round-robin-4",
+    name: {
+      ru: "Демо круговая: девочки -52 кг",
+      kk: "Демо айналым: қыздар -52 кг",
+      en: "Demo round-robin: girls -52 kg",
+    },
+    gender: Gender.FEMALE,
+    ageMin: 10,
+    ageMax: 13,
+    weightMin: 44.01,
+    weightMax: 52,
+    matchDurationSec: 180,
+    format: BracketFormat.ROUND_ROBIN,
+  },
+  {
+    id: "cat-demo-se-15",
+    name: {
+      ru: "Демо сетка: юноши -60 кг (15)",
+      kk: "Демо тор: ұлдар -60 кг (15)",
+      en: "Demo bracket: boys -60 kg (15)",
+    },
     gender: Gender.MALE,
-    ageMin: 18,
-    ageMax: 35,
-    weightMin: 66.01,
-    weightMax: 73.0,
+    ageMin: 14,
+    ageMax: 17,
+    weightMin: 55.01,
+    weightMax: 60,
     matchDurationSec: 240,
     format: BracketFormat.SE_IJF,
   },
   {
-    name: { ru: "Мужчины −81 кг", kk: "Ер адамдар −81 кг", en: "Men −81 kg" },
+    id: "cat-demo-pools-8",
+    name: {
+      ru: "Демо пулы A/B: юноши -55 кг (8)",
+      kk: "Демо пулдар A/B: ұлдар -55 кг (8)",
+      en: "Demo pools A/B: boys -55 kg (8)",
+    },
     gender: Gender.MALE,
-    ageMin: 18,
-    ageMax: 35,
-    weightMin: 73.01,
-    weightMax: 81.0,
+    ageMin: 14,
+    ageMax: 17,
+    weightMin: 50.01,
+    weightMax: 55,
     matchDurationSec: 240,
     format: BracketFormat.SE_IJF,
   },
-  // Женские
   {
-    name: { ru: "Женщины −57 кг", kk: "Әйелдер −57 кг", en: "Women −57 kg" },
-    gender: Gender.FEMALE,
-    ageMin: 18,
-    ageMax: 35,
-    weightMin: 52.01,
-    weightMax: 57.0,
-    matchDurationSec: 240,
-    format: BracketFormat.ROUND_ROBIN, // Круговая — попробуем оба формата
-  },
-  {
-    name: { ru: "Женщины −63 кг", kk: "Әйелдер −63 кг", en: "Women −63 kg" },
-    gender: Gender.FEMALE,
-    ageMin: 18,
-    ageMax: 35,
-    weightMin: 57.01,
-    weightMax: 63.0,
+    id: "cat-demo-se-40",
+    name: {
+      ru: "Демо сетка: юноши -66 кг (40)",
+      kk: "Демо тор: ұлдар -66 кг (40)",
+      en: "Demo bracket: boys -66 kg (40)",
+    },
+    gender: Gender.MALE,
+    ageMin: 14,
+    ageMax: 17,
+    weightMin: 60.01,
+    weightMax: 66,
     matchDurationSec: 240,
     format: BracketFormat.SE_IJF,
   },
 ];
 
-// ============================================================
-// УТИЛИТЫ
-// ============================================================
+const FIRST_NAMES_M = [
+  "Алихан",
+  "Нурбол",
+  "Дастан",
+  "Санжар",
+  "Руслан",
+  "Мирас",
+  "Тимур",
+  "Айдар",
+  "Ержан",
+  "Самат",
+  "Ануар",
+  "Бекзат",
+  "Алмас",
+  "Марат",
+  "Серик",
+  "Ерасыл",
+];
+const FIRST_NAMES_F = [
+  "Айгерим",
+  "Жанна",
+  "Динара",
+  "Алия",
+  "Камила",
+  "Сабина",
+];
+const SURNAMES = [
+  "Сарсенов",
+  "Кайратулы",
+  "Нурлан",
+  "Бекзат",
+  "Олжас",
+  "Ержан",
+  "Алмас",
+  "Бахыт",
+  "Мусин",
+  "Байсалов",
+  "Сейитов",
+  "Рыскали",
+  "Нуртаев",
+  "Оразов",
+  "Жексенбеков",
+  "Дюсупов",
+];
 
-function randomBirthDate(ageMin = 18, ageMax = 30): Date {
-  const age = Math.floor(Math.random() * (ageMax - ageMin + 1)) + ageMin;
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - age);
-  d.setMonth(Math.floor(Math.random() * 12));
-  d.setDate(Math.floor(Math.random() * 28) + 1);
-  return d;
+type DemoAthlete = {
+  email: string;
+  name: string;
+  surname: string;
+  gender: Gender;
+  clubId: string;
+  categoryId: string;
+  dateOfBirth: Date;
+  weightKg: number;
+};
+
+function birthDateForAge(age: number): Date {
+  const date = new Date("2026-01-15T09:00:00.000Z");
+  date.setUTCFullYear(date.getUTCFullYear() - age);
+  return date;
 }
 
-function transliterate(text: string): string {
-  // Простая транслитерация для nameLatin/surnameLatin
-  const map: Record<string, string> = {
-    А: "A", Ә: "A", Б: "B", В: "V", Г: "G", Ғ: "G", Д: "D", Е: "Ye", Ж: "Zh", З: "Z",
-    И: "I", Й: "Y", К: "K", Қ: "Q", Л: "L", М: "M", Н: "N", Ң: "N", О: "O", Ө: "O",
-    П: "P", Р: "R", С: "S", Т: "T", У: "U", Ү: "U", Ұ: "U", Ф: "F", Х: "Kh", Һ: "H",
-    Ц: "Ts", Ч: "Ch", Ш: "Sh", Щ: "Sch", Ъ: "", Ы: "Y", І: "I", Ь: "", Э: "E", Ю: "Yu", Я: "Ya",
-    а: "a", ә: "a", б: "b", в: "v", г: "g", ғ: "g", д: "d", е: "ye", ж: "zh", з: "z",
-    и: "i", й: "y", к: "k", қ: "q", л: "l", м: "m", н: "n", ң: "n", о: "o", ө: "o",
-    п: "p", р: "r", с: "s", т: "t", у: "u", ү: "u", ұ: "u", ф: "f", х: "kh", һ: "h",
-    ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", і: "i", ь: "", э: "e", ю: "yu", я: "ya",
-  };
-  return text.split("").map((ch) => map[ch] ?? ch).join("");
+function athleteEmail(
+  categoryCode: string,
+  index: number,
+  clubShortName: string,
+) {
+  return `${categoryCode}.${String(index + 1).padStart(2, "0")}@${clubShortName}.demo.judo-arena.kz`;
 }
 
-// ============================================================
-// SEED
-// ============================================================
+function makeAthletes(): DemoAthlete[] {
+  const athletes: DemoAthlete[] = [];
+
+  // 4 round-robin athletes from one club on purpose, so same-club matches are visible.
+  for (let i = 0; i < 4; i++) {
+    const club = CLUBS[0]!;
+    athletes.push({
+      email: athleteEmail("rr", i, club.shortName),
+      name: FIRST_NAMES_F[i]!,
+      surname: SURNAMES[i]!,
+      gender: Gender.FEMALE,
+      clubId: club.id,
+      categoryId: CATEGORIES[0]!.id,
+      dateOfBirth: birthDateForAge(12),
+      weightKg: 49 + (i % 2),
+    });
+  }
+
+  for (let i = 0; i < 15; i++) {
+    const club = CLUBS[i % CLUBS.length]!;
+    athletes.push({
+      email: athleteEmail("se15", i, club.shortName),
+      name: FIRST_NAMES_M[i % FIRST_NAMES_M.length]!,
+      surname: SURNAMES[(i + 3) % SURNAMES.length]!,
+      gender: Gender.MALE,
+      clubId: club.id,
+      categoryId: CATEGORIES[1]!.id,
+      dateOfBirth: birthDateForAge(15),
+      weightKg: 58 + (i % 3) * 0.5,
+    });
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const club = CLUBS[i % CLUBS.length]!;
+    athletes.push({
+      email: athleteEmail("pool8", i, club.shortName),
+      name: FIRST_NAMES_M[(i + 9) % FIRST_NAMES_M.length]!,
+      surname: SURNAMES[(i + 11) % SURNAMES.length]!,
+      gender: Gender.MALE,
+      clubId: club.id,
+      categoryId: CATEGORIES[2]!.id,
+      dateOfBirth: birthDateForAge(15),
+      weightKg: 53 + (i % 4) * 0.3,
+    });
+  }
+
+  for (let i = 0; i < 40; i++) {
+    const club = CLUBS[i % CLUBS.length]!;
+    athletes.push({
+      email: athleteEmail("se40", i, club.shortName),
+      name: FIRST_NAMES_M[(i + 5) % FIRST_NAMES_M.length]!,
+      surname: SURNAMES[(i + 7) % SURNAMES.length]!,
+      gender: Gender.MALE,
+      clubId: club.id,
+      categoryId: CATEGORIES[3]!.id,
+      dateOfBirth: birthDateForAge(16),
+      weightKg: 63 + (i % 5) * 0.4,
+    });
+  }
+
+  return athletes;
+}
+
+async function cleanDemoTournament() {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: TOURNAMENT_ID },
+  });
+  if (!tournament) return;
+
+  await prisma.matchEvent.deleteMany({
+    where: { match: { tournamentId: TOURNAMENT_ID } },
+  });
+  await prisma.judgeSession.deleteMany({
+    where: { match: { tournamentId: TOURNAMENT_ID } },
+  });
+  await prisma.tatamiSession.deleteMany({
+    where: { tournamentId: TOURNAMENT_ID },
+  });
+  await prisma.ratingEntry.deleteMany({
+    where: { tournamentId: TOURNAMENT_ID },
+  });
+  await prisma.match.deleteMany({ where: { tournamentId: TOURNAMENT_ID } });
+  await prisma.bracket.deleteMany({ where: { tournamentId: TOURNAMENT_ID } });
+  await prisma.applicationEntry.deleteMany({
+    where: { application: { tournamentId: TOURNAMENT_ID } },
+  });
+  await prisma.application.deleteMany({
+    where: { tournamentId: TOURNAMENT_ID },
+  });
+  await prisma.category.deleteMany({ where: { tournamentId: TOURNAMENT_ID } });
+  await prisma.tournament.delete({ where: { id: TOURNAMENT_ID } });
+}
 
 async function main() {
-  console.log("🌱 Запуск seed для Judo-Arena...\n");
+  console.log("Starting Judo-Arena demo seed...");
+
+  await cleanDemoTournament();
 
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
+  const now = new Date();
 
-  // ---- 1. ADMIN ----
   const admin = await prisma.user.upsert({
     where: { email: "admin@judo-arena.kz" },
-    update: {},
+    update: {
+      passwordHash,
+      role: UserRole.ADMIN,
+      isActive: true,
+      preferredLocale: Locale.ru,
+    },
     create: {
       email: "admin@judo-arena.kz",
       passwordHash,
       role: UserRole.ADMIN,
       name: "Алия",
-      surname: "Қалиева",
+      surname: "Калиева",
       nameLatin: "Aliya",
       surnameLatin: "Kalieva",
-      preferredLocale: Locale.kk,
+      preferredLocale: Locale.ru,
       isActive: true,
     },
   });
-  console.log(`✓ ADMIN создан: ${admin.email}`);
 
-  // ---- 2. SystemConfig ----
   await prisma.systemConfig.upsert({
     where: { key: "ratingPoints" },
     update: {
@@ -215,6 +355,7 @@ async function main() {
         participation: 0,
         ipponBonus: 0,
       },
+      updatedBy: admin.id,
     },
     create: {
       key: "ratingPoints",
@@ -227,157 +368,323 @@ async function main() {
         participation: 0,
         ipponBonus: 0,
       },
+      updatedBy: admin.id,
     },
   });
-  console.log("✓ SystemConfig.ratingPoints загружен (100/80/50/30/15)");
 
-  // ---- 3. КЛУБЫ + ТРЕНЕРЫ + СПОРТСМЕНЫ ----
-  const clubs = [];
-  for (let clubIdx = 0; clubIdx < CLUBS.length; clubIdx++) {
-    const c = CLUBS[clubIdx]!;
-
-    // Тренер
+  for (const clubData of CLUBS) {
     const coach = await prisma.user.upsert({
-      where: { email: c.coach.email },
-      update: {},
-      create: {
-        email: c.coach.email,
+      where: { email: clubData.coach.email },
+      update: {
         passwordHash,
         role: UserRole.COACH,
-        name: c.coach.name,
-        surname: c.coach.surname,
-        nameLatin: transliterate(c.coach.name),
-        surnameLatin: transliterate(c.coach.surname),
-        preferredLocale: Locale.kk,
+        name: clubData.coach.name,
+        surname: clubData.coach.surname,
+        preferredLocale: Locale.ru,
+        isActive: true,
+      },
+      create: {
+        email: clubData.coach.email,
+        passwordHash,
+        role: UserRole.COACH,
+        name: clubData.coach.name,
+        surname: clubData.coach.surname,
+        nameLatin: clubData.coach.name,
+        surnameLatin: clubData.coach.surname,
+        preferredLocale: Locale.ru,
         isActive: true,
       },
     });
 
-    // Клуб
     const club = await prisma.club.upsert({
-      where: { id: `club-${c.shortName}` },
-      update: {},
+      where: { id: clubData.id },
+      update: {
+        name: clubData.name,
+        shortName: clubData.shortName,
+        city: clubData.city,
+        country: "KZ",
+        isActive: true,
+        isBlocked: false,
+      },
       create: {
-        id: `club-${c.shortName}`,
-        name: c.name,
-        shortName: c.shortName,
-        city: c.city,
+        id: clubData.id,
+        name: clubData.name,
+        shortName: clubData.shortName,
+        city: clubData.city,
         country: "KZ",
         createdById: coach.id,
       },
     });
 
-    // Привязать тренера к клубу
     await prisma.user.update({
       where: { id: coach.id },
-      data: { clubId: club.id, clubRole: ClubRole.OWNER },
+      data: {
+        clubId: club.id,
+        clubRole: ClubRole.OWNER,
+        avatarUrl: `/uploads/demo/coach-${clubData.shortName}.png`,
+      },
     });
 
-    // 4 мужчины + 4 женщины (по одному из каждого имени с поправкой по клубу)
-    for (let i = 0; i < 4; i++) {
-      const m = ATHLETE_NAMES.male[(clubIdx * 4 + i) % ATHLETE_NAMES.male.length]!;
-      const email = `m${clubIdx}-${i}@${c.shortName}.judo-arena.kz`;
-      const weight = WEIGHT_DISTRIBUTION_M[(clubIdx * 4 + i) % WEIGHT_DISTRIBUTION_M.length]!;
-      await prisma.user.upsert({
-        where: { email },
-        update: {},
-        create: {
-          email,
-          passwordHash,
-          role: UserRole.ATHLETE,
-          name: m.name,
-          surname: m.surname,
-          nameLatin: transliterate(m.name),
-          surnameLatin: transliterate(m.surname),
-          gender: Gender.MALE,
-          dateOfBirth: randomBirthDate(18, 28),
-          weightKg: weight,
-          beltRank: ["3 kyu", "2 kyu", "1 kyu", "1 dan"][Math.floor(Math.random() * 4)],
-          preferredLocale: Locale.kk,
-          clubId: club.id,
-        },
-      });
-
-      const f = ATHLETE_NAMES.female[(clubIdx * 4 + i) % ATHLETE_NAMES.female.length]!;
-      const femaleEmail = `f${clubIdx}-${i}@${c.shortName}.judo-arena.kz`;
-      const femaleWeight = WEIGHT_DISTRIBUTION_F[(clubIdx * 4 + i) % WEIGHT_DISTRIBUTION_F.length]!;
-      await prisma.user.upsert({
-        where: { email: femaleEmail },
-        update: {},
-        create: {
-          email: femaleEmail,
-          passwordHash,
-          role: UserRole.ATHLETE,
-          name: f.name,
-          surname: f.surname,
-          nameLatin: transliterate(f.name),
-          surnameLatin: transliterate(f.surname),
-          gender: Gender.FEMALE,
-          dateOfBirth: randomBirthDate(18, 28),
-          weightKg: femaleWeight,
-          beltRank: ["3 kyu", "2 kyu", "1 kyu", "1 dan"][Math.floor(Math.random() * 4)],
-          preferredLocale: Locale.kk,
-          clubId: club.id,
-        },
-      });
-    }
-
-    clubs.push(club);
-    console.log(`✓ Клуб «${(c.name as any).kk}» (${c.city}): тренер + 8 спортсменов`);
+    await prisma.userDocument.upsert({
+      where: {
+        userId_type: { userId: coach.id, type: UserDocumentType.COACH_ID },
+      },
+      update: {
+        url: `/uploads/demo/coach-id-${clubData.shortName}.pdf`,
+        originalName: `coach-id-${clubData.shortName}.pdf`,
+        mimeType: "application/pdf",
+        sizeBytes: 124000,
+        uploadedById: coach.id,
+      },
+      create: {
+        userId: coach.id,
+        type: UserDocumentType.COACH_ID,
+        url: `/uploads/demo/coach-id-${clubData.shortName}.pdf`,
+        originalName: `coach-id-${clubData.shortName}.pdf`,
+        mimeType: "application/pdf",
+        sizeBytes: 124000,
+        uploadedById: coach.id,
+      },
+    });
   }
 
-  // ---- 4. ТУРНИР + КАТЕГОРИИ ----
-  const tournament = await prisma.tournament.upsert({
-    where: { id: "tournament-almaty-cup-2026" },
-    update: {},
-    create: {
-      id: "tournament-almaty-cup-2026",
-      name: TOURNAMENT.name,
-      description: TOURNAMENT.description,
-      location: TOURNAMENT.location,
-      city: TOURNAMENT.city,
-      startDate: TOURNAMENT.startDate,
-      endDate: TOURNAMENT.endDate,
-      status: TournamentStatus.REGISTRATION_OPEN,
-      tatamiCount: TOURNAMENT.tatamiCount,
-      primaryLocale: Locale.kk,
+  const tournament = await prisma.tournament.create({
+    data: {
+      id: TOURNAMENT_ID,
+      name: {
+        ru: "Демо турнир: полный процесс",
+        kk: "Демо турнир: толық процесс",
+        en: "Demo tournament: full flow",
+      },
+      description: {
+        ru: "Готовый тест: регистрация, заявки, Kaspi-оплата, допуск, сетки и табло.",
+        kk: "Дайын тест: тіркеу, өтінімдер, Kaspi төлемі, рұқсат, торлар және табло.",
+        en: "Ready test: registration, applications, Kaspi payment, approval, brackets and scoreboard.",
+      },
+      location: "Judo Arena Demo Hall",
+      city: "Алматы",
+      startDate: new Date("2026-06-10T04:00:00.000Z"),
+      endDate: new Date("2026-06-10T14:00:00.000Z"),
+      applicationDeadline: new Date("2026-06-09T18:00:00.000Z"),
+      mapUrl: "https://2gis.kz/almaty/search/Judo%20Arena",
+      weighInLocation: "Зал взвешивания A",
+      weighInStart: new Date("2026-06-10T02:00:00.000Z"),
+      weighInEnd: new Date("2026-06-10T03:30:00.000Z"),
+      status: TournamentStatus.REGISTRATION_CLOSED,
+      tatamiCount: 4,
+      primaryLocale: Locale.ru,
+      entryFeeKzt: ENTRY_FEE_KZT,
+      kaspiPaymentUrl:
+        "https://kaspi.kz/pay/judo-arena?amount={amount}&order={orderId}&comment={comment}",
+      isFeatured: true,
       createdById: admin.id,
     },
   });
-  console.log(`✓ Турнир: «${(TOURNAMENT.name as any).kk}» (статус REGISTRATION_OPEN)`);
 
-  for (let i = 0; i < CATEGORIES.length; i++) {
-    const cat = CATEGORIES[i]!;
-    await prisma.category.upsert({
-      where: { id: `cat-${tournament.id}-${i}` },
-      update: {},
-      create: {
-        id: `cat-${tournament.id}-${i}`,
+  for (const category of CATEGORIES) {
+    await prisma.category.create({
+      data: {
+        id: category.id,
         tournamentId: tournament.id,
-        name: cat.name,
-        gender: cat.gender,
-        ageMin: cat.ageMin,
-        ageMax: cat.ageMax,
-        weightMin: cat.weightMin,
-        weightMax: cat.weightMax,
-        matchDurationSec: cat.matchDurationSec,
-        format: cat.format,
+        name: category.name,
+        gender: category.gender,
+        ageMin: category.ageMin,
+        ageMax: category.ageMax,
+        weightMin: category.weightMin,
+        weightMax: category.weightMax,
+        matchDurationSec: category.matchDurationSec,
+        format: category.format,
+        allowYuko: true,
       },
     });
-    console.log(`  ✓ Категория: ${(cat.name as any).kk} [${cat.format}]`);
   }
 
-  console.log("\n🎉 Seed успешно завершён!\n");
-  console.log("📋 Учётные данные для входа (пароль одинаковый — password123):");
-  console.log("  • ADMIN:    admin@judo-arena.kz");
-  console.log("  • COACH-ы:  coach.almaty@judo-arena.kz, coach.astana@judo-arena.kz, и т.д.");
-  console.log("  • ATHLETE-ы: m0-0@almaty-judo.judo-arena.kz, f0-0@almaty-judo.judo-arena.kz, ...");
-  console.log("\nОткрой Prisma Studio (npx prisma studio) и посмотри что получилось.");
+  const athletes = makeAthletes();
+  const usersByEmail = new Map<string, string>();
+  for (const athlete of athletes) {
+    const user = await prisma.user.upsert({
+      where: { email: athlete.email },
+      update: {
+        passwordHash,
+        role: UserRole.ATHLETE,
+        name: athlete.name,
+        surname: athlete.surname,
+        gender: athlete.gender,
+        dateOfBirth: athlete.dateOfBirth,
+        weightKg: athlete.weightKg,
+        beltRank: "3 КЮ",
+        preferredLocale: Locale.ru,
+        isActive: true,
+        clubId: athlete.clubId,
+        clubRole: null,
+        avatarUrl: `/uploads/demo/athlete-${athlete.email.split("@")[0]}.png`,
+      },
+      create: {
+        email: athlete.email,
+        passwordHash,
+        role: UserRole.ATHLETE,
+        name: athlete.name,
+        surname: athlete.surname,
+        nameLatin: athlete.name,
+        surnameLatin: athlete.surname,
+        gender: athlete.gender,
+        dateOfBirth: athlete.dateOfBirth,
+        weightKg: athlete.weightKg,
+        beltRank: "3 КЮ",
+        preferredLocale: Locale.ru,
+        isActive: true,
+        clubId: athlete.clubId,
+        avatarUrl: `/uploads/demo/athlete-${athlete.email.split("@")[0]}.png`,
+      },
+    });
+    usersByEmail.set(athlete.email, user.id);
+
+    await prisma.userDocument.upsert({
+      where: {
+        userId_type: {
+          userId: user.id,
+          type: UserDocumentType.BIRTH_CERTIFICATE,
+        },
+      },
+      update: {
+        url: `/uploads/demo/birth-${user.id}.pdf`,
+        originalName: "birth-certificate.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 98000,
+        uploadedById: user.id,
+      },
+      create: {
+        userId: user.id,
+        type: UserDocumentType.BIRTH_CERTIFICATE,
+        url: `/uploads/demo/birth-${user.id}.pdf`,
+        originalName: "birth-certificate.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 98000,
+        uploadedById: user.id,
+      },
+    });
+    await prisma.userDocument.upsert({
+      where: {
+        userId_type: {
+          userId: user.id,
+          type: UserDocumentType.STUDY_CERTIFICATE,
+        },
+      },
+      update: {
+        url: `/uploads/demo/study-${user.id}.pdf`,
+        originalName: "study-certificate.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 87000,
+        uploadedById: user.id,
+      },
+      create: {
+        userId: user.id,
+        type: UserDocumentType.STUDY_CERTIFICATE,
+        url: `/uploads/demo/study-${user.id}.pdf`,
+        originalName: "study-certificate.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 87000,
+        uploadedById: user.id,
+      },
+    });
+  }
+
+  const athletesByClub = new Map<string, DemoAthlete[]>();
+  for (const athlete of athletes) {
+    athletesByClub.set(athlete.clubId, [
+      ...(athletesByClub.get(athlete.clubId) ?? []),
+      athlete,
+    ]);
+  }
+
+  for (const [clubId, clubAthletes] of athletesByClub.entries()) {
+    const paymentAmountKzt = clubAthletes.length * ENTRY_FEE_KZT;
+    const application = await prisma.application.create({
+      data: {
+        tournamentId: tournament.id,
+        clubId,
+        status: ApplicationStatus.APPROVED,
+        notes: "Demo: заявка сформирована, оплачена и одобрена",
+        submittedAt: now,
+        reviewedAt: now,
+        reviewerNotes: "Demo approved",
+        paymentStatus: PaymentStatus.PAID,
+        paymentAmountKzt,
+        paymentProvider: "KASPI",
+        paymentReference: `DEMO-${clubId.toUpperCase()}-${Date.now()}`,
+        paymentUrl: `https://kaspi.kz/pay/judo-arena?amount=${paymentAmountKzt}`,
+        paidAt: now,
+      },
+    });
+
+    for (const athlete of clubAthletes) {
+      await prisma.applicationEntry.create({
+        data: {
+          applicationId: application.id,
+          athleteId: usersByEmail.get(athlete.email)!,
+          categoryId: athlete.categoryId,
+          weighInStatus: WeighInStatus.PASSED,
+          actualWeightKg: athlete.weightKg,
+          weighInNotes: "Demo: документы проверены, вес пройден",
+          weighedAt: now,
+          weighedById: admin.id,
+        },
+      });
+    }
+  }
+
+  const drawResult = await prepareTournamentDraw(admin.id, tournament.id);
+
+  await prisma.tournament.update({
+    where: { id: tournament.id },
+    data: { status: TournamentStatus.IN_PROGRESS },
+  });
+
+  for (let tatamiNumber = 1; tatamiNumber <= 4; tatamiNumber++) {
+    await prisma.tatamiSession.create({
+      data: {
+        token: `demo-tatami-${tatamiNumber}-${nanoid(8)}`,
+        tournamentId: tournament.id,
+        tatamiNumber,
+        judgeName: `Demo Judge ${tatamiNumber}`,
+        createdById: admin.id,
+        expiresAt: new Date("2026-06-11T04:00:00.000Z"),
+      },
+    });
+  }
+
+  const counts = await prisma.$transaction([
+    prisma.user.count({
+      where: {
+        role: UserRole.ATHLETE,
+        email: { contains: ".demo.judo-arena.kz" },
+      },
+    }),
+    prisma.application.count({ where: { tournamentId: tournament.id } }),
+    prisma.bracket.count({ where: { tournamentId: tournament.id } }),
+    prisma.match.count({
+      where: { tournamentId: tournament.id, status: MatchStatus.PENDING },
+    }),
+  ]);
+
+  console.log("\nDemo seed complete.");
+  console.log(`Tournament: ${tournament.id}`);
+  console.log(
+    `Athletes: ${counts[0]}, applications: ${counts[1]}, brackets: ${counts[2]}, pending matches: ${counts[3]}`,
+  );
+  console.log(
+    `Tatami distribution: ${JSON.stringify(drawResult.tatami.loads)}`,
+  );
+  console.log("\nDemo accounts, password: password123");
+  console.log("ADMIN:   admin@judo-arena.kz");
+  console.log("COACH:   coach.almaty@judo-arena.kz");
+  console.log("ATHLETE: rr.01@almaty-demo.demo.judo-arena.kz");
+  console.log(`Scoreboard: /live-wall/${tournament.id}`);
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Seed упал:", e);
+  .catch((error) => {
+    console.error("Demo seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {

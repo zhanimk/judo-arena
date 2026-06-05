@@ -23,7 +23,6 @@ import {
   Shield,
   Users,
   ArrowRight,
-  Sparkles,
   Medal,
   Radio,
   ChevronRight,

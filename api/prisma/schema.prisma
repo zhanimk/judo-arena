@@ -21,6 +21,12 @@ enum UserRole {
   // JUDGE не хранится здесь — у судьи временная сессия без аккаунта
 }
 
+enum UserDocumentType {
+  BIRTH_CERTIFICATE
+  STUDY_CERTIFICATE
+  COACH_ID
+}
+
 enum ClubRole {
   OWNER
   COACH
@@ -58,6 +64,13 @@ enum ApplicationStatus {
   APPROVED
   REJECTED
   WITHDRAWN
+}
+
+enum PaymentStatus {
+  NOT_REQUIRED
+  PENDING
+  PAID
+  FAILED
 }
 
 enum WeighInStatus {
@@ -139,6 +152,7 @@ model User {
   notifications         Notification[]
   auditLogs             AuditLog[]
   tatamiSessions        TatamiSession[]        @relation("TatamiSessionCreator")
+  documents             UserDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,6 +160,25 @@ model User {
   @@index([clubId])
   @@index([role])
   @@index([role, isActive])
+}
+
+model UserDocument {
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         UserDocumentType
+  url          String
+  originalName String?
+  mimeType     String?
+  sizeBytes    Int?
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@index([type])
 }
 
 model Club {
@@ -211,6 +244,9 @@ model Tournament {
   tatamiCount         Int              @default(1)
   primaryLocale       Locale           @default(kk)
   posterUrl           String?
+  entryFeeKzt         Int              @default(0)
+  kaspiPaymentUrl     String?
+  youtubeUrls         Json?            // string[] — one URL per tatami (index 0 = tatami 1)
   isFeatured          Boolean          @default(false)
   isArchived          Boolean          @default(false)
 
@@ -275,6 +311,12 @@ model Application {
   submittedAt   DateTime?
   reviewedAt    DateTime?
   reviewerNotes String?
+  paymentStatus PaymentStatus @default(NOT_REQUIRED)
+  paymentAmountKzt Int        @default(0)
+  paymentProvider String?
+  paymentReference String?
+  paymentUrl String?
+  paidAt DateTime?
 
   entries ApplicationEntry[]
 
@@ -283,6 +325,8 @@ model Application {
 
   @@unique([tournamentId, clubId])
   @@index([status])
+  @@index([paymentStatus])
+  @@index([paymentReference])
   @@index([tournamentId, status])
   @@index([clubId, status])
 }

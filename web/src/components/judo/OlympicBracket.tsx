@@ -8,10 +8,20 @@
 import { memo, useState } from "react";
 import { Play, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { mediaUrl } from "@/lib/api";
 
 const COUNTRY_FLAGS: Record<string, string> = {
-  KZ: "🇰🇿", RU: "🇷🇺", US: "🇺🇸", USA: "🇺🇸", JP: "🇯🇵", FR: "🇫🇷",
-  DE: "🇩🇪", IT: "🇮🇹", BR: "🇧🇷", ES: "🇪🇸", UA: "🇺🇦",
+  KZ: "🇰🇿",
+  RU: "🇷🇺",
+  US: "🇺🇸",
+  USA: "🇺🇸",
+  JP: "🇯🇵",
+  FR: "🇫🇷",
+  DE: "🇩🇪",
+  IT: "🇮🇹",
+  BR: "🇧🇷",
+  ES: "🇪🇸",
+  UA: "🇺🇦",
 };
 
 interface BracketAthlete {
@@ -20,6 +30,8 @@ interface BracketAthlete {
   surname: string;
   clubCity?: string;
   country?: string;
+  avatarUrl?: string | null;
+  club?: { country?: string | null } | null;
 }
 
 interface BracketMatch {
@@ -53,9 +65,7 @@ const PAD = 14;
 
 function OlympicBracketInner({ matches, size, format }: Props) {
   if (matches.length === 0) {
-    return (
-      <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>
-    );
+    return <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>;
   }
 
   if (format === "ROUND_ROBIN") return <RoundRobinView matches={matches} />;
@@ -123,27 +133,20 @@ function PooledSEView({
     (m) => m.bracketSection === "main" && m.round <= quartersRound,
   );
   const finalsMatches = matches.filter(
-    (m) =>
-      (m.bracketSection === "main" || m.bracketSection === "final") &&
-      m.round >= semisRound,
+    (m) => (m.bracketSection === "main" || m.bracketSection === "final") && m.round >= semisRound,
   );
   const repechage = matches
     .filter((m) => m.bracketSection === "repechage")
     .sort((a, b) => a.position - b.position);
   const bronze = matches
-    .filter(
-      (m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
-    )
+    .filter((m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2")
     .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
 
   // Build round arrays for the active pool
   const poolRounds: BracketMatch[][] = [];
   for (let r = 1; r <= quartersRound; r++) {
     const row = poolMatchesAll
-      .filter(
-        (m) =>
-          m.round === r && matchPoolIndex(m.position, r, size) === activePool,
-      )
+      .filter((m) => m.round === r && matchPoolIndex(m.position, r, size) === activePool)
       .sort((a, b) => a.position - b.position);
     poolRounds.push(row);
   }
@@ -238,8 +241,7 @@ function PooledSEView({
                 {roundMatches.map((match, mi) => {
                   const pos = layout.positions[ri]?.[mi];
                   if (!pos) return null;
-                  const isEmpty =
-                    !match.redAthleteId && !match.blueAthleteId;
+                  const isEmpty = !match.redAthleteId && !match.blueAthleteId;
                   const isBye = match.scoreSnapshot?.bye === true;
                   return (
                     <div
@@ -299,8 +301,9 @@ function FinalsSection({
     .filter((m) => m.round === semisRound && m.bracketSection === "main")
     .sort((a, b) => a.position - b.position);
 
-  const finalMatch = matches.find((m) => m.bracketSection === "final")
-    ?? matches.find((m) => m.round === totalRounds);
+  const finalMatch =
+    matches.find((m) => m.bracketSection === "final") ??
+    matches.find((m) => m.round === totalRounds);
 
   const champion =
     finalMatch?.status === "COMPLETED" && finalMatch.winnerId
@@ -309,11 +312,7 @@ function FinalsSection({
         : finalMatch.blueAthlete
       : null;
 
-  const hasContent =
-    semis.length > 0 ||
-    !!finalMatch ||
-    repechage.length > 0 ||
-    bronze.length > 0;
+  const hasContent = semis.length > 0 || !!finalMatch || repechage.length > 0 || bronze.length > 0;
 
   if (!hasContent) return null;
 
@@ -361,9 +360,7 @@ function FinalsSection({
                 {champion.name} {champion.surname}
               </div>
               {champion.clubCity && (
-                <div className="text-[10px] text-gold-foreground/80">
-                  {champion.clubCity}
-                </div>
+                <div className="text-[10px] text-gold-foreground/80">{champion.clubCity}</div>
               )}
             </div>
           )}
@@ -427,8 +424,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
     const inRound = matches
       .filter(
         (m) =>
-          (m.bracketSection === "main" ||
-            (r === totalRounds && m.bracketSection === "final")) &&
+          (m.bracketSection === "main" || (r === totalRounds && m.bracketSection === "final")) &&
           m.round === r,
       )
       .sort((a, b) => a.position - b.position);
@@ -439,14 +435,10 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
     .filter((m) => m.bracketSection === "repechage")
     .sort((a, b) => a.position - b.position);
   const bronze = matches
-    .filter(
-      (m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
-    )
+    .filter((m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2")
     .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
 
-  const finalMatch = matches.find(
-    (m) => m.bracketSection === "final" && m.status === "COMPLETED",
-  );
+  const finalMatch = matches.find((m) => m.bracketSection === "final" && m.status === "COMPLETED");
   const champion = finalMatch?.winnerId
     ? finalMatch.redAthlete?.id === finalMatch.winnerId
       ? finalMatch.redAthlete
@@ -566,9 +558,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
                   {champion.name} {champion.surname}
                 </div>
                 {champion.clubCity && (
-                  <div className="text-[10px] text-gold-foreground/80">
-                    {champion.clubCity}
-                  </div>
+                  <div className="text-[10px] text-gold-foreground/80">{champion.clubCity}</div>
                 )}
               </div>
             </div>
@@ -625,10 +615,8 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
 
 function getMainBracketLayout(rounds: BracketMatch[][]) {
   const positions = rounds.map((roundMatches, roundIndex) => {
-    const top =
-      HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
-    const gap =
-      (CARD_H + BASE_GAP) * Math.pow(2, roundIndex) - CARD_H;
+    const top = HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
+    const gap = (CARD_H + BASE_GAP) * Math.pow(2, roundIndex) - CARD_H;
 
     return roundMatches.map((_, matchIndex) => ({
       x: PAD + roundIndex * (CARD_W + ROUND_GAP),
@@ -636,15 +624,10 @@ function getMainBracketLayout(rounds: BracketMatch[][]) {
     }));
   });
 
-  const width =
-    PAD * 2 +
-    rounds.length * CARD_W +
-    Math.max(0, rounds.length - 1) * ROUND_GAP;
+  const width = PAD * 2 + rounds.length * CARD_W + Math.max(0, rounds.length - 1) * ROUND_GAP;
   const height = Math.max(
     360,
-    ...positions.flatMap((round) =>
-      round.map((pos) => pos.y + CARD_H + PAD),
-    ),
+    ...positions.flatMap((round) => round.map((pos) => pos.y + CARD_H + PAD)),
   );
 
   return { positions, width, height };
@@ -740,7 +723,8 @@ function AthleteRow({
   isLoser: boolean;
   side: "red" | "blue";
 }) {
-  const flag = athlete?.country ? (COUNTRY_FLAGS[athlete.country] ?? "") : "";
+  const flag = athlete ? athleteFlag(athlete) : "";
+  const avatar = athlete?.avatarUrl ? mediaUrl(athlete.avatarUrl) : "";
 
   return (
     <div
@@ -753,16 +737,34 @@ function AthleteRow({
           side === "red" ? "bg-rose-400" : "bg-sky-400"
         }`}
       />
-      {flag && (
-        <span className="shrink-0 text-sm leading-none">{flag}</span>
+      {athlete && (
+        <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border/60 bg-muted">
+          {avatar ? (
+            <img
+              src={avatar}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+              {athlete.name?.[0] ?? "?"}
+              {athlete.surname?.[0] ?? ""}
+            </span>
+          )}
+          {flag && (
+            <span className="absolute -bottom-0.5 -right-0.5 text-[8px] leading-none">{flag}</span>
+          )}
+        </div>
       )}
       <div className="flex-1 min-w-0 truncate">
         {athlete ? (
           <>
             <span>{athlete.name} </span>
-            <span className="font-bold uppercase tracking-tight">
-              {athlete.surname}
-            </span>
+            <span className="font-bold uppercase tracking-tight">{athlete.surname}</span>
           </>
         ) : (
           <span className="italic text-muted-foreground/60">TBD</span>
@@ -787,13 +789,18 @@ function AthleteRow({
   );
 }
 
+function athleteFlag(athlete: BracketAthlete): string {
+  const code = (athlete.country ?? athlete.club?.country ?? "KZ").toUpperCase();
+  return COUNTRY_FLAGS[code] ?? COUNTRY_FLAGS.KZ;
+}
+
 /* ─── MIXED view: Group stage tabs + Playoff SE ──────────────────────────── */
 
 function MixedView({ matches, size }: { matches: BracketMatch[]; size: number }) {
   const { t } = useTranslation();
   // Separate group matches from playoff matches
   const groupSections = Array.from(
-    new Set(matches.map((m) => m.bracketSection).filter((s) => s?.startsWith("group_")))
+    new Set(matches.map((m) => m.bracketSection).filter((s) => s?.startsWith("group_"))),
   ).sort() as string[];
 
   const playoffMatches = matches.filter((m) => m.bracketSection === "playoff");
@@ -873,8 +880,14 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
     const loserId = m.winnerId === m.redAthleteId ? m.blueAthleteId : m.redAthleteId;
     const w = standingsMap.get(m.winnerId);
     const l = loserId ? standingsMap.get(loserId) : undefined;
-    if (w) { w.wins++; w.played++; }
-    if (l) { l.losses++; l.played++; }
+    if (w) {
+      w.wins++;
+      w.played++;
+    }
+    if (l) {
+      l.losses++;
+      l.played++;
+    }
   }
 
   const standings = Array.from(standingsMap.entries())
@@ -890,28 +903,47 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
       <div className="rounded-lg border border-border overflow-hidden">
         <div className="px-4 py-2 bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between">
           <span>{t("bracket.group_table", { label: groupLabel })}</span>
-          <span>{completedCount}/{totalCount} {t("tatami.match_word")}</span>
+          <span>
+            {completedCount}/{totalCount} {t("tatami.match_word")}
+          </span>
         </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left px-4 py-2 font-medium">#</th>
               <th className="text-left px-4 py-2 font-medium">{t("tournament.athletes")}</th>
-              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_wins")}>W</th>
-              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_losses")}>L</th>
-              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_played")}>P</th>
+              <th className="text-center px-3 py-2 font-medium" title={t("bracket.standing_wins")}>
+                W
+              </th>
+              <th
+                className="text-center px-3 py-2 font-medium"
+                title={t("bracket.standing_losses")}
+              >
+                L
+              </th>
+              <th
+                className="text-center px-3 py-2 font-medium"
+                title={t("bracket.standing_played")}
+              >
+                P
+              </th>
             </tr>
           </thead>
           <tbody>
             {standings.map((s, idx) => (
-              <tr key={s.id} className={`border-b border-border last:border-0 ${idx < 2 ? "bg-green-500/5" : ""}`}>
+              <tr
+                key={s.id}
+                className={`border-b border-border last:border-0 ${idx < 2 ? "bg-green-500/5" : ""}`}
+              >
                 <td className="px-4 py-2 text-muted-foreground">
                   {idx < 2 ? <span className="text-green-500 font-bold">{idx + 1}</span> : idx + 1}
                 </td>
                 <td className="px-4 py-2 font-medium">
                   {s.athlete ? `${s.athlete.name} ${s.athlete.surname}` : "—"}
                   {idx < 2 && (
-                    <span className="ml-2 text-xs text-green-500 font-normal">{t("bracket.advances_to_playoff")}</span>
+                    <span className="ml-2 text-xs text-green-500 font-normal">
+                      {t("bracket.advances_to_playoff")}
+                    </span>
                   )}
                 </td>
                 <td className="text-center px-3 py-2 text-green-500 font-semibold">{s.wins}</td>
@@ -925,7 +957,9 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
 
       {/* Match list */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t("bracket.stat_matches")}</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+          {t("bracket.stat_matches")}
+        </p>
         {matches.map((m) => (
           <MatchCard key={m.id} match={m} />
         ))}
@@ -948,9 +982,7 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
     <div className="space-y-6">
       {rounds.map(([round, ms]) => (
         <div key={round}>
-          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
-            {round}-тур
-          </div>
+          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{round}-тур</div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {ms
               .sort((a, b) => a.position - b.position)

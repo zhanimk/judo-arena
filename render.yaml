@@ -56,15 +56,31 @@ services:
         value: "120"
       - key: SOCKET_CONNECTION_LIMIT_WINDOW_SEC
         value: "60"
-      - key: UPLOADS_DIR
-        value: ./uploads
+      # S3 storage for uploads — set these in Render Dashboard → Environment
+      # Without S3, uploaded files are lost on each deploy (ephemeral filesystem)
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+
+      # Observability
+      - key: SENTRY_DSN
+        sync: false
+      - key: APP_VERSION
+        fromMetadata: commitSHA
 
   # ── Redis ─────────────────────────────────────────────────
   - type: redis
     name: judo-arena-redis
     region: frankfurt
     plan: free
-    maxmemoryPolicy: noeviction
+    maxmemoryPolicy: allkeys-lru
 
 # ── PostgreSQL ─────────────────────────────────────────────
 databases:

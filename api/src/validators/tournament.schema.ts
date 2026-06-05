@@ -42,20 +42,28 @@ export const createTournamentSchema = z
     tatamiCount: z.coerce.number().int().min(1).max(20).default(1),
     primaryLocale: z.enum(["ru", "kk", "en"]).default("kk"),
     posterUrl: z.string().url().optional(),
+    entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).default(0),
+    kaspiPaymentUrl: z.string().url().optional(),
   })
   .strict()
   .refine((v) => v.endDate >= v.startDate, {
     message: "endDate должна быть ≥ startDate",
     path: ["endDate"],
   })
-  .refine((v) => !v.applicationDeadline || v.applicationDeadline <= v.startDate, {
-    message: "applicationDeadline должен быть не позже startDate",
-    path: ["applicationDeadline"],
-  })
-  .refine((v) => !v.weighInStart || !v.weighInEnd || v.weighInEnd >= v.weighInStart, {
-    message: "weighInEnd должен быть ≥ weighInStart",
-    path: ["weighInEnd"],
-  });
+  .refine(
+    (v) => !v.applicationDeadline || v.applicationDeadline <= v.startDate,
+    {
+      message: "applicationDeadline должен быть не позже startDate",
+      path: ["applicationDeadline"],
+    },
+  )
+  .refine(
+    (v) => !v.weighInStart || !v.weighInEnd || v.weighInEnd >= v.weighInStart,
+    {
+      message: "weighInEnd должен быть ≥ weighInStart",
+      path: ["weighInEnd"],
+    },
+  );
 
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
 
@@ -75,6 +83,9 @@ export const updateTournamentSchema = z
     tatamiCount: z.coerce.number().int().min(1).max(20).optional(),
     primaryLocale: z.enum(["ru", "kk", "en"]).optional(),
     posterUrl: z.string().url().nullable().optional(),
+    entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).optional(),
+    kaspiPaymentUrl: z.string().url().nullable().optional(),
+    youtubeUrls: z.array(z.string().url()).nullable().optional(),
   })
   .strict();
 
@@ -82,7 +93,14 @@ export type UpdateTournamentInput = z.infer<typeof updateTournamentSchema>;
 
 export const listTournamentsQuerySchema = z.object({
   status: z
-    .enum(["DRAFT", "REGISTRATION_OPEN", "REGISTRATION_CLOSED", "IN_PROGRESS", "COMPLETED", "CANCELLED"])
+    .enum([
+      "DRAFT",
+      "REGISTRATION_OPEN",
+      "REGISTRATION_CLOSED",
+      "IN_PROGRESS",
+      "COMPLETED",
+      "CANCELLED",
+    ])
     .optional(),
   city: z.string().optional(),
   search: z.string().optional(),

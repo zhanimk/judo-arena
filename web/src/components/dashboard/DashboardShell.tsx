@@ -25,34 +25,6 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const navLabelKeys: Record<string, string> = {
-  Шолу: "dashboard.overview",
-  Профиль: "dashboard.profile",
-  Спортшылар: "dashboard.athletes",
-  Өтінімдер: "dashboard.applications",
-  "Live матчтар": "dashboard.live_matches",
-  "LIVE матчтар": "dashboard.live_matches",
-  Жарыстар: "dashboard.tournaments",
-  Клуб: "dashboard.clubs",
-  Клубтар: "dashboard.clubs",
-  Пайдаланушылар: "dashboard.users",
-  Аудит: "dashboard.audit",
-  Баптаулар: "dashboard.settings",
-  "Жекпе-жектер": "dashboard.live_matches",
-  Нәтижелер: "dashboard.results",
-  Хабарландырулар: "dashboard.notifications",
-  Рейтинг: "nav.rankings",
-  Матчтар: "dashboard.matches",
-  Есептер: "dashboard.reports",
-  "Менің клубым": "dashboard.my_club",
-};
-
-const roleKeys: Record<string, string> = {
-  Әкімші: "roles.admin",
-  Жаттықтырушы: "roles.coach",
-  Спортшы: "roles.athlete",
-};
-
 const dashboardRoot = (role?: string) => {
   if (role === "ADMIN") return "/admin";
   if (role === "COACH") return "/coach";
@@ -81,8 +53,8 @@ export function DashboardShell({
   const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const translatedRole = roleKeys[role] ? t(roleKeys[role]) : role;
-  const navLabel = (label: string) => (navLabelKeys[label] ? t(navLabelKeys[label]) : label);
+  const translatedRole = role.includes(".") ? t(role) : role;
+  const navLabel = (label: string) => (label.includes(".") ? t(label) : label);
 
   const unreadQuery = useQuery({
     queryKey: ["unread-count"],
@@ -255,7 +227,7 @@ export function DashboardShell({
         <nav className={`flex-1 space-y-1 py-2 ${collapsed ? "px-2" : "px-3"}`}>
           {navItems.map((n, idx) => {
             const active = path === n.to;
-            const isNotif = n.label === "Хабарландырулар";
+            const isNotif = n.label === "dashboard.notifications";
             return (
               <Link
                 key={`${n.to}-${idx}`}
@@ -338,7 +310,7 @@ export function DashboardShell({
             <div className="flex items-center gap-2">
               {/* Notification bell — always visible in top bar */}
               {(() => {
-                const notifNav = navItems.find((n) => n.label === "Хабарландырулар");
+                const notifNav = navItems.find((n) => n.label === "dashboard.notifications");
                 if (!notifNav) return null;
                 return (
                   <Link
@@ -354,6 +326,10 @@ export function DashboardShell({
                   </Link>
                 );
               })()}
+
+              <div className="hidden lg:flex">
+                <ThemeToggle className="bg-card/60" />
+              </div>
 
               <div className="hidden items-center gap-2 sm:flex lg:hidden">
                 <ThemeToggle className="bg-card/60" />

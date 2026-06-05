@@ -25,7 +25,10 @@
  *     GET    /api/applications/:id/history      — история (COACH / ADMIN)
  *     POST   /api/applications/:id/entries      — добавить запись
  *     DELETE /api/applications/:id/entries/:entryId
+ *     POST   /api/applications/:id/payment/kaspi — начать оплату Kaspi (COACH)
  *     POST   /api/applications/:id/submit       — отправить на рассмотрение
+ *     POST   /api/applications/:id/payment/paid — подтвердить оплату (ADMIN)
+ *     POST   /api/payments/kaspi/callback       — callback оплаты Kaspi
  *     POST   /api/applications/:id/approve      — одобрить (ADMIN)
  *     POST   /api/applications/:id/reject       — отклонить (ADMIN)
  *     POST   /api/applications/:id/withdraw     — отозвать (COACH)
@@ -71,11 +74,14 @@ import {
   reject,
   withdraw,
   bulkApprove,
+  initiateKaspiPayment,
+  markPaymentPaid,
+  confirmKaspiPayment,
 } from "../services/application.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { getApplicationHistory } from "../services/audit.service.js";
-
+import { env } from "../lib/env.js";
 
 // ============================================================
 // /api/tournaments/*
@@ -89,9 +95,12 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     return listTournaments(q);
   });
 
-  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return getTournament(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getTournament(request.params.id);
+    },
+  );
 
   app.post(
     "/",
@@ -131,15 +140,20 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // Категории (вложенные)
-  app.get<{ Params: { id: string } }>("/:id/categories", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return listCategories(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id/categories",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return listCategories(request.params.id);
+    },
+  );
 
   // Публичный список участников по категории — аналог IJF draw list
   // GET /api/tournaments/:id/categories/:categoryId/participants
   app.get<{ Params: { id: string; categoryId: string } }>(
     "/:id/categories/:categoryId/participants",
-    async (request: FastifyRequest<{ Params: { id: string; categoryId: string } }>) => {
+    async (
+      request: FastifyRequest<{ Params: { id: string; categoryId: string } }>,
+    ) => {
       const { id: tournamentId, categoryId } = request.params;
       const entries = await import("../lib/prisma.js").then(({ prisma }) =>
         prisma.applicationEntry.findMany({
@@ -191,7 +205,10 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     "/:id/applications",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      return listApplicationsForTournament(request.user!.sub, request.params.id);
+      return listApplicationsForTournament(
+        request.user!.sub,
+        request.params.id,
+      );
     },
   );
 
@@ -200,7 +217,11 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("COACH")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { notes } = createApplicationSchema.parse(request.body ?? {});
-      const app2 = await createOrGetDraftApplication(request.user!.sub, request.params.id, notes);
+      const app2 = await createOrGetDraftApplication(
+        request.user!.sub,
+        request.params.id,
+        notes,
+      );
       return reply.code(201).send(app2);
     },
   );
@@ -211,7 +232,9 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
     "/:id/applications/bulk-approve",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { reviewerNotes } = reviewApplicationSchema.parse(request.body ?? {});
+      const { reviewerNotes } = reviewApplicationSchema.parse(
+        request.body ?? {},
+      );
       return bulkApprove(request.user!.sub, request.params.id, reviewerNotes);
     },
   );
@@ -221,7 +244,9 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
 // /api/categories/:id, /api/applications/*
 // ============================================================
 
-export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<void> {
+export async function tournamentAdjacentRoutes(
+  app: FastifyInstance,
+): Promise<void> {
   attachErrorHandler(app);
 
   // Категории
@@ -273,7 +298,12 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const { athleteId, categoryId } = addEntrySchema.parse(request.body);
-      const entry = await addEntry(request.user!.sub, request.params.id, athleteId, categoryId);
+      const entry = await addEntry(
+        request.user!.sub,
+        request.params.id,
+        athleteId,
+        categoryId,
+      );
       return reply.code(201).send(entry);
     },
   );
@@ -281,8 +311,15 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
   app.delete<{ Params: { id: string; entryId: string } }>(
     "/applications/:id/entries/:entryId",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
-    async (request: FastifyRequest<{ Params: { id: string; entryId: string } }>, reply) => {
-      await removeEntry(request.user!.sub, request.params.id, request.params.entryId);
+    async (
+      request: FastifyRequest<{ Params: { id: string; entryId: string } }>,
+      reply,
+    ) => {
+      await removeEntry(
+        request.user!.sub,
+        request.params.id,
+        request.params.entryId,
+      );
       return reply.code(204).send();
     },
   );
@@ -296,10 +333,51 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
   );
 
   app.post<{ Params: { id: string } }>(
+    "/applications/:id/payment/kaspi",
+    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return initiateKaspiPayment(request.user!.sub, request.params.id);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/applications/:id/payment/paid",
+    { preHandler: [authenticate, authorize("ADMIN")] },
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const body = (request.body ?? {}) as { providerReference?: string };
+      return markPaymentPaid(
+        request.user!.sub,
+        request.params.id,
+        body.providerReference,
+      );
+    },
+  );
+
+  app.post("/payments/kaspi/callback", async (request) => {
+    const body = (request.body ?? {}) as {
+      reference?: string;
+      orderId?: string;
+    };
+    const secret =
+      (request.headers["x-kaspi-secret"] as string | undefined) ??
+      (request.query as { secret?: string } | undefined)?.secret;
+    if (env.KASPI_CALLBACK_SECRET && secret !== env.KASPI_CALLBACK_SECRET) {
+      throw new Error("invalid callback secret");
+    }
+    const reference = body.reference ?? body.orderId;
+    if (!reference) {
+      throw new Error("reference is required");
+    }
+    return confirmKaspiPayment(reference);
+  });
+
+  app.post<{ Params: { id: string } }>(
     "/applications/:id/approve",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { reviewerNotes } = reviewApplicationSchema.parse(request.body ?? {});
+      const { reviewerNotes } = reviewApplicationSchema.parse(
+        request.body ?? {},
+      );
       return approve(request.user!.sub, request.params.id, reviewerNotes);
     },
   );
@@ -308,7 +386,9 @@ export async function tournamentAdjacentRoutes(app: FastifyInstance): Promise<vo
     "/applications/:id/reject",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { reviewerNotes } = reviewApplicationSchema.parse(request.body ?? {});
+      const { reviewerNotes } = reviewApplicationSchema.parse(
+        request.body ?? {},
+      );
       return reject(request.user!.sub, request.params.id, reviewerNotes);
     },
   );

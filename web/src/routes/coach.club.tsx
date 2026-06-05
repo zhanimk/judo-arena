@@ -58,6 +58,8 @@ const emptyForm: ClubForm = {
   logoUrl: "",
 };
 
+const showAdvancedClubTools = false;
+
 function CoachClub() {
   const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
@@ -208,7 +210,7 @@ function CoachClub() {
         </div>
       )}
 
-      {clubId && (
+      {clubId && showAdvancedClubTools && (
         <div className="mt-6">
           <Panel title={`${t("coach_club.age_groups")} ${groupsQuery.data?.length ?? 0}`}>
             {!clubId ? (
@@ -229,7 +231,7 @@ function CoachClub() {
         </div>
       )}
 
-      {clubId && (
+      {clubId && showAdvancedClubTools && (
         <div className="mt-6">
           <BulkImportPanel
             clubId={clubId}

@@ -133,8 +133,24 @@ export async function getTatamiQueue(
       { position: "asc" },
     ],
     include: {
-      redAthlete: { select: { id: true, name: true, surname: true } },
-      blueAthlete: { select: { id: true, name: true, surname: true } },
+      redAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
+      },
+      blueAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
+      },
       bracket: { include: { category: true } },
     },
   });

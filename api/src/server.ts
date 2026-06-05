@@ -192,7 +192,7 @@ async function buildServer() {
 
   // Health-check — используется E2E тестами, мониторингом и Render health checks
   const START_TIME = Date.now();
-  app.get("/health", async () => {
+  app.get("/health", async (_req, reply) => {
     const [dbOk, redisOk] = await Promise.all([
       prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
       redis
@@ -201,6 +201,7 @@ async function buildServer() {
         .catch(() => false),
     ]);
     const status = dbOk && redisOk ? "ok" : "degraded";
+    if (status === "degraded") reply.code(503);
     return {
       status,
       service: "judo-arena-api",

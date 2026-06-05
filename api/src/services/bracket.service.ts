@@ -21,11 +21,18 @@ import {
 import { seedAthletes, nextPowerOfTwo } from "./bracket-engine/seeding.js";
 import { buildSingleElimination } from "./bracket-engine/single-elimination.js";
 import { buildRoundRobin } from "./bracket-engine/round-robin.js";
-import { buildMixedBracket } from "./bracket-engine/mixed.js";
-import { planTatamiAssignments, type TatamiPlanCategory } from "./bracket-engine/tatami-plan.js";
+import { buildMixedBracketFromAthletes } from "./bracket-engine/mixed.js";
+import {
+  planTatamiAssignments,
+  type TatamiPlanCategory,
+} from "./bracket-engine/tatami-plan.js";
 
 export class BracketError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "BracketError";
   }
@@ -39,8 +46,11 @@ export async function generateBracket(
 ) {
   await assertAdmin(actorUserId);
 
-  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-  if (!tournament) throw new BracketError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+  });
+  if (!tournament)
+    throw new BracketError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   if (
     tournament.status !== TournamentStatus.REGISTRATION_CLOSED &&
     tournament.status !== TournamentStatus.IN_PROGRESS
@@ -52,9 +62,15 @@ export async function generateBracket(
     );
   }
 
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+  });
   if (!category || category.tournamentId !== tournamentId) {
-    throw new BracketError("CATEGORY_MISMATCH", "Категория не принадлежит этому турниру", 404);
+    throw new BracketError(
+      "CATEGORY_MISMATCH",
+      "Категория не принадлежит этому турниру",
+      404,
+    );
   }
 
   // Проверим что нет уже сгенерированной сетки
@@ -79,7 +95,7 @@ export async function generateBracket(
     include: { athlete: true },
   });
   const seen = new Set<string>();
-  const athletes: typeof entries[number]["athlete"][] = [];
+  const athletes: (typeof entries)[number]["athlete"][] = [];
   for (const e of entries) {
     if (!seen.has(e.athlete.id)) {
       seen.add(e.athlete.id);
@@ -97,30 +113,37 @@ export async function generateBracket(
 
   const seed = Math.floor(Math.random() * 1_000_000_000);
 
-  // MIXED = группы (≤8 в группе, Round-Robin) + плей-офф SE
-  if (category.format === BracketFormat.MIXED) {
-    if (athletes.length < 4) {
-      throw new BracketError(
-        "NOT_ENOUGH_FOR_MIXED",
-        `MIXED требует минимум 4 участника, найдено ${athletes.length}`,
-        409,
-      );
-    }
-    return generateMixedBracket(tournamentId, categoryId, athletes, seed);
-  }
-
-  // Автовыбор формата: ≤4 участника → круговая, иначе SE
-  const effectiveFormat =
-    category.format === BracketFormat.ROUND_ROBIN
-      ? BracketFormat.ROUND_ROBIN
-      : athletes.length <= 4
-        ? BracketFormat.ROUND_ROBIN
-        : BracketFormat.SE_IJF;
+  const effectiveFormat = resolveEffectiveFormat(
+    category.format,
+    athletes.length,
+  );
 
   if (effectiveFormat === BracketFormat.ROUND_ROBIN) {
     return generateRoundRobinBracket(tournamentId, categoryId, athletes, seed);
   }
-  return generateSingleEliminationBracket(tournamentId, categoryId, athletes, seed);
+  if (effectiveFormat === BracketFormat.MIXED) {
+    return generateMixedBracket(tournamentId, categoryId, athletes, seed);
+  }
+  return generateSingleEliminationBracket(
+    tournamentId,
+    categoryId,
+    athletes,
+    seed,
+  );
+}
+
+function resolveEffectiveFormat(
+  requestedFormat: BracketFormat,
+  athleteCount: number,
+): BracketFormat {
+  // Kazakhstan/Judo-friendly default:
+  // 2-5 athletes: one pool, everyone fights everyone.
+  // 6-10 athletes: two balanced pools A/B, top 2 advance to playoff.
+  // 11+ athletes: Olympic/IJF elimination with repechage.
+  if (athleteCount <= 5) return BracketFormat.ROUND_ROBIN;
+  if (athleteCount <= 10) return BracketFormat.MIXED;
+  if (requestedFormat === BracketFormat.MIXED) return BracketFormat.MIXED;
+  return BracketFormat.SE_IJF;
 }
 
 // ============================================================
@@ -199,7 +222,10 @@ async function advanceFirstRoundByes(
   }
 
   // In-memory слоты, обновляются по мере обработки BYE
-  const memSlots = new Map<string, { red: string | null; blue: string | null }>();
+  const memSlots = new Map<
+    string,
+    { red: string | null; blue: string | null }
+  >();
   for (const m of matches) {
     memSlots.set(m.id, { red: m.redAthleteId, blue: m.blueAthleteId });
   }
@@ -213,7 +239,8 @@ async function advanceFirstRoundByes(
       if (!match) continue;
 
       const s = memSlots.get(match.id)!;
-      const hasRed = Boolean(s.red), hasBlue = Boolean(s.blue);
+      const hasRed = Boolean(s.red),
+        hasBlue = Boolean(s.blue);
       if (hasRed === hasBlue) continue; // оба null или оба есть → пропускаем
 
       // КЛЮЧЕВАЯ ПРОВЕРКА: источник null-слота должен быть «мёртвой веткой» (нет спортсменов).
@@ -221,10 +248,12 @@ async function advanceFirstRoundByes(
       if (round > 1) {
         const nullSlotIsRed = !hasRed;
         // Дочерняя позиция в предыдущем раунде, которая должна была заполнить null-слот
-        const srcChildPos   = nullSlotIsRed ? position * 2 : position * 2 + 1;
-        const srcRound      = round - 1;
-        const srcSection    = srcRound === totalRounds ? "final" : "main";
-        const srcMatch      = matchMap.get(`${srcRound}:${srcChildPos}:${srcSection}`);
+        const srcChildPos = nullSlotIsRed ? position * 2 : position * 2 + 1;
+        const srcRound = round - 1;
+        const srcSection = srcRound === totalRounds ? "final" : "main";
+        const srcMatch = matchMap.get(
+          `${srcRound}:${srcChildPos}:${srcSection}`,
+        );
         if (srcMatch) {
           const srcS = memSlots.get(srcMatch.id)!;
           // Источник имеет атлетов → он доиграется и заполнит слот → НЕ трогать
@@ -237,21 +266,32 @@ async function advanceFirstRoundByes(
       // Завершаем BYE-матч
       await tx.match.update({
         where: { id: match.id },
-        data: { status: MatchStatus.COMPLETED, winnerId, finishedAt: new Date(), scoreSnapshot: { bye: true } },
+        data: {
+          status: MatchStatus.COMPLETED,
+          winnerId,
+          finishedAt: new Date(),
+          scoreSnapshot: { bye: true },
+        },
       });
 
       // Двигаем победителя в следующий раунд
       if (round < totalRounds) {
-        const nextRound   = round + 1;
-        const nextPos     = Math.floor(position / 2);
+        const nextRound = round + 1;
+        const nextPos = Math.floor(position / 2);
         const nextSection = nextRound === totalRounds ? "final" : "main";
-        const nextMatch   = matchMap.get(`${nextRound}:${nextPos}:${nextSection}`);
+        const nextMatch = matchMap.get(
+          `${nextRound}:${nextPos}:${nextSection}`,
+        );
         if (nextMatch) {
           const slot = position % 2 === 0 ? "red" : "blue";
-          const data = slot === "red" ? { redAthleteId: winnerId } : { blueAthleteId: winnerId };
+          const data =
+            slot === "red"
+              ? { redAthleteId: winnerId }
+              : { blueAthleteId: winnerId };
           await tx.match.update({ where: { id: nextMatch.id }, data });
           const ns = memSlots.get(nextMatch.id)!;
-          if (slot === "red") ns.red = winnerId; else ns.blue = winnerId;
+          if (slot === "red") ns.red = winnerId;
+          else ns.blue = winnerId;
         }
       }
     }
@@ -310,11 +350,7 @@ async function generateMixedBracket(
   athletes: { id: string; clubId: string | null }[],
   seed: number,
 ) {
-  const seeded = seedAthletes(athletes, athletes.length, seed);
-  // seeded may contain null slots — filter them out
-  const seededIds = seeded.filter(Boolean) as string[];
-
-  const plan = buildMixedBracket(seededIds);
+  const plan = buildMixedBracketFromAthletes(athletes, seed);
 
   const bracket = await prisma.$transaction(async (tx) => {
     const created = await tx.bracket.create({
@@ -387,7 +423,9 @@ export async function advanceGroupWinnersIfComplete(
   const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
   if (!bracket || bracket.format !== BracketFormat.MIXED) return;
 
-  const metadata = bracket.metadata as { groups: { label: string; athleteIds: string[] }[] } | null;
+  const metadata = bracket.metadata as {
+    groups: { label: string; athleteIds: string[] }[];
+  } | null;
   if (!metadata?.groups) return;
 
   const groupLabel = groupSection.replace("group_", ""); // "A"
@@ -418,7 +456,11 @@ export async function advanceGroupWinnersIfComplete(
 
   for (const standing of top2) {
     const place = standing.place as 1 | 2;
-    const { position, slot } = playoffSlotForGroup(groupIdx, place, _playoffSize);
+    const { position, slot } = playoffSlotForGroup(
+      groupIdx,
+      place,
+      _playoffSize,
+    );
 
     const playoffMatch = await prisma.match.findFirst({
       where: { bracketId, bracketSection: "playoff", round: 1, position },
@@ -445,14 +487,20 @@ async function resolvePlayoffByes(
 ): Promise<void> {
   // We need ALL groups done before processing BYEs (some slots still TBD)
   const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
-  const metadata = bracket?.metadata as { groups: { label: string; athleteIds: string[] }[] } | null;
+  const metadata = bracket?.metadata as {
+    groups: { label: string; athleteIds: string[] }[];
+  } | null;
   if (!metadata?.groups) return;
 
   // Check all groups are complete
   for (const g of metadata.groups) {
     const section = `group_${g.label}`;
     const incomplete = await prisma.match.count({
-      where: { bracketId, bracketSection: section, status: { not: MatchStatus.COMPLETED } },
+      where: {
+        bracketId,
+        bracketSection: section,
+        status: { not: MatchStatus.COMPLETED },
+      },
     });
     if (incomplete > 0) return; // still waiting
   }
@@ -483,13 +531,21 @@ async function resolvePlayoffByes(
     // Advance winner to round 2
     const nextPos = Math.floor(m.position / 2);
     const nextMatch = await prisma.match.findFirst({
-      where: { bracketId, bracketSection: "playoff", round: 2, position: nextPos },
+      where: {
+        bracketId,
+        bracketSection: "playoff",
+        round: 2,
+        position: nextPos,
+      },
     });
     if (nextMatch) {
       const slot = m.position % 2 === 0 ? "red" : "blue";
       await prisma.match.update({
         where: { id: nextMatch.id },
-        data: slot === "red" ? { redAthleteId: winnerId } : { blueAthleteId: winnerId },
+        data:
+          slot === "red"
+            ? { redAthleteId: winnerId }
+            : { blueAthleteId: winnerId },
       });
     }
   }
@@ -506,23 +562,54 @@ export async function getBracket(bracketId: string) {
       tournament: { select: { id: true, name: true, status: true } },
       category: true,
       matches: {
-        orderBy: [{ bracketSection: "asc" }, { round: "asc" }, { position: "asc" }],
+        orderBy: [
+          { bracketSection: "asc" },
+          { round: "asc" },
+          { position: "asc" },
+        ],
         include: {
-          redAthlete: { select: { id: true, name: true, surname: true, clubId: true } },
-          blueAthlete: { select: { id: true, name: true, surname: true, clubId: true } },
+          redAthlete: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              avatarUrl: true,
+              club: { select: { country: true } },
+            },
+          },
+          blueAthlete: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              avatarUrl: true,
+              club: { select: { country: true } },
+            },
+          },
         },
       },
     },
   });
-  if (!bracket) throw new BracketError("BRACKET_NOT_FOUND", "Сетка не найдена", 404);
+  if (!bracket)
+    throw new BracketError("BRACKET_NOT_FOUND", "Сетка не найдена", 404);
   return bracket;
 }
 
-export async function getBracketByCategory(tournamentId: string, categoryId: string) {
+export async function getBracketByCategory(
+  tournamentId: string,
+  categoryId: string,
+) {
   const bracket = await prisma.bracket.findUnique({
     where: { tournamentId_categoryId: { tournamentId, categoryId } },
   });
-  if (!bracket) throw new BracketError("BRACKET_NOT_FOUND", "Сетка для категории не найдена", 404);
+  if (!bracket)
+    throw new BracketError(
+      "BRACKET_NOT_FOUND",
+      "Сетка для категории не найдена",
+      404,
+    );
   return getBracket(bracket.id);
 }
 
@@ -530,14 +617,26 @@ export async function listBracketsForTournament(tournamentId: string) {
   return prisma.bracket.findMany({
     where: { tournamentId },
     include: {
-      category: { select: { id: true, name: true, gender: true, weightMin: true, weightMax: true, format: true } },
+      category: {
+        select: {
+          id: true,
+          name: true,
+          gender: true,
+          weightMin: true,
+          weightMax: true,
+          format: true,
+        },
+      },
       _count: { select: { matches: true } },
     },
     orderBy: { generatedAt: "asc" },
   });
 }
 
-export async function prepareTournamentDraw(actorUserId: string, tournamentId: string) {
+export async function prepareTournamentDraw(
+  actorUserId: string,
+  tournamentId: string,
+) {
   await assertAdmin(actorUserId);
 
   const tournament = await prisma.tournament.findUnique({
@@ -548,7 +647,8 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
       },
     },
   });
-  if (!tournament) throw new BracketError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!tournament)
+    throw new BracketError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
   if (
     tournament.status !== TournamentStatus.REGISTRATION_CLOSED &&
     tournament.status !== TournamentStatus.IN_PROGRESS
@@ -577,7 +677,9 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
       },
     });
     const existing = await prisma.bracket.findUnique({
-      where: { tournamentId_categoryId: { tournamentId, categoryId: category.id } },
+      where: {
+        tournamentId_categoryId: { tournamentId, categoryId: category.id },
+      },
       include: { _count: { select: { matches: true } } },
     });
 
@@ -602,7 +704,11 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
       continue;
     }
 
-    const bracket = await generateBracket(actorUserId, tournamentId, category.id);
+    const bracket = await generateBracket(
+      actorUserId,
+      tournamentId,
+      category.id,
+    );
     categoryReports.push({
       categoryId: category.id,
       status: "created",
@@ -611,11 +717,16 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
     });
   }
 
-  const tatami = await distributeTournamentTatami(tournamentId, tournament.tatamiCount);
+  const tatami = await distributeTournamentTatami(
+    tournamentId,
+    tournament.tatamiCount,
+  );
   const totals = {
     categories: tournament.categories.length,
-    bracketsCreated: categoryReports.filter((c) => c.status === "created").length,
-    bracketsExisting: categoryReports.filter((c) => c.status === "exists").length,
+    bracketsCreated: categoryReports.filter((c) => c.status === "created")
+      .length,
+    bracketsExisting: categoryReports.filter((c) => c.status === "exists")
+      .length,
     skipped: categoryReports.filter((c) => c.status === "skipped").length,
     playableMatches: tatami.assigned,
   };
@@ -623,7 +734,10 @@ export async function prepareTournamentDraw(actorUserId: string, tournamentId: s
   return { totals, categories: categoryReports, tatami };
 }
 
-async function distributeTournamentTatami(tournamentId: string, tatamiCount: number) {
+async function distributeTournamentTatami(
+  tournamentId: string,
+  tatamiCount: number,
+) {
   const matches = await prisma.match.findMany({
     where: {
       tournamentId,
@@ -634,7 +748,16 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     include: {
       bracket: {
         include: {
-          category: { select: { id: true, gender: true, ageMin: true, ageMax: true, weightMin: true, weightMax: true } },
+          category: {
+            select: {
+              id: true,
+              gender: true,
+              ageMin: true,
+              ageMax: true,
+              weightMin: true,
+              weightMax: true,
+            },
+          },
         },
       },
     },
@@ -662,7 +785,10 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     categoriesByBracket.set(match.bracketId, current);
   }
 
-  const plan = planTatamiAssignments([...categoriesByBracket.values()], tatamiCount);
+  const plan = planTatamiAssignments(
+    [...categoriesByBracket.values()],
+    tatamiCount,
+  );
 
   await prisma.$transaction(
     plan.assignments.map((assignment) =>
@@ -676,7 +802,11 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
     ),
   );
 
-  return { assigned: plan.assignments.length, loads: plan.loads, categories: plan.categories };
+  return {
+    assigned: plan.assignments.length,
+    loads: plan.loads,
+    categories: plan.categories,
+  };
 }
 
 // ============================================================
@@ -686,7 +816,8 @@ async function distributeTournamentTatami(tournamentId: string, tatamiCount: num
 export async function deleteBracket(actorUserId: string, bracketId: string) {
   await assertAdmin(actorUserId);
   const bracket = await prisma.bracket.findUnique({ where: { id: bracketId } });
-  if (!bracket) throw new BracketError("BRACKET_NOT_FOUND", "Сетка не найдена", 404);
+  if (!bracket)
+    throw new BracketError("BRACKET_NOT_FOUND", "Сетка не найдена", 404);
 
   // Нельзя удалить если уже есть начатые/завершённые матчи
   const startedMatches = await prisma.match.count({
@@ -713,6 +844,10 @@ export async function deleteBracket(actorUserId: string, bracketId: string) {
 async function assertAdmin(userId: string): Promise<void> {
   const u = await prisma.user.findUnique({ where: { id: userId } });
   if (!u || u.role !== UserRole.ADMIN) {
-    throw new BracketError("FORBIDDEN", "Только администратор может работать с сетками", 403);
+    throw new BracketError(
+      "FORBIDDEN",
+      "Только администратор может работать с сетками",
+      403,
+    );
   }
 }

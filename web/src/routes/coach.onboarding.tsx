@@ -64,7 +64,7 @@ const INPUT_CLS =
 
 function CoachOnboarding() {
   const { t } = useTranslation();
-  const { user, refreshMe } = useAuth();
+  const { user, refreshMe, logout } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -115,6 +115,22 @@ function CoachOnboarding() {
     onError: (e: any) =>
       setError(e instanceof ApiError ? e.message : t("coach_onboarding.cancel_error")),
   });
+
+  const cancelRegistration = useMutation({
+    mutationFn: () => api.auth.cancelRegistration(),
+    onSuccess: async () => {
+      await logout();
+      navigate({ to: "/login" });
+    },
+    onError: (e: any) =>
+      setError(e instanceof ApiError ? e.message : t("onboarding.cancel_registration_error")),
+  });
+
+  async function handleCancelRegistration() {
+    if (!window.confirm(t("onboarding.cancel_registration_confirm"))) return;
+    setError("");
+    cancelRegistration.mutate();
+  }
 
   async function savePhoneAndProceed() {
     if (!phone.trim()) return;
@@ -193,6 +209,19 @@ function CoachOnboarding() {
               <div className="text-xs text-muted-foreground">{t("coach_onboarding.subtitle")}</div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleCancelRegistration}
+            disabled={cancelRegistration.isPending}
+            className="inline-flex items-center gap-2 rounded-md border border-destructive/35 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          >
+            {cancelRegistration.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <X className="h-3.5 w-3.5" />
+            )}
+            {t("onboarding.cancel_registration")}
+          </button>
         </header>
 
         <main className="grid flex-1 gap-6 lg:grid-cols-[0.78fr_1fr]">

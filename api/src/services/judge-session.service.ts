@@ -63,10 +63,24 @@ export async function getValidSession(token: string) {
       match: {
         include: {
           redAthlete: {
-            select: { id: true, name: true, surname: true, clubId: true },
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              avatarUrl: true,
+              club: { select: { name: true, shortName: true, country: true } },
+            },
           },
           blueAthlete: {
-            select: { id: true, name: true, surname: true, clubId: true },
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              clubId: true,
+              avatarUrl: true,
+              club: { select: { name: true, shortName: true, country: true } },
+            },
           },
           bracket: { include: { category: true } },
           tournament: {

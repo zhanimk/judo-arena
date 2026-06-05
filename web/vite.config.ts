@@ -30,6 +30,11 @@ export default defineConfig({
           ws: true,
           secure: false,
         },
+        "/uploads": {
+          target: "http://localhost:4000",
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
     // Enable source maps for Sentry (only in production build)

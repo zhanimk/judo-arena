@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Clock } from "lucide-react";
+import { MapPin, Clock, Youtube } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "@/components/dashboard/DashboardShell";
 import { api, ApiError } from "@/lib/api";
@@ -14,17 +14,38 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
   const [weighInLocation, setWeighInLocation] = useState(tourney.weighInLocation ?? "");
   const [weighInStart, setWeighInStart] = useState(toDateTimeLocal(tourney.weighInStart ?? ""));
   const [weighInEnd, setWeighInEnd] = useState(toDateTimeLocal(tourney.weighInEnd ?? ""));
-  const [applicationDeadline, setApplicationDeadline] = useState(toDateTimeLocal(tourney.applicationDeadline ?? tourney.startDate));
+  const [applicationDeadline, setApplicationDeadline] = useState(
+    toDateTimeLocal(tourney.applicationDeadline ?? tourney.startDate),
+  );
+  const [entryFeeKzt, setEntryFeeKzt] = useState(String(tourney.entryFeeKzt ?? 0));
+  const [kaspiPaymentUrl, setKaspiPaymentUrl] = useState(tourney.kaspiPaymentUrl ?? "");
   const [error, setError] = useState("");
+
+  const tatamiCount = Number(tourney.tatamiCount ?? 1);
+  const initUrls = useMemo(() => {
+    const saved: string[] = Array.isArray(tourney.youtubeUrls) ? tourney.youtubeUrls : [];
+    return Array.from({ length: tatamiCount }, (_, i) => saved[i] ?? "");
+  }, [tourney.youtubeUrls, tatamiCount]);
+  const [youtubeUrls, setYoutubeUrls] = useState<string[]>(initUrls);
+
   const savePoster = useMutation({
-    mutationFn: () => api.tournaments.update(tourney.id, {
-      posterUrl: posterUrl || null,
-      mapUrl: mapUrl || null,
-      weighInLocation: weighInLocation || null,
-      weighInStart: weighInStart ? new Date(weighInStart).toISOString() : null,
-      weighInEnd: weighInEnd ? new Date(weighInEnd).toISOString() : null,
-      applicationDeadline: applicationDeadline ? new Date(applicationDeadline).toISOString() : null,
-    }),
+    mutationFn: () =>
+      api.tournaments.update(tourney.id, {
+        posterUrl: posterUrl || null,
+        mapUrl: mapUrl || null,
+        weighInLocation: weighInLocation || null,
+        weighInStart: weighInStart ? new Date(weighInStart).toISOString() : null,
+        weighInEnd: weighInEnd ? new Date(weighInEnd).toISOString() : null,
+        applicationDeadline: applicationDeadline
+          ? new Date(applicationDeadline).toISOString()
+          : null,
+        entryFeeKzt: Number(entryFeeKzt) || 0,
+        kaspiPaymentUrl: kaspiPaymentUrl || null,
+        youtubeUrls:
+          youtubeUrls.map((u) => u.trim()).filter(Boolean).length > 0
+            ? youtubeUrls.map((u) => u.trim())
+            : null,
+      }),
     onSuccess: () => {
       setError("");
       qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
@@ -37,18 +58,37 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
       <div className="grid gap-4 md:grid-cols-2 text-sm">
         <Field label={t("tournament.name")} value={localizeName(tourney.name)} />
         <Field label={t("tournament.location")} value={`${tourney.location}, ${tourney.city}`} />
-        <Field label={t("tournament.start_date")} value={new Date(tourney.startDate).toLocaleString()} />
-        <Field label={t("tournament.end_date")} value={new Date(tourney.endDate).toLocaleString()} />
-        <Field label={t("tournament.application_deadline")} value={tourney.applicationDeadline ? new Date(tourney.applicationDeadline).toLocaleString() : new Date(tourney.startDate).toLocaleString()} />
+        <Field
+          label={t("tournament.start_date")}
+          value={new Date(tourney.startDate).toLocaleString()}
+        />
+        <Field
+          label={t("tournament.end_date")}
+          value={new Date(tourney.endDate).toLocaleString()}
+        />
+        <Field
+          label={t("tournament.application_deadline")}
+          value={
+            tourney.applicationDeadline
+              ? new Date(tourney.applicationDeadline).toLocaleString()
+              : new Date(tourney.startDate).toLocaleString()
+          }
+        />
         <Field label={t("tournament.weigh_in_tab")} value={formatWeighIn(tourney, t)} />
         <Field label={t("common.tatami")} value={String(tourney.tatamiCount)} />
         <Field label={t("tournament.categories")} value={String(tourney.categories?.length ?? 0)} />
-        <Field label={t("tournament.metric_applications")} value={String(tourney._count?.applications ?? 0)} />
+        <Field
+          label={t("tournament.metric_applications")}
+          value={String(tourney._count?.applications ?? 0)}
+        />
+        <Field label={t("payments.entry_fee")} value={formatKzt(tourney.entryFeeKzt ?? 0)} />
         <Field label={t("common.language")} value={tourney.primaryLocale} />
       </div>
       <div className="mt-4 grid gap-4 border-t border-border/30 pt-4 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div>
-          <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{t("tournament.poster")}, {t("tournament.map_link")}, {t("tournament.weigh_in_tab")}</div>
+          <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+            {t("tournament.poster")}, {t("tournament.map_link")}, {t("tournament.weigh_in_tab")}
+          </div>
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
             <div className="grid gap-3 md:grid-cols-2">
               <Input
@@ -88,6 +128,20 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
                 type="datetime-local"
                 value={weighInEnd}
                 onChange={setWeighInEnd}
+              />
+              <Input
+                label={t("payments.entry_fee")}
+                type="number"
+                min={0}
+                value={entryFeeKzt}
+                onChange={setEntryFeeKzt}
+              />
+              <Input
+                label={t("payments.kaspi_url")}
+                type="url"
+                value={kaspiPaymentUrl}
+                onChange={setKaspiPaymentUrl}
+                placeholder="https://kaspi.kz/pay?...amount={amount}&order={orderId}"
               />
             </div>
             <button
@@ -146,12 +200,56 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
           </div>
         </div>
       </div>
+      <div className="mt-4 pt-4 border-t border-border/30">
+        <div className="mb-3 flex items-center gap-2">
+          <Youtube className="h-4 w-4 text-red-500" />
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">
+            YouTube трансляция (татамиге байланысты)
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: tatamiCount }, (_, i) => (
+            <Input
+              key={i}
+              label={`Татами #${i + 1} — YouTube URL`}
+              type="url"
+              value={youtubeUrls[i] ?? ""}
+              onChange={(v: string) =>
+                setYoutubeUrls((prev) => {
+                  const next = [...prev];
+                  next[i] = v;
+                  return next;
+                })
+              }
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => savePoster.mutate()}
+          disabled={savePoster.isPending}
+          className="mt-3 rounded-md bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow disabled:opacity-50 hover:bg-red-500"
+        >
+          YouTube сақтау
+        </button>
+        <p className="mt-2 text-xs text-muted-foreground">
+          YouTube видео URL немесе тікелей эфир URL. Публичный беттегі «Татами live» қойындысында
+          көрсетіледі.
+        </p>
+      </div>
       {tourney.description && (
         <div className="mt-4 pt-4 border-t border-border/30">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{t("tournament.description")}</div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
+            {t("tournament.description")}
+          </div>
           <p className="text-sm leading-relaxed">{localizeName(tourney.description)}</p>
         </div>
       )}
     </Panel>
   );
+}
+
+function formatKzt(value: number): string {
+  return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
 }

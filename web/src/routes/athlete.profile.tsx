@@ -4,6 +4,8 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  FileText,
   Loader2,
   Save,
   Search,
@@ -16,23 +18,26 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type InputHTMLAttributes } from "react";
 import { api, ApiError, mediaUrl } from "@/lib/api";
-import { Avatar } from "@/components/ui/avatar-image";
+import { ProfilePhoto } from "@/components/ui/profile-photo";
 import { toast } from "sonner";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
 
+type UserDocumentType = "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
 const BELT_RANKS = [
-  { value: "6 КЮ", label: "6 КЮ — Ақ белбеу" },
-  { value: "5 КЮ", label: "5 КЮ — Сары белбеу" },
-  { value: "4 КЮ", label: "4 КЮ — Қызғылт сары белбеу" },
-  { value: "3 КЮ", label: "3 КЮ — Жасыл белбеу" },
-  { value: "2 КЮ", label: "2 КЮ — Көк белбеу" },
-  { value: "1 КЮ", label: "1 КЮ — Қоңыр белбеу" },
-  { value: "1 ДАН", label: "1 ДАН — Қара белбеу" },
-  { value: "2 ДАН", label: "2 ДАН — Қара белбеу" },
-  { value: "3 ДАН", label: "3 ДАН — Қара белбеу" },
-  { value: "4 ДАН", label: "4 ДАН — Қара белбеу" },
-  { value: "5 ДАН", label: "5 ДАН — Қара белбеу" },
+  { value: "6 КЮ", labelKey: "athlete_dashboard.belt_white" },
+  { value: "5 КЮ", labelKey: "athlete_dashboard.belt_yellow" },
+  { value: "4 КЮ", labelKey: "athlete_dashboard.belt_orange" },
+  { value: "3 КЮ", labelKey: "athlete_dashboard.belt_green" },
+  { value: "2 КЮ", labelKey: "athlete_dashboard.belt_blue" },
+  { value: "1 КЮ", labelKey: "athlete_dashboard.belt_brown" },
+  { value: "1 ДАН", labelKey: "athlete_dashboard.belt_black" },
+  { value: "2 ДАН", labelKey: "athlete_dashboard.belt_black" },
+  { value: "3 ДАН", labelKey: "athlete_dashboard.belt_black" },
+  { value: "4 ДАН", labelKey: "athlete_dashboard.belt_black" },
+  { value: "5 ДАН", labelKey: "athlete_dashboard.belt_black" },
 ];
 
 // Normalize any belt rank string to our canonical form "N КЮ" / "N ДАН"
@@ -122,6 +127,28 @@ const NEXT_LEVEL_TECHNIQUES: Record<string, { next: string; techniques: string[]
   },
 };
 
+function nextLevelLabel(belt: string, t: TranslateFn): string {
+  const keyByBelt: Record<string, string> = {
+    "6 КЮ": "athlete_dashboard.next_5_kyu",
+    "5 КЮ": "athlete_dashboard.next_4_kyu",
+    "4 КЮ": "athlete_dashboard.next_3_kyu",
+    "3 КЮ": "athlete_dashboard.next_2_kyu",
+    "2 КЮ": "athlete_dashboard.next_1_kyu",
+    "1 КЮ": "athlete_dashboard.next_1_dan",
+  };
+  return t(keyByBelt[belt] ?? "athlete_dashboard.next_5_kyu");
+}
+
+function techniqueLabel(technique: string, t: TranslateFn): string {
+  const keyByTechnique: Record<string, string> = {
+    "Барлық алдыңғы техниканы кемелдендіру": "athlete_dashboard.technique_master_previous",
+    "Комбинация жасау": "athlete_dashboard.technique_combinations",
+    "Не-вадза меңгеру": "athlete_dashboard.technique_ne_waza",
+    "Жарыста тұрақты нәтиже": "athlete_dashboard.technique_competition_consistency",
+  };
+  return keyByTechnique[technique] ? t(keyByTechnique[technique]) : technique;
+}
+
 export const Route = createFileRoute("/athlete/profile")({
   head: () => ({ meta: [{ title: "Профиль — Judo-Arena" }] }),
   component: () => (
@@ -179,10 +206,22 @@ function Profile() {
   });
 
   const uploadAvatar = useMutation({
-    mutationFn: (file: File) => api.uploads.image(file),
-    onSuccess: ({ url }) => setForm((current) => ({ ...current, avatarUrl: url })),
-    onError: (e: any) =>
-      setError(e instanceof ApiError ? e.message : t("profile.avatar_upload_error")),
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("NO_USER");
+      const { url } = await api.uploads.avatar(file);
+      await api.athletes.update(user.id, { avatarUrl: url });
+      return { url };
+    },
+    onSuccess: async ({ url }) => {
+      setForm((current) => ({ ...current, avatarUrl: url }));
+      await refreshMe();
+      toast.success(t("profile.photo_uploaded"));
+    },
+    onError: (e: any) => {
+      const msg = e instanceof ApiError ? e.message : t("profile.avatar_upload_error");
+      setError(msg);
+      toast.error(msg);
+    },
   });
 
   if (!user) return null;
@@ -295,7 +334,7 @@ function Profile() {
                   <option value="">{t("profile.belt_placeholder")}</option>
                   {BELT_RANKS.map((b) => (
                     <option key={b.value} value={b.value}>
-                      {b.label}
+                      {b.value} - {t(b.labelKey)}
                     </option>
                   ))}
                 </select>
@@ -324,7 +363,7 @@ function Profile() {
                     )}
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -334,6 +373,9 @@ function Profile() {
                     />
                   </label>
                 </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {t("profile.photo_requirements")}
+                </p>
               </div>
               <button
                 type="submit"
@@ -402,16 +444,32 @@ function Profile() {
           {/* Next level techniques card */}
           <NextLevelCard beltRank={user.beltRank} />
 
+          <Panel title={t("documents.title")}>
+            <div className="space-y-3">
+              <DocumentUploadRow
+                type="BIRTH_CERTIFICATE"
+                label={t("documents.birth_certificate")}
+                hint={t("documents.birth_certificate_hint")}
+                document={findDocument(user.documents, "BIRTH_CERTIFICATE")}
+                refreshMe={refreshMe}
+              />
+              <DocumentUploadRow
+                type="STUDY_CERTIFICATE"
+                label={t("documents.study_certificate")}
+                hint={t("documents.study_certificate_hint")}
+                document={findDocument(user.documents, "STUDY_CERTIFICATE")}
+                refreshMe={refreshMe}
+              />
+            </div>
+          </Panel>
+
           <Panel title={t("dashboard.settings")}>
             <div className="space-y-3">
-              {user.avatarUrl && (
-                <Avatar
-                  src={mediaUrl(user.avatarUrl)}
-                  name={`${user.name} ${user.surname}`}
-                  size={80}
-                  className="border border-gold/30"
-                />
-              )}
+              <ProfilePhoto
+                src={user.avatarUrl ? mediaUrl(user.avatarUrl) : null}
+                name={`${user.name} ${user.surname}`}
+                width={100}
+              />
               <Field label={t("profile.language")} value={localeLabel(user.preferredLocale)} />
               <Field
                 label={t("profile.registered_at")}
@@ -429,23 +487,112 @@ function Profile() {
   );
 }
 
+function DocumentUploadRow({
+  type,
+  label,
+  hint,
+  document,
+  refreshMe,
+}: {
+  type: UserDocumentType;
+  label: string;
+  hint: string;
+  document?: any;
+  refreshMe: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [error, setError] = useState("");
+
+  const upload = useMutation({
+    mutationFn: async (file: File) => {
+      const uploaded = await api.uploads.document(file);
+      return api.auth.saveDocument({
+        type,
+        url: uploaded.url,
+        originalName: uploaded.fileName || file.name,
+        mimeType: uploaded.mimeType,
+        sizeBytes: uploaded.size,
+      });
+    },
+    onSuccess: async () => {
+      setError("");
+      await refreshMe();
+      toast.success(t("documents.saved"));
+    },
+    onError: (e: any) => {
+      const msg = e instanceof ApiError ? e.message : t("documents.upload_error");
+      setError(msg);
+      toast.error(msg);
+    },
+  });
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/35 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <FileText className="h-4 w-4 text-gold" />
+            {label}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+          {document ? (
+            <a
+              href={mediaUrl(document.url)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{document.originalName || t("documents.open_file")}</span>
+            </a>
+          ) : (
+            <div className="mt-2 text-xs text-muted-foreground">{t("documents.not_uploaded")}</div>
+          )}
+          {error && <div className="mt-2 text-xs text-destructive">{error}</div>}
+        </div>
+        <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+          {upload.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
+          {document ? t("documents.replace") : t("documents.upload")}
+          <input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) upload.mutate(file);
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function findDocument(documents: any[] | undefined, type: UserDocumentType) {
+  return documents?.find((document) => document.type === type);
+}
+
 function NextLevelCard({ beltRank }: { beltRank?: string | null }) {
   const { t } = useTranslation();
-  void t;
   const key = normalizeBelt(beltRank);
   const data = NEXT_LEVEL_TECHNIQUES[key];
   if (!data) return null;
   return (
-    <Panel title="Келесі деңгейге дайындық">
+    <Panel title={t("athlete_dashboard.next_level_preparation")}>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Мақсат:</span>
+          <span className="text-xs text-muted-foreground">{t("athlete_dashboard.target")}:</span>
           <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-0.5 text-xs font-bold text-gold">
-            {data.next}
+            {nextLevelLabel(key, t)}
           </span>
         </div>
         <div className="text-xs uppercase tracking-widest text-muted-foreground">
-          Үйренетін техникалар:
+          {t("athlete_dashboard.learn_techniques")}:
         </div>
         <div className="flex flex-wrap gap-1.5">
           {data.techniques.map((tech, i) => (
@@ -456,13 +603,12 @@ function NextLevelCard({ beltRank }: { beltRank?: string | null }) {
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gold/20 text-[8px] font-bold text-gold">
                 {i + 1}
               </span>
-              {tech}
+              {techniqueLabel(tech, t)}
             </span>
           ))}
         </div>
         <div className="rounded-lg border border-gold/15 bg-gold/5 p-2.5 text-xs text-muted-foreground">
-          💡 Осы техникаларды тренерменен бірге жаттық, рейтинг жарыстарына қатысып, келесі деңгейге
-          жет!
+          💡 {t("athlete_dashboard.practice_hint_profile")}
         </div>
       </div>
     </Panel>

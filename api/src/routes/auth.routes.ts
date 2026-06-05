@@ -44,6 +44,7 @@ import {
   loginSchema,
   updateLocaleSchema,
   updateMeProfileSchema,
+  upsertUserDocumentSchema,
 } from "../validators/auth.schema.js";
 import {
   register,
@@ -52,6 +53,8 @@ import {
   logout,
   updateLocale,
   updateMeProfile,
+  cancelMyRegistration,
+  upsertMyDocument,
   publicUser,
 } from "../services/auth.service.js";
 import { authenticate } from "../middlewares/authenticate.js";
@@ -188,12 +191,19 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // ---- DELETE /me — cancel fresh athlete/coach registration ----
+  app.delete("/me", { preHandler: [authenticate] }, async (request, reply) => {
+    await cancelMyRegistration(request.user!.sub);
+    reply.clearCookie(REFRESH_COOKIE, { path: "/api/auth" });
+    return reply.code(204).send();
+  });
+
   // ---- GET /me ----
   app.get("/me", { preHandler: [authenticate] }, async (request, reply) => {
     const { prisma } = await import("../lib/prisma.js");
     const user = await prisma.user.findUnique({
       where: { id: request.user!.sub },
-      include: { club: true },
+      include: { club: true, documents: { orderBy: { updatedAt: "desc" } } },
     });
     if (!user) return reply.code(404).send({ error: "USER_NOT_FOUND" });
     return reply.send({ user: publicUser(user) });
@@ -218,6 +228,17 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const input = updateMeProfileSchema.parse(request.body);
       const user = await updateMeProfile(request.user!.sub, input);
       return reply.send({ user: publicUser(user) });
+    },
+  );
+
+  // ---- PUT /me/documents ----
+  app.put(
+    "/me/documents",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const input = upsertUserDocumentSchema.parse(request.body);
+      const document = await upsertMyDocument(request.user!.sub, input);
+      return reply.send({ document });
     },
   );
 

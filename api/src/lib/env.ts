@@ -57,6 +57,7 @@ const schema = z.object({
     .default(60),
 
   APP_URL: z.string().default("http://localhost:3000"),
+  KASPI_CALLBACK_SECRET: z.string().optional(),
 
   SENTRY_DSN: z.string().url().optional(),
 

@@ -37,12 +37,28 @@ export async function getMatch(matchId: string) {
     where: { id: matchId },
     include: {
       redAthlete: {
-        select: { id: true, name: true, surname: true, clubId: true },
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          clubId: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
       },
       blueAthlete: {
-        select: { id: true, name: true, surname: true, clubId: true },
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          clubId: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
       },
-      winner: { select: { id: true, name: true, surname: true } },
+      winner: {
+        select: { id: true, name: true, surname: true, avatarUrl: true },
+      },
       bracket: { include: { category: true } },
       tournament: { select: { id: true, name: true, status: true } },
       events: { orderBy: { occurredAt: "asc" } },
@@ -84,8 +100,24 @@ export async function listMatches(query: {
       { position: "asc" },
     ],
     include: {
-      redAthlete: { select: { id: true, name: true, surname: true } },
-      blueAthlete: { select: { id: true, name: true, surname: true } },
+      redAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
+      },
+      blueAthlete: {
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          avatarUrl: true,
+          club: { select: { name: true, shortName: true, country: true } },
+        },
+      },
       bracket: {
         select: { id: true, format: true, categoryId: true, category: true },
       },

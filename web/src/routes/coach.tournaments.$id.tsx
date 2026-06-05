@@ -8,6 +8,8 @@ import {
   Clock,
   CheckCircle2,
   Download,
+  CreditCard,
+  ExternalLink,
   GitBranch,
   Loader2,
   MapPin,
@@ -149,6 +151,20 @@ function CoachTournamentDetail() {
     onError: (e: any) =>
       setError(e instanceof ApiError ? e.message : t("coach.application_submit_error")),
   });
+  const payKaspi = useMutation({
+    mutationFn: () => {
+      if (!ownApplication) throw new Error("NO_APPLICATION");
+      return api.applications.payKaspi(ownApplication.id);
+    },
+    onSuccess: (updated: any) => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
+      if (updated?.paymentUrl) {
+        window.location.assign(updated.paymentUrl);
+      }
+    },
+    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+  });
 
   const ownApplication = appsQuery.data?.[0] ?? null;
   const entries = useMemo(() => ownApplication?.entries ?? [], [ownApplication]);
@@ -173,6 +189,13 @@ function CoachTournamentDetail() {
     (item: { entry: any; issues: string[] }) => item.issues.length > 0,
   ).length;
   const enteredCategoryCount = enteredByCategory.size;
+  const entryFeeKzt = Number(tQuery.data?.entryFeeKzt ?? 0);
+  const paymentTotalKzt = entryFeeKzt * entries.length;
+  const paymentRequired = !!ownApplication && paymentTotalKzt > 0;
+  const paymentPaid =
+    !paymentRequired ||
+    (ownApplication?.paymentStatus === "PAID" &&
+      Number(ownApplication?.paymentAmountKzt ?? 0) >= paymentTotalKzt);
 
   if (tQuery.isLoading) {
     return (
@@ -195,9 +218,9 @@ function CoachTournamentDetail() {
     );
   }
 
-  const categories = (tournament.categories ?? []).filter(
-    (category: any) => filter === "ALL" || category.gender === filter,
-  );
+  const categories = (tournament.categories ?? [])
+    .filter((category: any) => filter === "ALL" || category.gender === filter)
+    .sort(sortCategoriesByAgeWeight);
   const categoryCount = tournament.categories?.length ?? 0;
   const deadline = tournament.applicationDeadline ?? tournament.startDate;
   const deadlinePassed = new Date(deadline).getTime() < Date.now();
@@ -250,6 +273,9 @@ function CoachTournamentDetail() {
                 {tournament.location}, {tournament.city}
               </Info>
               <Info icon={Clock}>{formatWeighIn(tournament, t)}</Info>
+              <Info icon={CreditCard}>
+                {t("payments.entry_fee")}: {formatKzt(tournament.entryFeeKzt ?? 0)}
+              </Info>
               <Info icon={Users}>{t("coach.my_athletes_info", { count: entries.length })}</Info>
               <Info icon={GitBranch}>
                 {t("coach.brackets_info", { count: bracketsQuery.data?.length ?? 0 })}
@@ -371,7 +397,7 @@ function CoachTournamentDetail() {
           title={t("coach.my_application")}
           action={<ApplicationStatusBadge status={ownApplication.status} />}
         >
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <ApplicationMetric label={t("dashboard.athletes")} value={entries.length} />
             <ApplicationMetric label={t("common.category")} value={enteredCategoryCount} />
             <ApplicationMetric
@@ -390,6 +416,22 @@ function CoachTournamentDetail() {
                   : ownApplication.status === "REJECTED"
                     ? "red"
                     : "gold"
+              }
+            />
+            <ApplicationMetric
+              label={t("payments.status")}
+              value={String(
+                t(
+                  `payments.status_${ownApplication.paymentStatus ?? "NOT_REQUIRED"}`,
+                  ownApplication.paymentStatus ?? "NOT_REQUIRED",
+                ),
+              )}
+              tone={
+                ownApplication.paymentStatus === "PAID"
+                  ? "green"
+                  : ownApplication.paymentStatus === "PENDING"
+                    ? "gold"
+                    : undefined
               }
             />
           </div>
@@ -727,6 +769,41 @@ function CoachTournamentDetail() {
             )}
 
             {/* Responsibility / Rules block */}
+            {paymentRequired && (
+              <div className="mb-4 rounded-lg border border-border/50 bg-background/30 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-muted-foreground">
+                    {t("payments.to_pay_before_submit")}
+                  </span>
+                  <span className="font-display text-xl font-bold text-gold">
+                    {formatKzt(entryFeeKzt * entries.length)}
+                  </span>
+                </div>
+                <div
+                  className={`mt-2 text-xs ${paymentPaid ? "text-emerald-300" : "text-amber-200"}`}
+                >
+                  {String(
+                    t(`payments.status_${ownApplication.paymentStatus ?? "PENDING"}`, {
+                      defaultValue: ownApplication.paymentStatus ?? "PENDING",
+                    }),
+                  )}
+                </div>
+                {!paymentPaid && (
+                  <button
+                    type="button"
+                    onClick={() => payKaspi.mutate()}
+                    disabled={payKaspi.isPending || entries.length === 0 || deadlinePassed}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:bg-gold/15 disabled:opacity-50"
+                  >
+                    {payKaspi.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <CreditCard className="h-4 w-4" /> {t("payments.pay_kaspi")}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Responsibility / Rules block */}
             {responsibilityAccepted ? (
               <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/8 p-3 text-sm">
                 <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
@@ -773,7 +850,8 @@ function CoachTournamentDetail() {
                 entries.length === 0 ||
                 !responsibilityAccepted ||
                 deadlinePassed ||
-                invalidEntryCount > 0
+                invalidEntryCount > 0 ||
+                !paymentPaid
               }
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
@@ -794,6 +872,9 @@ function CoachTournamentDetail() {
             )}
             {invalidEntryCount > 0 && (
               <div className="mt-2 text-xs text-amber-200">{t("coach.fix_invalid_entries")}</div>
+            )}
+            {paymentRequired && !paymentPaid && entries.length > 0 && (
+              <div className="mt-2 text-xs text-amber-200">{t("payments.pay_before_submit")}</div>
             )}
             {!responsibilityAccepted && entries.length > 0 && (
               <div className="mt-2 text-xs text-amber-300">
@@ -971,6 +1052,13 @@ function categoryTitle(category: any): string {
   return `${category.gender === "MALE" ? "M" : "F"} ${category.ageMin}-${category.ageMax} ${category.weightMin}-${category.weightMax}kg`;
 }
 
+function sortCategoriesByAgeWeight(a: any, b: any): number {
+  if (a.gender !== b.gender) return String(a.gender).localeCompare(String(b.gender));
+  if (a.ageMin !== b.ageMin) return Number(a.ageMin) - Number(b.ageMin);
+  if (a.weightMin !== b.weightMin) return Number(a.weightMin) - Number(b.weightMin);
+  return Number(a.weightMax) - Number(b.weightMax);
+}
+
 function fitsCategory(athlete: any, category: any): boolean {
   if (!athlete.dateOfBirth || !athlete.weightKg) return false;
   const age = getAge(athlete.dateOfBirth);
@@ -1020,6 +1108,10 @@ function athleteName(athlete: any): string {
 
 function dateRange(start: string, end: string): string {
   return `${new Date(start).toLocaleDateString("kk-KZ")} - ${new Date(end).toLocaleDateString("kk-KZ")}`;
+}
+
+function formatKzt(value: number): string {
+  return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
 }
 
 function formatWeighIn(tournament: any, t: any): string {

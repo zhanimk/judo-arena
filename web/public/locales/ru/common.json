@@ -45,7 +45,9 @@
     "reports": "Отчёты",
     "broadcast": "Рассылка",
     "my_club": "Мой клуб",
-    "panel": "Панель"
+    "panel": "Панель",
+    "coaches": "Тренеры",
+    "coach": "Тренер"
   },
   "status": {
     "DRAFT": "Черновик",
@@ -65,6 +67,10 @@
   },
   "common": {
     "loading": "Загрузка...",
+    "copy": "Копировать",
+    "copied": "Скопировано",
+    "link": "Ссылка",
+    "update": "Обновить",
     "save": "Сохранить",
     "saving": "Сохранение...",
     "cancel": "Отмена",
@@ -158,7 +164,10 @@
     "years_short": "лет",
     "kg": "кг",
     "participant": "Участник",
-    "irreversible": "Это действие нельзя отменить."
+    "irreversible": "Это действие нельзя отменить.",
+    "athletes": "Спортсмены",
+    "language": "Язык",
+    "not_found": "Не найдено"
   },
   "auth": {
     "login_title": "Вход в систему",
@@ -194,7 +203,9 @@
     "signing_in": "Вход...",
     "registering": "Регистрация...",
     "welcome_back": "С возвращением!",
-    "date_of_birth": "Дата рождения"
+    "date_of_birth": "Дата рождения",
+    "pwd_no_match": "Пароли не совпадают",
+    "demo_access": "Демо вход"
   },
   "scoring": {
     "ippon": "Иппон",
@@ -263,7 +274,23 @@
     "male_label": "Мужчины",
     "female_label": "Женщины",
     "no_category_here": "нет категорий",
-    "final": "Финал"
+    "final": "Финал",
+    "finals_title": "Финалы",
+    "semifinal": "Полуфинал",
+    "repechage": "Утешительные встречи",
+    "repechage_n": "Утешительная {{n}}",
+    "bronze_matches": "Встречи за бронзу",
+    "group": "Группа",
+    "group_table": "Таблица группы",
+    "standing_wins": "Победы",
+    "standing_losses": "Поражения",
+    "standing_played": "Матчи",
+    "advances_to_playoff": "Выходит в плей-офф",
+    "section_main": "Основная сетка",
+    "section_repechage": "Утешение",
+    "section_bronze1": "Бронза 1",
+    "section_bronze2": "Бронза 2",
+    "section_final": "Финал"
   },
   "notification": {
     "all": "Все",
@@ -677,7 +704,8 @@
     "min_short": "мин",
     "est_duration": "Ориентировочная длительность",
     "no_location": "Место не указано",
-    "no_time": "Время не указано"
+    "no_time": "Время не указано",
+    "primary_locale": "Основной язык"
   },
   "athlete": {
     "role_label": "Спортсмен",
@@ -1020,7 +1048,9 @@
     "create_user_title": "Новый пользователь",
     "block_club_hint": "Заблокированный клуб не может отправлять заявки.",
     "block_reason": "Причина",
-    "block_reason_placeholder": "Причина блокировки..."
+    "block_reason_placeholder": "Причина блокировки...",
+    "club_not_found": "Клуб не найден",
+    "user_details": "Карточка пользователя"
   },
   "profile": {
     "title": "Мой профиль",
@@ -1039,6 +1069,7 @@
     "save_error": "Профиль не сохранён",
     "photo_uploaded": "Фото загружено ✓",
     "photo_error": "Фото не загружено",
+    "photo_requirements": "Фото 3:4, лицо по центру, белый или очень светлый фон. JPG, PNG или WEBP.",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1091,7 +1122,10 @@
     "submit_profile": "Сохранить",
     "saved": "Профиль сохранён!",
     "error": "Не удалось сохранить",
-    "skip": "Отложить"
+    "skip": "Отложить",
+    "cancel_registration": "Отменить регистрацию",
+    "cancel_registration_confirm": "Если отменить регистрацию, аккаунт будет удален. Продолжить?",
+    "cancel_registration_error": "Не удалось отменить регистрацию"
   },
   "applications": {
     "title": "Заявки",
@@ -1193,7 +1227,8 @@
     "remove_error": "Ошибка удаления",
     "move_error": "Ошибка перемещения",
     "approve_error": "Заявка не одобрена",
-    "reject_error": "Заявка не отклонена"
+    "reject_error": "Заявка не отклонена",
+    "move_to": "Переместить"
   },
   "matches": {
     "title": "Матчи",
@@ -1559,7 +1594,9 @@
     "body_placeholder": "Текст уведомления..."
   },
   "theme": {
-    "toggle": "Переключить тему"
+    "toggle": "Переключить тему",
+    "theme_dark": "Темная",
+    "theme_light": "Светлая"
   },
   "audit": {
     "records": "записей",
@@ -1582,5 +1619,128 @@
     "action_broadcast": "Рассылка",
     "showing": "Показано",
     "max_warning": "Показаны только последние 200 записей"
+  },
+  "matches_admin": {
+    "assign_error": "Ошибка при назначении татами",
+    "queue_error": "Ошибка при изменении очереди",
+    "reset_error": "Ошибка при перезапуске матча",
+    "override_error": "Ошибка при изменении результата",
+    "session_create_error": "Ошибка при создании ссылки татами",
+    "session_revoke_error": "Ошибка при удалении ссылки татами",
+    "tournament_completed": "Турнир завершён",
+    "all_matches_finished": "все матчи завершены.",
+    "view_results": "Посмотреть результаты",
+    "finished_matches": "завершённых матчей",
+    "control_panel": "Панель управления",
+    "wall_link": "Ссылка на табло",
+    "open_projector": "Открыть проектор",
+    "select_tournament": "Выберите турнир",
+    "unassigned_title": "Неназначенные матчи",
+    "unassigned_hint": "Перетащите карточку на нужное татами",
+    "all_assigned": "Все матчи поставлены на татами",
+    "in_queue": "в очереди",
+    "result_pending": "ожидает результата",
+    "judge": "судья",
+    "link_ready": "ссылка готова",
+    "scoreboard": "Табло",
+    "reset_confirm": "Перезапустить матч?",
+    "no_tatami_matches": "На этом татами нет матчей",
+    "drag_match_here": "Перетащите матч сюда",
+    "visible_for_judge": "Сейчас в панели судьи",
+    "missing_athlete_warning": "Спортсмен не назначен — судья пропустит матч",
+    "completed_history": "История завершённых матчей",
+    "no_completed_matches": "Завершённых матчей пока нет",
+    "mark_white_winner": "Отметить победу белого",
+    "mark_blue_winner": "Отметить победу синего",
+    "reset_match_confirm_named": "Перезапустить матч \"{{red}} vs {{blue}}\"? Результат будет удалён.",
+    "reset_match_title": "Перезапустить матч и очистить результат",
+    "reset": "Вернуть",
+    "reset_short": "Сброс",
+    "white": "Белый",
+    "blue": "Синий",
+    "won": "Победил",
+    "change_result": "Изменить результат",
+    "winner": "Победитель",
+    "reason": "Причина",
+    "reason_placeholder": "Например: ошибка судьи, видеоповтор...",
+    "scoreboard_and_control": "Табло и управление",
+    "session_hint": "Одна ссылка на весь день. В ней открываются табло и кнопки управления.",
+    "scoreboard_control_link": "Ссылка на табло и управление",
+    "open_scoreboard": "Открыть табло",
+    "judge_name_optional": "Имя судьи (необязательно)",
+    "judge_placeholder": "Например Берик Сериков",
+    "create_link": "Создать ссылку",
+    "needs_confirm": "Нужно подтвердить",
+    "waiting_judge_confirm": "Ожидает подтверждения судьи",
+    "queue_up": "Выше в очереди",
+    "queue_down": "Ниже в очереди",
+    "mark_winner_suffix": "победил",
+    "unassign": "Снять"
+  },
+  "payments": {
+    "entry_fee": "Стартовый взнос",
+    "kaspi_url": "Kaspi ссылка",
+    "status": "Оплата",
+    "status_NOT_REQUIRED": "Без оплаты",
+    "status_PENDING": "Ожидает оплаты",
+    "status_PAID": "Оплачено",
+    "status_FAILED": "Ошибка оплаты",
+    "pay_kaspi": "Оплатить в Kaspi",
+    "reference": "Номер платежа",
+    "paid_at": "Оплачено",
+    "no_kaspi_url": "Админ не указал Kaspi ссылку для этого турнира",
+    "to_pay_after_submit": "К оплате после отправки заявки",
+    "to_pay_before_submit": "К оплате перед отправкой заявки",
+    "pay_before_submit": "Сначала оплатите стартовый взнос, затем отправьте заявку.",
+    "mark_paid": "Отметить оплачено",
+    "marked_paid": "Оплата подтверждена"
+  },
+  "athlete_dashboard": {
+    "win_rate": "Победы",
+    "hello": "Привет, {{name}}!",
+    "belt_progress": "Прогресс пояса",
+    "next_tournament": "Следующий турнир",
+    "belt_preparation": "Подготовка по поясу",
+    "next_level_preparation": "Подготовка к следующему КЮ",
+    "target": "Цель",
+    "techniques_for_next_belt": "Техники для перехода с {{belt}}:",
+    "learn_techniques": "Техники для изучения",
+    "practice_hint": "Отработайте эти техники с тренером, чтобы уверенно перейти на следующий пояс.",
+    "practice_hint_profile": "Отрабатывайте эти техники с тренером, участвуйте в рейтинговых турнирах и двигайтесь к следующему уровню.",
+    "next_5_kyu": "5 КЮ (жёлтый)",
+    "next_4_kyu": "4 КЮ (оранжевый)",
+    "next_3_kyu": "3 КЮ (зелёный)",
+    "next_2_kyu": "2 КЮ (синий)",
+    "next_1_kyu": "1 КЮ (коричневый)",
+    "next_1_dan": "1 ДАН (чёрный)",
+    "belt_white": "белый пояс",
+    "belt_yellow": "жёлтый пояс",
+    "belt_orange": "оранжевый пояс",
+    "belt_green": "зелёный пояс",
+    "belt_blue": "синий пояс",
+    "belt_brown": "коричневый пояс",
+    "belt_black": "чёрный пояс",
+    "technique_master_previous": "Совершенствование всех предыдущих техник",
+    "technique_combinations": "Комбинационная работа",
+    "technique_ne_waza": "Освоение не-вадза",
+    "technique_competition_consistency": "Стабильные результаты на соревнованиях"
+  },
+  "documents": {
+    "title": "Документы",
+    "coach_documents": "Документы тренера",
+    "birth_certificate": "Свидетельство о рождении",
+    "birth_certificate_hint": "Загрузите PDF или изображение для подтверждения возраста спортсмена.",
+    "study_certificate": "Справка с места учебы",
+    "study_certificate_hint": "Загрузите справку из школы, колледжа или другого учебного заведения.",
+    "coach_id": "Удостоверение тренера",
+    "coach_id_hint": "Документ или удостоверение, подтверждающее статус тренера.",
+    "upload": "Загрузить",
+    "replace": "Заменить",
+    "saved": "Документ сохранен",
+    "upload_error": "Не удалось загрузить документ",
+    "not_uploaded": "Еще не загружено",
+    "open_file": "Открыть файл",
+    "no_documents": "Документов нет",
+    "no_documents_hint": "Они появятся здесь, когда пользователь загрузит документы в профиле."
   }
 }
