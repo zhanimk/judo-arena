@@ -38,7 +38,9 @@ export function attachErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((err, _req, reply) => {
     // Доменные ошибки (AuthError, ClubError, MatchError, etc.)
     if (isDomainError(err)) {
-      return reply.code(err.httpStatus).send({ error: err.code, message: err.message });
+      return reply
+        .code(err.httpStatus)
+        .send({ error: err.code, message: err.message });
     }
 
     // Zod runtime validation
@@ -46,7 +48,10 @@ export function attachErrorHandler(app: FastifyInstance): void {
       return reply.code(400).send({
         error: "VALIDATION_ERROR",
         message: "Невалидные данные",
-        issues: err.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+        issues: err.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+        })),
       });
     }
 
@@ -55,18 +60,22 @@ export function attachErrorHandler(app: FastifyInstance): void {
     if (fastifyErr.statusCode === 400 && fastifyErr.validation) {
       return reply.code(400).send({
         error: "VALIDATION_ERROR",
-        message: err.message,
+        message: fastifyErr.message,
         issues: fastifyErr.validation,
       });
     }
 
     // Rate limit
     if (fastifyErr.statusCode === 429) {
-      return reply.code(429).send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
+      return reply
+        .code(429)
+        .send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
     }
 
     // Unexpected errors
     app.log.error(err);
-    return reply.code(500).send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
+    return reply
+      .code(500)
+      .send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });
   });
 }
