@@ -3,7 +3,7 @@
 ## Architecture
 
 ```
-Browser → Cloudflare Pages (web) → Render (API) → Render PostgreSQL + Redis
+Browser → Vercel (web) → Render (API) → Render PostgreSQL + Redis
                                          ↓
                                     Resend (email)
                                     Sentry (errors)
@@ -19,36 +19,25 @@ Browser → Cloudflare Pages (web) → Render (API) → Render PostgreSQL + Redi
 1. Open [render.com](https://render.com) → Sign in with GitHub
 2. **New +** → **Blueprint** → select repo `judo-arena`
 3. Render reads `render.yaml` → creates: API + PostgreSQL + Redis automatically
-4. Fill in secrets (see table below) → **Apply**
-
-**Secrets to fill manually:**
-
-| Variable             | How to get                                                                 |
-| -------------------- | -------------------------------------------------------------------------- |
-| `JWT_ACCESS_SECRET`  | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
-| `JWT_REFRESH_SECRET` | Same command, different output                                             |
-| `RESEND_API_KEY`     | [resend.com](https://resend.com) → API Keys                                |
-| `CORS_ORIGIN`        | Fill after step 2                                                          |
-| `APP_URL`            | Same as CORS_ORIGIN                                                        |
+4. Review the free resources and click **Apply**
 
 > `DATABASE_URL` and `REDIS_URL` are auto-injected — do NOT set manually.
+> JWT secrets are generated automatically. `CORS_ORIGIN` and `APP_URL` default
+> to `https://judo-arena.vercel.app`.
 
 API URL after deploy: `https://judo-arena-api.onrender.com`
 
 ---
 
-### Step 2 — Frontend on Cloudflare Pages
+### Step 2 — Frontend on Vercel
 
-1. [pages.cloudflare.com](https://pages.cloudflare.com) → **Create project** → **Connect to Git**
-2. Build settings:
-   - Build command: `cd web && npm ci && npm run build`
-   - Output directory: `web/dist`
-3. Environment variables:
+1. Import the GitHub repository in [vercel.com](https://vercel.com)
+2. Environment variables:
    - `VITE_API_URL` = `https://judo-arena-api.onrender.com`
    - `VITE_WS_URL` = `https://judo-arena-api.onrender.com`
-4. **Save and Deploy**
+3. **Save and Deploy**
 
-Frontend URL: `https://judo-arena.pages.dev`
+Frontend URL: `https://judo-arena.vercel.app`
 
 ---
 
@@ -56,8 +45,8 @@ Frontend URL: `https://judo-arena.pages.dev`
 
 Render → API service → Environment:
 
-- `CORS_ORIGIN` = `https://judo-arena.pages.dev`
-- `APP_URL` = `https://judo-arena.pages.dev`
+- `CORS_ORIGIN` = `https://judo-arena.vercel.app`
+- `APP_URL` = `https://judo-arena.vercel.app`
 
 → **Save Changes** (auto-restart)
 
@@ -177,7 +166,7 @@ Or Render dashboard → Deploys → previous deploy → **Redeploy**
 | Resource    | Limit                                           |
 | ----------- | ----------------------------------------------- |
 | Web service | Spins down after 15 min idle; 30-60s cold start |
-| PostgreSQL  | 1 GB storage, 90-day auto-expiry                |
+| PostgreSQL  | 1 GB storage, 30-day auto-expiry                |
 | Redis       | 25 MB, no persistence                           |
 
 For production: upgrade to Render Starter (~$7/month/service).
