@@ -15,6 +15,7 @@ import {
   MatchStatus,
   TournamentStatus,
   UserRole,
+  WeighInStatus,
   type Match,
   type Prisma,
 } from "@prisma/client";
@@ -85,12 +86,14 @@ export async function generateBracket(
     );
   }
 
-  // Собираем участников из утверждённых заявок (дедупликация по athleteId)
+  // Собираем участников из утверждённых заявок (дедупликация по athleteId).
+  // PENDING = взвешивание не проводилось → допускаем к участию.
+  // FAILED  = явно не прошёл взвешивание → исключаем.
   const entries = await prisma.applicationEntry.findMany({
     where: {
       categoryId,
       application: { tournamentId, status: "APPROVED" },
-      weighInStatus: "PASSED",
+      weighInStatus: { in: [WeighInStatus.PENDING, WeighInStatus.PASSED] },
     },
     include: { athlete: true },
   });
@@ -673,7 +676,7 @@ export async function prepareTournamentDraw(
       where: {
         categoryId: category.id,
         application: { tournamentId, status: "APPROVED" },
-        weighInStatus: "PASSED",
+        weighInStatus: { in: [WeighInStatus.PENDING, WeighInStatus.PASSED] },
       },
     });
     const existing = await prisma.bracket.findUnique({

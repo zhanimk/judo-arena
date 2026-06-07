@@ -753,6 +753,7 @@ function TatamiLiveTab({
   tatamiCount: number;
   youtubeUrls: string[];
 }) {
+  const { t } = useTranslation();
   const tatamis = useMemo(
     () => buildTatamiState(matches, Math.max(1, tatamiCount || 1)),
     [matches, tatamiCount],
@@ -871,7 +872,7 @@ function TatamiLiveTab({
                 <div className="border-t border-red-500/20 bg-gradient-to-r from-red-950/50 to-transparent px-5 py-3">
                   <div className="flex items-center gap-3">
                     <span className="rounded-md bg-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
-                      Қазір
+                      {t("tatami.now")}
                     </span>
                     <span className="font-display font-bold text-white/90">
                       {matchTitle(activeTatami.current)}
@@ -892,7 +893,7 @@ function TatamiLiveTab({
               >
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
               </svg>
-              Татами #{activeTatami.number} үшін трансляция жоқ — басқа татами таңдаңыз
+              {t("tatami.no_stream", { n: activeTatami.number })}
             </div>
           ) : null}
 
@@ -902,7 +903,7 @@ function TatamiLiveTab({
 
             <div className="hidden space-y-3 xl:block">
               <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                Басқа татамилер
+                {t("tatami.other_tatamis")}
               </div>
               {otherTatamis.map((tatami) => {
                 const hasStream = Boolean(youtubeUrls[tatami.number - 1]);
@@ -925,10 +926,10 @@ function TatamiLiveTab({
                       <StatusBadge status={tatami.current?.status ?? "PENDING"} />
                     </div>
                     <div className="mt-3 truncate text-sm font-semibold">
-                      {tatami.current ? matchTitle(tatami.current) : "Қазір бос"}
+                      {tatami.current ? matchTitle(tatami.current) : t("tatami.now_empty")}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {tatami.queue.length} матч кезекте
+                      {t("tatami.queue_count", { count: tatami.queue.length })}
                     </div>
                   </button>
                 );
@@ -946,6 +947,7 @@ function TatamiDetailCard({
 }: {
   tatami: ReturnType<typeof buildTatamiState<any>>[number];
 }) {
+  const { t } = useTranslation();
   const current = tatami.current;
   const next = tatami.queue[0];
   const waiting = tatami.queue.slice(1);
@@ -954,31 +956,35 @@ function TatamiDetailCard({
     <div className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-background/35 px-5 py-4">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.28em] text-gold">Таңдалған татами</div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
+            {t("tatami.selected")}
+          </div>
           <h3 className="font-display text-4xl font-black text-gradient-gold">#{tatami.number}</h3>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <SmallMetric label="Қазір" value={current ? 1 : 0} />
-          <SmallMetric label="Келесі" value={next ? 1 : 0} />
-          <SmallMetric label="Кезек" value={waiting.length} />
+          <SmallMetric label={t("tatami.now")} value={current ? 1 : 0} />
+          <SmallMetric label={t("tatami.next")} value={next ? 1 : 0} />
+          <SmallMetric label={t("tatami.queue")} value={waiting.length} />
         </div>
       </div>
 
       <div className="grid gap-4 p-5 lg:grid-cols-[1fr_1fr]">
         <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-destructive">Қазір</div>
+          <div className="text-[10px] uppercase tracking-widest text-destructive">
+            {t("tatami.now")}
+          </div>
           <div className="mt-2 min-h-[3.25rem] font-display text-2xl font-bold leading-tight">
-            {current ? matchTitle(current) : "Әзірше схватка жоқ"}
+            {current ? matchTitle(current) : t("tatami.no_current_match")}
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
-            {current ? matchMeta(current) : "Кесте дайындалған кезде осы жерде көрінеді"}
+            {current ? matchMeta(current) : t("tatami.schedule_hint")}
           </div>
         </div>
 
         <div className="rounded-xl border border-gold/25 bg-gold/10 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-gold">Келесі</div>
+          <div className="text-[10px] uppercase tracking-widest text-gold">{t("tatami.next")}</div>
           <div className="mt-2 min-h-[3.25rem] font-display text-xl font-bold leading-tight">
-            {next ? matchTitle(next) : "Кезекте матч жоқ"}
+            {next ? matchTitle(next) : t("tatami.no_next_match")}
           </div>
           <div className="mt-2 text-xs text-muted-foreground">{next ? matchMeta(next) : "—"}</div>
         </div>

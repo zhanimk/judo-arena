@@ -34,11 +34,15 @@ export const Route = createFileRoute("/admin/")({
 });
 
 const ACTION_COLORS: Record<string, string> = {
-  CREATE: "bg-emerald-500/15 text-emerald-500",
-  UPDATE: "bg-sky-500/15 text-sky-400",
-  DELETE: "bg-destructive/15 text-destructive",
-  APPROVE: "bg-gold/15 text-gold",
-  REJECT: "bg-destructive/15 text-destructive",
+  create: "bg-emerald-500/15 text-emerald-500",
+  update: "bg-sky-500/15 text-sky-400",
+  delete: "bg-destructive/15 text-destructive",
+  approve: "bg-gold/15 text-gold",
+  reject: "bg-destructive/15 text-destructive",
+  override: "bg-amber-500/15 text-amber-400",
+  finalize: "bg-emerald-500/15 text-emerald-500",
+  block: "bg-destructive/15 text-destructive",
+  broadcast: "bg-sky-500/15 text-sky-400",
 };
 
 function AdminOverview() {
@@ -46,12 +50,15 @@ function AdminOverview() {
   const { user } = useAuth();
   const tournamentsQuery = useQuery({
     queryKey: ["all-tournaments"],
-    queryFn: () => api.tournaments.list(),
+    queryFn: () => api.tournaments.list({ limit: 1000 }),
   });
-  const clubsQuery = useQuery({ queryKey: ["all-clubs"], queryFn: () => api.clubs.list() });
+  const clubsQuery = useQuery({
+    queryKey: ["all-clubs"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
   const liveMatchesQuery = useQuery({
     queryKey: ["live-matches"],
-    queryFn: () => api.matches.list({ status: "IN_PROGRESS" }),
+    queryFn: () => api.matches.list({ status: "IN_PROGRESS", limit: 100 }),
     refetchInterval: 5000,
   });
   const auditQuery = useQuery({
@@ -79,11 +86,14 @@ function AdminOverview() {
         <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div>
             <div className="text-xs text-muted-foreground mb-1">
-              Сәлем, <span className="font-semibold text-foreground">{user?.name}</span>! 👋
+              {t("dashboard.hello", { name: user?.name })}
             </div>
             <div className="font-display text-2xl font-bold">{t("admin.panel_title")}</div>
             <p className="mt-1 text-sm text-muted-foreground max-w-md">
-              {tournaments.length} жарыс · {clubsQuery.data?.total ?? 0} клуб
+              {t("admin.hero_summary", {
+                tournaments: tournaments.length,
+                clubs: clubsQuery.data?.total ?? 0,
+              })}
             </p>
 
             {/* Status pills */}
@@ -107,7 +117,9 @@ function AdminOverview() {
                 </span>
               ))}
               {active.length === 0 && (
-                <span className="text-xs text-muted-foreground">Белсенді жарыс жоқ</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("admin.no_active_tournaments")}
+                </span>
               )}
             </div>
           </div>
@@ -128,7 +140,7 @@ function AdminOverview() {
               </span>
             </div>
             <div className="font-display text-3xl font-bold text-emerald-500">{liveCount}</div>
-            <div className="text-[11px] text-muted-foreground">жекпе-жек</div>
+            <div className="text-[11px] text-muted-foreground">{t("admin.live_matches_unit")}</div>
           </div>
         </div>
       </div>
@@ -244,8 +256,9 @@ function AdminOverview() {
           ) : (
             <ul className="space-y-2 text-sm">
               {(auditQuery.data?.items ?? []).slice(0, 6).map((a: any) => {
+                const actionLower = (a.action ?? "").toLowerCase();
                 const actionKey =
-                  Object.keys(ACTION_COLORS).find((k) => a.action?.includes(k)) ?? "";
+                  Object.keys(ACTION_COLORS).find((k) => actionLower.includes(k)) ?? "";
                 const colorClass = ACTION_COLORS[actionKey] ?? "bg-muted/40 text-muted-foreground";
                 return (
                   <li key={a.id} className="flex items-start gap-2.5">

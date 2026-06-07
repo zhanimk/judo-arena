@@ -310,7 +310,7 @@ export async function tournamentAdjacentRoutes(
 
   app.delete<{ Params: { id: string; entryId: string } }>(
     "/applications/:id/entries/:entryId",
-    { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
+    { preHandler: [authenticate, authorize("ATHLETE", "COACH", "ADMIN")] },
     async (
       request: FastifyRequest<{ Params: { id: string; entryId: string } }>,
       reply,

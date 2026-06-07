@@ -64,8 +64,11 @@ const PAD = 14;
 /* ─── Main export ─────────────────────────────────────────────────────────── */
 
 function OlympicBracketInner({ matches, size, format }: Props) {
+  const { t } = useTranslation();
   if (matches.length === 0) {
-    return <div className="text-center py-8 text-sm text-muted-foreground">Тор бос</div>;
+    return (
+      <div className="text-center py-8 text-sm text-muted-foreground">{t("bracket.empty")}</div>
+    );
   }
 
   if (format === "ROUND_ROBIN") return <RoundRobinView matches={matches} />;

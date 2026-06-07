@@ -27,34 +27,36 @@ function CategoryForm({
     nameKk: initial?.name?.kk ?? "",
     nameRu: initial?.name?.ru ?? "",
     nameEn: initial?.name?.en ?? "",
-    gender:          initial?.gender ?? "MALE",
-    ageMin:          String(initial?.ageMin ?? 13),
-    ageMax:          String(initial?.ageMax ?? 15),
-    weightMin:       String(initial?.weightMin ?? 0.1),
-    weightMax:       String(initial?.weightMax ?? 60),
+    gender: initial?.gender ?? "MALE",
+    ageMin: String(initial?.ageMin ?? 13),
+    ageMax: String(initial?.ageMax ?? 15),
+    weightMin: String(initial?.weightMin ?? 0.1),
+    weightMax: String(initial?.weightMax ?? 60),
     matchDurationSec: String(initial?.matchDurationSec ?? 120),
-    goldenScoreSec:   String(initial?.goldenScoreSec ?? 60),
-    format:          initial?.format ?? "SE_IJF",
-    allowYuko:       Boolean(initial?.allowYuko ?? false),
+    goldenScoreSec: String(initial?.goldenScoreSec ?? 60),
+    format: initial?.format ?? "SE_IJF",
+    allowYuko: Boolean(initial?.allowYuko ?? false),
   });
 
   function applyPreset(presetKey: string) {
-    const preset = AGE_GROUPS.find(g => g.key === presetKey);
+    const preset = AGE_GROUPS.find((g) => g.key === presetKey);
     if (!preset) return;
     const birthFrom = tYear - preset.ageMax;
-    const birthTo   = tYear - preset.ageMin;
-    const gStr   = form.gender === "MALE" ? t("common.male") : t("tatami.female_short");
-    const gStrRu = form.gender === "MALE" ? "Муж" : "Жен";
+    const birthTo = tYear - preset.ageMin;
+    const gStr = form.gender === "MALE" ? t("common.male") : t("tatami.female_short");
+    const gStrRu = form.gender === "MALE" ? t("common.male_abbr") : t("common.female_abbr");
     const wMax = Number(form.weightMax);
     const wMin = Number(form.weightMin);
     const label = wMax >= 999 ? `+${Math.floor(wMin)}` : `-${wMax}`;
-    setForm(f => ({
+    setForm((f) => ({
       ...f,
-      ageMin:          String(preset.ageMin),
-      ageMax:          String(preset.ageMax),
+      ageMin: String(preset.ageMin),
+      ageMax: String(preset.ageMax),
       matchDurationSec: String(preset.matchDurationSec),
-      goldenScoreSec:   String(preset.goldenScoreSec),
-      nameKk: f.nameKk || `${preset.labelKk} ${gStr} ${label} ${t("common.kg")} (${birthFrom}–${birthTo})`,
+      goldenScoreSec: String(preset.goldenScoreSec),
+      nameKk:
+        f.nameKk ||
+        `${preset.labelKk} ${gStr} ${label} ${t("common.kg")} (${birthFrom}–${birthTo})`,
       nameRu: f.nameRu || `${preset.labelRu} ${gStrRu} ${label} кг`,
     }));
   }
@@ -64,15 +66,15 @@ function CategoryForm({
     const name = compactI18n({ kk: form.nameKk, ru: form.nameRu, en: form.nameEn });
     onSubmit({
       ...(Object.keys(name).length > 0 ? { name } : {}),
-      gender:          form.gender,
-      ageMin:          Number(form.ageMin),
-      ageMax:          Number(form.ageMax),
-      weightMin:       Number(form.weightMin),
-      weightMax:       Number(form.weightMax),
+      gender: form.gender,
+      ageMin: Number(form.ageMin),
+      ageMax: Number(form.ageMax),
+      weightMin: Number(form.weightMin),
+      weightMax: Number(form.weightMax),
       matchDurationSec: Number(form.matchDurationSec),
-      goldenScoreSec:   Number(form.goldenScoreSec),
-      format:          form.format,
-      allowYuko:       form.allowYuko,
+      goldenScoreSec: Number(form.goldenScoreSec),
+      format: form.format,
+      allowYuko: form.allowYuko,
     });
   };
 
@@ -83,10 +85,10 @@ function CategoryForm({
           {t("categories.preset_hint")}
         </div>
         <div className="flex flex-wrap gap-2">
-          {AGE_GROUPS.map(g => {
+          {AGE_GROUPS.map((g) => {
             const birthFrom = tYear - g.ageMax;
-            const birthTo   = tYear - g.ageMin;
-            const isActive  = form.ageMin === String(g.ageMin) && form.ageMax === String(g.ageMax);
+            const birthTo = tYear - g.ageMin;
+            const isActive = form.ageMin === String(g.ageMin) && form.ageMax === String(g.ageMax);
             return (
               <button
                 key={g.key}
@@ -99,7 +101,9 @@ function CategoryForm({
                 }`}
               >
                 {g.labelRu}
-                <span className="ml-1 opacity-60">{birthFrom}–{birthTo}</span>
+                <span className="ml-1 opacity-60">
+                  {birthFrom}–{birthTo}
+                </span>
               </button>
             );
           })}
@@ -107,25 +111,53 @@ function CategoryForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Input label={t("categories.name_kk")} value={form.nameKk} onChange={(v: string) => setForm({ ...form, nameKk: v })} placeholder="U17 Ер -66 кг" />
-        <Input label={t("categories.name_ru")} value={form.nameRu} onChange={(v: string) => setForm({ ...form, nameRu: v })} />
-        <Input label={t("categories.name_en")} value={form.nameEn} onChange={(v: string) => setForm({ ...form, nameEn: v })} />
+        <Input
+          label={t("categories.name_kk")}
+          value={form.nameKk}
+          onChange={(v: string) => setForm({ ...form, nameKk: v })}
+          placeholder="U17 Ер -66 кг"
+        />
+        <Input
+          label={t("categories.name_ru")}
+          value={form.nameRu}
+          onChange={(v: string) => setForm({ ...form, nameRu: v })}
+        />
+        <Input
+          label={t("categories.name_en")}
+          value={form.nameEn}
+          onChange={(v: string) => setForm({ ...form, nameEn: v })}
+        />
 
-        <Select label={t("common.gender")} value={form.gender} onChange={(gender) => setForm({ ...form, gender })} options={[
-          ["MALE", t("common.male")],
-          ["FEMALE", t("tatami.female_short")],
-        ]} />
+        <Select
+          label={t("common.gender")}
+          value={form.gender}
+          onChange={(gender) => setForm({ ...form, gender })}
+          options={[
+            ["MALE", t("common.male")],
+            ["FEMALE", t("tatami.female_short")],
+          ]}
+        />
 
         <div>
-          <Input label={t("categories.age_min")} type="number" value={form.ageMin}
-            onChange={(v: string) => setForm({ ...form, ageMin: v })} required />
+          <Input
+            label={t("categories.age_min")}
+            type="number"
+            value={form.ageMin}
+            onChange={(v: string) => setForm({ ...form, ageMin: v })}
+            required
+          />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
             {t("categories.birth_year_le")} {tYear - Number(form.ageMin)}
           </div>
         </div>
         <div>
-          <Input label={t("categories.age_max")} type="number" value={form.ageMax}
-            onChange={(v: string) => setForm({ ...form, ageMax: v })} required />
+          <Input
+            label={t("categories.age_max")}
+            type="number"
+            value={form.ageMax}
+            onChange={(v: string) => setForm({ ...form, ageMax: v })}
+            required
+          />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
             {t("categories.birth_year_ge")} {tYear - Number(form.ageMax)}
             {form.ageMin !== form.ageMax && (
@@ -136,21 +168,47 @@ function CategoryForm({
           </div>
         </div>
 
-        <Input label={t("categories.weight_min")} type="number" step="0.01" value={form.weightMin}
-          onChange={(v: string) => setForm({ ...form, weightMin: v })} required />
-        <Input label={t("categories.weight_max")} type="number" step="0.01" value={form.weightMax}
-          onChange={(v: string) => setForm({ ...form, weightMax: v })} required />
+        <Input
+          label={t("categories.weight_min")}
+          type="number"
+          step="0.01"
+          value={form.weightMin}
+          onChange={(v: string) => setForm({ ...form, weightMin: v })}
+          required
+        />
+        <Input
+          label={t("categories.weight_max")}
+          type="number"
+          step="0.01"
+          value={form.weightMax}
+          onChange={(v: string) => setForm({ ...form, weightMax: v })}
+          required
+        />
 
-        <Select label={t("categories.format_label")} value={form.format} onChange={(format) => setForm({ ...form, format })} options={[
-          ["SE_IJF", "Olympic / IJF"],
-          ["ROUND_ROBIN", "Round-robin"],
-          ["MIXED", "Mixed"],
-        ]} />
+        <Select
+          label={t("categories.format_label")}
+          value={form.format}
+          onChange={(format) => setForm({ ...form, format })}
+          options={[
+            ["SE_IJF", "Olympic / IJF"],
+            ["ROUND_ROBIN", "Round-robin"],
+            ["MIXED", "Mixed"],
+          ]}
+        />
 
-        <Input label={t("categories.match_sec")} type="number" value={form.matchDurationSec}
-          onChange={(matchDurationSec: string) => setForm({ ...form, matchDurationSec })} required />
-        <Input label={t("categories.gs_sec")} type="number" value={form.goldenScoreSec}
-          onChange={(goldenScoreSec: string) => setForm({ ...form, goldenScoreSec })} />
+        <Input
+          label={t("categories.match_sec")}
+          type="number"
+          value={form.matchDurationSec}
+          onChange={(matchDurationSec: string) => setForm({ ...form, matchDurationSec })}
+          required
+        />
+        <Input
+          label={t("categories.gs_sec")}
+          type="number"
+          value={form.goldenScoreSec}
+          onChange={(goldenScoreSec: string) => setForm({ ...form, goldenScoreSec })}
+        />
       </div>
 
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm select-none">
@@ -169,11 +227,18 @@ function CategoryForm({
       </label>
 
       <div className="mt-4 flex gap-2">
-        <button disabled={busy} className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50">
+        <button
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
+        >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {t("common.save")}
         </button>
-        <button type="button" onClick={onCancel} className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           {t("common.cancel")}
         </button>
       </div>
@@ -192,26 +257,40 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
   const [bulkGenders, setBulkGenders] = useState<("MALE" | "FEMALE")[]>(["MALE", "FEMALE"]);
   const [bulkAdding, setBulkAdding] = useState(false);
   const canEdit = tourney.status === "DRAFT";
-  const tournamentYear = tourney.startDate ? new Date(tourney.startDate).getFullYear() : new Date().getFullYear();
+  const tournamentYear = tourney.startDate
+    ? new Date(tourney.startDate).getFullYear()
+    : new Date().getFullYear();
 
   const create = useMutation({
     mutationFn: (data: any) => api.tournaments.addCategory(tourney.id, data),
-    onSuccess: () => { setShowForm(false); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    onSuccess: () => {
+      setShowForm(false);
+      setError("");
+      qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
+    },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.create_error")),
   });
   const update = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.tournaments.updateCategory(id, data),
-    onSuccess: () => { setEditing(null); setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      api.tournaments.updateCategory(id, data),
+    onSuccess: () => {
+      setEditing(null);
+      setError("");
+      qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
+    },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.update_error")),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.tournaments.deleteCategory(id),
-    onSuccess: () => { setError(""); qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] }); },
+    onSuccess: () => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
+    },
     onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.delete_error")),
   });
 
   async function handleBulkAdd() {
-    const preset = AGE_GROUPS.find(g => g.key === bulkGroup);
+    const preset = AGE_GROUPS.find((g) => g.key === bulkGroup);
     if (!preset) return;
     setBulkAdding(true);
     setError("");
@@ -234,39 +313,53 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
     if (added === 0) setError(t("categories.bulk_error"));
   }
 
-  const selectedPreset = AGE_GROUPS.find(g => g.key === bulkGroup);
+  const selectedPreset = AGE_GROUPS.find((g) => g.key === bulkGroup);
   const previewCats = selectedPreset
-    ? bulkGenders.flatMap(g => buildWeightCategories(selectedPreset, g, tournamentYear))
+    ? bulkGenders.flatMap((g) => buildWeightCategories(selectedPreset, g, tournamentYear))
     : [];
 
   return (
     <Panel
       title={t("categories.total", { count: tourney.categories?.length ?? 0 })}
-      action={canEdit && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setShowBulk((v) => !v); setShowForm(false); setEditing(null); }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm text-gold hover:bg-gold/20"
-          >
-            <Wand2 className="h-4 w-4" />
-            {t("categories.template_btn")}
-          </button>
-          <button
-            onClick={() => { setShowForm((v) => !v); setEditing(null); setShowBulk(false); }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-sm text-gold-foreground shadow-gold"
-          >
-            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showForm ? t("common.close") : t("categories.add_btn")}
-          </button>
-        </div>
-      )}
+      action={
+        canEdit && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowBulk((v) => !v);
+                setShowForm(false);
+                setEditing(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm text-gold hover:bg-gold/20"
+            >
+              <Wand2 className="h-4 w-4" />
+              {t("categories.template_btn")}
+            </button>
+            <button
+              onClick={() => {
+                setShowForm((v) => !v);
+                setEditing(null);
+                setShowBulk(false);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-sm text-gold-foreground shadow-gold"
+            >
+              {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {showForm ? t("common.close") : t("categories.add_btn")}
+            </button>
+          </div>
+        )
+      }
     >
       {!canEdit && (
         <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
           {t("categories.draft_only_warning")}
         </div>
       )}
-      {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {showBulk && canEdit && (
         <div className="mb-4 rounded-lg border-2 border-gold/30 bg-gold/5 p-4">
@@ -276,15 +369,17 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
           </div>
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{t("categories.age_group_label")}</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("categories.age_group_label")}
+              </label>
               <select
                 value={bulkGroup}
-                onChange={e => setBulkGroup(e.target.value)}
+                onChange={(e) => setBulkGroup(e.target.value)}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               >
-                {AGE_GROUPS.map(g => {
+                {AGE_GROUPS.map((g) => {
                   const birthFrom = tournamentYear - g.ageMax;
-                  const birthTo   = tournamentYear - g.ageMin;
+                  const birthTo = tournamentYear - g.ageMin;
                   return (
                     <option key={g.key} value={g.key}>
                       {g.labelRu} ({birthFrom}–{birthTo})
@@ -294,16 +389,20 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">{t("common.gender")}</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                {t("common.gender")}
+              </label>
               <div className="flex gap-3 pt-2">
-                {(["MALE", "FEMALE"] as const).map(g => (
+                {(["MALE", "FEMALE"] as const).map((g) => (
                   <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
                     <input
                       type="checkbox"
                       checked={bulkGenders.includes(g)}
-                      onChange={e => setBulkGenders(prev =>
-                        e.target.checked ? [...prev, g] : prev.filter(x => x !== g)
-                      )}
+                      onChange={(e) =>
+                        setBulkGenders((prev) =>
+                          e.target.checked ? [...prev, g] : prev.filter((x) => x !== g),
+                        )
+                      }
                       className="h-4 w-4"
                     />
                     {g === "MALE" ? t("common.male") : t("tatami.female_short")}
@@ -316,7 +415,11 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
           {selectedPreset && previewCats.length > 0 && (
             <div className="mb-3">
               <div className="mb-1.5 text-xs text-muted-foreground">
-                {previewCats.length} {t("categories.bulk_preview", { match: selectedPreset.matchDurationSec, gs: selectedPreset.goldenScoreSec })}
+                {previewCats.length}{" "}
+                {t("categories.bulk_preview", {
+                  match: selectedPreset.matchDurationSec,
+                  gs: selectedPreset.goldenScoreSec,
+                })}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {previewCats.map((c: any, i) => (
@@ -328,8 +431,8 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
                         : "bg-pink-500/15 text-pink-300"
                     }`}
                   >
-                    {c.gender === "MALE" ? "♂" : "♀"}
-                    {" "}{wLabel(c.weightMin, c.weightMax)} {t("common.kg")}
+                    {c.gender === "MALE" ? "♂" : "♀"} {wLabel(c.weightMin, c.weightMax)}{" "}
+                    {t("common.kg")}
                     <span className="opacity-60 text-[10px]">{c._birthRange}</span>
                   </span>
                 ))}
@@ -343,8 +446,14 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
               disabled={bulkAdding || bulkGenders.length === 0}
               className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
             >
-              {bulkAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              {bulkAdding ? t("categories.bulk_adding") : t("categories.bulk_add_n", { count: previewCats.length })}
+              {bulkAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {bulkAdding
+                ? t("categories.bulk_adding")
+                : t("categories.bulk_add_n", { count: previewCats.length })}
             </button>
             <button
               type="button"
@@ -370,7 +479,10 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
           {tourney.categories.map((c: any) => (
-            <div key={c.id} className="rounded-md border border-border/60 bg-background/30 p-4 text-sm">
+            <div
+              key={c.id}
+              className="rounded-md border border-border/60 bg-background/30 p-4 text-sm"
+            >
               {editing?.id === c.id ? (
                 <CategoryForm
                   initial={c}
@@ -385,28 +497,40 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
                     <div>
                       <div className="font-medium">{categoryTitle(c, t)}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {c.gender === "MALE" ? `♂ ${t("common.male")}` : `♀ ${t("tatami.female_short")}`} ·{" "}
-                        {c.ageMin}–{c.ageMax} {t("common.years_short")}{" "}
+                        {c.gender === "MALE"
+                          ? `♂ ${t("common.male")}`
+                          : `♀ ${t("tatami.female_short")}`}{" "}
+                        · {c.ageMin}–{c.ageMax} {t("common.years_short")}{" "}
                         <span className="text-gold/60">
                           ({tournamentYear - c.ageMax}–{tournamentYear - c.ageMin})
-                        </span>
-                        {" "}· ({c.weightMin}, {c.weightMax >= 999 ? "+∞" : c.weightMax}] {t("common.kg")}
+                        </span>{" "}
+                        · ({c.weightMin}, {c.weightMax >= 999 ? "+∞" : c.weightMax}]{" "}
+                        {t("common.kg")}
                       </div>
                     </div>
                     <FormatBadge format={c.format} />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     <div className="rounded border border-border/50 p-2">
-                      {t("categories.match_label")}<br /><span className="text-foreground">{c.matchDurationSec}s</span>
+                      {t("categories.match_label")}
+                      <br />
+                      <span className="text-foreground">{c.matchDurationSec}s</span>
                     </div>
                     <div className="rounded border border-border/50 p-2">
-                      Golden Score<br /><span className="text-foreground">{c.goldenScoreSec ? `${c.goldenScoreSec}s` : t("categories.unlimited")}</span>
+                      Golden Score
+                      <br />
+                      <span className="text-foreground">
+                        {c.goldenScoreSec ? `${c.goldenScoreSec}s` : t("categories.unlimited")}
+                      </span>
                     </div>
                   </div>
                   {canEdit && (
                     <div className="mt-4 flex gap-2">
                       <button
-                        onClick={() => { setEditing(c); setShowForm(false); }}
+                        onClick={() => {
+                          setEditing(c);
+                          setShowForm(false);
+                        }}
                         className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                       >
                         <Pencil className="h-3.5 w-3.5" /> {t("common.edit")}

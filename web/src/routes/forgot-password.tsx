@@ -94,13 +94,13 @@ function ForgotPassword() {
                 className="font-black text-2xl text-white mb-3"
                 style={{ letterSpacing: "-0.02em" }}
               >
-                Хат жіберілді!
+                {t("auth.reset_email_sent")}
               </h2>
               <p
                 className="text-sm leading-relaxed mb-2"
                 style={{ color: "rgba(255,255,255,0.50)" }}
               >
-                Нұсқаулар мына мекенжайға жіберілді:
+                {t("auth.reset_email_sent_to")}
               </p>
               <p className="font-semibold text-base mb-6" style={{ color: "#e8a93a" }}>
                 {email}
@@ -109,8 +109,7 @@ function ForgotPassword() {
                 className="text-xs leading-relaxed mb-8"
                 style={{ color: "rgba(255,255,255,0.38)" }}
               >
-                Хатты таппасаңыз — <span className="text-white/60">спам</span> қалтасын тексеріңіз.
-                Сілтеме <span className="text-white/60">1 сағат</span> бойы жарамды.
+                {t("auth.reset_check_spam")}
               </p>
 
               {/* resend */}
@@ -119,7 +118,7 @@ function ForgotPassword() {
                 className="mb-4 text-xs transition-colors hover:text-[#c8922a]"
                 style={{ color: "rgba(255,255,255,0.40)" }}
               >
-                Қайта жіберу
+                {t("auth.resend")}
               </button>
 
               <div className="h-px mb-6" style={{ background: "rgba(255,255,255,0.07)" }} />
@@ -129,7 +128,7 @@ function ForgotPassword() {
                 className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:text-[#c8922a]"
                 style={{ color: "rgba(255,255,255,0.50)" }}
               >
-                <ArrowLeft className="h-4 w-4" /> Кіру бетіне оралу
+                <ArrowLeft className="h-4 w-4" /> {t("auth.back_to_login")}
               </Link>
             </div>
           ) : (
@@ -153,7 +152,7 @@ function ForgotPassword() {
                   {t("auth.forgot_password")}
                 </h1>
                 <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                  Email енгізіңіз — парольді қалпына келтіру сілтемесін жіберміз
+                  {t("auth.forgot_password_hint")}
                 </p>
               </div>
 
@@ -199,7 +198,7 @@ function ForgotPassword() {
                   }}
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {loading ? "Жіберілуде..." : t("auth.send_reset_link")}
+                  {loading ? t("common.sending") : t("auth.send_reset_link")}
                 </button>
               </form>
 

@@ -1,5 +1,10 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  Panel,
+  LoadingState,
+  EmptyState,
+} from "@/components/dashboard/DashboardShell";
 import {
   AlertTriangle,
   ArrowRight,
@@ -26,7 +31,6 @@ export const Route = createFileRoute("/coach/tournaments")({
   ),
 });
 
-
 function CoachTournamentsRoute() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const normalizedPath = pathname.replace(/\/+$/, "");
@@ -42,7 +46,7 @@ function CoachTournaments() {
   const { t } = useTranslation();
   const tQuery = useQuery({
     queryKey: ["tournaments-public"],
-    queryFn: () => api.tournaments.list(),
+    queryFn: () => api.tournaments.list({ limit: 1000 }),
   });
   const myAppsQuery = useQuery({
     queryKey: ["my-club-applications"],
@@ -52,7 +56,11 @@ function CoachTournaments() {
   const appByTournament = new Map((myAppsQuery.data ?? []).map((a: any) => [a.tournamentId, a]));
 
   return (
-    <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={t("tournaments_page.all_tournaments")}>
+    <DashboardShell
+      role={t("roles.COACH")}
+      navItems={nav}
+      accentTitle={t("tournaments_page.all_tournaments")}
+    >
       <Panel title={t("dashboard.tournaments")}>
         {tQuery.isLoading ? (
           <LoadingState />
@@ -65,10 +73,17 @@ function CoachTournaments() {
               const deadlinePassed = new Date(deadline).getTime() < Date.now();
               const existingApp = appByTournament.get(tournament.id);
               const categoryCount = tournament._count?.categories ?? 0;
-              const canApply = tournament.status === "REGISTRATION_OPEN" && !deadlinePassed && !existingApp && categoryCount > 0;
+              const canApply =
+                tournament.status === "REGISTRATION_OPEN" &&
+                !deadlinePassed &&
+                !existingApp &&
+                categoryCount > 0;
 
               return (
-                <div key={tournament.id} className="glass rounded-xl p-5 flex flex-col border border-border/60">
+                <div
+                  key={tournament.id}
+                  className="glass rounded-xl p-5 flex flex-col border border-border/60"
+                >
                   <Link
                     to="/coach/tournaments/$id"
                     params={{ id: tournament.id }}
@@ -82,7 +97,9 @@ function CoachTournaments() {
                       <Calendar className="h-3.5 w-3.5 text-gold/70 shrink-0" />
                       {dateRange(tournament.startDate, tournament.endDate)}
                     </div>
-                    <div className={`flex items-center gap-2 ${deadlinePassed && tournament.status === "REGISTRATION_OPEN" ? "text-destructive" : ""}`}>
+                    <div
+                      className={`flex items-center gap-2 ${deadlinePassed && tournament.status === "REGISTRATION_OPEN" ? "text-destructive" : ""}`}
+                    >
                       <Clock className="h-3.5 w-3.5 text-gold/70 shrink-0" />
                       {t("common.deadline")}: {new Date(deadline).toLocaleString("kk-KZ")}
                     </div>
@@ -92,7 +109,8 @@ function CoachTournaments() {
                     </div>
                     <div className="flex items-center gap-2">
                       <GitBranch className="h-3.5 w-3.5 text-gold/70 shrink-0" />
-                      {tournament._count?.categories ?? 0} {t("common.category").toLowerCase()} · {tournament.tatamiCount ?? 1} {t("common.tatami")}
+                      {tournament._count?.categories ?? 0} {t("common.category").toLowerCase()} ·{" "}
+                      {tournament.tatamiCount ?? 1} {t("common.tatami")}
                     </div>
                   </div>
 
@@ -150,7 +168,9 @@ function CoachTournaments() {
 function UnavailableApplyBadge({ reason, danger }: { reason: string; danger?: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className={`inline-flex flex-col rounded-md border px-3 py-1.5 text-xs ${danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"}`}>
+    <span
+      className={`inline-flex flex-col rounded-md border px-3 py-1.5 text-xs ${danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"}`}
+    >
       <span className="font-medium">{t("coach.apply_tournament")}</span>
       <span>{reason}</span>
     </span>
@@ -168,7 +188,11 @@ function TournamentStatusBadge({ status }: { status: string }) {
     CANCELLED: "bg-muted text-muted-foreground",
   };
   const cls = colors[status] ?? "bg-muted text-muted-foreground";
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full ${cls}`}>{String(t(`status.${status}`, status))}</span>;
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full ${cls}`}>
+      {String(t(`status.${status}`, status))}
+    </span>
+  );
 }
 
 function ApplicationStatusIcon({ status }: { status: string }) {
@@ -178,13 +202,19 @@ function ApplicationStatusIcon({ status }: { status: string }) {
 }
 
 function applicationButtonStyle(status: string): string {
-  if (status === "APPROVED") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15";
-  if (status === "REJECTED") return "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
+  if (status === "APPROVED")
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15";
+  if (status === "REJECTED")
+    return "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
   if (status === "SUBMITTED") return "border-gold/30 bg-gold/10 text-gold hover:bg-gold/15";
   return "border-border text-muted-foreground hover:text-foreground";
 }
 
-function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }
+function localizeName(n: any): string {
+  if (!n) return "—";
+  if (typeof n === "string") return n;
+  return n.kk || n.ru || n.en || "—";
+}
 
 function dateRange(start: string, end: string): string {
   return `${new Date(start).toLocaleDateString("kk-KZ")} – ${new Date(end).toLocaleDateString("kk-KZ")}`;

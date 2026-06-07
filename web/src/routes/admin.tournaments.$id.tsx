@@ -3,7 +3,7 @@ import { DashboardShell, LoadingState, EmptyState } from "@/components/dashboard
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { AlertTriangle, ArrowLeft, FileText, GitBranch } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, downloadWithAuth } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useEffect, useState } from "react";
 import { TournamentScoreboardPanel } from "@/routes/admin.matches";
@@ -21,7 +21,8 @@ export { AGE_GROUPS } from "@/components/tournament/age-groups";
 export const Route = createFileRoute("/admin/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс басқару — Әкімші" }] }),
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } => {
-    const tab = typeof search.tab === "string" && isTournamentTab(search.tab) ? search.tab : undefined;
+    const tab =
+      typeof search.tab === "string" && isTournamentTab(search.tab) ? search.tab : undefined;
     return { tab };
   },
   component: () => (
@@ -31,8 +32,25 @@ export const Route = createFileRoute("/admin/tournaments/$id")({
   ),
 });
 
-type Tab = "overview" | "categories" | "applications" | "weighIn" | "scoreboard" | "protocol" | "notify" | "audit";
-const tournamentTabs: Tab[] = ["overview", "categories", "applications", "weighIn", "scoreboard", "protocol", "notify", "audit"];
+type Tab =
+  | "overview"
+  | "categories"
+  | "applications"
+  | "weighIn"
+  | "scoreboard"
+  | "protocol"
+  | "notify"
+  | "audit";
+const tournamentTabs: Tab[] = [
+  "overview",
+  "categories",
+  "applications",
+  "weighIn",
+  "scoreboard",
+  "protocol",
+  "notify",
+  "audit",
+];
 function isTournamentTab(value: string): value is Tab {
   return tournamentTabs.includes(value as Tab);
 }
@@ -46,7 +64,10 @@ function AdminTournamentDetail() {
   const [error, setError] = useState("");
   const qc = useQueryClient();
 
-  const tQuery = useQuery({ queryKey: ["admin-tournament", id], queryFn: () => api.tournaments.get(id) });
+  const tQuery = useQuery({
+    queryKey: ["admin-tournament", id],
+    queryFn: () => api.tournaments.get(id),
+  });
 
   const transitions: Record<string, { next: string; label: string; color?: string }[]> = {
     DRAFT: [
@@ -62,12 +83,8 @@ function AdminTournamentDetail() {
       { next: "REGISTRATION_OPEN", label: t("admin.tournament_reopen_registration") },
       { next: "CANCELLED", label: t("tournament.cancel"), color: "destructive" },
     ],
-    IN_PROGRESS: [
-      { next: "CANCELLED", label: t("tournament.cancel"), color: "destructive" },
-    ],
-    CANCELLED: [
-      { next: "DRAFT", label: t("admin.tournament_back_to_draft") },
-    ],
+    IN_PROGRESS: [{ next: "CANCELLED", label: t("tournament.cancel"), color: "destructive" }],
+    CANCELLED: [{ next: "DRAFT", label: t("admin.tournament_back_to_draft") }],
   };
 
   const change = useMutation({
@@ -111,7 +128,11 @@ function AdminTournamentDetail() {
   const tournament = tQuery.data;
   if (!tournament) {
     return (
-      <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("tournament.not_found")}>
+      <DashboardShell
+        role={t("admin.role_label")}
+        navItems={nav}
+        accentTitle={t("tournament.not_found")}
+      >
         <EmptyState title={t("tournament.not_found")} />
       </DashboardShell>
     );
@@ -119,7 +140,10 @@ function AdminTournamentDetail() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: t("tournament.info_tab") },
-    { id: "categories", label: `${t("tournament.categories_tab")} (${tournament.categories?.length ?? 0})` },
+    {
+      id: "categories",
+      label: `${t("tournament.categories_tab")} (${tournament.categories?.length ?? 0})`,
+    },
     { id: "applications", label: t("dashboard.applications") },
     { id: "weighIn", label: t("weigh_in.title") },
     { id: "scoreboard", label: t("tournament.scoreboard") },
@@ -129,18 +153,31 @@ function AdminTournamentDetail() {
   ];
 
   return (
-    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={localizeName(tournament.name)}>
-      <Link to="/admin/tournaments" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold mb-4">
+    <DashboardShell
+      role={t("admin.role_label")}
+      navItems={nav}
+      accentTitle={localizeName(tournament.name)}
+    >
+      <Link
+        to="/admin/tournaments"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold mb-4"
+      >
         <ArrowLeft className="h-4 w-4" /> {t("tournaments_page.all_tournaments")}
       </Link>
 
-      {error && <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">{error}</div>}
+      {error && (
+        <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-3">
+          {error}
+        </div>
+      )}
 
       <div className="glass rounded-xl p-5 mb-6">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <div className="text-xs text-muted-foreground mb-1">
-              {tournament.city} · {tournament.location} · {new Date(tournament.startDate).toLocaleDateString("kk-KZ")} — {new Date(tournament.endDate).toLocaleDateString("kk-KZ")}
+              {tournament.city} · {tournament.location} ·{" "}
+              {new Date(tournament.startDate).toLocaleDateString("kk-KZ")} —{" "}
+              {new Date(tournament.endDate).toLocaleDateString("kk-KZ")}
             </div>
             <StatusBadge status={tournament.status} />
           </div>
@@ -169,18 +206,32 @@ function AdminTournamentDetail() {
               🏁 {t("admin.tournament_finalize")}
             </button>
           )}
-          <a href={api.admin.allBracketsPdfUrl(tournament.id)} target="_blank" rel="noopener"
-            className="text-sm px-4 py-1.5 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1">
+          <button
+            onClick={() =>
+              downloadWithAuth(
+                `/api/pdf/tournament-brackets?tournamentId=${tournament.id}`,
+                `brackets-${tournament.id}.pdf`,
+              )
+            }
+            className="text-sm px-4 py-1.5 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1"
+          >
             <FileText className="h-4 w-4" /> {t("admin.brackets_pdf")}
-          </a>
+          </button>
           {tournament.status === "COMPLETED" && (
-            <a href={api.admin.protocolPdfUrl(tournament.id)} target="_blank" rel="noopener"
-              className="text-sm px-4 py-1.5 rounded glass border border-gold/30 hover:border-gold/60 inline-flex items-center gap-1">
+            <a
+              href={api.admin.protocolPdfUrl(tournament.id)}
+              target="_blank"
+              rel="noopener"
+              className="text-sm px-4 py-1.5 rounded glass border border-gold/30 hover:border-gold/60 inline-flex items-center gap-1"
+            >
               <FileText className="h-4 w-4" /> {t("admin.protocol_pdf")}
             </a>
           )}
-          <Link to="/tournaments/$id" params={{ id: tournament.id }}
-            className="text-sm px-4 py-1.5 rounded glass border border-border hover:border-gold/40">
+          <Link
+            to="/tournaments/$id"
+            params={{ id: tournament.id }}
+            className="text-sm px-4 py-1.5 rounded glass border border-border hover:border-gold/40"
+          >
             {t("tournament.public_page")} →
           </Link>
         </div>

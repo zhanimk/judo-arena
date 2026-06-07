@@ -434,17 +434,40 @@ export async function removeEntry(
       "Заявка не найдена",
       404,
     );
-  if (app.status !== ApplicationStatus.DRAFT) {
-    throw new ApplicationError("LOCKED", "Изменять можно только DRAFT", 409);
-  }
-  await assertCanManageApplication(actorUserId, app.clubId);
 
   const entry = await prisma.applicationEntry.findUnique({
     where: { id: entryId },
   });
-  if (!entry || entry.applicationId !== applicationId) {
+  if (!entry || entry.applicationId !== applicationId)
     throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
+
+  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
+  if (!actor)
+    throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
+
+  const isAthleteSelf =
+    actor.role === UserRole.ATHLETE && entry.athleteId === actorUserId;
+
+  if (isAthleteSelf) {
+    // Спортсмен может убрать только свою запись, пока заявка не одобрена
+    if (
+      app.status === ApplicationStatus.APPROVED ||
+      app.status === ApplicationStatus.WITHDRAWN
+    ) {
+      throw new ApplicationError(
+        "LOCKED",
+        "Убрать запись можно только до одобрения заявки",
+        409,
+      );
+    }
+  } else {
+    // Тренер/Админ — только в статусе DRAFT
+    if (app.status !== ApplicationStatus.DRAFT) {
+      throw new ApplicationError("LOCKED", "Изменять можно только DRAFT", 409);
+    }
+    await assertCanManageApplication(actorUserId, app.clubId);
   }
+
   await prisma.applicationEntry.delete({ where: { id: entryId } });
 }
 

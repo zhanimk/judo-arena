@@ -65,7 +65,10 @@ function AdminUserDetail() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const query = useQuery({ queryKey: ["admin-user", id], queryFn: () => api.admin.getUser(id) });
-  const clubsQuery = useQuery({ queryKey: ["admin-clubs-list"], queryFn: () => api.clubs.list() });
+  const clubsQuery = useQuery({
+    queryKey: ["admin-clubs-list"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
 
   const initEditForm = (u: any) => {
     setEform({

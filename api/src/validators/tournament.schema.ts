@@ -85,7 +85,11 @@ export const updateTournamentSchema = z
     posterUrl: z.string().url().nullable().optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).optional(),
     kaspiPaymentUrl: z.string().url().nullable().optional(),
-    youtubeUrls: z.array(z.string().url()).nullable().optional(),
+    // Empty entries preserve the tatami index when only some mats have a stream.
+    youtubeUrls: z
+      .array(z.union([z.string().url(), z.literal("")]))
+      .nullable()
+      .optional(),
   })
   .strict();
 

@@ -19,10 +19,11 @@ const dashboardRoot = (role?: string) => {
   return "/athlete";
 };
 
-const roleLabel = (role?: string) => {
-  if (role === "ADMIN") return "Әкімші";
-  if (role === "COACH") return "Жаттықтырушы";
-  return "Спортшы";
+const roleLabel = (role?: string, t?: (k: string) => string) => {
+  if (!t) return role ?? "";
+  if (role === "ADMIN") return t("roles.ADMIN");
+  if (role === "COACH") return t("roles.COACH");
+  return t("roles.ATHLETE");
 };
 
 type SiteHeaderProps = { fixed?: boolean; hideUntilScroll?: boolean };
@@ -138,7 +139,7 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
                       </p>
                       <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
                       <span className="mt-1.5 inline-block rounded-full bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold">
-                        {roleLabel(user.role)}
+                        {roleLabel(user.role, t)}
                       </span>
                     </div>
                     <Link
@@ -232,7 +233,7 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
                         {user.name} {user.surname}
                       </p>
                       <span className="text-[10px] uppercase tracking-widest text-gold">
-                        {roleLabel(user.role)}
+                        {roleLabel(user.role, t)}
                       </span>
                     </div>
                   </div>

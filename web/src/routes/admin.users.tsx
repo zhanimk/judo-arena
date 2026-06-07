@@ -45,7 +45,10 @@ function AdminUsers() {
         limit: 100,
       }),
   });
-  const clubsQuery = useQuery({ queryKey: ["admin-users-clubs"], queryFn: () => api.clubs.list() });
+  const clubsQuery = useQuery({
+    queryKey: ["admin-users-clubs"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
   const roleCounts = useQuery({
     queryKey: ["admin-users-role-counts", clubFilter, activeOnly],
     queryFn: async () => {

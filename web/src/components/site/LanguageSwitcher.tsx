@@ -11,7 +11,7 @@ const locales: { code: Locale; label: string }[] = [
 
 export function LanguageSwitcher({ className = "" }: { className?: string }) {
   const { i18n } = useTranslation();
-  const current = (i18n.resolvedLanguage ?? i18n.language).slice(0, 2) as Locale;
+  const current = i18n.language.slice(0, 2) as Locale;
 
   const changeLocale = async (locale: Locale) => {
     setLocale(locale);

@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  Panel,
+  LoadingState,
+  EmptyState,
+} from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { Send, Loader2, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -18,8 +23,6 @@ export const Route = createFileRoute("/admin/notifications")({
   ),
 });
 
-
-
 type Kind = "all" | "role" | "club" | "tournament";
 
 function AdminNotifications() {
@@ -34,8 +37,14 @@ function AdminNotifications() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const clubsQuery = useQuery({ queryKey: ["admin-clubs-list"], queryFn: () => api.clubs.list() });
-  const tQuery = useQuery({ queryKey: ["admin-tournaments-list"], queryFn: () => api.tournaments.list() });
+  const clubsQuery = useQuery({
+    queryKey: ["admin-clubs-list"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
+  const tQuery = useQuery({
+    queryKey: ["admin-tournaments-list"],
+    queryFn: () => api.tournaments.list({ limit: 1000 }),
+  });
   const auditQuery = useQuery({
     queryKey: ["audit-notifications"],
     queryFn: () => api.admin.auditLogs({ action: "notification.broadcast", limit: 20 }),
@@ -45,13 +54,22 @@ function AdminNotifications() {
   const fillWeighInTemplate = () => {
     if (!selectedTournament) return;
     setKind("tournament");
-    setTitle("Таразылау туралы хабарландыру");
-    setBody([
-      `${localizeName(selectedTournament.name)} жарысының таразылауы:`,
-      `Орын: ${selectedTournament.weighInLocation || selectedTournament.location}, ${selectedTournament.city}`,
-      `Уақыты: ${formatWeighIn(selectedTournament)}`,
-      selectedTournament.mapUrl ? `Карта: ${selectedTournament.mapUrl}` : null,
-    ].filter(Boolean).join("\n"));
+    setTitle(t("admin.weigh_in_notification_title"));
+    setBody(
+      [
+        t("admin.weigh_in_notification_body", { name: localizeName(selectedTournament.name) }),
+        t("admin.weigh_in_notification_location", {
+          location: selectedTournament.weighInLocation || selectedTournament.location,
+          city: selectedTournament.city,
+        }),
+        t("admin.weigh_in_notification_time", { time: formatWeighIn(selectedTournament) }),
+        selectedTournament.mapUrl
+          ? t("admin.weigh_in_notification_map", { url: selectedTournament.mapUrl })
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
   };
 
   const send = useMutation({
@@ -60,35 +78,65 @@ function AdminNotifications() {
       if (kind === "all") return api.notifications.broadcast({ ...base, kind: "all" });
       if (kind === "role") return api.notifications.broadcast({ ...base, kind: "role", role });
       if (kind === "club") return api.notifications.broadcast({ ...base, kind: "club", clubId });
-      return api.notifications.broadcast({ ...base, kind: "tournament", tournamentId, type: "tournament_update" });
+      return api.notifications.broadcast({
+        ...base,
+        kind: "tournament",
+        tournamentId,
+        type: "tournament_update",
+      });
     },
     onSuccess: (r) => {
       const msg = t("admin.notification_sent", { count: r.count });
       setSuccess(msg);
-      setTitle(""); setBody(""); setError("");
+      setTitle("");
+      setBody("");
+      setError("");
       qc.invalidateQueries({ queryKey: ["audit-notifications"] });
       toast.success(msg);
       setTimeout(() => setSuccess(""), 4000);
     },
     onError: (e: any) => {
       const msg = e instanceof ApiError ? e.message : "Қате";
-      setError(msg); setSuccess("");
+      setError(msg);
+      setSuccess("");
       toast.error(msg);
     },
   });
 
   return (
-    <DashboardShell role={t("admin.role_label")} navItems={nav} accentTitle={t("admin.notifications_title")}>
+    <DashboardShell
+      role={t("admin.role_label")}
+      navItems={nav}
+      accentTitle={t("admin.notifications_title")}
+    >
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Panel title={t("admin.notification_new")}>
-          <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send.mutate();
+            }}
+            className="space-y-4"
+          >
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_audience")}</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("admin.notification_audience")}
+              </label>
               <div className="mt-1.5 grid grid-cols-4 gap-2">
                 {(["all", "role", "club", "tournament"] as const).map((k) => (
-                  <button key={k} type="button" onClick={() => setKind(k)}
-                    className={`py-2 rounded text-xs border ${kind === k ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
-                    {k === "all" ? t("admin.notification_audience_all") : k === "role" ? t("admin.notification_audience_role") : k === "club" ? t("admin.notification_audience_club") : t("admin.notification_audience_tournament")}
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setKind(k)}
+                    className={`py-2 rounded text-xs border ${kind === k ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}
+                  >
+                    {k === "all"
+                      ? t("admin.notification_audience_all")
+                      : k === "role"
+                        ? t("admin.notification_audience_role")
+                        : k === "club"
+                          ? t("admin.notification_audience_club")
+                          : t("admin.notification_audience_tournament")}
                   </button>
                 ))}
               </div>
@@ -96,12 +144,20 @@ function AdminNotifications() {
 
             {kind === "role" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.role")}</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                  {t("common.role")}
+                </label>
                 <div className="mt-1.5 grid grid-cols-2 gap-2">
                   {(["ATHLETE", "COACH"] as const).map((r) => (
-                    <button key={r} type="button" onClick={() => setRole(r)}
-                      className={`py-2 rounded text-xs border ${role === r ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}>
-                      {r === "ATHLETE" ? t("admin.notification_role_athletes") : t("admin.notification_role_coaches")}
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRole(r)}
+                      className={`py-2 rounded text-xs border ${role === r ? "bg-gold/15 text-gold border-gold/40" : "glass border-border"}`}
+                    >
+                      {r === "ATHLETE"
+                        ? t("admin.notification_role_athletes")
+                        : t("admin.notification_role_coaches")}
                     </button>
                   ))}
                 </div>
@@ -110,12 +166,20 @@ function AdminNotifications() {
 
             {kind === "club" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.club")}</label>
-                <select value={clubId} onChange={(e) => setClubId(e.target.value)} required
-                  className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                  {t("common.club")}
+                </label>
+                <select
+                  value={clubId}
+                  onChange={(e) => setClubId(e.target.value)}
+                  required
+                  className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+                >
                   <option value="">{t("common.select")}...</option>
                   {(clubsQuery.data?.items ?? []).map((c: any) => (
-                    <option key={c.id} value={c.id}>{localizeName(c.name)} · {c.city}</option>
+                    <option key={c.id} value={c.id}>
+                      {localizeName(c.name)} · {c.city}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -123,12 +187,20 @@ function AdminNotifications() {
 
             {kind === "tournament" && (
               <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.tournament")}</label>
-                <select value={tournamentId} onChange={(e) => setTournamentId(e.target.value)} required
-                  className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none">
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                  {t("common.tournament")}
+                </label>
+                <select
+                  value={tournamentId}
+                  onChange={(e) => setTournamentId(e.target.value)}
+                  required
+                  className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+                >
                   <option value="">{t("common.select")}...</option>
                   {(tQuery.data?.items ?? []).map((t: any) => (
-                    <option key={t.id} value={t.id}>{localizeName(t.name)}</option>
+                    <option key={t.id} value={t.id}>
+                      {localizeName(t.name)}
+                    </option>
                   ))}
                 </select>
                 <button
@@ -143,49 +215,78 @@ function AdminNotifications() {
             )}
 
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_subject")}</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100}
-                className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none" />
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("admin.notification_subject")}
+              </label>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                maxLength={100}
+                className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+              />
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.notification_body")}</label>
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} required rows={5} maxLength={2000}
-                className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none" />
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("admin.notification_body")}
+              </label>
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                required
+                rows={5}
+                maxLength={2000}
+                className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+              />
             </div>
 
             {error && <div className="text-sm text-destructive">{error}</div>}
             {success && <div className="text-sm text-emerald-300">{success}</div>}
 
-            <button type="submit" disabled={send.isPending}
-              className="bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded font-medium shadow-gold inline-flex items-center gap-2 disabled:opacity-50">
-              {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <button
+              type="submit"
+              disabled={send.isPending}
+              className="bg-gradient-gold text-gold-foreground px-5 py-2.5 rounded font-medium shadow-gold inline-flex items-center gap-2 disabled:opacity-50"
+            >
+              {send.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               {t("admin.notification_send")}
             </button>
           </form>
         </Panel>
 
         <Panel title={t("admin.notification_history")}>
-          {auditQuery.isLoading ? <LoadingState /> :
-            (auditQuery.data?.items ?? []).length === 0 ? <EmptyState title={t("admin.notification_empty")} /> : (
-              <ul className="space-y-2 text-sm max-h-[500px] overflow-y-auto">
-                {(auditQuery.data?.items ?? []).map((a: any) => (
-                  <li key={a.id} className="glass rounded p-2.5">
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(a.createdAt).toLocaleString("kk-KZ")}
-                    </div>
-                    <div className="text-xs">{a.actor?.name ?? "—"}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
+          {auditQuery.isLoading ? (
+            <LoadingState />
+          ) : (auditQuery.data?.items ?? []).length === 0 ? (
+            <EmptyState title={t("admin.notification_empty")} />
+          ) : (
+            <ul className="space-y-2 text-sm max-h-[500px] overflow-y-auto">
+              {(auditQuery.data?.items ?? []).map((a: any) => (
+                <li key={a.id} className="glass rounded p-2.5">
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(a.createdAt).toLocaleString("kk-KZ")}
+                  </div>
+                  <div className="text-xs">{a.actor?.name ?? "—"}</div>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </div>
     </DashboardShell>
   );
 }
 
-function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }
+function localizeName(n: any): string {
+  if (!n) return "—";
+  if (typeof n === "string") return n;
+  return n.kk || n.ru || n.en || "—";
+}
 
 function formatWeighIn(t: any): string {
   const start = t.weighInStart ? new Date(t.weighInStart).toLocaleString("kk-KZ") : "";

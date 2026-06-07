@@ -70,7 +70,10 @@ function CoachAthletes() {
   });
 
   const pendingRequests = requestsQuery.data ?? [];
-  const athletes = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
+  const athletes = useMemo(
+    () => (membersQuery.data ?? []).filter((m: any) => m.role === "ATHLETE"),
+    [membersQuery.data],
+  );
 
   const visibleAthletes = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -215,7 +218,7 @@ function AthletesBoard({
   onSort: (value: "ageWeight" | "weight" | "name") => void;
 }) {
   const { t } = useTranslation();
-  const groups = useMemo(() => groupByAgeBand(athletes), [athletes]);
+  const groups = useMemo(() => groupByAgeBand(athletes, t), [athletes, t]);
 
   return (
     <div className="mt-4 space-y-5">
@@ -579,16 +582,16 @@ function getAthleteStats(athletes: any[]) {
   };
 }
 
-function groupByAgeBand(athletes: any[]) {
+function groupByAgeBand(athletes: any[], t: (key: string) => string) {
   const bands = [
-    { key: "u8", label: "U8 · 7 жасқа дейін", min: 0, max: 7 },
-    { key: "u10", label: "U10 · 8-9 жас", min: 8, max: 9 },
-    { key: "u12", label: "U12 · 10-11 жас", min: 10, max: 11 },
-    { key: "u14", label: "U14 · 12-13 жас", min: 12, max: 13 },
-    { key: "u16", label: "U16 · 14-15 жас", min: 14, max: 15 },
-    { key: "u18", label: "U18 · 16-17 жас", min: 16, max: 17 },
-    { key: "senior", label: "18+ · ересектер", min: 18, max: 99 },
-    { key: "unknown", label: "Жасы көрсетілмеген", min: 100, max: 999 },
+    { key: "u8", label: t("coach.age_band_u8"), min: 0, max: 7 },
+    { key: "u10", label: t("coach.age_band_u10"), min: 8, max: 9 },
+    { key: "u12", label: t("coach.age_band_u12"), min: 10, max: 11 },
+    { key: "u14", label: t("coach.age_band_u14"), min: 12, max: 13 },
+    { key: "u16", label: t("coach.age_band_u16"), min: 14, max: 15 },
+    { key: "u18", label: t("coach.age_band_u18"), min: 16, max: 17 },
+    { key: "senior", label: t("coach.age_band_senior"), min: 18, max: 99 },
+    { key: "unknown", label: t("coach.age_band_unknown"), min: 100, max: 999 },
   ];
 
   return bands

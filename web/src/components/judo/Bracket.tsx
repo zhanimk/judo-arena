@@ -1,4 +1,5 @@
 import { Play, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export type Match = {
   id: string;
@@ -28,7 +29,7 @@ function roundGap(roundIndex: number) {
 }
 
 function roundTop(roundIndex: number) {
-  return HEADER_H + (CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1) / 2;
+  return HEADER_H + ((CARD_H + BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
 }
 
 function getLayout(rounds: Round[]) {
@@ -60,14 +61,10 @@ function MatchCard({ match }: { match: Match }) {
       ? "border-gold/35"
       : "border-border/60";
 
-  const row = (
-    name: string,
-    country?: string,
-    flag?: string,
-    score?: string,
-    win?: boolean,
-  ) => (
-    <div className={`grid grid-cols-[2.7rem_1fr_auto] items-center gap-2 px-3 py-2.5 ${win ? "text-gold" : "text-foreground/85"}`}>
+  const row = (name: string, country?: string, flag?: string, score?: string, win?: boolean) => (
+    <div
+      className={`grid grid-cols-[2.7rem_1fr_auto] items-center gap-2 px-3 py-2.5 ${win ? "text-gold" : "text-foreground/85"}`}
+    >
       <div className="flex items-center gap-1.5">
         <span className="w-6 text-[10px] font-bold uppercase tracking-wider text-muted-foreground [writing-mode:vertical-rl] rotate-180">
           {country ?? "KAZ"}
@@ -77,14 +74,18 @@ function MatchCard({ match }: { match: Match }) {
       <div className={`min-w-0 text-sm leading-tight ${win ? "font-bold" : "font-medium"}`}>
         <span className="block truncate">{name}</span>
       </div>
-      <div className={`min-w-8 text-right text-xs font-semibold tabular-nums ${win ? "text-gold" : "text-muted-foreground"}`}>
+      <div
+        className={`min-w-8 text-right text-xs font-semibold tabular-nums ${win ? "text-gold" : "text-muted-foreground"}`}
+      >
         {score ?? "—"}
       </div>
     </div>
   );
 
   return (
-    <div className={`relative h-[108px] overflow-hidden rounded-2xl border bg-card/92 shadow-sm backdrop-blur ${border}`}>
+    <div
+      className={`relative h-[108px] overflow-hidden rounded-2xl border bg-card/92 shadow-sm backdrop-blur ${border}`}
+    >
       {live && (
         <span className="absolute -top-px left-4 z-10 rounded-b-md bg-destructive px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-destructive-foreground">
           live
@@ -107,6 +108,7 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: string }) {
+  const { t } = useTranslation();
   const { positions, width, height } = getLayout(rounds);
   const championX = PAD + rounds.length * (CARD_W + ROUND_GAP);
   const totalWidth = champion ? width + CARD_W + ROUND_GAP : width;
@@ -117,7 +119,12 @@ export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: stri
         className="relative min-w-max rounded-[1.5rem] bg-gradient-to-br from-sky-100/10 via-background to-emerald-100/10"
         style={{ width: totalWidth, height }}
       >
-        <svg className="pointer-events-none absolute inset-0 z-0" width={totalWidth} height={height} aria-hidden="true">
+        <svg
+          className="pointer-events-none absolute inset-0 z-0"
+          width={totalWidth}
+          height={height}
+          aria-hidden="true"
+        >
           <defs>
             <linearGradient id="bracketLine" x1="0" x2="1">
               <stop offset="0%" stopColor="oklch(0.72 0.14 78 / 0.55)" />
@@ -159,7 +166,11 @@ export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: stri
         </svg>
 
         {rounds.map((round, roundIndex) => (
-          <div key={round.title} className="absolute z-10" style={{ left: positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}>
+          <div
+            key={round.title}
+            className="absolute z-10"
+            style={{ left: positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}
+          >
             <div className="mb-3 flex h-10 items-center justify-center">
               <span className="rounded-full border border-gold/30 bg-background/80 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold backdrop-blur">
                 {round.title}
@@ -168,7 +179,11 @@ export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: stri
             {round.matches.map((match, matchIndex) => {
               const pos = positions[roundIndex][matchIndex];
               return (
-                <div key={match.id} className="absolute" style={{ left: 0, top: pos.y - HEADER_H, width: CARD_W }}>
+                <div
+                  key={match.id}
+                  className="absolute"
+                  style={{ left: 0, top: pos.y - HEADER_H, width: CARD_W }}
+                >
                   <MatchCard match={match} />
                 </div>
               );
@@ -177,11 +192,18 @@ export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: stri
         ))}
 
         {champion && (
-          <div className="absolute z-10 flex h-[108px] items-center" style={{ left: championX, top: positions.at(-1)?.[0]?.y ?? HEADER_H, width: CARD_W }}>
+          <div
+            className="absolute z-10 flex h-[108px] items-center"
+            style={{ left: championX, top: positions.at(-1)?.[0]?.y ?? HEADER_H, width: CARD_W }}
+          >
             <div className="w-full rounded-2xl border-2 border-gold/60 bg-card/95 p-4 text-center shadow-gold">
               <Trophy className="mx-auto mb-2 h-6 w-6 text-gold" />
-              <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Чемпион</div>
-              <div className="mt-1 truncate font-display text-lg font-bold text-gradient-gold">{champion}</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                {t("bracket.champion")}
+              </div>
+              <div className="mt-1 truncate font-display text-lg font-bold text-gradient-gold">
+                {champion}
+              </div>
             </div>
           </div>
         )}
@@ -194,21 +216,102 @@ export const sampleRounds: Round[] = [
   {
     title: "1/8 финал",
     matches: [
-      { id: "m1", a: "Ә. Сәрсен", b: "Б. Темір", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "Ippon", scoreB: "—", winner: "A", status: "done" },
-      { id: "m2", a: "Д. Нұрлан", b: "А. Қанат", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "Waza-ari", scoreB: "—", winner: "A", status: "done" },
-      { id: "m3", a: "С. Бекзат", b: "М. Ержан", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "—", scoreB: "Ippon", winner: "B", status: "done" },
-      { id: "m4", a: "Р. Дәурен", b: "Т. Олжас", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "Yuko", scoreB: "—", winner: "A", status: "done" },
+      {
+        id: "m1",
+        a: "Ә. Сәрсен",
+        b: "Б. Темір",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "Ippon",
+        scoreB: "—",
+        winner: "A",
+        status: "done",
+      },
+      {
+        id: "m2",
+        a: "Д. Нұрлан",
+        b: "А. Қанат",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "Waza-ari",
+        scoreB: "—",
+        winner: "A",
+        status: "done",
+      },
+      {
+        id: "m3",
+        a: "С. Бекзат",
+        b: "М. Ержан",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "—",
+        scoreB: "Ippon",
+        winner: "B",
+        status: "done",
+      },
+      {
+        id: "m4",
+        a: "Р. Дәурен",
+        b: "Т. Олжас",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "Yuko",
+        scoreB: "—",
+        winner: "A",
+        status: "done",
+      },
     ],
   },
   {
     title: "Жартылай финал",
     matches: [
-      { id: "s1", a: "Ә. Сәрсен", b: "Д. Нұрлан", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "2", scoreB: "1", status: "live" },
-      { id: "s2", a: "М. Ержан", b: "Р. Дәурен", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", scoreA: "—", scoreB: "—", status: "next" },
+      {
+        id: "s1",
+        a: "Ә. Сәрсен",
+        b: "Д. Нұрлан",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "2",
+        scoreB: "1",
+        status: "live",
+      },
+      {
+        id: "s2",
+        a: "М. Ержан",
+        b: "Р. Дәурен",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        scoreA: "—",
+        scoreB: "—",
+        status: "next",
+      },
     ],
   },
   {
     title: "Финал",
-    matches: [{ id: "f1", a: "Жеңімпаз S1", b: "Жеңімпаз S2", countryA: "KAZ", countryB: "KAZ", flagA: "🇰🇿", flagB: "🇰🇿", status: "scheduled" }],
+    matches: [
+      {
+        id: "f1",
+        a: "Жеңімпаз S1",
+        b: "Жеңімпаз S2",
+        countryA: "KAZ",
+        countryB: "KAZ",
+        flagA: "🇰🇿",
+        flagB: "🇰🇿",
+        status: "scheduled",
+      },
+    ],
   },
 ];
