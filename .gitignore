@@ -63,3 +63,4 @@ backups/*.dump
 # Docker volumes (никогда не должны попасть в репо)
 postgres-data/
 redis-data/
+.vercel
