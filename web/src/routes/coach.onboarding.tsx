@@ -708,7 +708,7 @@ function ClubStep({
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
                     className={`mt-1.5 ${INPUT_CLS}`}
                   >
-                    <option value="">Қаланы таңдаңыз</option>
+                    <option value="">{t("coach_onboarding.select_city")}</option>
                     {KZ_CITIES.map((c) => (
                       <option key={c} value={c}>
                         {c}

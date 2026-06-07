@@ -8,7 +8,11 @@ import { api, ApiError } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { DurationEstimate, categoryTitle, weightLabel } from "./shared";
 
-function CategoryPills({ items, selected, onSelect }: {
+function CategoryPills({
+  items,
+  selected,
+  onSelect,
+}: {
   items: Array<{ category: any; bracket?: any; participants: number }>;
   selected: string | null;
   onSelect: (categoryId: string) => void;
@@ -23,29 +27,33 @@ function CategoryPills({ items, selected, onSelect }: {
         { labelKey: "bracket.female_label", symbol: "♀", items: female },
       ].map((group) => (
         <div key={group.labelKey} className="flex flex-wrap items-center gap-2 py-1.5">
-          <div className="w-16 text-sm font-semibold text-gold">{group.symbol} {t(group.labelKey)}</div>
+          <div className="w-16 text-sm font-semibold text-gold">
+            {group.symbol} {t(group.labelKey)}
+          </div>
           {group.items.length === 0 ? (
             <span className="text-xs text-muted-foreground">{t("bracket.no_category_here")}</span>
-          ) : group.items.map((item) => {
-            const active = selected === item.category.id;
-            const ready = Boolean(item.bracket);
-            return (
-              <button
-                key={item.category.id}
-                type="button"
-                onClick={() => onSelect(item.category.id)}
-                className={`min-h-10 rounded-full px-4 text-sm font-medium transition ${
-                  active
-                    ? "bg-gradient-gold text-gold-foreground shadow-gold"
-                    : ready
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                      : "bg-card/70 border border-border hover:border-gold/40"
-                }`}
-              >
-                {weightLabel(item.category, t)} · {item.participants}
-              </button>
-            );
-          })}
+          ) : (
+            group.items.map((item) => {
+              const active = selected === item.category.id;
+              const ready = Boolean(item.bracket);
+              return (
+                <button
+                  key={item.category.id}
+                  type="button"
+                  onClick={() => onSelect(item.category.id)}
+                  className={`min-h-10 rounded-full px-4 text-sm font-medium transition ${
+                    active
+                      ? "bg-gradient-gold text-gold-foreground shadow-gold"
+                      : ready
+                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                        : "bg-card/70 border border-border hover:border-gold/40"
+                  }`}
+                >
+                  {weightLabel(item.category, t)} · {item.participants}
+                </button>
+              );
+            })
+          )}
         </div>
       ))}
     </div>
@@ -75,7 +83,7 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
   });
   const matchesQuery = useQuery({
     queryKey: ["protocol-matches", tournament.id],
-    queryFn: () => api.matches.list({ tournamentId: tournament.id }),
+    queryFn: () => api.matches.list({ tournamentId: tournament.id, limit: 1000 }),
   });
   const applicationsQuery = useQuery({
     queryKey: ["protocol-applications", tournament.id],
@@ -122,10 +130,13 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
     };
   });
   const readyCategories = categoryStatuses.filter((item: any) => item.bracket).length;
-  const progress = (tournament.categories?.length ?? 0) > 0
-    ? Math.round((readyCategories / (tournament.categories?.length ?? 1)) * 100)
-    : 0;
-  const playableTotal = (matchesQuery.data ?? []).filter((m: any) => m.redAthlete && m.blueAthlete).length;
+  const progress =
+    (tournament.categories?.length ?? 0) > 0
+      ? Math.round((readyCategories / (tournament.categories?.length ?? 1)) * 100)
+      : 0;
+  const playableTotal = (matchesQuery.data ?? []).filter(
+    (m: any) => m.redAthlete && m.blueAthlete,
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -136,10 +147,18 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
               <button
                 type="button"
                 onClick={() => prepare.mutate()}
-                disabled={prepare.isPending || tournament.status === "DRAFT" || tournament.status === "REGISTRATION_OPEN"}
+                disabled={
+                  prepare.isPending ||
+                  tournament.status === "DRAFT" ||
+                  tournament.status === "REGISTRATION_OPEN"
+                }
                 className="inline-flex min-h-12 items-center gap-2 rounded-md bg-gradient-gold px-5 py-3 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-50"
               >
-                {prepare.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                {prepare.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
                 {t("bracket.prepare_btn")}
               </button>
               <Link
@@ -159,10 +178,12 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
                 <ExternalLink className="h-4 w-4" /> {t("bracket.projector_btn")}
               </Link>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {t("bracket.prepare_desc")}
-            </p>
-            {prepareError && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{prepareError}</div>}
+            <p className="mt-3 text-sm text-muted-foreground">{t("bracket.prepare_desc")}</p>
+            {prepareError && (
+              <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {prepareError}
+              </div>
+            )}
             {prepareResult && (
               <div className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
                 <div>
@@ -175,8 +196,15 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
                 {prepareResult.tatami?.loads?.length ? (
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
                     {prepareResult.tatami.loads.map((load: any) => (
-                      <span key={load.tatamiNumber} className="rounded-full border border-emerald-500/30 bg-background/30 px-2.5 py-1">
-                        {t("bracket.tatami_load", { n: load.tatamiNumber, cats: load.categories ?? 0, matches: load.matches ?? 0 })}
+                      <span
+                        key={load.tatamiNumber}
+                        className="rounded-full border border-emerald-500/30 bg-background/30 px-2.5 py-1"
+                      >
+                        {t("bracket.tatami_load", {
+                          n: load.tatamiNumber,
+                          cats: load.categories ?? 0,
+                          matches: load.matches ?? 0,
+                        })}
                       </span>
                     ))}
                   </div>
@@ -193,27 +221,46 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
               <div className="h-full rounded-full bg-gold" style={{ width: `${progress}%` }} />
             </div>
             <div className="mt-3 text-sm text-muted-foreground">
-              {t("bracket.readiness_desc", { ready: readyCategories, total: tournament.categories?.length ?? 0 })}
+              {t("bracket.readiness_desc", {
+                ready: readyCategories,
+                total: tournament.categories?.length ?? 0,
+              })}
             </div>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-4">
           <div className="rounded-md border border-border/60 bg-background/30 p-4">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("bracket.stat_categories")}</div>
-            <div className="mt-2 font-display text-3xl font-bold">{tournament.categories?.length ?? 0}</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("bracket.stat_categories")}
+            </div>
+            <div className="mt-2 font-display text-3xl font-bold">
+              {tournament.categories?.length ?? 0}
+            </div>
           </div>
           <div className="rounded-md border border-border/60 bg-background/30 p-4">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("bracket.stat_brackets")}</div>
-            <div className="mt-2 font-display text-3xl font-bold">{bracketsQuery.data?.length ?? 0}</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("bracket.stat_brackets")}
+            </div>
+            <div className="mt-2 font-display text-3xl font-bold">
+              {bracketsQuery.data?.length ?? 0}
+            </div>
           </div>
           <div className="rounded-md border border-border/60 bg-background/30 p-4">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("bracket.stat_matches")}</div>
-            <div className="mt-2 font-display text-3xl font-bold">{completed}/{total}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{t("bracket.stat_ready_pairs", { n: playableTotal })}</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("bracket.stat_matches")}
+            </div>
+            <div className="mt-2 font-display text-3xl font-bold">
+              {completed}/{total}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {t("bracket.stat_ready_pairs", { n: playableTotal })}
+            </div>
           </div>
           <div className="rounded-md border border-border/60 bg-background/30 p-4">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("bracket.stat_tatami")}</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("bracket.stat_tatami")}
+            </div>
             <div className="mt-2 font-display text-3xl font-bold">{tournament.tatamiCount}</div>
           </div>
         </div>
@@ -262,12 +309,21 @@ export function TournamentProtocolTab({ tournament }: { tournament: any }) {
         <div className="mt-5 space-y-2">
           {categoryStatuses.map(({ category: c, bracket, participants }: any) => {
             return (
-              <div key={c.id} className="rounded-md border border-border/60 bg-background/30 p-3 text-sm">
+              <div
+                key={c.id}
+                className="rounded-md border border-border/60 bg-background/30 p-3 text-sm"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-medium">{categoryTitle(c, t)}</div>
                     <div className="text-xs text-muted-foreground">
-                      {t("bracket.participants", { n: participants })} · {bracket ? t("bracket.match_bracket_info", { matches: bracket._count?.matches ?? 0, size: bracket.size }) : t("bracket.no_bracket")}
+                      {t("bracket.participants", { n: participants })} ·{" "}
+                      {bracket
+                        ? t("bracket.match_bracket_info", {
+                            matches: bracket._count?.matches ?? 0,
+                            size: bracket.size,
+                          })
+                        : t("bracket.no_bracket")}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

@@ -3,8 +3,12 @@ import {
   createTournamentSchema,
   createCategorySchema,
   listTournamentsQuerySchema,
+  updateTournamentSchema,
 } from "../../src/validators/tournament.schema.js";
-import { registerSchema, loginSchema } from "../../src/validators/auth.schema.js";
+import {
+  registerSchema,
+  loginSchema,
+} from "../../src/validators/auth.schema.js";
 
 // ─── Tournament schema ─────────────────────────────────────────────────────────
 
@@ -47,14 +51,41 @@ describe("createTournamentSchema", () => {
   });
 
   it("rejects invalid mapUrl", () => {
-    const result = createTournamentSchema.safeParse({ ...base, mapUrl: "not-a-url" });
+    const result = createTournamentSchema.safeParse({
+      ...base,
+      mapUrl: "not-a-url",
+    });
     expect(result.success).toBe(false);
   });
 
   it("enforces tatamiCount between 1 and 20", () => {
-    expect(createTournamentSchema.safeParse({ ...base, tatamiCount: 0 }).success).toBe(false);
-    expect(createTournamentSchema.safeParse({ ...base, tatamiCount: 21 }).success).toBe(false);
-    expect(createTournamentSchema.safeParse({ ...base, tatamiCount: 10 }).success).toBe(true);
+    expect(
+      createTournamentSchema.safeParse({ ...base, tatamiCount: 0 }).success,
+    ).toBe(false);
+    expect(
+      createTournamentSchema.safeParse({ ...base, tatamiCount: 21 }).success,
+    ).toBe(false);
+    expect(
+      createTournamentSchema.safeParse({ ...base, tatamiCount: 10 }).success,
+    ).toBe(true);
+  });
+});
+
+describe("updateTournamentSchema", () => {
+  it("accepts empty YouTube slots while preserving tatami positions", () => {
+    const result = updateTournamentSchema.safeParse({
+      youtubeUrls: ["https://youtu.be/NJEpE4IlusY", "", ""],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-empty invalid YouTube URL", () => {
+    const result = updateTournamentSchema.safeParse({
+      youtubeUrls: ["not-a-url", ""],
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
@@ -74,13 +105,21 @@ describe("createCategorySchema", () => {
   });
 
   it("rejects ageMin > ageMax", () => {
-    const result = createCategorySchema.safeParse({ ...base, ageMin: 40, ageMax: 20 });
+    const result = createCategorySchema.safeParse({
+      ...base,
+      ageMin: 40,
+      ageMax: 20,
+    });
     expect(result.success).toBe(false);
     expect(JSON.stringify(result.error)).toContain("ageMin");
   });
 
   it("rejects weightMin >= weightMax", () => {
-    const result = createCategorySchema.safeParse({ ...base, weightMin: 66, weightMax: 66 });
+    const result = createCategorySchema.safeParse({
+      ...base,
+      weightMin: 66,
+      weightMax: 66,
+    });
     expect(result.success).toBe(false);
     expect(JSON.stringify(result.error)).toContain("weightMin");
   });
@@ -91,17 +130,26 @@ describe("createCategorySchema", () => {
   });
 
   it("accepts ROUND_ROBIN format", () => {
-    const result = createCategorySchema.safeParse({ ...base, format: "ROUND_ROBIN" });
+    const result = createCategorySchema.safeParse({
+      ...base,
+      format: "ROUND_ROBIN",
+    });
     expect(result.success).toBe(true);
   });
 
   it("rejects unknown format", () => {
-    const result = createCategorySchema.safeParse({ ...base, format: "KNOCKOUT" });
+    const result = createCategorySchema.safeParse({
+      ...base,
+      format: "KNOCKOUT",
+    });
     expect(result.success).toBe(false);
   });
 
   it("rejects matchDurationSec below minimum (60s)", () => {
-    const result = createCategorySchema.safeParse({ ...base, matchDurationSec: 30 });
+    const result = createCategorySchema.safeParse({
+      ...base,
+      matchDurationSec: 30,
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -116,22 +164,31 @@ describe("listTournamentsQuerySchema", () => {
   });
 
   it("coerces string numbers", () => {
-    const result = listTournamentsQuerySchema.safeParse({ limit: "10", offset: "5" });
+    const result = listTournamentsQuerySchema.safeParse({
+      limit: "10",
+      offset: "5",
+    });
     expect(result.success && result.data.limit).toBe(10);
     expect(result.success && result.data.offset).toBe(5);
   });
 
-  it("rejects limit above 100", () => {
-    expect(listTournamentsQuerySchema.safeParse({ limit: 200 }).success).toBe(false);
+  it("rejects limit above 1000", () => {
+    expect(listTournamentsQuerySchema.safeParse({ limit: 1001 }).success).toBe(
+      false,
+    );
   });
 
   it("accepts valid status filter", () => {
-    const result = listTournamentsQuerySchema.safeParse({ status: "IN_PROGRESS" });
+    const result = listTournamentsQuerySchema.safeParse({
+      status: "IN_PROGRESS",
+    });
     expect(result.success).toBe(true);
   });
 
   it("rejects unknown status", () => {
-    expect(listTournamentsQuerySchema.safeParse({ status: "LIVE" }).success).toBe(false);
+    expect(
+      listTournamentsQuerySchema.safeParse({ status: "LIVE" }).success,
+    ).toBe(false);
   });
 });
 
@@ -167,7 +224,9 @@ describe("registerSchema", () => {
   });
 
   it("accepts COACH role", () => {
-    expect(registerSchema.safeParse({ ...base, role: "COACH" }).success).toBe(true);
+    expect(registerSchema.safeParse({ ...base, role: "COACH" }).success).toBe(
+      true,
+    );
   });
 
   it("defaults preferredLocale to kk", () => {
@@ -178,7 +237,9 @@ describe("registerSchema", () => {
 
 describe("loginSchema", () => {
   it("accepts valid credentials", () => {
-    expect(loginSchema.safeParse({ email: "a@b.com", password: "x" }).success).toBe(true);
+    expect(
+      loginSchema.safeParse({ email: "a@b.com", password: "x" }).success,
+    ).toBe(true);
   });
 
   it("rejects missing email", () => {
@@ -186,10 +247,14 @@ describe("loginSchema", () => {
   });
 
   it("rejects invalid email format", () => {
-    expect(loginSchema.safeParse({ email: "bad", password: "x" }).success).toBe(false);
+    expect(loginSchema.safeParse({ email: "bad", password: "x" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects empty password", () => {
-    expect(loginSchema.safeParse({ email: "a@b.com", password: "" }).success).toBe(false);
+    expect(
+      loginSchema.safeParse({ email: "a@b.com", password: "" }).success,
+    ).toBe(false);
   });
 });

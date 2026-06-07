@@ -22,9 +22,7 @@ import { z } from "zod";
 import { attachErrorHandler } from "../lib/error-handler.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
-import {
-  overrideMatchResult,
-} from "../services/admin-override.service.js";
+import { overrideMatchResult } from "../services/admin-override.service.js";
 import {
   finalizeTournament,
   getAthleteRating,
@@ -78,7 +76,10 @@ const overrideSchema = z
   })
   .strict();
 
-const strongPassword = z.string().min(8).max(128)
+const strongPassword = z
+  .string()
+  .min(8)
+  .max(128)
   .regex(/[A-Z]/, "Пароль должен содержать заглавную букву")
   .regex(/[a-z]/, "Пароль должен содержать строчную букву")
   .regex(/[0-9]/, "Пароль должен содержать цифру");
@@ -115,14 +116,24 @@ const updateUserSchema = z.object({
   preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
 });
 
-const clubNameSchema = z.object({ ru: z.string().min(1), kk: z.string().optional(), en: z.string().optional() });
+const clubNameSchema = z.object({
+  ru: z.string().min(1),
+  kk: z.string().optional(),
+  en: z.string().optional(),
+});
 
 const createClubSchema = z.object({
   name: clubNameSchema,
   city: z.string().min(1),
   country: z.string().optional(),
   shortName: z.string().optional(),
-  description: z.object({ ru: z.string().optional(), kk: z.string().optional(), en: z.string().optional() }).optional(),
+  description: z
+    .object({
+      ru: z.string().optional(),
+      kk: z.string().optional(),
+      en: z.string().optional(),
+    })
+    .optional(),
 });
 
 const updateClubSchema = z.object({
@@ -130,7 +141,14 @@ const updateClubSchema = z.object({
   city: z.string().min(1).optional(),
   country: z.string().optional(),
   shortName: z.string().nullable().optional(),
-  description: z.object({ ru: z.string().optional(), kk: z.string().optional(), en: z.string().optional() }).nullable().optional(),
+  description: z
+    .object({
+      ru: z.string().optional(),
+      kk: z.string().optional(),
+      en: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 const groupSchema = z.object({
@@ -166,7 +184,6 @@ const pdfAllBracketsQuerySchema = z.object({
   tournamentId: z.string(),
 });
 
-
 // ============================================================
 // /api/admin/*
 // ============================================================
@@ -185,16 +202,27 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/matches/:id/override",
-    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    {
+      preHandler: [authenticate, authorize("ADMIN")],
+      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+    },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { winnerSide, reason } = overrideSchema.parse(request.body);
-      return overrideMatchResult(request.user!.sub, request.params.id, winnerSide, reason);
+      return overrideMatchResult(
+        request.user!.sub,
+        request.params.id,
+        winnerSide,
+        reason,
+      );
     },
   );
 
   app.post<{ Params: { id: string } }>(
     "/tournaments/:id/finalize",
-    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+    {
+      preHandler: [authenticate, authorize("ADMIN")],
+      config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
+    },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return finalizeTournament(request.user!.sub, request.params.id);
     },
@@ -213,7 +241,11 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { entryId: string } }>) => {
       const input = updateWeighInSchema.parse(request.body);
-      return updateEntryWeighIn(request.user!.sub, request.params.entryId, input);
+      return updateEntryWeighIn(
+        request.user!.sub,
+        request.params.entryId,
+        input,
+      );
     },
   );
 
@@ -256,11 +288,24 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>(
+  app.patch<{
+    Params: { id: string };
+    Body: { blocked: boolean; reason?: string };
+  }>(
     "/clubs/:id/block",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest<{ Params: { id: string }; Body: { blocked: boolean; reason?: string } }>) => {
-      return toggleClubBlock(request.user!.sub, request.params.id, request.body.blocked, request.body.reason);
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { blocked: boolean; reason?: string };
+      }>,
+    ) => {
+      return toggleClubBlock(
+        request.user!.sub,
+        request.params.id,
+        request.body.blocked,
+        request.body.reason,
+      );
     },
   );
 
@@ -327,7 +372,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     "/users/:id/club",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { clubId } = z.object({ clubId: z.string().nullable() }).parse(request.body);
+      const { clubId } = z
+        .object({ clubId: z.string().nullable() })
+        .parse(request.body);
       return changeUserClub(request.user!.sub, request.params.id, clubId);
     },
   );
@@ -336,7 +383,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     "/users/:id/reset-password",
     { preHandler: [authenticate, authorize("ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { password } = z.object({ password: strongPassword }).parse(request.body);
+      const { password } = z
+        .object({ password: strongPassword })
+        .parse(request.body);
       return resetUserPassword(request.user!.sub, request.params.id, password);
     },
   );
@@ -359,7 +408,12 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         role: q.role as import("@prisma/client").UserRole | undefined,
         search: q.search,
         clubId: q.clubId,
-        isActive: q.isActive === "true" ? true : q.isActive === "false" ? false : undefined,
+        isActive:
+          q.isActive === "true"
+            ? true
+            : q.isActive === "false"
+              ? false
+              : undefined,
         limit: Math.min(q.limit ? parseInt(q.limit, 10) : 50, 200),
         offset: Math.max(q.offset ? parseInt(q.offset, 10) : 0, 0),
       });
@@ -377,8 +431,17 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.patch<{ Params: { id: string }; Body: { active: boolean } }>(
     "/users/:id/active",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest<{ Params: { id: string }; Body: { active: boolean } }>) => {
-      return toggleUserBlock(request.user!.sub, request.params.id, request.body.active);
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { active: boolean };
+      }>,
+    ) => {
+      return toggleUserBlock(
+        request.user!.sub,
+        request.params.id,
+        request.body.active,
+      );
     },
   );
 
@@ -397,16 +460,34 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.patch<{ Params: { id: string }; Body: { featured: boolean } }>(
     "/tournaments/:id/feature",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest<{ Params: { id: string }; Body: { featured: boolean } }>) => {
-      return setTournamentFeatured(request.user!.sub, request.params.id, request.body.featured);
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { featured: boolean };
+      }>,
+    ) => {
+      return setTournamentFeatured(
+        request.user!.sub,
+        request.params.id,
+        request.body.featured,
+      );
     },
   );
 
   app.patch<{ Params: { id: string }; Body: { archive: boolean } }>(
     "/tournaments/:id/archive",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest<{ Params: { id: string }; Body: { archive: boolean } }>) => {
-      return archiveTournament(request.user!.sub, request.params.id, request.body.archive);
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { archive: boolean };
+      }>,
+    ) => {
+      return archiveTournament(
+        request.user!.sub,
+        request.params.id,
+        request.body.archive,
+      );
     },
   );
 
@@ -425,8 +506,17 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.patch<{ Params: { key: string }; Body: { value: unknown } }>(
     "/system-config/:key",
     { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request: FastifyRequest<{ Params: { key: string }; Body: { value: unknown } }>) => {
-      return updateSystemConfig(request.user!.sub, request.params.key, request.body.value);
+    async (
+      request: FastifyRequest<{
+        Params: { key: string };
+        Body: { value: unknown };
+      }>,
+    ) => {
+      return updateSystemConfig(
+        request.user!.sub,
+        request.params.key,
+        request.body.value,
+      );
     },
   );
 
@@ -454,22 +544,34 @@ export async function ratingRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get("/leaderboard", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
-    const q = leaderboardQuerySchema.parse(request.query);
-    return getLeaderboard(q);
-  });
+  app.get(
+    "/leaderboard",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (request) => {
+      const q = leaderboardQuerySchema.parse(request.query);
+      return getLeaderboard(q);
+    },
+  );
 
-  app.get("/clubs", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (request) => {
-    const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).parse(request.query);
-    return getClubLeaderboard({ limit });
-  });
+  app.get(
+    "/clubs",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (request) => {
+      const { limit } = z
+        .object({ limit: z.coerce.number().int().min(1).max(100).default(50) })
+        .parse(request.query);
+      return getClubLeaderboard({ limit });
+    },
+  );
 }
 
 // ============================================================
 // /api/admin/applications/*  — admin entry management
 // Bypasses DRAFT check so admin can adjust after weigh-in
 // ============================================================
-export async function adminApplicationRoutes(app: FastifyInstance): Promise<void> {
+export async function adminApplicationRoutes(
+  app: FastifyInstance,
+): Promise<void> {
   attachErrorHandler(app);
 
   app.addHook("preHandler", authenticate);
@@ -507,36 +609,59 @@ export async function adminApplicationRoutes(app: FastifyInstance): Promise<void
 export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  // PDF сетки — расписание матчей до начала турнира
-  // Тесный rate-limit: PDF-генерация — CPU-intensive операция
-  app.get("/bracket", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
-    const q = pdfBracketQuerySchema.parse(request.query);
-    const buffer = await generateBracketPdf(q.bracketId);
-    return reply
-      .type("application/pdf")
-      .header("Content-Disposition", `attachment; filename="bracket-${q.bracketId}.pdf"`)
-      .send(buffer);
-  });
+  // PDF сетки — публичный (данные сетки публичны)
+  app.get(
+    "/bracket",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const q = pdfBracketQuerySchema.parse(request.query);
+      const buffer = await generateBracketPdf(q.bracketId);
+      return reply
+        .type("application/pdf")
+        .header(
+          "Content-Disposition",
+          `attachment; filename="bracket-${q.bracketId}.pdf"`,
+        )
+        .send(buffer);
+    },
+  );
 
-  // PDF итогового протокола — после COMPLETED
-  app.get("/protocol", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
-    const q = pdfProtocolQuerySchema.parse(request.query);
-    const buffer = await generateTournamentProtocolPdf(q.tournamentId);
-    return reply
-      .type("application/pdf")
-      .header("Content-Disposition", `attachment; filename="protocol-${q.tournamentId}.pdf"`)
-      .send(buffer);
-  });
+  // PDF итогового протокола — публичный (результаты завершённых турниров публичны)
+  app.get(
+    "/protocol",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const q = pdfProtocolQuerySchema.parse(request.query);
+      const buffer = await generateTournamentProtocolPdf(q.tournamentId);
+      return reply
+        .type("application/pdf")
+        .header(
+          "Content-Disposition",
+          `attachment; filename="protocol-${q.tournamentId}.pdf"`,
+        )
+        .send(buffer);
+    },
+  );
 
   // PDF всех сеток турнира — один файл с обложкой + все категории
-  app.get("/tournament-brackets", { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (request, reply) => {
-    const q = pdfAllBracketsQuerySchema.parse(request.query);
-    const buffer = await generateAllBracketsPdf(q.tournamentId);
-    return reply
-      .type("application/pdf")
-      .header("Content-Disposition", `attachment; filename="brackets-${q.tournamentId}.pdf"`)
-      .send(buffer);
-  });
+  app.get(
+    "/tournament-brackets",
+    {
+      preHandler: [authenticate, authorize("ADMIN")],
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    },
+    async (request, reply) => {
+      const q = pdfAllBracketsQuerySchema.parse(request.query);
+      const buffer = await generateAllBracketsPdf(q.tournamentId);
+      return reply
+        .type("application/pdf")
+        .header(
+          "Content-Disposition",
+          `attachment; filename="brackets-${q.tournamentId}.pdf"`,
+        )
+        .send(buffer);
+    },
+  );
 
   // Участников PDF и Диплом PDF удалены по требованию ТЗ
 }

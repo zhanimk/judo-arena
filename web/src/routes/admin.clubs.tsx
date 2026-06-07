@@ -110,7 +110,10 @@ function ClubsTab() {
     shortName: "",
   });
 
-  const query = useQuery({ queryKey: ["admin-clubs"], queryFn: () => api.clubs.list() });
+  const query = useQuery({
+    queryKey: ["admin-clubs"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
 
   const blockMut = useMutation({
     mutationFn: ({ id, blocked, reason }: { id: string; blocked: boolean; reason?: string }) =>
@@ -485,7 +488,10 @@ function UsersTab() {
         limit: 100,
       }),
   });
-  const clubsQuery = useQuery({ queryKey: ["admin-users-clubs"], queryFn: () => api.clubs.list() });
+  const clubsQuery = useQuery({
+    queryKey: ["admin-users-clubs"],
+    queryFn: () => api.clubs.list({ limit: 1000 }),
+  });
   const roleCounts = useQuery({
     queryKey: ["admin-users-role-counts", clubFilter, activeOnly],
     queryFn: async () => {
@@ -990,7 +996,7 @@ function RatingsTab() {
 
   const clubsQuery = useQuery({
     queryKey: ["admin-ratings-clubs"],
-    queryFn: () => api.clubs.list(),
+    queryFn: () => api.clubs.list({ limit: 1000 }),
     staleTime: 60_000,
   });
   const leaderboardQuery = useQuery({

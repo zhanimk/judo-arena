@@ -83,7 +83,7 @@ function ApplicationDetail() {
   });
   const matchesQuery = useQuery({
     queryKey: ["coach-application-matches", appQuery.data?.tournamentId],
-    queryFn: () => api.matches.list({ tournamentId: appQuery.data!.tournamentId }),
+    queryFn: () => api.matches.list({ tournamentId: appQuery.data!.tournamentId, limit: 500 }),
     enabled: !!appQuery.data?.tournamentId,
   });
 

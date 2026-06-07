@@ -39,7 +39,7 @@ function Rankings() {
 
   const clubsQuery = useQuery({
     queryKey: ["rankings-clubs"],
-    queryFn: () => api.clubs.list(),
+    queryFn: () => api.clubs.list({ limit: 1000 }),
     staleTime: 60_000,
   });
   const leaderboardQuery = useQuery({

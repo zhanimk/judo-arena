@@ -116,7 +116,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     "/login",
     {
-      config: { rateLimit: { max: 10, timeWindow: "5 minutes" } },
+      config: {
+        rateLimit: {
+          max: env.AUTH_LOGIN_RATE_LIMIT_MAX,
+          timeWindow: "5 minutes",
+        },
+      },
       schema: {
         tags: ["auth"],
         summary: "Вход по email + пароль",

@@ -34,6 +34,10 @@ const BELT_GRADIENT: Record<string, string> = {
   "2 КЮ": "from-sky-500 to-blue-700",
   "1 КЮ": "from-amber-700 to-amber-950",
   "1 ДАН": "from-gray-800 to-gray-950",
+  "2 ДАН": "from-gray-800 to-gray-950",
+  "3 ДАН": "from-gray-800 to-gray-950",
+  "4 ДАН": "from-gray-800 to-gray-950",
+  "5 ДАН": "from-gray-800 to-gray-950",
 };
 
 const BELT_PROGRESS: Record<string, number> = {
@@ -44,6 +48,10 @@ const BELT_PROGRESS: Record<string, number> = {
   "2 КЮ": 71,
   "1 КЮ": 85,
   "1 ДАН": 100,
+  "2 ДАН": 100,
+  "3 ДАН": 100,
+  "4 ДАН": 100,
+  "5 ДАН": 100,
 };
 
 const NEXT_LEVEL_TECHNIQUES: Record<string, { next: string; techniques: string[] }> = {
@@ -172,7 +180,7 @@ function AthleteOverview() {
     );
 
   const myTournamentsCount = new Set(
-    (ratingQuery.data?.entries ?? []).map((e: any) => e.tournament?.id),
+    (matchesQuery.data ?? []).filter((m: any) => m.tournamentId).map((m: any) => m.tournamentId),
   ).size;
   const totalMatches = matchesQuery.data?.length ?? 0;
   const wins = (matchesQuery.data ?? []).filter((m: any) => m.winnerId === athleteId).length;
@@ -488,12 +496,17 @@ function AthleteOverview() {
 
 function normalizeBelt(raw?: string | null): string {
   if (!raw) return "";
-  return raw
-    .trim()
-    .toUpperCase()
-    .replace(/\bKYU\b/, "КЮ")
-    .replace(/\bDAN\b/, "ДАН")
-    .replace(/\bKU\b/, "КЮ");
+  return (
+    raw
+      .trim()
+      .toUpperCase()
+      // Latin → Cyrillic equivalents (toUpperCase already handles case)
+      .replace(/\bKYU\b/, "КЮ")
+      .replace(/\bDAN\b/, "ДАН")
+      .replace(/\bKU\b/, "КЮ")
+      // Normalize spacing: "1КЮ" → "1 КЮ"
+      .replace(/(\d)(КЮ|ДАН)/, "$1 $2")
+  );
 }
 
 function localizeName(n: any): string | null {

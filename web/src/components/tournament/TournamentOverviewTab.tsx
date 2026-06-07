@@ -6,6 +6,19 @@ import { Panel } from "@/components/dashboard/DashboardShell";
 import { api, ApiError } from "@/lib/api";
 import { Field, Input, localizeName, formatWeighIn, toDateTimeLocal, mapEmbedUrl } from "./shared";
 
+function formatSaveError(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) return fallback;
+  if (!Array.isArray(error.details) || error.details.length === 0) return error.message;
+
+  const issue = error.details[0] as { path?: string; message?: string };
+  if (!issue.message) return error.message;
+
+  const youtubeMatch = issue.path?.match(/^youtubeUrls\.(\d+)$/);
+  const field = youtubeMatch ? `YouTube URL (татами #${Number(youtubeMatch[1]) + 1})` : issue.path;
+
+  return field ? `${field}: ${issue.message}` : issue.message;
+}
+
 export function TournamentOverviewTab({ tournament: tourney }: { tournament: any }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -50,7 +63,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
       setError("");
       qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(formatSaveError(e, t("error.generic"))),
   });
 
   return (

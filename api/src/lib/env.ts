@@ -49,6 +49,7 @@ const schema = z.object({
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW: z.string().default("1 minute"),
+  AUTH_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   SOCKET_CONNECTION_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   SOCKET_CONNECTION_LIMIT_WINDOW_SEC: z.coerce
     .number()

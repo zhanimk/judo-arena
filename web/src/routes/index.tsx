@@ -382,7 +382,7 @@ function Home() {
   });
   const clubsQuery = useQuery({
     queryKey: ["home-clubs"],
-    queryFn: () => api.clubs.list(),
+    queryFn: () => api.clubs.list({ limit: 1000 }),
     staleTime: 60_000,
   });
   const leaderboardQuery = useQuery({
@@ -977,11 +977,10 @@ function Home() {
                   ) : (
                     <div className="p-8 text-center sm:p-10">
                       <h2 className="font-display text-3xl font-bold">
-                        Жақын жарыс әлі жарияланбады
+                        {t("home.no_upcoming_tournament")}
                       </h2>
                       <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                        Жарыс қосылған кезде атауы, күні, орны, басталу уақыты және тіркелу
-                        батырмасы осы жерде көрінеді.
+                        {t("home.no_upcoming_tournament_hint")}
                       </p>
                       <Link
                         to="/tournaments"
@@ -1054,10 +1053,10 @@ function Home() {
               {/* Count-up stats row */}
               <div className="flex flex-wrap gap-6 mb-6">
                 {[
-                  { val: countTournaments, ref: refT, label: "жарыс" },
-                  { val: countApplications, ref: refA, label: "өтінім" },
-                  { val: countClubs, ref: refC, label: "клуб" },
-                  { val: countCategories, ref: refCat, label: "санат" },
+                  { val: countTournaments, ref: refT, label: t("home.stat_tournaments") },
+                  { val: countApplications, ref: refA, label: t("home.stat_applications") },
+                  { val: countClubs, ref: refC, label: t("home.stat_clubs") },
+                  { val: countCategories, ref: refCat, label: t("home.stat_categories") },
                 ].map((s) => (
                   <div
                     key={s.label}
@@ -1140,9 +1139,9 @@ function Home() {
                     </div>
                     <div className="mt-5 grid grid-cols-3 gap-2">
                       {[
-                        { label: "Спортшы", value: c.athletes },
-                        { label: "Өтінім", value: c.entries },
-                        { label: "Санат", value: c.categories },
+                        { label: t("home.club_stat_athletes"), value: c.athletes },
+                        { label: t("home.club_stat_entries"), value: c.entries },
+                        { label: t("home.club_stat_categories"), value: c.categories },
                       ].map((item) => (
                         <div
                           key={item.label}
@@ -1159,7 +1158,7 @@ function Home() {
                     </div>
                     <div className="mt-5">
                       <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <span>Жарысқа дайындық</span>
+                        <span>{t("coach.team_readiness")}</span>
                         <span>{c.ready}%</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-background/50 border border-border/50">
@@ -1174,7 +1173,7 @@ function Home() {
               ))}
               {teamRows.length === 0 && (
                 <div className="sm:col-span-2 rounded-2xl border border-gold/20 bg-card/55 p-8 text-center text-muted-foreground">
-                  Backend-те клубтар пайда болғанда, олар осы жерде көрсетіледі.
+                  {t("home.clubs_empty")}
                 </div>
               )}
             </div>
@@ -1241,8 +1240,7 @@ function Home() {
                 })}
                 {athleteRows.length === 0 && (
                   <div className="px-5 py-10 text-center text-muted-foreground">
-                    Дәрежеде әзірше спортшылар жоқ. Жарыс қорытындысы шыққанда ұпайлар осында
-                    түседі.
+                    {t("home.ratings_empty")}
                   </div>
                 )}
               </div>
@@ -1440,7 +1438,7 @@ function Home() {
               <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 p-4 backdrop-blur">
                 <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
                 <div className="rounded-xl border border-border/60 bg-background/55 py-3 pl-10 pr-4 text-sm text-muted-foreground">
-                  Жарыс, қала немесе клуб іздеу
+                  {t("home.search_placeholder")}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1543,7 +1541,7 @@ function Home() {
           </div>
         ) : (
           <div className="rounded-2xl border border-gold/20 bg-card/60 p-8 text-center text-muted-foreground">
-            Әзірше жүйеде жарыс жоқ. Әкімші жаңа жарыс қосқанда ол осы жерде бірден шығады.
+            {t("home.tournaments_empty")}
           </div>
         )}
       </section>

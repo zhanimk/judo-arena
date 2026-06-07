@@ -80,9 +80,12 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     return listClubs(q);
   });
 
-  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return getClub(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getClub(request.params.id);
+    },
+  );
 
   app.post(
     "/",
@@ -116,16 +119,23 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
   // ГРУППЫ (вложены под /clubs/:id/groups)
   // ============================================================
 
-  app.get<{ Params: { id: string } }>("/:id/groups", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return listClubGroups(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id/groups",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return listClubGroups(request.params.id);
+    },
+  );
 
   app.post<{ Params: { id: string } }>(
     "/:id/groups",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const input = createClubGroupSchema.parse(request.body);
-      const group = await createClubGroup(request.user!.sub, request.params.id, input);
+      const group = await createClubGroup(
+        request.user!.sub,
+        request.params.id,
+        input,
+      );
       return reply.code(201).send(group);
     },
   );
@@ -134,16 +144,23 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
   // СПОРТСМЕНЫ КЛУБА
   // ============================================================
 
-  app.get<{ Params: { id: string } }>("/:id/members", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return listClubMembers(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id/members",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return listClubMembers(request.params.id);
+    },
+  );
 
   app.post<{ Params: { id: string } }>(
     "/:id/athletes",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const input = createAthleteByCoachSchema.parse(request.body);
-      const athlete = await createAthleteByCoach(request.user!.sub, request.params.id, input);
+      const athlete = await createAthleteByCoach(
+        request.user!.sub,
+        request.params.id,
+        input,
+      );
       return reply.code(201).send(athlete);
     },
   );
@@ -155,9 +172,18 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       const body = request.body as any;
       if (!Array.isArray(body?.rows)) {
-        return reply.code(400).send({ error: "INVALID_BODY", message: "rows должен быть массивом" });
+        return reply
+          .code(400)
+          .send({
+            error: "INVALID_BODY",
+            message: "rows должен быть массивом",
+          });
       }
-      const result = await bulkImportAthletes(request.user!.sub, request.params.id, body.rows);
+      const result = await bulkImportAthletes(
+        request.user!.sub,
+        request.params.id,
+        body.rows,
+      );
       return reply.code(207).send(result);
     },
   );
@@ -193,7 +219,7 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
   // Спортсмены
   app.patch<{ Params: { id: string } }>(
     "/athletes/:id",
-    { preHandler: [authenticate] },  // Любой авторизованный, права проверяются внутри
+    { preHandler: [authenticate, authorize("ATHLETE", "COACH", "ADMIN")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const input = updateAthleteSchema.parse(request.body);
       return updateAthlete(request.user!.sub, request.params.id, input);
@@ -216,7 +242,10 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     "/clubs/:id/join-request",
     { preHandler: [authenticate, authorize("ATHLETE")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const result = await requestJoinClub(request.user!.sub, request.params.id);
+      const result = await requestJoinClub(
+        request.user!.sub,
+        request.params.id,
+      );
       return reply.code(201).send(result);
     },
   );
@@ -233,7 +262,10 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     "/athlete/join-requests/:id",
     { preHandler: [authenticate, authorize("ATHLETE")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const result = await cancelJoinRequest(request.user!.sub, request.params.id);
+      const result = await cancelJoinRequest(
+        request.user!.sub,
+        request.params.id,
+      );
       return reply.send(result);
     },
   );
@@ -250,7 +282,9 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     "/coach/join-requests/:id/review",
     { preHandler: [authenticate, authorize("COACH")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { approve } = z.object({ approve: z.boolean() }).parse(request.body);
+      const { approve } = z
+        .object({ approve: z.boolean() })
+        .parse(request.body);
       return reviewJoinRequest(request.user!.sub, request.params.id, approve);
     },
   );
@@ -261,7 +295,10 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     "/clubs/:id/coach-join-request",
     { preHandler: [authenticate, authorize("COACH")] },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
-      const result = await requestJoinClubAsCoach(request.user!.sub, request.params.id);
+      const result = await requestJoinClubAsCoach(
+        request.user!.sub,
+        request.params.id,
+      );
       return reply.code(201).send(result);
     },
   );
@@ -290,24 +327,42 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     "/coach/club-join-requests/:id/review",
     { preHandler: [authenticate, authorize("COACH")] },
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      const { approve } = z.object({ approve: z.boolean() }).parse(request.body);
-      return reviewCoachJoinRequest(request.user!.sub, request.params.id, approve);
+      const { approve } = z
+        .object({ approve: z.boolean() })
+        .parse(request.body);
+      return reviewCoachJoinRequest(
+        request.user!.sub,
+        request.params.id,
+        approve,
+      );
     },
   );
 
   app.delete<{ Params: { clubId: string; coachId: string } }>(
     "/clubs/:clubId/coaches/:coachId",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
-    async (request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>) => {
-      return removeCoachFromClub(request.user!.sub, request.params.clubId, request.params.coachId);
+    async (
+      request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>,
+    ) => {
+      return removeCoachFromClub(
+        request.user!.sub,
+        request.params.clubId,
+        request.params.coachId,
+      );
     },
   );
 
   app.post<{ Params: { clubId: string; coachId: string } }>(
     "/clubs/:clubId/coaches/:coachId/transfer-owner",
     { preHandler: [authenticate, authorize("COACH", "ADMIN")] },
-    async (request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>) => {
-      return transferClubOwnership(request.user!.sub, request.params.clubId, request.params.coachId);
+    async (
+      request: FastifyRequest<{ Params: { clubId: string; coachId: string } }>,
+    ) => {
+      return transferClubOwnership(
+        request.user!.sub,
+        request.params.clubId,
+        request.params.coachId,
+      );
     },
   );
 }

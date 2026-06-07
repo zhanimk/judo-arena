@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 import { RedirectIfAuthenticated } from "@/lib/protected-route";
+import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
+import { ThemeToggle } from "@/components/site/ThemeToggle";
+import type { Locale } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -54,7 +57,7 @@ function InputIcon({ children }: { children: React.ReactNode }) {
 }
 
 function Login() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { login, register } = useAuth();
@@ -129,7 +132,7 @@ function Login() {
           role,
           name,
           surname,
-          preferredLocale: "kk",
+          preferredLocale: i18n.language.slice(0, 2) as Locale,
         });
         toast.success(t("auth.welcome_back") + " 🎉");
         redirectToDashboard(user.role);
@@ -155,14 +158,38 @@ function Login() {
   };
 
   return (
-    <div className="lp-root min-h-screen overflow-hidden">
+    <div className="lp-root min-h-screen overflow-x-hidden">
       {/* ambient orbs */}
       <div className="lp-orb1 absolute h-[600px] w-[600px] rounded-full blur-3xl pointer-events-none -top-40 -left-40" />
       <div className="lp-orb2 absolute h-[500px] w-[500px] rounded-full blur-3xl pointer-events-none bottom-0 right-0" />
 
-      <div className="relative min-h-screen grid lg:grid-cols-[minmax(0,1fr)_480px] xl:grid-cols-[minmax(0,1fr)_520px]">
+      <div className="absolute inset-x-0 top-0 z-30 px-3 pt-3 sm:px-5 sm:pt-5">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 rounded-full border border-gold/20 bg-background/85 p-1.5 pl-2 shadow-[0_10px_40px_rgba(0,0,0,0.20)] backdrop-blur-2xl">
+          <Link to="/" className="group flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/35 transition-transform group-hover:scale-105">
+              <img src={emblem} alt="" className="h-full w-full object-cover" />
+            </span>
+            <span className="truncate font-display text-sm font-bold sm:text-[15px]">
+              JUDO<span className="text-gradient-gold">·</span>CHILD
+              <span className="text-gradient-gold">·</span>LEAGUE
+            </span>
+          </Link>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link
+              to="/"
+              className="hidden rounded-full px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-gold/10 hover:text-foreground sm:inline-flex"
+            >
+              {t("auth.back_home")}
+            </Link>
+            <LanguageSwitcher className="max-sm:[&>svg]:hidden max-sm:[&>button]:px-2" />
+            <ThemeToggle className="h-9 w-9 border-border/40" />
+          </div>
+        </div>
+      </div>
+
+      <div className="relative min-h-screen grid pt-20 lg:grid-cols-[minmax(0,1fr)_480px] lg:pt-0 xl:grid-cols-[minmax(0,1fr)_540px]">
         {/* ══════════════════ LEFT – SHOWCASE ══════════════════ */}
-        <div className="relative hidden lg:flex flex-col justify-between overflow-hidden px-14 py-10">
+        <div className="relative hidden lg:flex flex-col justify-between overflow-hidden px-14 pb-10 pt-28">
           {/* grid lines */}
           <div className="lp-grid absolute inset-0 pointer-events-none" />
           {/* ambient glow */}
@@ -175,7 +202,7 @@ function Login() {
               style={{ color: "#e8a93a" }}
             >
               <Zap className="h-3 w-3" />
-              Judo-Arena Platform
+              {t("auth.platform_badge")}
             </div>
           </div>
 
@@ -187,39 +214,34 @@ function Login() {
                 className="lp-heading font-black uppercase leading-[0.84]"
                 style={{ fontSize: "clamp(3.6rem,5.8vw,5rem)", letterSpacing: "-0.025em" }}
               >
-                {mode === "register" && role === "COACH" ? (
-                  <>
-                    Командаңды
-                    <span
-                      className="block"
-                      style={{ WebkitTextStroke: "2px #c8922a", color: "transparent" }}
-                    >
-                      Бапта
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Чемпион
-                    <span className="block" style={{ color: "#e8a93a" }}>
-                      Бол
-                    </span>
-                  </>
-                )}
+                {mode === "register" && role === "COACH"
+                  ? t("auth.hero_coach_line_1")
+                  : t("auth.hero_champion_line_1")}
+                <span
+                  className="block"
+                  style={
+                    mode === "register" && role === "COACH"
+                      ? { WebkitTextStroke: "2px #c8922a", color: "transparent" }
+                      : { color: "#e8a93a" }
+                  }
+                >
+                  {mode === "register" && role === "COACH"
+                    ? t("auth.hero_coach_line_2")
+                    : t("auth.hero_champion_line_2")}
+                </span>
               </h1>
               <p
                 className="mt-5 text-base font-semibold leading-relaxed max-w-[300px]"
                 style={{ color: "rgba(255,255,255,0.78)" }}
               >
-                Қазақстандағы ең заманауи
-                <br />
-                жекпе-жек турнир платформасы
+                {t("auth.hero_subtitle")}
               </p>
 
               {/* stats chips */}
               <div className="mt-8 flex gap-3">
                 {[
-                  ["1,240+", "Турнирлер"],
-                  ["8,500+", "Спортшылар"],
+                  ["1,240+", t("auth.stat_tournaments")],
+                  ["8,500+", t("auth.stat_athletes")],
                 ].map(([n, l]) => (
                   <div key={l} className="lp-chip rounded-2xl px-5 py-3.5">
                     <div
@@ -403,7 +425,7 @@ function Login() {
                   />
                 ))}
                 <span className="lp-dan ml-2 text-[10px] font-bold uppercase tracking-widest">
-                  Dan Rank
+                  {t("auth.dan_rank")}
                 </span>
               </div>
               <div className="lp-brand-badge flex items-center gap-2.5 rounded-xl px-3 py-2">
@@ -422,26 +444,14 @@ function Login() {
         </div>
 
         {/* ══════════════════ RIGHT – FORM PANEL ══════════════════ */}
-        <div className="lp-right relative flex min-h-screen items-center justify-center p-4 lg:p-8">
+        <div className="lp-right relative flex min-h-screen items-center justify-center px-4 pb-6 pt-4 lg:px-8 lg:pb-8 lg:pt-24">
           <div className="lp-right-glow absolute inset-0 pointer-events-none" />
 
           <div
-            className="lp-card relative w-full max-w-[440px]"
+            className="lp-card relative w-full max-w-[440px] overflow-hidden"
             style={{ borderRadius: 24, backdropFilter: "blur(32px)", padding: "2rem 1.75rem" }}
           >
-            {/* mobile logo */}
-            <Link to="/" className="mb-6 inline-flex items-center gap-2.5 lg:hidden">
-              <img
-                src={emblem}
-                alt=""
-                className="h-10 w-10 rounded-xl object-cover"
-                style={{ boxShadow: "0 0 16px rgba(200,146,42,0.5)" }}
-              />
-              <span className="lp-mobile-brand font-black text-xl tracking-tight">
-                JUDO<span style={{ color: "#c8922a" }}>·</span>ARENA
-              </span>
-            </Link>
-
+            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
             {/* header */}
             <div className="mb-7 flex items-start justify-between gap-4">
               <div>
@@ -648,12 +658,13 @@ function Login() {
                     >
                       {password === confirmPassword ? (
                         <>
-                          <span className="text-base leading-none">✓</span> Құпиясөздер сәйкес
-                          келеді
+                          <span className="text-base leading-none">✓</span>
+                          {t("auth.passwords_match")}
                         </>
                       ) : (
                         <>
-                          <span className="text-base leading-none">✗</span> Сәйкес келмейді
+                          <span className="text-base leading-none">✗</span>
+                          {t("auth.passwords_mismatch")}
                         </>
                       )}
                     </div>

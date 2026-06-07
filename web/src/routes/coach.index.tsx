@@ -72,8 +72,9 @@ function CoachOverview() {
   const clubName = clubQuery.data ? localizeName(clubQuery.data.name) : "—";
 
   const members = membersQuery.data ?? [];
-  const readyCount = members.filter((a: any) => a.weightKg && a.beltRank).length;
-  const readinessPct = members.length > 0 ? Math.round((readyCount / members.length) * 100) : 0;
+  const athletes = members.filter((a: any) => a.role === "ATHLETE");
+  const readyCount = athletes.filter((a: any) => a.weightKg && a.beltRank).length;
+  const readinessPct = athletes.length > 0 ? Math.round((readyCount / athletes.length) * 100) : 0;
 
   return (
     <DashboardShell
@@ -91,7 +92,7 @@ function CoachOverview() {
         <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div>
             <div className="text-xs text-muted-foreground mb-1">
-              Сәлем, <span className="font-semibold text-foreground">{user?.name}</span>! 👋
+              {t("dashboard.hello", { name: user?.name })}
             </div>
             <div className="font-display text-2xl font-bold">
               {clubName ? `«${clubName}»` : t("dashboard.my_club")}
@@ -100,17 +101,17 @@ function CoachOverview() {
               {/* Application pipeline */}
               {[
                 {
-                  label: "Жіберілді",
+                  label: t("status.SUBMITTED"),
                   count: pendingApps,
                   color: "bg-gold/15 text-gold border-gold/30",
                 },
                 {
-                  label: "Бекітілді",
+                  label: t("status.APPROVED"),
                   count: approvedApps,
                   color: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
                 },
                 {
-                  label: "Қабылданбады",
+                  label: t("status.REJECTED"),
                   count: rejectedApps,
                   color: "bg-destructive/15 text-destructive border-destructive/30",
                 },
@@ -126,10 +127,10 @@ function CoachOverview() {
           </div>
 
           {/* Team readiness */}
-          {members.length > 0 && (
+          {athletes.length > 0 && (
             <div className="shrink-0 rounded-xl border border-border/50 bg-background/40 p-4 text-center min-w-[9rem]">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                Команда дайындығы
+                {t("coach.team_readiness")}
               </div>
               <div className="font-display text-3xl font-bold text-gradient-gold">
                 {readinessPct}%
@@ -141,7 +142,7 @@ function CoachOverview() {
                 />
               </div>
               <div className="mt-1.5 text-[11px] text-muted-foreground">
-                {readyCount} / {members.length} спортшы
+                {readyCount} / {athletes.length} {t("coach.athletes_unit")}
               </div>
             </div>
           )}
@@ -155,7 +156,7 @@ function CoachOverview() {
           <>
             <StatCard
               label={t("coach.stat_athletes")}
-              value={String(members.length)}
+              value={String(athletes.length)}
               icon={Users}
               accent
             />

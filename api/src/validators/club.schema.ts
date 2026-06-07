@@ -4,10 +4,14 @@
 
 import { z } from "zod";
 
-const imageUrlSchema = z.string().refine(
-  (value) => value.startsWith("/uploads/") || z.string().url().safeParse(value).success,
-  "Невалидный URL изображения",
-);
+const imageUrlSchema = z
+  .string()
+  .refine(
+    (value) =>
+      value.startsWith("/uploads/") ||
+      z.string().url().safeParse(value).success,
+    "Невалидный URL изображения",
+  );
 
 /** Мультиязычная строка: хотя бы один язык обязателен */
 const i18nString = z
@@ -51,7 +55,7 @@ export type UpdateClubInput = z.infer<typeof updateClubSchema>;
 export const listClubsQuerySchema = z.object({
   city: z.string().optional(),
   search: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 export type ListClubsQuery = z.infer<typeof listClubsQuerySchema>;
@@ -91,7 +95,10 @@ export type UpdateClubGroupInput = z.infer<typeof updateClubGroupSchema>;
 export const createAthleteByCoachSchema = z
   .object({
     email: z.string().email(),
-    password: z.string().min(8).max(128)
+    password: z
+      .string()
+      .min(8)
+      .max(128)
       .regex(/[A-Z]/, "Пароль должен содержать хотя бы одну заглавную букву")
       .regex(/[a-z]/, "Пароль должен содержать хотя бы одну строчную букву")
       .regex(/[0-9]/, "Пароль должен содержать хотя бы одну цифру"),
@@ -99,16 +106,21 @@ export const createAthleteByCoachSchema = z
     surname: z.string().min(1).max(64),
     nameLatin: z.string().max(64).optional(),
     surnameLatin: z.string().max(64).optional(),
-    dateOfBirth: z.coerce.date(),         // Обязательно для категорий по возрасту
-    gender: z.enum(["MALE", "FEMALE"]),   // Обязательно для категорий
+    dateOfBirth: z.coerce.date(), // Обязательно для категорий по возрасту
+    gender: z.enum(["MALE", "FEMALE"]), // Обязательно для категорий
     weightKg: z.coerce.number().positive().max(300),
     beltRank: z.string().max(20).optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).default("kk"),
-    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона")
+      .optional(),
   })
   .strict();
 
-export type CreateAthleteByCoachInput = z.infer<typeof createAthleteByCoachSchema>;
+export type CreateAthleteByCoachInput = z.infer<
+  typeof createAthleteByCoachSchema
+>;
 
 export const updateAthleteSchema = z
   .object({
@@ -120,10 +132,13 @@ export const updateAthleteSchema = z
     gender: z.enum(["MALE", "FEMALE"]).optional(),
     weightKg: z.coerce.number().positive().max(300).optional(),
     beltRank: z.string().max(20).optional(),
-    phone: z.string().regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона").optional(),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона")
+      .optional(),
     avatarUrl: imageUrlSchema.nullable().optional(),
     isActive: z.boolean().optional(),
-    clubId: z.string().nullable().optional(),  // null = отвязать от клуба
+    clubId: z.string().nullable().optional(), // null = отвязать от клуба
   })
   .strict();
 

@@ -37,7 +37,7 @@ function AdminApplications() {
 
   const tQuery = useQuery({
     queryKey: ["admin-tournaments-for-apps"],
-    queryFn: () => api.tournaments.list(),
+    queryFn: () => api.tournaments.list({ limit: 1000 }),
   });
 
   const appsQuery = useQuery({

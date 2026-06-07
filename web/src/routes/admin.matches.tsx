@@ -82,7 +82,7 @@ export function TournamentScoreboardPanel({
 
   const tournamentsQuery = useQuery({
     queryKey: ["admin-scoreboard-tournaments"],
-    queryFn: () => api.tournaments.list(),
+    queryFn: () => api.tournaments.list({ limit: 1000 }),
   });
 
   const tournaments = useMemo(() => tournamentsQuery.data?.items ?? [], [tournamentsQuery.data]);

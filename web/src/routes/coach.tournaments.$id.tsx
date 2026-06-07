@@ -79,7 +79,7 @@ function CoachTournamentDetail() {
   });
   const matchesQuery = useQuery({
     queryKey: ["coach-tournament-matches", id],
-    queryFn: () => api.matches.list({ tournamentId: id }),
+    queryFn: () => api.matches.list({ tournamentId: id, limit: 500 }),
   });
 
   useRealtime([`tournament:${id}`], {
@@ -824,11 +824,10 @@ function CoachTournamentDetail() {
                   <ShieldCheck className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
                   <div className="flex-1 text-sm">
                     <div className="font-semibold text-amber-200">
-                      Жауапкершілік шарттарымен танысу міндетті
+                      {t("coach_rules.required_title")}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Өтінімді жіберу үшін жарыс ережелері мен тренер жауапкершілігін растауыңыз
-                      керек.
+                      {t("coach_rules.required_hint")}
                     </p>
                     <button
                       type="button"
@@ -1134,48 +1133,24 @@ function localizeName(value: any): string {
   return value.kk || value.ru || value.en || "";
 }
 
-const COMPETITION_RULES = [
-  {
-    icon: "🔇",
-    title: "Төрешілерге қарсы шықпаймын",
-    text: "Жарыс барысында және одан кейін төрешілер шешімін ашық немесе жабық күйде сынамаймын, дауыс көтермеймін, дауыстап наразылық білдірмеймін. Апелляция тек ресми жазбаша тәртіппен ғана жіберіледі.",
-  },
-  {
-    icon: "🤫",
-    title: "Татами жанында тыныш тәртіп сақтаймын",
-    text: "Жекпе-жек кезінде дауыс көтеріп нұсқау беруге, балағат сөз айтуға, татами шетіне кіруге тыйым салынған. Бұл ережені бұзған жағдайда менің клубым жарыстан шетелтіледі.",
-  },
-  {
-    icon: "⚖️",
-    title: "Нәтижеге заңсыз ықпал жасамаймын",
-    text: "Жарыс хаттамасын, торды немесе ұпайларды алдау арқылы өзгертуге немесе сатып алуға қандай да бір әрекет жасамаймын. Мұндай жағдай табылса, клуб пен тренер тұрақты дисквалификацияланады.",
-  },
-  {
-    icon: "👥",
-    title: "Клубымның спортшылары үшін жауаппын",
-    text: "Менің клубымнан қатысатын барлық спортшылардың мінез-құлқы, тәртібі, этикасы және жарысқа дайындығы (медициналық рұқсат, салмақ, жас) үшін жеке жауапкершілік алам.",
-  },
-  {
-    icon: "🏥",
-    title: "Медициналық және салмақ деректерінің дұрыстығын растаймын",
-    text: "Өтінімге енгізілген әр спортшының медициналық рұқсаты, туу датасы, салмағы және жынысы дұрыс екенін растаймын. Жалған деректер берілсе, барлық нәтижелер анулдана алады.",
-  },
-  {
-    icon: "🏗️",
-    title: "Мүлік бүлдіруге жол бермеймін",
-    text: "Жарыс ғимараты, жабдықтары, татами мен инфрақұрылымын бүлдіруден сақтаймын. Зиян келтірілген жағдайда клуб жауапты болады және нақты залалды өтейді.",
-  },
-  {
-    icon: "🚫",
-    title: "Дисквалификация шарттарын білемін",
-    text: "Жоғарыда аталған кез келген ережені бұзу тренерді уақытша немесе тұрақты жарыстарға жіберуден шектеуге, ал клубты рейтингтен шығаруға негіз береді.",
-  },
-];
+function getCompetitionRules(t: (k: string) => string) {
+  return [
+    { icon: "🔇", title: t("coach_rules.rule1_title"), text: t("coach_rules.rule1_text") },
+    { icon: "🤫", title: t("coach_rules.rule2_title"), text: t("coach_rules.rule2_text") },
+    { icon: "⚖️", title: t("coach_rules.rule3_title"), text: t("coach_rules.rule3_text") },
+    { icon: "👥", title: t("coach_rules.rule4_title"), text: t("coach_rules.rule4_text") },
+    { icon: "🏥", title: t("coach_rules.rule5_title"), text: t("coach_rules.rule5_text") },
+    { icon: "🏗️", title: t("coach_rules.rule6_title"), text: t("coach_rules.rule6_text") },
+    { icon: "🚫", title: t("coach_rules.rule7_title"), text: t("coach_rules.rule7_text") },
+  ];
+}
 
 function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onClose: () => void }) {
+  const { t } = useTranslation();
+  const rules = getCompetitionRules(t);
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const ref = useRef<HTMLDivElement>(null);
-  const allChecked = COMPETITION_RULES.every((_, i) => checked[i]);
+  const allChecked = rules.every((_, i) => checked[i]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1197,10 +1172,8 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-amber-400" />
             <div>
-              <h2 className="font-display text-base font-bold">
-                Жарыс ережелері мен жауапкершілік
-              </h2>
-              <p className="text-xs text-muted-foreground">Әр тармақты оқып, растаңыз</p>
+              <h2 className="font-display text-base font-bold">{t("coach_rules.modal_title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("coach_rules.modal_hint")}</p>
             </div>
           </div>
           <button
@@ -1212,7 +1185,7 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
         </div>
 
         <div className="max-h-[55vh] overflow-y-auto px-6 py-4 space-y-3">
-          {COMPETITION_RULES.map((rule, i) => (
+          {rules.map((rule, i) => (
             <label
               key={i}
               className={`flex cursor-pointer gap-3 rounded-xl border p-3.5 transition-all ${
@@ -1244,14 +1217,14 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
           ))}
 
           <div className="rounded-xl border border-destructive/25 bg-destructive/8 p-3 text-xs text-destructive">
-            ⚠️ Жоғарыдағы барлық ережелерді бұзу Judo-Arena жүйесінен тренерді тұрақты шектеуге
-            әкелуі мүмкін.
+            ⚠️ {t("coach_rules.warning")}
           </div>
         </div>
 
         <div className="border-t border-border/50 px-6 py-4 flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">
-            {Object.values(checked).filter(Boolean).length} / {COMPETITION_RULES.length} расталды
+            {Object.values(checked).filter(Boolean).length} / {rules.length}{" "}
+            {t("coach_rules.confirmed_count")}
           </span>
           <div className="flex gap-2">
             <button
@@ -1259,7 +1232,7 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
               onClick={onClose}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Болдырмау
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -1268,7 +1241,7 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-gold px-5 py-2 text-sm font-semibold text-gold-foreground shadow-gold disabled:opacity-40 transition"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Барлығын растаймын
+              {t("coach_rules.confirm_all")}
             </button>
           </div>
         </div>

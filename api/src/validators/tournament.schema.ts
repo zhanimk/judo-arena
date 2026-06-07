@@ -85,7 +85,11 @@ export const updateTournamentSchema = z
     posterUrl: z.string().url().nullable().optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).optional(),
     kaspiPaymentUrl: z.string().url().nullable().optional(),
-    youtubeUrls: z.array(z.string().url()).nullable().optional(),
+    // Empty entries preserve the tatami index when only some mats have a stream.
+    youtubeUrls: z
+      .array(z.union([z.string().url(), z.literal("")]))
+      .nullable()
+      .optional(),
   })
   .strict();
 
@@ -105,7 +109,7 @@ export const listTournamentsQuerySchema = z.object({
   city: z.string().optional(),
   search: z.string().optional(),
   upcoming: z.coerce.boolean().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   /** Admin-only: include archived tournaments. Public API always hides archived. */
   includeArchived: z.coerce.boolean().optional().default(false),
