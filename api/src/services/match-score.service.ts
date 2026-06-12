@@ -13,12 +13,14 @@ import {
   MatchEventType,
   MatchSide,
   type Match,
+  type MatchEvent,
 } from "@prisma/client";
 import {
   MatchError,
   normalizeScore,
   markPendingResult,
   osaekomiScore,
+  scoreToJson,
 } from "./match-types.js";
 import {
   scheduleOsaekomiTimer,
@@ -37,11 +39,16 @@ export async function addScoreEvent(
   expectedVersion?: number,
 ): Promise<{
   match: Match;
-  event: any;
+  event: MatchEvent;
   autoFinished: boolean;
   winnerId: string | null;
 }> {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: {
+      bracket: { include: { category: { select: { allowYuko: true } } } },
+    },
+  });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status !== MatchStatus.IN_PROGRESS) {
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
@@ -59,6 +66,7 @@ export async function addScoreEvent(
     );
   }
   const sideKey = side === "RED" ? "red" : "blue";
+  const opponentKey = sideKey === "red" ? "blue" : "red";
 
   // ── Применяем очко ────────────────────────────────────────
   switch (type) {
@@ -82,11 +90,26 @@ export async function addScoreEvent(
       }
       break;
     case "YUKO":
+      // IJF 2017+: Yuko упразднён. Начислять можно только если категория разрешает.
+      if (!match.bracket.category.allowYuko) {
+        throw new MatchError(
+          "YUKO_NOT_ALLOWED",
+          "Оценка Юко не разрешена в этой категории (IJF 2017+)",
+          400,
+        );
+      }
       score[sideKey].yuko += 1;
       break;
     case "SHIDO":
       score[sideKey].shido += 1;
-      if (score[sideKey].shido >= 3) score[sideKey].hansoku = true;
+      if (score[sideKey].shido >= 3) {
+        // 3 штрафа → хансоку-маке (дисквалификация) — в любой фазе матча
+        score[sideKey].hansoku = true;
+      } else if (score.isGoldenScore) {
+        // IJF правило: в Golden Score ЛЮБОЕ шидо означает немедленную победу соперника.
+        // Независимо от счёта: первый получивший штраф в GS проигрывает.
+        score[opponentKey].ippon = 1; // технически засчитываем как победный балл сопернику
+      }
       break;
     case "HANSOKU_MAKE":
       score[sideKey].hansoku = true;
@@ -135,7 +158,7 @@ export async function addScoreEvent(
         id: matchId,
         ...(expectedVersion !== undefined && { version: expectedVersion }),
       },
-      data: { scoreSnapshot: score as any, version: { increment: 1 } },
+      data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
     if (expectedVersion !== undefined && updateResult.count === 0) {
       throw new MatchError(
@@ -152,7 +175,7 @@ export async function addScoreEvent(
           type: eventType,
           side: matchSide,
           actorJudgeSessionId: judgeSessionId,
-          scoreSnapshot: score as any,
+          scoreSnapshot: scoreToJson(score),
         },
       }),
     ]);
@@ -200,7 +223,7 @@ export async function startOsaekomi(
         id: matchId,
         ...(expectedVersion !== undefined && { version: expectedVersion }),
       },
-      data: { scoreSnapshot: score as any, version: { increment: 1 } },
+      data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
     if (expectedVersion !== undefined && updateResult.count === 0) {
       throw new MatchError(
@@ -217,7 +240,7 @@ export async function startOsaekomi(
           type: MatchEventType.OSAEKOMI,
           side: matchSide,
           actorJudgeSessionId: judgeSessionId,
-          scoreSnapshot: score as any,
+          scoreSnapshot: scoreToJson(score),
         },
       }),
     ]);
@@ -264,7 +287,7 @@ export async function endOsaekomi(
   }
 
   const startMs = new Date(score.osaekomi.startedAt).getTime();
-  const durationSec = Math.floor((Date.now() - startMs) / 1000);
+  const durationSec = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
   const side = score.osaekomi.side;
   const allowYuko = match.bracket.category.allowYuko;
 
@@ -286,13 +309,23 @@ export async function endOsaekomi(
       case "WAZA_ARI":
         score[sideKey].wazaari += 1;
         if (score[sideKey].wazaari >= 2) {
+          // 2 × Waza-ari = Ippon (правило IJF)
           score[sideKey].ippon = Math.max(score[sideKey].ippon, 1);
+          winnerId = side === "RED" ? match.redAthleteId : match.blueAthleteId;
+          autoFinished = true;
+        } else if (score.isGoldenScore) {
+          // IJF: в Golden Score первая оценка = немедленная победа
           winnerId = side === "RED" ? match.redAthleteId : match.blueAthleteId;
           autoFinished = true;
         }
         break;
       case "YUKO":
         score[sideKey].yuko += 1;
+        if (score.isGoldenScore) {
+          // IJF: в Golden Score Юко тоже даёт немедленную победу
+          winnerId = side === "RED" ? match.redAthleteId : match.blueAthleteId;
+          autoFinished = true;
+        }
         break;
     }
   }
@@ -313,7 +346,7 @@ export async function endOsaekomi(
         id: matchId,
         ...(expectedVersion !== undefined && { version: expectedVersion }),
       },
-      data: { scoreSnapshot: score as any, version: { increment: 1 } },
+      data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
     if (expectedVersion !== undefined && updateResult.count === 0) {
       throw new MatchError(
@@ -328,7 +361,7 @@ export async function endOsaekomi(
         type: MatchEventType.TOKETA,
         side: side === "RED" ? MatchSide.RED : MatchSide.BLUE,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
         meta: { reason, durationSec, scored: scored?.type ?? null },
       },
     });

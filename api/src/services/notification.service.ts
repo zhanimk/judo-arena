@@ -8,25 +8,29 @@
  */
 
 import { prisma } from "../lib/prisma.js";
-import { UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { emitToUser } from "../sockets/io.js";
 
 export class NotificationError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "NotificationError";
   }
 }
 
 export interface BroadcastInput {
-  type: string;            // "announcement", "tournament_update" и т.д.
+  type: string; // "announcement", "tournament_update" и т.д.
   titleKey: string;
   bodyKey: string;
-  payload?: any;
+  payload?: Prisma.InputJsonObject;
   target:
     | { kind: "user"; userId: string }
     | { kind: "role"; role: "ATHLETE" | "COACH" | "ADMIN" }
-    | { kind: "tournament"; tournamentId: string }  // всем участникам APPROVED-заявок
+    | { kind: "tournament"; tournamentId: string } // всем участникам APPROVED-заявок
     | { kind: "club"; clubId: string }
     | { kind: "all" };
 }
@@ -35,71 +39,112 @@ export interface BroadcastInput {
 export async function broadcast(actorUserId: string, input: BroadcastInput) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new NotificationError("FORBIDDEN", "Тек әкімші хабарландыру жасай алады", 403);
+    throw new NotificationError(
+      "FORBIDDEN",
+      "Тек әкімші хабарландыру жасай алады",
+      403,
+    );
   }
 
-  // Собираем список получателей
-  let userIds: string[] = [];
+  // Собираем список получателей вместе с их предпочтительной локалью
+  let recipients: { id: string; locale: "kk" | "ru" | "en" }[] = [];
 
   switch (input.target.kind) {
-    case "user":
-      userIds = [input.target.userId];
+    case "user": {
+      const user = await prisma.user.findUnique({
+        where: { id: input.target.userId },
+        select: { id: true, preferredLocale: true },
+      });
+      if (user)
+        recipients = [
+          { id: user.id, locale: user.preferredLocale as "kk" | "ru" | "en" },
+        ];
       break;
+    }
     case "role": {
       const users = await prisma.user.findMany({
         where: { role: input.target.role, isActive: true },
         select: { id: true, preferredLocale: true },
       });
-      userIds = users.map((u) => u.id);
+      recipients = users.map((u) => ({
+        id: u.id,
+        locale: u.preferredLocale as "kk" | "ru" | "en",
+      }));
       break;
     }
     case "club": {
       const users = await prisma.user.findMany({
         where: { clubId: input.target.clubId, isActive: true },
-        select: { id: true },
+        select: { id: true, preferredLocale: true },
       });
-      userIds = users.map((u) => u.id);
+      recipients = users.map((u) => ({
+        id: u.id,
+        locale: u.preferredLocale as "kk" | "ru" | "en",
+      }));
       break;
     }
     case "tournament": {
       // Всем у кого есть APPROVED заявка на турнир (тренеры + спортсмены через ApplicationEntry)
       const entries = await prisma.applicationEntry.findMany({
         where: {
-          application: { tournamentId: input.target.tournamentId, status: "APPROVED" },
+          application: {
+            tournamentId: input.target.tournamentId,
+            status: "APPROVED",
+          },
         },
         select: { athleteId: true, application: { select: { clubId: true } } },
       });
       const athleteIds = entries.map((e) => e.athleteId);
-      const clubIds = Array.from(new Set(entries.map((e) => e.application.clubId)));
-      const coaches = await prisma.user.findMany({
-        where: { clubId: { in: clubIds }, role: UserRole.COACH },
-        select: { id: true },
-      });
-      userIds = Array.from(new Set([...athleteIds, ...coaches.map((c) => c.id)]));
+      const clubIds = Array.from(
+        new Set(entries.map((e) => e.application.clubId)),
+      );
+      const [athletes, coaches] = await Promise.all([
+        prisma.user.findMany({
+          where: { id: { in: athleteIds } },
+          select: { id: true, preferredLocale: true },
+        }),
+        prisma.user.findMany({
+          where: { clubId: { in: clubIds }, role: UserRole.COACH },
+          select: { id: true, preferredLocale: true },
+        }),
+      ]);
+      const seen = new Set<string>();
+      for (const u of [...athletes, ...coaches]) {
+        if (!seen.has(u.id)) {
+          seen.add(u.id);
+          recipients.push({
+            id: u.id,
+            locale: u.preferredLocale as "kk" | "ru" | "en",
+          });
+        }
+      }
       break;
     }
     case "all": {
       const users = await prisma.user.findMany({
         where: { isActive: true },
-        select: { id: true },
+        select: { id: true, preferredLocale: true },
       });
-      userIds = users.map((u) => u.id);
+      recipients = users.map((u) => ({
+        id: u.id,
+        locale: u.preferredLocale as "kk" | "ru" | "en",
+      }));
       break;
     }
   }
 
-  if (userIds.length === 0) {
+  if (recipients.length === 0) {
     return { count: 0 };
   }
 
-  // Создаём уведомления batch'ем
-  const data = userIds.map((userId) => ({
+  // Создаём уведомления batch'ем с учётом preferred locale каждого получателя
+  const data = recipients.map(({ id: userId, locale }) => ({
     userId,
     type: input.type,
     titleKey: input.titleKey,
     bodyKey: input.bodyKey,
-    payload: input.payload ?? null,
-    locale: "kk" as const,
+    payload: input.payload ?? Prisma.JsonNull,
+    locale,
   }));
   const created = await prisma.notification.createMany({ data });
 
@@ -132,11 +177,16 @@ export async function listForUser(
 }
 
 export async function markAsRead(userId: string, notificationId: string) {
-  const n = await prisma.notification.findUnique({ where: { id: notificationId } });
+  const n = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
   if (!n || n.userId !== userId) {
     throw new NotificationError("NOT_FOUND", "Хабарландыру табылмады", 404);
   }
-  return prisma.notification.update({ where: { id: notificationId }, data: { read: true } });
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { read: true },
+  });
 }
 
 export async function markAllAsRead(userId: string) {

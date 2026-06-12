@@ -13,6 +13,7 @@ import {
   MatchEventType,
   MatchSide,
   type Match,
+  type MatchEvent,
 } from "@prisma/client";
 import {
   MatchError,
@@ -22,8 +23,13 @@ import {
   markPendingResult,
   emptyScore,
   UNDOABLE_TYPES,
+  scoreToJson,
 } from "./match-types.js";
 import { cancelOsaekomiTimer } from "./osaekomi-timer.service.js";
+import {
+  scheduleGoldenScoreTimer,
+  cancelGoldenScoreTimer,
+} from "./golden-score-timer.service.js";
 import { propagateWinner } from "./match-propagation.js";
 
 // ============================================================
@@ -33,73 +39,79 @@ import { propagateWinner } from "./match-propagation.js";
 export async function startMatch(
   matchId: string,
   judgeSessionId?: string,
-): Promise<{ match: Match; event: any }> {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
-  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
-  const now = new Date();
-  const score = normalizeScore(match.scoreSnapshot);
+): Promise<{ match: Match; event: MatchEvent }> {
+  // Вся логика внутри транзакции — гарантирует атомарность проверки татами и старта.
+  // Без этого два арбитра могут пройти проверку одновременно и запустить два матча на одном татами.
+  const { match: updated, event } = await prisma.$transaction(async (tx) => {
+    const match = await tx.match.findUnique({ where: { id: matchId } });
+    if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+    const now = new Date();
+    const score = normalizeScore(match.scoreSnapshot);
 
-  if (score.pendingResult) {
-    throw new MatchError(
-      "RESULT_PENDING",
-      "Сначала утвердите или сбросьте результат схватки",
-      409,
-    );
-  }
-  if (match.status === MatchStatus.IN_PROGRESS && score.clock.running) {
-    throw new MatchError("ALREADY_RUNNING", "Матч уже идёт", 409);
-  }
-  if (match.status === MatchStatus.COMPLETED) {
-    throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
-  }
-  if (!match.redAthleteId || !match.blueAthleteId) {
-    throw new MatchError(
-      "INCOMPLETE_PAIRING",
-      "В матче не хватает участников",
-      409,
-    );
-  }
-  if (match.tatamiNumber) {
-    const activeOnTatami = await prisma.match.findFirst({
-      where: {
-        id: { not: match.id },
-        tournamentId: match.tournamentId,
-        tatamiNumber: match.tatamiNumber,
-        status: MatchStatus.IN_PROGRESS,
-      },
-      select: { id: true, queuePosition: true },
-    });
-    if (activeOnTatami) {
+    if (score.pendingResult) {
       throw new MatchError(
-        "TATAMI_BUSY",
-        "На этом татами уже идёт схватка",
+        "RESULT_PENDING",
+        "Сначала утвердите или сбросьте результат схватки",
         409,
       );
     }
-  }
+    if (match.status === MatchStatus.IN_PROGRESS && score.clock.running) {
+      throw new MatchError("ALREADY_RUNNING", "Матч уже идёт", 409);
+    }
+    if (match.status === MatchStatus.COMPLETED) {
+      throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+    }
+    if (!match.redAthleteId || !match.blueAthleteId) {
+      throw new MatchError(
+        "INCOMPLETE_PAIRING",
+        "В матче не хватает участников",
+        409,
+      );
+    }
+    if (match.tatamiNumber) {
+      const activeOnTatami = await tx.match.findFirst({
+        where: {
+          id: { not: match.id },
+          tournamentId: match.tournamentId,
+          tatamiNumber: match.tatamiNumber,
+          status: MatchStatus.IN_PROGRESS,
+        },
+        select: { id: true, queuePosition: true },
+      });
+      if (activeOnTatami) {
+        throw new MatchError(
+          "TATAMI_BUSY",
+          "На этом татами уже идёт схватка",
+          409,
+        );
+      }
+    }
 
-  score.clock.running = true;
-  score.clock.runningStartedAt = now.toISOString();
+    score.clock.running = true;
+    score.clock.runningStartedAt = now.toISOString();
 
-  const [updated, event] = await prisma.$transaction([
-    prisma.match.update({
-      where: { id: matchId },
-      data: {
-        status: MatchStatus.IN_PROGRESS,
-        startedAt: match.startedAt ?? now,
-        scoreSnapshot: score as any,
-      },
-    }),
-    prisma.matchEvent.create({
-      data: {
-        matchId,
-        type: MatchEventType.HAJIME,
-        side: MatchSide.SYSTEM,
-        actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
-      },
-    }),
-  ]);
+    const [updatedMatch, createdEvent] = await Promise.all([
+      tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: MatchStatus.IN_PROGRESS,
+          startedAt: match.startedAt ?? now,
+          scoreSnapshot: scoreToJson(score),
+        },
+      }),
+      tx.matchEvent.create({
+        data: {
+          matchId,
+          type: MatchEventType.HAJIME,
+          side: MatchSide.SYSTEM,
+          actorJudgeSessionId: judgeSessionId,
+          scoreSnapshot: scoreToJson(score),
+        },
+      }),
+    ]);
+
+    return { match: updatedMatch, event: createdEvent };
+  });
 
   return { match: updated, event };
 }
@@ -130,7 +142,7 @@ export async function pauseMatch(matchId: string, judgeSessionId?: string) {
   const [updated, event] = await prisma.$transaction([
     prisma.match.update({
       where: { id: matchId },
-      data: { scoreSnapshot: score as any },
+      data: { scoreSnapshot: scoreToJson(score) },
     }),
     prisma.matchEvent.create({
       data: {
@@ -138,7 +150,7 @@ export async function pauseMatch(matchId: string, judgeSessionId?: string) {
         type: MatchEventType.MATE,
         side: MatchSide.SYSTEM,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
       },
     }),
   ]);
@@ -149,7 +161,12 @@ export async function enterGoldenScore(
   matchId: string,
   judgeSessionId?: string,
 ) {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: {
+      bracket: { include: { category: { select: { goldenScoreSec: true } } } },
+    },
+  });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status !== MatchStatus.IN_PROGRESS) {
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
@@ -163,11 +180,16 @@ export async function enterGoldenScore(
     );
   }
   score.isGoldenScore = true;
+  const goldenScoreStartedAt = new Date().toISOString();
 
   const [updated, event] = await prisma.$transaction([
     prisma.match.update({
       where: { id: matchId },
-      data: { isGoldenScore: true, scoreSnapshot: score as any },
+      data: {
+        isGoldenScore: true,
+        goldenScoreStartedAt: new Date(),
+        scoreSnapshot: scoreToJson(score),
+      },
     }),
     prisma.matchEvent.create({
       data: {
@@ -175,10 +197,17 @@ export async function enterGoldenScore(
         type: MatchEventType.GOLDEN_SCORE,
         side: MatchSide.SYSTEM,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
       },
     }),
   ]);
+
+  // Запускаем серверный таймер — если категория задаёт лимит golden score
+  const goldenScoreSec = match.bracket.category.goldenScoreSec;
+  if (goldenScoreSec > 0) {
+    scheduleGoldenScoreTimer(matchId, goldenScoreSec, goldenScoreStartedAt);
+  }
+
   return { match: updated, event };
 }
 
@@ -197,6 +226,9 @@ export async function finishMatchManually(
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status === MatchStatus.COMPLETED) {
     throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+  }
+  if (match.status === MatchStatus.PENDING) {
+    throw new MatchError("MATCH_NOT_STARTED", "Матч ещё не начат", 409);
   }
   if (!match.redAthleteId || !match.blueAthleteId) {
     throw new MatchError("INCOMPLETE_PAIRING", "Нет участников", 409);
@@ -225,7 +257,7 @@ export async function finishMatchManually(
         id: matchId,
         ...(expectedVersion !== undefined && { version: expectedVersion }),
       },
-      data: { scoreSnapshot: score as any, version: { increment: 1 } },
+      data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
     if (expectedVersion !== undefined && updateResult.count === 0) {
       throw new MatchError(
@@ -240,7 +272,7 @@ export async function finishMatchManually(
         type: MatchEventType.SORE_MADE,
         side: winnerSide === "RED" ? MatchSide.RED : MatchSide.BLUE,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
         meta: reason ? { reason } : undefined,
       },
     });
@@ -252,48 +284,67 @@ export async function confirmMatchResult(
   matchId: string,
   judgeSessionId?: string,
 ): Promise<Match> {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
-  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
-  if (match.status === MatchStatus.COMPLETED) {
-    throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
-  }
-  cancelOsaekomiTimer(matchId);
-  const score = stopClock(normalizeScore(match.scoreSnapshot));
-  if (!score.pendingResult) {
-    throw new MatchError(
-      "NO_PENDING_RESULT",
-      "Нет результата для утверждения",
-      409,
-    );
-  }
-  const winnerId = score.pendingResult.winnerId;
-  const winnerSide = score.pendingResult.winnerSide;
-  const pendingSnapshot = { ...score.pendingResult };
-  score.pendingResult = null;
+  // ⚠️ Читаем и обновляем ВНУТРИ одной транзакции с атомарной проверкой статуса.
+  // updateMany с WHERE status ≠ COMPLETED гарантирует: если два запроса придут
+  // одновременно, только первый успешно обновит (count=1), второй получит count=0
+  // и выбросит ошибку — race condition невозможен.
+  const updated = await prisma.$transaction(async (tx) => {
+    const match = await tx.match.findUnique({ where: { id: matchId } });
+    if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+    if (match.status === MatchStatus.COMPLETED) {
+      throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+    }
 
-  const [, updated] = await prisma.$transaction([
-    prisma.matchEvent.create({
+    const score = stopClock(normalizeScore(match.scoreSnapshot));
+    if (!score.pendingResult) {
+      throw new MatchError(
+        "NO_PENDING_RESULT",
+        "Нет результата для утверждения",
+        409,
+      );
+    }
+
+    const winnerId = score.pendingResult.winnerId;
+    const winnerSide = score.pendingResult.winnerSide;
+    const pendingSnapshot = { ...score.pendingResult };
+    score.pendingResult = null;
+
+    // Атомарно: обновляем только если статус ещё не COMPLETED
+    const updateResult = await tx.match.updateMany({
+      where: { id: matchId, status: { not: MatchStatus.COMPLETED } },
+      data: {
+        status: MatchStatus.COMPLETED,
+        winnerId,
+        finishedAt: new Date(),
+        scoreSnapshot: scoreToJson(score),
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new MatchError(
+        "ALREADY_COMPLETED",
+        "Матч уже завершён другим судьёй",
+        409,
+      );
+    }
+
+    await tx.matchEvent.create({
       data: {
         matchId,
         type: MatchEventType.SORE_MADE,
         side: winnerSide === "RED" ? MatchSide.RED : MatchSide.BLUE,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
         meta: { confirmed: true, pendingResult: pendingSnapshot },
       },
-    }),
-    prisma.match.update({
-      where: { id: matchId },
-      data: {
-        status: MatchStatus.COMPLETED,
-        winnerId,
-        finishedAt: new Date(),
-        scoreSnapshot: score as any,
-      },
-    }),
-  ]);
+    });
 
-  await propagateWinner(updated, winnerId);
+    return tx.match.findUniqueOrThrow({ where: { id: matchId } });
+  });
+
+  cancelOsaekomiTimer(matchId);
+  cancelGoldenScoreTimer(matchId);
+  await propagateWinner(updated, updated.winnerId!);
   return updated;
 }
 
@@ -323,15 +374,91 @@ export async function cancelPendingResult(
         type: MatchEventType.MATE,
         side: MatchSide.SYSTEM,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: score as any,
+        scoreSnapshot: scoreToJson(score),
         meta: { cancelledPendingResult: true },
       },
     }),
     prisma.match.update({
       where: { id: matchId },
-      data: { scoreSnapshot: score as any },
+      data: { scoreSnapshot: scoreToJson(score) },
     }),
   ]);
+  return updated;
+}
+
+// ============================================================
+// FORFEIT / NO-SHOW
+// ============================================================
+
+/**
+ * Засчитывает победу сопернику когда один из спортсменов не явился или отказался.
+ * Матч не обязательно должен быть IN_PROGRESS — достаточно PENDING.
+ * Причина записывается в scoreSnapshot.pendingResult.reason и в MatchEvent.
+ */
+export async function forfeitMatch(
+  matchId: string,
+  forfeitSide: "RED" | "BLUE",
+  reason: "NO_SHOW" | "INJURY" | "DISQUALIFIED" | "WITHDREW",
+  judgeSessionId?: string,
+): Promise<Match> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (match.status === MatchStatus.COMPLETED) {
+    throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+  }
+  if (!match.redAthleteId || !match.blueAthleteId) {
+    throw new MatchError(
+      "INCOMPLETE_PAIRING",
+      "В матче нет обоих участников",
+      409,
+    );
+  }
+
+  // Победитель — соперник проигравшего
+  const winnerId =
+    forfeitSide === "RED" ? match.blueAthleteId : match.redAthleteId;
+  const winnerSide = forfeitSide === "RED" ? "BLUE" : "RED";
+
+  const score = normalizeScore(match.scoreSnapshot);
+  stopClock(score);
+  score.osaekomi = null;
+  score.pendingResult = null;
+
+  const now = new Date();
+
+  // Атомарная проверка: обновляем только если ещё не COMPLETED
+  const updated = await prisma.$transaction(async (tx) => {
+    const updateResult = await tx.match.updateMany({
+      where: { id: matchId, status: { not: MatchStatus.COMPLETED } },
+      data: {
+        status: MatchStatus.COMPLETED,
+        winnerId,
+        finishedAt: now,
+        startedAt: match.startedAt ?? now,
+        scoreSnapshot: scoreToJson(score),
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new MatchError("ALREADY_COMPLETED", "Матч уже завершён", 409);
+    }
+
+    await tx.matchEvent.create({
+      data: {
+        matchId,
+        type: MatchEventType.SORE_MADE,
+        side: winnerSide === "RED" ? MatchSide.RED : MatchSide.BLUE,
+        actorJudgeSessionId: judgeSessionId,
+        scoreSnapshot: scoreToJson(score),
+        meta: { forfeit: true, forfeitSide, reason },
+      },
+    });
+
+    return tx.match.findUniqueOrThrow({ where: { id: matchId } });
+  });
+
+  cancelGoldenScoreTimer(matchId);
+  await propagateWinner(updated, winnerId);
   return updated;
 }
 
@@ -386,7 +513,7 @@ export async function undoLastScoreEvent(
         type: MatchEventType.MATE,
         side: MatchSide.SYSTEM,
         actorJudgeSessionId: judgeSessionId,
-        scoreSnapshot: restored as any,
+        scoreSnapshot: scoreToJson(restored),
         meta: {
           undo: true,
           undoneType: lastEvent.type,
@@ -396,7 +523,7 @@ export async function undoLastScoreEvent(
     }),
     prisma.match.update({
       where: { id: matchId },
-      data: { scoreSnapshot: restored as any },
+      data: { scoreSnapshot: scoreToJson(restored) },
     }),
   ]);
 

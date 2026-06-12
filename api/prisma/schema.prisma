@@ -134,6 +134,15 @@ model User {
   phone           String?
   isActive        Boolean   @default(true)
 
+  // Email verification
+  emailVerified          Boolean   @default(false)
+  emailVerificationToken String?   // one-time token (expires in 24h)
+  emailVerificationSentAt DateTime? // when last token was sent (rate-limit)
+
+  // 2FA (TOTP — Google Authenticator / Authy)
+  totpSecret      String?   // зашифрованный base32-секрет; null = 2FA не настроен
+  totpEnabled     Boolean   @default(false)
+
   clubId   String?
   club     Club?     @relation(fields: [clubId], references: [id])
   clubRole ClubRole?
@@ -153,6 +162,9 @@ model User {
   auditLogs             AuditLog[]
   tatamiSessions        TatamiSession[]        @relation("TatamiSessionCreator")
   documents             UserDocument[]
+  pushSubscriptions     PushSubscription[]
+
+  deletedAt DateTime? // null = активный; задан = мягко удалён
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -160,6 +172,8 @@ model User {
   @@index([clubId])
   @@index([role])
   @@index([role, isActive])
+  @@index([emailVerificationToken])  // быстрый поиск при верификации
+  @@index([deletedAt])
 }
 
 model UserDocument {
@@ -202,11 +216,14 @@ model Club {
   joinRequests      ClubJoinRequest[]
   coachJoinRequests CoachClubJoinRequest[]
 
+  deletedAt DateTime? // null = активный; задан = мягко удалён
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([city])
   @@index([isActive, isBlocked])
+  @@index([deletedAt])
 }
 
 model ClubGroup {
@@ -267,6 +284,7 @@ model Tournament {
   @@index([startDate])
   @@index([status, isArchived, startDate])
   @@index([city, status])
+  @@index([createdById])
 }
 
 model Category {
@@ -404,9 +422,10 @@ model Match {
   winner        User?   @relation("WinnerAthlete", fields: [winnerId], references: [id])
   scoreSnapshot Json? // { red:{ippon,wazaari,yuko,shido}, blue:{...}, totalTimeSec }
 
-  isGoldenScore Boolean @default(false)
-  isReplay      Boolean @default(false)
-  replayReason  String?
+  isGoldenScore        Boolean   @default(false)
+  goldenScoreStartedAt DateTime? // точное время входа в golden score — для корректного восстановления таймера
+  isReplay             Boolean   @default(false)
+  replayReason         String?
 
   startedAt  DateTime?
   finishedAt DateTime?
@@ -444,6 +463,7 @@ model MatchEvent {
   occurredAt DateTime @default(now())
 
   @@index([matchId, occurredAt])
+  @@index([matchId, type])        // undoLastScoreEvent фильтрует по matchId + type IN [...]
 }
 
 model JudgeSession {
@@ -503,6 +523,7 @@ model RatingEntry {
   @@index([tournamentId])
   @@index([categoryId])
   @@index([points])
+  @@index([athleteId, points])    // Leaderboard groupBy athleteId с суммой points
 }
 
 model Notification {
@@ -545,6 +566,20 @@ model SystemConfig {
   value     Json
   updatedAt DateTime @updatedAt
   updatedBy String?
+}
+
+/// Web Push подписки пользователей (VAPID)
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String   // публичный ключ браузера
+  auth      String   // auth secret
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum JoinRequestStatus {

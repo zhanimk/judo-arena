@@ -14,8 +14,11 @@ import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
 import { bootstrap } from "@/lib/auth-store";
+import { initCsrf } from "@/lib/api";
 import { initSentry, Sentry } from "@/lib/sentry";
+import { initWebVitals } from "@/lib/web-vitals";
 import { usePWA } from "@/hooks/usePWA";
+import { EmailVerificationBanner } from "@/components/ui/EmailVerificationBanner";
 import { useTranslation } from "react-i18next";
 import emblem from "@/assets/jcl-logo.jpeg";
 
@@ -87,7 +90,6 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
-  console.error(error);
   Sentry.captureException(error);
   return (
     <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
@@ -383,6 +385,9 @@ function RootComponent() {
         }}
       />
       <AuthBootstrap />
+      <ClientOnly>
+        <EmailVerificationBanner />
+      </ClientOnly>
       <PageTransition>
         <Outlet />
       </PageTransition>
@@ -414,6 +419,10 @@ function AuthBootstrap() {
   useEffect(() => {
     hydrateThemeFromStorage();
     hydrateLocaleFromStorage();
+    // Инициализируем CSRF токен сразу при загрузке
+    initCsrf();
+    // Web Vitals — запускаем после гидратации, динамический импорт не блокирует
+    initWebVitals();
     if (pathname === "/login") return;
     bootstrap();
   }, [pathname]);

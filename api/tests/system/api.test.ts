@@ -28,6 +28,8 @@ vi.mock("../../src/lib/redis.js", () => ({
     set: vi.fn().mockResolvedValue("OK"),
     get: vi.fn().mockResolvedValue(null),
     del: vi.fn().mockResolvedValue(1),
+    incr: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
     keys: vi.fn().mockResolvedValue([]),
   },
 }));

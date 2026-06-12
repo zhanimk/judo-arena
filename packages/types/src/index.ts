@@ -156,3 +156,86 @@ export interface BracketUpdatePayload {
   tournamentId: string;
   updatedMatchIds: string[];
 }
+
+// ============================================================
+// SOCKET.IO ТИПИЗИРОВАННЫЕ СОБЫТИЯ (для io<S, C>())
+// ============================================================
+
+export interface MatchScorePayload {
+  matchId: string;
+  tournamentId: string;
+  bracketId: string;
+  whiteScore: number;
+  blueScore: number;
+  whiteWazaari: number;
+  blueWazaari: number;
+  osaekomiActive: boolean;
+  osaekomiHolder: "white" | "blue" | null;
+  osaekomiElapsedMs: number;
+  durationMs: number;
+}
+
+export interface MatchStartedPayload {
+  matchId: string;
+  tournamentId: string;
+  bracketId: string;
+  tatamiNumber: number | null;
+  whiteAthleteId: string;
+  blueAthleteId: string;
+}
+
+export interface MatchFinishedSocketPayload {
+  matchId: string;
+  tournamentId: string;
+  bracketId: string;
+  winnerId: string | null;
+  method: string;
+  whiteScore: number;
+  blueScore: number;
+}
+
+export interface TatamiQueuePayload {
+  tatamiNumber: number;
+  queue: Array<{ matchId: string; categoryName: string; tatamiOrder: number }>;
+}
+
+export interface SocketNotificationPayload {
+  id: string;
+  type: string;
+  titleKey: string;
+  bodyKey: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface SubscribeErrorPayload {
+  room?: string;
+  reason: "RATE_LIMITED" | "ROOM_LIMIT" | "FORBIDDEN";
+}
+
+export interface BracketSocketUpdatePayload {
+  bracketId: string;
+  tournamentId: string;
+}
+
+/** Типизированные события сервер → клиент. Используй с io<ServerToClientEvents, ClientToServerEvents>(). */
+export interface ServerToClientEvents {
+  "match:scoreUpdate": (payload: MatchScorePayload) => void;
+  "match:started": (payload: MatchStartedPayload) => void;
+  "match:finished": (payload: MatchFinishedSocketPayload) => void;
+  "bracket:update": (payload: BracketSocketUpdatePayload) => void;
+  "tatami:queueUpdate": (payload: TatamiQueuePayload) => void;
+  "notification:new": (payload: SocketNotificationPayload) => void;
+  "auth:revoked": () => void;
+  "subscribe:error": (payload: SubscribeErrorPayload) => void;
+  error: (payload: { reason: string }) => void;
+}
+
+/** Типизированные события клиент → сервер. */
+export interface ClientToServerEvents {
+  subscribe: (
+    rooms: string | string[],
+    ack?: (err: string | null) => void,
+  ) => void;
+  unsubscribe: (rooms: string | string[]) => void;
+}

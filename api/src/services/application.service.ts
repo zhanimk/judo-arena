@@ -15,6 +15,7 @@
 
 import { prisma } from "../lib/prisma.js";
 import {
+  Prisma,
   ApplicationStatus,
   ClubRole,
   PaymentStatus,
@@ -30,17 +31,10 @@ import {
 } from "./email.service.js";
 import { logAudit } from "./audit.service.js";
 import { emitToUser } from "../sockets/io.js";
+import { ApplicationError } from "./application-shared.js";
 
-export class ApplicationError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public httpStatus = 400,
-  ) {
-    super(message);
-    this.name = "ApplicationError";
-  }
-}
+// ApplicationError — канонический класс в application-shared.ts
+export { ApplicationError } from "./application-shared.js";
 
 // ============================================================
 // CREATE / LIST / GET
@@ -118,7 +112,7 @@ export async function listApplicationsForTournament(
   if (!actor)
     throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
 
-  const where: any = { tournamentId };
+  const where: Prisma.ApplicationWhereInput = { tournamentId };
   // Тренер видит только заявки своего клуба, админ — все
   if (actor.role === UserRole.COACH) {
     if (!actor.clubId) return [];
@@ -180,8 +174,8 @@ export async function listAllApplicationsAdmin(
   status?: string,
   tournamentId?: string,
 ) {
-  const where: any = {};
-  if (status) where.status = status;
+  const where: Prisma.ApplicationWhereInput = {};
+  if (status) where.status = status as ApplicationStatus;
   if (tournamentId) where.tournamentId = tournamentId;
 
   return prisma.application.findMany({
@@ -339,7 +333,7 @@ export async function listAthleteApplicationEntries(actorUserId: string) {
 }
 
 // ============================================================
-// ENTRIES (спортсмен в заявке)
+// ENTRIES
 // ============================================================
 
 export async function addEntry(
@@ -565,7 +559,7 @@ export async function adminForceMoveEntry(
 }
 
 // ============================================================
-// LIFECYCLE
+// LIFECYCLE (submit / approve / reject / withdraw)
 // ============================================================
 
 export async function submit(actorUserId: string, applicationId: string) {
@@ -909,8 +903,11 @@ export async function bulkApprove(
 
   if (submitted.length === 0) return { approved: 0 };
 
+  // Обновляем только те же заявки что нашли выше — с тем же фильтром оплаты.
+  // Без этого между findMany и updateMany могла проскочить неоплаченная заявка.
+  const approvedIds = submitted.map((a) => a.id);
   await prisma.application.updateMany({
-    where: { tournamentId, status: ApplicationStatus.SUBMITTED },
+    where: { id: { in: approvedIds } },
     data: {
       status: ApplicationStatus.APPROVED,
       reviewedAt: new Date(),
@@ -1211,7 +1208,7 @@ async function notifyCoachesOfApplicationReview(
     id: string;
     clubId: string;
     tournamentId: string;
-    tournament?: { name: any } | null;
+    tournament?: { name: Prisma.JsonValue } | null;
   },
   status: ApplicationStatus,
   reviewerNotes?: string,
@@ -1275,10 +1272,19 @@ async function notifyCoachesOfApplicationReview(
   );
 }
 
-function localizeName(value: any): string {
+function localizeName(value: Prisma.JsonValue | null | undefined): string {
   if (!value) return "";
   if (typeof value === "string") return value;
-  return value.kk || value.ru || value.en || "";
+  if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+    const obj = value as Record<string, Prisma.JsonValue>;
+    return (
+      (obj["kk"] as string) ||
+      (obj["ru"] as string) ||
+      (obj["en"] as string) ||
+      ""
+    );
+  }
+  return "";
 }
 
 function assertApplicationDeadlineOpen(deadline: Date) {

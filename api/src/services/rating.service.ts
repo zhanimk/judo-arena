@@ -17,11 +17,24 @@
 
 import { prisma } from "../lib/prisma.js";
 import {
+  Prisma,
   BracketFormat,
   MatchStatus,
   TournamentStatus,
   UserRole,
 } from "@prisma/client";
+import { normalizeScore } from "./match-types.js";
+
+/** Минимальный набор полей матча, нужных для подсчёта мест. */
+interface RatedMatch {
+  bracketSection: string | null;
+  status: string;
+  winnerId: string | null;
+  redAthleteId: string | null;
+  blueAthleteId: string | null;
+  round: number;
+  position: number;
+}
 import { computeStandings } from "./bracket-engine/round-robin.js";
 import { logAudit } from "./audit.service.js";
 
@@ -128,6 +141,7 @@ export async function finalizeTournament(
     );
   }
 
+  // Собираем все записи вне транзакции — чистая вычислительная логика
   const createdEntries: {
     athleteId: string;
     categoryId: string;
@@ -137,7 +151,6 @@ export async function finalizeTournament(
 
   for (const bracket of allBrackets) {
     if (bracket.format === BracketFormat.ROUND_ROBIN) {
-      // Места по таблице
       const matches = bracket.matches.filter(
         (m) => m.status === MatchStatus.COMPLETED,
       );
@@ -155,12 +168,12 @@ export async function finalizeTournament(
           redAthleteId: m.redAthleteId!,
           blueAthleteId: m.blueAthleteId!,
           winnerId: m.winnerId,
-          redScore: (m.scoreSnapshot as any)?.red ?? {
+          redScore: normalizeScore(m.scoreSnapshot).red ?? {
             ippon: 0,
             wazaari: 0,
             shido: 0,
           },
-          blueScore: (m.scoreSnapshot as any)?.blue ?? {
+          blueScore: normalizeScore(m.scoreSnapshot).blue ?? {
             ippon: 0,
             wazaari: 0,
             shido: 0,
@@ -168,97 +181,65 @@ export async function finalizeTournament(
         })),
       );
       for (const s of standings) {
-        const pts = pointsForPlace(points, s.place);
-        await prisma.ratingEntry.upsert({
-          where: {
-            athleteId_tournamentId_categoryId: {
-              athleteId: s.athleteId,
-              tournamentId,
-              categoryId: bracket.categoryId,
-            },
-          },
-          update: { place: s.place, points: pts },
-          create: {
-            athleteId: s.athleteId,
-            tournamentId,
-            categoryId: bracket.categoryId,
-            place: s.place,
-            points: pts,
-          },
-        });
         createdEntries.push({
           athleteId: s.athleteId,
           categoryId: bracket.categoryId,
           place: s.place,
-          points: pts,
+          points: pointsForPlace(points, s.place),
         });
       }
     } else if (bracket.format === BracketFormat.MIXED) {
-      // MIXED: групповой этап → плей-офф (все playoff матчи в bracketSection="playoff")
       const places = computePlacesFromMixedMatches(bracket.matches);
       for (const [athleteId, place] of Object.entries(places)) {
-        const pts = pointsForPlace(points, place);
-        await prisma.ratingEntry.upsert({
-          where: {
-            athleteId_tournamentId_categoryId: {
-              athleteId,
-              tournamentId,
-              categoryId: bracket.categoryId,
-            },
-          },
-          update: { place, points: pts },
-          create: {
-            athleteId,
-            tournamentId,
-            categoryId: bracket.categoryId,
-            place,
-            points: pts,
-          },
-        });
         createdEntries.push({
           athleteId,
           categoryId: bracket.categoryId,
           place,
-          points: pts,
+          points: pointsForPlace(points, place),
         });
       }
     } else {
-      // Single Elimination + IJF Repechage
       const places = computePlacesFromSEMatches(bracket.matches);
       for (const [athleteId, place] of Object.entries(places)) {
-        const pts = pointsForPlace(points, place);
-        await prisma.ratingEntry.upsert({
-          where: {
-            athleteId_tournamentId_categoryId: {
-              athleteId,
-              tournamentId,
-              categoryId: bracket.categoryId,
-            },
-          },
-          update: { place, points: pts },
-          create: {
-            athleteId,
-            tournamentId,
-            categoryId: bracket.categoryId,
-            place,
-            points: pts,
-          },
-        });
         createdEntries.push({
           athleteId,
           categoryId: bracket.categoryId,
           place,
-          points: pts,
+          points: pointsForPlace(points, place),
         });
       }
     }
   }
 
-  // Перевести турнир в COMPLETED
-  const updated = await prisma.tournament.update({
-    where: { id: tournamentId },
-    data: { status: TournamentStatus.COMPLETED },
-  });
+  // Атомарно записываем все места и переводим турнир в COMPLETED
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      for (const entry of createdEntries) {
+        await tx.ratingEntry.upsert({
+          where: {
+            athleteId_tournamentId_categoryId: {
+              athleteId: entry.athleteId,
+              tournamentId,
+              categoryId: entry.categoryId,
+            },
+          },
+          update: { place: entry.place, points: entry.points },
+          create: {
+            athleteId: entry.athleteId,
+            tournamentId,
+            categoryId: entry.categoryId,
+            place: entry.place,
+            points: entry.points,
+          },
+        });
+      }
+      return tx.tournament.update({
+        where: { id: tournamentId },
+        data: { status: TournamentStatus.COMPLETED },
+      });
+    },
+    { timeout: 30_000 },
+  );
 
   await logAudit({
     actorUserId,
@@ -284,7 +265,9 @@ export async function finalizeTournament(
  *   7 = проигравшие матчей репешажа
  *  99 = участие (все остальные)
  */
-function computePlacesFromSEMatches(matches: any[]): Record<string, number> {
+function computePlacesFromSEMatches(
+  matches: RatedMatch[],
+): Record<string, number> {
   const places: Record<string, number> = {};
 
   // 1-е и 2-е место — финал
@@ -342,7 +325,9 @@ function computePlacesFromSEMatches(matches: any[]): Record<string, number> {
  *   3 = проигравшие полуфиналов (предпоследний раунд)
  *  99 = групповой этап + остальные
  */
-function computePlacesFromMixedMatches(matches: any[]): Record<string, number> {
+function computePlacesFromMixedMatches(
+  matches: RatedMatch[],
+): Record<string, number> {
   const places: Record<string, number> = {};
 
   const playoffMatches = matches.filter(
@@ -361,8 +346,8 @@ function computePlacesFromMixedMatches(matches: any[]): Record<string, number> {
   }
 
   // Находим последний раунд плей-офф (финал)
-  const maxRound = Math.max(...playoffMatches.map((m: any) => m.round));
-  const finalMatch = playoffMatches.find((m: any) => m.round === maxRound);
+  const maxRound = Math.max(...playoffMatches.map((m) => m.round));
+  const finalMatch = playoffMatches.find((m) => m.round === maxRound);
   if (finalMatch?.winnerId) {
     places[finalMatch.winnerId] = 1;
     const loserId =
@@ -374,9 +359,7 @@ function computePlacesFromMixedMatches(matches: any[]): Record<string, number> {
 
   // Предпоследний раунд — полуфиналы, проигравшие → 3-е место
   if (maxRound >= 2) {
-    const semiFinals = playoffMatches.filter(
-      (m: any) => m.round === maxRound - 1,
-    );
+    const semiFinals = playoffMatches.filter((m) => m.round === maxRound - 1);
     for (const sf of semiFinals) {
       if (!sf.winnerId) continue;
       const loserId =
@@ -402,61 +385,184 @@ function computePlacesFromMixedMatches(matches: any[]): Record<string, number> {
 export async function getClubLeaderboard(options: { limit?: number } = {}) {
   const limit = Math.min(options.limit ?? 50, 200);
 
-  // Сумма очков по спортсменам
-  const athletePoints = await prisma.ratingEntry.groupBy({
-    by: ["athleteId"],
-    _sum: { points: true },
-  });
+  // Один JOIN-запрос вместо трёх отдельных.
+  // RatingEntry → User (athleteId=id, clubId NOT NULL) → Club
+  // GROUP BY clubId, агрегируем SUM(points) и COUNT(DISTINCT athleteId).
+  type ClubRow = {
+    clubId: string;
+    clubName: unknown; // Json { ru, kk, en }
+    shortName: string | null;
+    city: string;
+    memberCount: bigint;
+    totalPoints: number;
+    athleteCount: bigint;
+  };
 
-  if (athletePoints.length === 0) return [];
+  const rows = await prisma.$queryRaw<ClubRow[]>`
+    SELECT
+      c.id                                      AS "clubId",
+      c.name                                    AS "clubName",
+      c."shortName"                             AS "shortName",
+      c.city                                    AS "city",
+      (SELECT COUNT(*) FROM "User" m WHERE m."clubId" = c.id)
+                                                AS "memberCount",
+      COALESCE(SUM(re.points), 0)::float        AS "totalPoints",
+      COUNT(DISTINCT re."athleteId")            AS "athleteCount"
+    FROM "Club" c
+    INNER JOIN "User" u   ON u."clubId" = c.id
+    INNER JOIN "RatingEntry" re ON re."athleteId" = u.id
+    GROUP BY c.id, c.name, c."shortName", c.city
+    ORDER BY "totalPoints" DESC
+    LIMIT ${limit}
+  `;
 
-  // Клубы спортсменов
-  const athletes = await prisma.user.findMany({
-    where: {
-      id: { in: athletePoints.map((e) => e.athleteId) },
-      clubId: { not: null },
+  return rows.map((row, idx) => ({
+    rank: idx + 1,
+    club: {
+      id: row.clubId,
+      name: row.clubName,
+      shortName: row.shortName,
+      city: row.city,
+      _count: { members: Number(row.memberCount) },
     },
-    select: { id: true, clubId: true },
-  });
-  const clubOfAthlete = new Map(athletes.map((a) => [a.id, a.clubId!]));
+    totalPoints: Number(row.totalPoints),
+    athleteCount: Number(row.athleteCount),
+  }));
+}
 
-  // Группируем по клубу в памяти
-  const clubPoints = new Map<string, { total: number; athletes: number }>();
-  for (const entry of athletePoints) {
-    const clubId = clubOfAthlete.get(entry.athleteId);
-    if (!clubId) continue;
-    const pts = Number(entry._sum.points ?? 0);
-    const prev = clubPoints.get(clubId) ?? { total: 0, athletes: 0 };
-    clubPoints.set(clubId, {
-      total: prev.total + pts,
-      athletes: prev.athletes + 1,
-    });
-  }
-
-  const sorted = [...clubPoints.entries()]
-    .sort((a, b) => b[1].total - a[1].total)
-    .slice(0, limit);
-
-  const clubs = await prisma.club.findMany({
-    where: { id: { in: sorted.map(([id]) => id) } },
+/**
+ * Полная статистика спортсмена.
+ * Агрегирует данные из Match, MatchEvent и RatingEntry.
+ */
+export async function getAthleteStats(athleteId: string) {
+  // 1. Все завершённые матчи где участвовал спортсмен
+  const matches = await prisma.match.findMany({
+    where: {
+      status: MatchStatus.COMPLETED,
+      OR: [{ redAthleteId: athleteId }, { blueAthleteId: athleteId }],
+      // Исключаем BYE-матчи (у них scoreSnapshot.bye = true, winnerId есть но фактически нет соперника)
+      NOT: { AND: [{ redAthleteId: null }, { blueAthleteId: null }] },
+    },
     select: {
       id: true,
-      name: true,
-      shortName: true,
-      city: true,
-      _count: { select: { members: true } },
+      winnerId: true,
+      redAthleteId: true,
+      blueAthleteId: true,
+      isGoldenScore: true,
+      finishedAt: true,
+      tournamentId: true,
+      scoreSnapshot: true,
+      bracket: {
+        select: {
+          categoryId: true,
+          category: {
+            select: { weightMin: true, weightMax: true, gender: true },
+          },
+        },
+      },
+      events: {
+        where: { type: { in: ["IPPON", "WAZA_ARI", "HANSOKU_MAKE"] } },
+        select: { type: true, side: true },
+        orderBy: { occurredAt: "desc" },
+        take: 1,
+      },
     },
   });
-  const clubById = new Map(clubs.map((c) => [c.id, c]));
 
-  return sorted
-    .filter(([id]) => clubById.has(id))
-    .map(([id, { total, athletes }], idx) => ({
-      rank: idx + 1,
-      club: clubById.get(id)!,
-      totalPoints: total,
-      athleteCount: athletes,
-    }));
+  // Фильтруем BYE: оба спортсмена должны быть заполнены
+  const realMatches = matches.filter(
+    (m) => m.redAthleteId !== null && m.blueAthleteId !== null,
+  );
+
+  const total = realMatches.length;
+  const wins = realMatches.filter((m) => m.winnerId === athleteId).length;
+  const losses = total - wins;
+  const goldenScoreWins = realMatches.filter(
+    (m) => m.winnerId === athleteId && m.isGoldenScore,
+  ).length;
+
+  // Подсчёт типов побед по последнему финальному событию
+  let ipponWins = 0;
+  let wazaariWins = 0;
+  let hansokuWins = 0; // победа по дисквалификации соперника
+
+  for (const m of realMatches) {
+    if (m.winnerId !== athleteId) continue;
+    const lastEvent = m.events[0];
+    if (!lastEvent) continue;
+
+    const winnerSide = m.winnerId === m.redAthleteId ? "RED" : "BLUE";
+    if (lastEvent.type === "IPPON" && lastEvent.side === winnerSide)
+      ipponWins++;
+    else if (lastEvent.type === "WAZA_ARI" && lastEvent.side === winnerSide)
+      wazaariWins++;
+    else if (lastEvent.type === "HANSOKU_MAKE" && lastEvent.side !== winnerSide)
+      hansokuWins++;
+  }
+
+  // Турниры где участвовал
+  const tournamentIds = [...new Set(realMatches.map((m) => m.tournamentId))];
+
+  // Рейтинговые записи
+  const ratingEntries = await prisma.ratingEntry.findMany({
+    where: { athleteId },
+    include: {
+      tournament: { select: { id: true, name: true, startDate: true } },
+      category: { select: { gender: true, weightMin: true, weightMax: true } },
+    },
+    orderBy: { awardedAt: "asc" },
+  });
+
+  const totalPoints = ratingEntries.reduce((s, e) => s + Number(e.points), 0);
+  const bestPlace =
+    ratingEntries.length > 0
+      ? Math.min(...ratingEntries.map((e) => e.place))
+      : null;
+
+  // Динамика рейтинга: накопленный итог по датам турниров
+  const ratingHistory = ratingEntries.reduce<
+    Array<{ date: string; points: number; tournamentName: string }>
+  >((acc, e) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1]! : { points: 0 };
+    const tName = e.tournament.name;
+    const name =
+      typeof tName === "object" && tName !== null
+        ? ((tName as Record<string, string>)["kk"] ??
+          (tName as Record<string, string>)["ru"] ??
+          "—")
+        : String(tName ?? "—");
+    acc.push({
+      date: e.tournament.startDate.toISOString().split("T")[0]!,
+      points: prev.points + Number(e.points),
+      tournamentName: name,
+    });
+    return acc;
+  }, []);
+
+  return {
+    athleteId,
+    matches: {
+      total,
+      wins,
+      losses,
+      winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
+      goldenScoreWins,
+      ipponWins,
+      wazaariWins,
+      hansokuWins,
+      ipponWinRate: wins > 0 ? Math.round((ipponWins / wins) * 100) : 0,
+    },
+    tournaments: {
+      total: tournamentIds.length,
+      bestPlace,
+    },
+    rating: {
+      totalPoints,
+      entriesCount: ratingEntries.length,
+      history: ratingHistory,
+      recent: ratingEntries.slice(-5).reverse(),
+    },
+  };
 }
 
 export async function getAthleteRating(athleteId: string) {
@@ -480,13 +586,97 @@ export async function getAthleteRating(athleteId: string) {
   return { athleteId, totalPoints: total, entries };
 }
 
+/**
+ * Рейтинг по весовой категории — сквозной по всем турнирам.
+ * Фильтрует RatingEntry по gender + weightMax категории (точное совпадение).
+ * Позволяет сравнивать спортсменов одного веса вне зависимости от турнира.
+ */
+export async function getWeightClassLeaderboard(options: {
+  gender: "MALE" | "FEMALE";
+  weightMax: number;
+  limit?: number;
+}) {
+  const limit = Math.min(options.limit ?? 50, 200);
+
+  // Находим все категории с нужным gender + weightMax
+  const categories = await prisma.category.findMany({
+    where: { gender: options.gender, weightMax: options.weightMax },
+    select: { id: true },
+  });
+
+  if (categories.length === 0) {
+    return [];
+  }
+
+  const categoryIds = categories.map((c) => c.id);
+
+  // Агрегируем сумму очков по атлету в этих категориях
+  const grouped = await prisma.ratingEntry.groupBy({
+    by: ["athleteId"],
+    where: { categoryId: { in: categoryIds } },
+    _sum: { points: true },
+    _count: { tournamentId: true },
+    _min: { place: true },
+    orderBy: { _sum: { points: "desc" } },
+    take: limit,
+  });
+
+  if (grouped.length === 0) return [];
+
+  const athletes = await prisma.user.findMany({
+    where: { id: { in: grouped.map((g) => g.athleteId) } },
+    select: {
+      id: true,
+      name: true,
+      surname: true,
+      nameLatin: true,
+      surnameLatin: true,
+      gender: true,
+      weightKg: true,
+      beltRank: true,
+      clubId: true,
+      club: { select: { id: true, name: true, shortName: true, city: true } },
+    },
+  });
+
+  const byId = new Map(athletes.map((a) => [a.id, a]));
+
+  return grouped
+    .filter((g) => byId.has(g.athleteId))
+    .map((g, idx) => ({
+      rank: idx + 1,
+      athlete: byId.get(g.athleteId)!,
+      totalPoints: Number(g._sum.points ?? 0),
+      tournamentsCount: g._count.tournamentId,
+      bestPlace: g._min.place,
+    }));
+}
+
+/**
+ * Список доступных весовых категорий (уникальные weightMax + gender).
+ * Используется для фильтра на странице рейтинга.
+ */
+export async function getAvailableWeightClasses() {
+  const cats = await prisma.category.findMany({
+    select: { gender: true, weightMax: true, weightMin: true },
+    distinct: ["gender", "weightMax"],
+    orderBy: [{ gender: "asc" }, { weightMax: "asc" }],
+  });
+  return cats.map((c) => ({
+    gender: c.gender,
+    weightMax: c.weightMax,
+    weightMin: c.weightMin,
+    label: `${c.gender === "MALE" ? "Ер" : "Әйел"} ${c.weightMax >= 200 ? `+${c.weightMin}` : `-${c.weightMax}`} кг`,
+  }));
+}
+
 export async function getLeaderboard(options: {
   categoryId?: string;
   clubId?: string;
   limit?: number;
 }) {
   // Агрегируем сумму очков по атлету
-  const where: any = {};
+  const where: Prisma.RatingEntryWhereInput = {};
   if (options.categoryId) where.categoryId = options.categoryId;
 
   const grouped = await prisma.ratingEntry.groupBy({
@@ -509,6 +699,7 @@ export async function getLeaderboard(options: {
       surname: true,
       gender: true,
       weightKg: true,
+      beltRank: true,
       clubId: true,
       club: { select: { id: true, name: true, shortName: true, city: true } },
     },

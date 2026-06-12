@@ -17,13 +17,30 @@
  */
 
 import { prisma } from "../lib/prisma.js";
-import { MatchStatus, BracketFormat, UserRole, type Match } from "@prisma/client";
+import {
+  Prisma,
+  MatchStatus,
+  BracketFormat,
+  UserRole,
+  type Match,
+} from "@prisma/client";
 import { propagateResult } from "./bracket-engine/single-elimination.js";
+import type { SEMatch } from "./bracket-engine/single-elimination.js";
 import { logAudit } from "./audit.service.js";
-import { emitMatchEvent, emitToBracket, emitToTournament } from "../sockets/io.js";
+import {
+  emitMatchEvent,
+  emitToBracket,
+  emitToTournament,
+} from "../sockets/io.js";
+
+type SectionType = SEMatch["bracketSection"];
 
 export class OverrideError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "OverrideError";
   }
@@ -37,7 +54,11 @@ export async function overrideMatchResult(
 ): Promise<{ updated: Match; rolledBack: Match[] }> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new OverrideError("FORBIDDEN", "Только админ может делать override", 403);
+    throw new OverrideError(
+      "FORBIDDEN",
+      "Только админ может делать override",
+      403,
+    );
   }
 
   const match = await prisma.match.findUnique({
@@ -46,17 +67,30 @@ export async function overrideMatchResult(
   });
   if (!match) throw new OverrideError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status !== MatchStatus.COMPLETED) {
-    throw new OverrideError("NOT_COMPLETED", "Override доступен только для завершённых матчей", 409);
+    throw new OverrideError(
+      "NOT_COMPLETED",
+      "Override доступен только для завершённых матчей",
+      409,
+    );
   }
   if (!match.redAthleteId || !match.blueAthleteId) {
-    throw new OverrideError("INCOMPLETE_PAIRING", "У матча нет двух участников", 409);
+    throw new OverrideError(
+      "INCOMPLETE_PAIRING",
+      "У матча нет двух участников",
+      409,
+    );
   }
 
   const oldWinnerId = match.winnerId;
-  const newWinnerId = newWinnerSide === "RED" ? match.redAthleteId : match.blueAthleteId;
+  const newWinnerId =
+    newWinnerSide === "RED" ? match.redAthleteId : match.blueAthleteId;
 
   if (oldWinnerId === newWinnerId) {
-    throw new OverrideError("SAME_WINNER", "Новый победитель совпадает со старым", 400);
+    throw new OverrideError(
+      "SAME_WINNER",
+      "Новый победитель совпадает со старым",
+      400,
+    );
   }
 
   // ---- Каскадный rollback ----
@@ -75,32 +109,41 @@ export async function overrideMatchResult(
     },
   });
 
-  // ---- Propagate нового winner вперёд ----
-  if (match.bracket.format !== BracketFormat.ROUND_ROBIN && match.bracketSection) {
-    const loserId = newWinnerId === match.redAthleteId ? match.blueAthleteId : match.redAthleteId;
+  // ---- Propagate нового winner вперёд (атомарно) ----
+  if (
+    match.bracket.format !== BracketFormat.ROUND_ROBIN &&
+    match.bracketSection
+  ) {
+    const loserId =
+      newWinnerId === match.redAthleteId
+        ? match.blueAthleteId
+        : match.redAthleteId;
     const propagations = propagateResult(
       match.round,
       match.position,
-      match.bracketSection as any,
+      match.bracketSection as SectionType,
       newWinnerId,
       loserId!,
       match.bracket.size,
     );
-    for (const p of propagations) {
-      const target = await prisma.match.findFirst({
-        where: {
-          bracketId: match.bracketId,
-          round: p.round,
-          position: p.position,
-          bracketSection: p.section,
-        },
-      });
-      if (!target) continue;
-      const data: any = {};
-      if (p.slot === "red") data.redAthleteId = p.athleteId;
-      else data.blueAthleteId = p.athleteId;
-      await prisma.match.update({ where: { id: target.id }, data });
-    }
+    await prisma.$transaction(async (tx) => {
+      for (const p of propagations) {
+        const target = await tx.match.findFirst({
+          where: {
+            bracketId: match.bracketId,
+            round: p.round,
+            position: p.position,
+            bracketSection: p.section,
+          },
+        });
+        if (!target) continue;
+        const data: Prisma.MatchUncheckedUpdateInput =
+          p.slot === "red"
+            ? { redAthleteId: p.athleteId }
+            : { blueAthleteId: p.athleteId };
+        await tx.match.update({ where: { id: target.id }, data });
+      }
+    });
   }
 
   // ---- Audit ----
@@ -174,13 +217,17 @@ async function rollbackDownstream(
     }
 
     // Очистим слот, сбросим winner и статус
-    const data: any = { winnerId: null, finishedAt: null, scoreSnapshot: null };
-    if (d.redAthleteId === oldWinnerId) data.redAthleteId = null;
-    if (d.blueAthleteId === oldWinnerId) data.blueAthleteId = null;
-    if (d.status !== MatchStatus.PENDING) {
-      data.status = MatchStatus.PENDING;
-      data.startedAt = null;
-    }
+    const data: Prisma.MatchUncheckedUpdateInput = {
+      winnerId: null,
+      finishedAt: null,
+      scoreSnapshot: Prisma.JsonNull,
+      ...(d.redAthleteId === oldWinnerId && { redAthleteId: null }),
+      ...(d.blueAthleteId === oldWinnerId && { blueAthleteId: null }),
+      ...(d.status !== MatchStatus.PENDING && {
+        status: MatchStatus.PENDING,
+        startedAt: null,
+      }),
+    };
 
     const updated = await prisma.match.update({ where: { id: d.id }, data });
     collected.push(updated);

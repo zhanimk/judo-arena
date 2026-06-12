@@ -4,6 +4,7 @@
 
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { redis } from "../lib/redis.js";
 import { env } from "../lib/env.js";
 import {
   signAccessToken,
@@ -23,6 +24,7 @@ import type {
   UpsertUserDocumentInput,
 } from "../validators/auth.schema.js";
 import { ClubRole, UserRole, type User } from "@prisma/client";
+import { sendVerificationEmail } from "./email-verification.service.js";
 
 // ============================================================
 // Ошибки сервиса (выбрасываем — handler их ловит и преобразует в HTTP)
@@ -91,20 +93,54 @@ export async function register(
   });
 
   const tokens = await issueTokens(user);
+
+  // Отправляем письмо верификации в фоне (не блокируем ответ регистрации)
+  // Ошибка отправки не должна ломать регистрацию
+  sendVerificationEmail(user.id).catch((err) => {
+    process.stderr.write(
+      `[auth] Не удалось отправить письмо верификации для ${user.email}: ${err.message}\n`,
+    );
+  });
+
   return { user, tokens };
 }
 
 // ============================================================
 // Вход
 // ============================================================
+
+const LOGIN_LOCKOUT_MAX = 10;
+const LOGIN_LOCKOUT_WINDOW_SEC = 900; // 15 минут
+
+function loginFailedKey(email: string): string {
+  return `login_failed:${email}`;
+}
+
 export async function login(
   input: LoginInput,
-): Promise<{ user: User; tokens: TokenPair }> {
+): Promise<{ user: User; tokens: TokenPair; totpRequired: boolean }> {
+  const normalizedEmail = input.email.toLowerCase().trim();
+
+  // Проверка блокировки аккаунта до запроса в БД (защита от timing-атак через enumerate)
+  const failKey = loginFailedKey(normalizedEmail);
+  const failCount = await redis.get(failKey).catch(() => null);
+  if (failCount !== null && parseInt(failCount, 10) >= LOGIN_LOCKOUT_MAX) {
+    throw new AuthError(
+      "ACCOUNT_TEMPORARILY_LOCKED",
+      "Слишком много неудачных попыток входа. Попробуйте через 15 минут.",
+      429,
+    );
+  }
+
   const user = await prisma.user.findUnique({
-    where: { email: input.email.toLowerCase().trim() },
+    where: { email: normalizedEmail },
   });
 
   if (!user) {
+    // Инкрементируем счётчик даже если email не найден — защита от enumerate
+    const n = await redis.incr(failKey).catch(() => 0);
+    if (n === 1)
+      redis.expire(failKey, LOGIN_LOCKOUT_WINDOW_SEC).catch(() => {});
     // Не сообщаем что email не найден (защита от перебора)
     throw new AuthError(
       "INVALID_CREDENTIALS",
@@ -118,6 +154,9 @@ export async function login(
 
   const valid = await bcrypt.compare(input.password, user.passwordHash);
   if (!valid) {
+    const n = await redis.incr(failKey).catch(() => 0);
+    if (n === 1)
+      redis.expire(failKey, LOGIN_LOCKOUT_WINDOW_SEC).catch(() => {});
     throw new AuthError(
       "INVALID_CREDENTIALS",
       "Неверный email или пароль",
@@ -125,8 +164,16 @@ export async function login(
     );
   }
 
+  // Успешный вход — сбрасываем счётчик
+  redis.del(failKey).catch(() => {});
+
+  // 2FA: если включён — сигнализируем route-handler, токены не выдаём
+  if (user.totpEnabled) {
+    return { user, tokens: {} as TokenPair, totpRequired: true };
+  }
+
   const tokens = await issueTokens(user);
-  return { user, tokens };
+  return { user, tokens, totpRequired: false };
 }
 
 // ============================================================
@@ -270,6 +317,14 @@ export async function upsertMyDocument(
   });
   if (!user)
     throw new AuthError("USER_NOT_FOUND", "Пользователь не найден", 404);
+
+  if (!input.url.startsWith(`private:documents/${userId}/`)) {
+    throw new AuthError(
+      "INVALID_DOCUMENT_REFERENCE",
+      "Құжат сілтемесі осы пайдаланушыға тиесілі емес",
+      400,
+    );
+  }
 
   if (input.type === "COACH_ID" && user.role !== UserRole.COACH) {
     throw new AuthError(

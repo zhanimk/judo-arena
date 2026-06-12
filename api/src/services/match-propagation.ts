@@ -9,9 +9,13 @@
  */
 
 import { prisma } from "../lib/prisma.js";
-import { BracketFormat, MatchStatus, type Match } from "@prisma/client";
+import { Prisma, BracketFormat, MatchStatus, type Match } from "@prisma/client";
 import { propagateResult } from "./bracket-engine/single-elimination.js";
+import type { SEMatch } from "./bracket-engine/single-elimination.js";
+import { BYE_SNAPSHOT } from "./match-types.js";
 import { nextQueuePosition } from "./match-tatami.service.js";
+
+type SectionType = SEMatch["bracketSection"];
 
 // ============================================================
 // PUBLIC: продвижение победителя по сетке
@@ -53,7 +57,7 @@ export async function propagateWinner(
     const playoffPropagations = propagateResult(
       match.round,
       match.position,
-      "main" as any,
+      "main" as SectionType,
       winnerId,
       loserId,
       bracket.size,
@@ -63,8 +67,50 @@ export async function propagateWinner(
         p.section === "main" || p.section === "final" ? "playoff" : p.section,
     }));
 
-    for (const p of playoffPropagations) {
-      const target = await prisma.match.findFirst({
+    // Атомарно: ищем целевые матчи и обновляем их в одной транзакции.
+    // Без транзакции два одновременных победителя могут перезаписать один слот.
+    await prisma.$transaction(async (tx) => {
+      for (const p of playoffPropagations) {
+        const target = await tx.match.findFirst({
+          where: {
+            bracketId: bracket.id,
+            round: p.round,
+            position: p.position,
+            bracketSection: p.section,
+          },
+        });
+        if (!target) continue;
+        const data: Prisma.MatchUncheckedUpdateInput =
+          p.slot === "red"
+            ? { redAthleteId: p.athleteId }
+            : { blueAthleteId: p.athleteId };
+        await tx.match.update({ where: { id: target.id }, data });
+      }
+    });
+    return;
+  }
+
+  // Стандартная SE-сетка (включая repechage, bronze)
+  const propagations = propagateResult(
+    match.round,
+    match.position,
+    match.bracketSection as SectionType,
+    winnerId,
+    loserId,
+    bracket.size,
+  );
+
+  // Атомарно продвигаем победителя по всем слотам SE-сетки.
+  // Транзакция предотвращает race condition при параллельных судейских сессиях.
+  const updatedMatches: {
+    match: Awaited<ReturnType<typeof prisma.match.update>>;
+    section: string;
+  }[] = [];
+
+  await prisma.$transaction(async (tx) => {
+    updatedMatches.length = 0;
+    for (const p of propagations) {
+      const target = await tx.match.findFirst({
         where: {
           bracketId: bracket.id,
           round: p.round,
@@ -73,55 +119,29 @@ export async function propagateWinner(
         },
       });
       if (!target) continue;
-      const data: any = {};
-      if (p.slot === "red") data.redAthleteId = p.athleteId;
-      else data.blueAthleteId = p.athleteId;
-      await prisma.match.update({ where: { id: target.id }, data });
+
+      const data: Prisma.MatchUncheckedUpdateInput =
+        p.slot === "red"
+          ? { redAthleteId: p.athleteId }
+          : { blueAthleteId: p.athleteId };
+
+      // Наследуем татами победителя если следующий матч ещё не назначен
+      if (!target.tatamiNumber && match.tatamiNumber) {
+        data.tatamiNumber = match.tatamiNumber;
+        data.queuePosition = await nextQueuePosition(
+          match.tournamentId,
+          match.tatamiNumber,
+        );
+      }
+
+      const updated = await tx.match.update({ where: { id: target.id }, data });
+      updatedMatches.push({ match: updated, section: p.section });
     }
-    return;
-  }
+  });
 
-  // Стандартная SE-сетка (включая repechage, bronze)
-  const propagations = propagateResult(
-    match.round,
-    match.position,
-    match.bracketSection as any,
-    winnerId,
-    loserId,
-    bracket.size,
-  );
-
-  for (const p of propagations) {
-    const target = await prisma.match.findFirst({
-      where: {
-        bracketId: bracket.id,
-        round: p.round,
-        position: p.position,
-        bracketSection: p.section,
-      },
-    });
-    if (!target) continue;
-
-    const data: any = {};
-    if (p.slot === "red") data.redAthleteId = p.athleteId;
-    else data.blueAthleteId = p.athleteId;
-
-    // Наследуем татами победителя если следующий матч ещё не назначен
-    if (!target.tatamiNumber && match.tatamiNumber) {
-      data.tatamiNumber = match.tatamiNumber;
-      data.queuePosition = await nextQueuePosition(
-        match.tournamentId,
-        match.tatamiNumber,
-      );
-    }
-
-    const updated = await prisma.match.update({
-      where: { id: target.id },
-      data,
-    });
-
-    // Каскадный BYE: если второй слот питается от мёртвого пути — автозавершаем
-    if (p.section === "main" || p.section === "final") {
+  // Каскадный BYE после транзакции (cascadeBye делает собственные запросы)
+  for (const { match: updated, section } of updatedMatches) {
+    if (section === "main" || section === "final") {
       await cascadeBye(updated, bracket.size);
     }
   }
@@ -188,7 +208,7 @@ async function cascadeBye(target: Match, bracketSize: number): Promise<void> {
       status: MatchStatus.COMPLETED,
       winnerId,
       finishedAt: new Date(),
-      scoreSnapshot: { bye: true } as any,
+      scoreSnapshot: BYE_SNAPSHOT,
     },
   });
 
@@ -211,7 +231,7 @@ async function cascadeBye(target: Match, bracketSize: number): Promise<void> {
   });
   if (!nextMatch) return;
 
-  const data: any =
+  const data: Prisma.MatchUncheckedUpdateInput =
     nextSlot === "red"
       ? { redAthleteId: winnerId }
       : { blueAthleteId: winnerId };
@@ -255,15 +275,15 @@ export async function clearDownstreamRecursive(
       }
     }
     // Очищаем матч
-    const data: any = {
+    const data: Prisma.MatchUncheckedUpdateInput = {
       status: MatchStatus.PENDING,
       winnerId: null,
       finishedAt: null,
       startedAt: null,
-      scoreSnapshot: null,
+      scoreSnapshot: Prisma.JsonNull,
+      ...(d.redAthleteId === athleteId && { redAthleteId: null }),
+      ...(d.blueAthleteId === athleteId && { blueAthleteId: null }),
     };
-    if (d.redAthleteId === athleteId) data.redAthleteId = null;
-    if (d.blueAthleteId === athleteId) data.blueAthleteId = null;
     await prisma.match.update({ where: { id: d.id }, data });
     await prisma.matchEvent.deleteMany({ where: { matchId: d.id } });
   }

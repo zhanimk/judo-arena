@@ -5,13 +5,20 @@ import { emitToUser } from "../sockets/io.js";
 import type { UpdateWeighInInput } from "../validators/application.schema.js";
 
 export class WeighInError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "WeighInError";
   }
 }
 
-export async function getTournamentWeighIn(actorUserId: string, tournamentId: string) {
+export async function getTournamentWeighIn(
+  actorUserId: string,
+  tournamentId: string,
+) {
   await assertCanOperateWeighIn(actorUserId);
 
   const tournament = await prisma.tournament.findUnique({
@@ -29,9 +36,20 @@ export async function getTournamentWeighIn(actorUserId: string, tournamentId: st
         where: { status: ApplicationStatus.APPROVED },
         orderBy: { createdAt: "asc" },
         include: {
-          club: { select: { id: true, name: true, shortName: true, city: true, logoUrl: true } },
+          club: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              city: true,
+              logoUrl: true,
+            },
+          },
           entries: {
-            orderBy: [{ athlete: { surname: "asc" } }, { athlete: { name: "asc" } }],
+            orderBy: [
+              { athlete: { surname: "asc" } },
+              { athlete: { name: "asc" } },
+            ],
             include: {
               athlete: {
                 select: {
@@ -57,23 +75,38 @@ export async function getTournamentWeighIn(actorUserId: string, tournamentId: st
                   weightMax: true,
                 },
               },
-              weighedBy: { select: { id: true, name: true, surname: true, role: true } },
+              weighedBy: {
+                select: { id: true, name: true, surname: true, role: true },
+              },
             },
           },
         },
       },
     },
   });
-  if (!tournament) throw new WeighInError("TOURNAMENT_NOT_FOUND", "Турнир табылмады", 404);
+  if (!tournament)
+    throw new WeighInError("TOURNAMENT_NOT_FOUND", "Турнир табылмады", 404);
   return tournament;
 }
 
 const statusTitles: Record<string, { kk: string; ru: string; en: string }> = {
-  PASSED:            { kk: "Таразылаудан өтті ✓",        ru: "Допущен ✓",           en: "Admitted ✓" },
-  FAILED_WEIGHT:     { kk: "Таразылаудан өтпеді (салмақ)", ru: "Не допущен (вес)",    en: "Not admitted (weight)" },
-  FAILED_DOCUMENTS:  { kk: "Таразылаудан өтпеді (құжат)", ru: "Не допущен (документы)", en: "Not admitted (docs)" },
-  ABSENT:            { kk: "Келмеді",                     ru: "Отсутствует",          en: "Absent" },
-  WITHDRAWN:         { kk: "Өтінімнен шығарылды",        ru: "Снят с соревнований",  en: "Withdrawn" },
+  PASSED: { kk: "Таразылаудан өтті ✓", ru: "Допущен ✓", en: "Admitted ✓" },
+  FAILED_WEIGHT: {
+    kk: "Таразылаудан өтпеді (салмақ)",
+    ru: "Не допущен (вес)",
+    en: "Not admitted (weight)",
+  },
+  FAILED_DOCUMENTS: {
+    kk: "Таразылаудан өтпеді (құжат)",
+    ru: "Не допущен (документы)",
+    en: "Not admitted (docs)",
+  },
+  ABSENT: { kk: "Келмеді", ru: "Отсутствует", en: "Absent" },
+  WITHDRAWN: {
+    kk: "Өтінімнен шығарылды",
+    ru: "Снят с соревнований",
+    en: "Withdrawn",
+  },
 };
 
 export async function updateEntryWeighIn(
@@ -94,31 +127,103 @@ export async function updateEntryWeighIn(
           tournament: { select: { name: true } },
         },
       },
-      athlete: { select: { id: true, name: true, surname: true, preferredLocale: true } },
+      athlete: {
+        select: { id: true, name: true, surname: true, preferredLocale: true },
+      },
       category: true,
     },
   });
-  if (!entry) throw new WeighInError("ENTRY_NOT_FOUND", "Спортшы өтінімде табылмады", 404);
+  if (!entry)
+    throw new WeighInError(
+      "ENTRY_NOT_FOUND",
+      "Спортшы өтінімде табылмады",
+      404,
+    );
   if (entry.application.status !== ApplicationStatus.APPROVED) {
-    throw new WeighInError("APPLICATION_NOT_APPROVED", "Таразылау тек бекітілген өтінімдер үшін", 409);
+    throw new WeighInError(
+      "APPLICATION_NOT_APPROVED",
+      "Таразылау тек бекітілген өтінімдер үшін",
+      409,
+    );
   }
 
   const prevStatus = entry.weighInStatus;
+  const shouldNotify =
+    input.status !== WeighInStatus.PENDING && input.status !== prevStatus;
 
-  const updated = await prisma.applicationEntry.update({
-    where: { id: entryId },
-    data: {
-      weighInStatus: input.status,
-      actualWeightKg: null,
-      weighInNotes: input.notes?.trim() || null,
-      weighedAt: input.status === WeighInStatus.PENDING ? null : new Date(),
-      weighedById: input.status === WeighInStatus.PENDING ? null : actorUserId,
-    },
-    include: {
-      athlete: true,
-      category: true,
-      weighedBy: { select: { id: true, name: true, surname: true, role: true } },
-    },
+  // Собираем данные уведомления заранее (до транзакции — не зависит от БД)
+  let notifyPayload: {
+    athleteId: string;
+    title: string;
+    body: string;
+    locale: "kk" | "ru" | "en";
+  } | null = null;
+  if (shouldNotify) {
+    const locale = (entry.athlete?.preferredLocale ?? "kk") as
+      | "kk"
+      | "ru"
+      | "en";
+    const titles = statusTitles[input.status] ?? statusTitles.PASSED;
+    const tournamentName =
+      typeof entry.application.tournament?.name === "string"
+        ? entry.application.tournament.name
+        : (entry.application.tournament?.name as Record<string, string>)?.[
+            locale
+          ] ||
+          (entry.application.tournament?.name as Record<string, string>)?.[
+            "kk"
+          ] ||
+          "Жарыс";
+    const title = titles[locale];
+    const bodyParts = [`${tournamentName}: ${title}`];
+    if (input.notes?.trim()) bodyParts.push(input.notes.trim());
+    notifyPayload = {
+      athleteId: entry.athlete.id,
+      title,
+      body: bodyParts.join(" — "),
+      locale,
+    };
+  }
+
+  // Обновление записи + уведомление в одной транзакции — атомарность гарантирована
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.applicationEntry.update({
+      where: { id: entryId },
+      data: {
+        weighInStatus: input.status,
+        actualWeightKg: null,
+        weighInNotes: input.notes?.trim() || null,
+        weighedAt: input.status === WeighInStatus.PENDING ? null : new Date(),
+        weighedById:
+          input.status === WeighInStatus.PENDING ? null : actorUserId,
+      },
+      include: {
+        athlete: true,
+        category: true,
+        weighedBy: {
+          select: { id: true, name: true, surname: true, role: true },
+        },
+      },
+    });
+
+    if (notifyPayload) {
+      await tx.notification.create({
+        data: {
+          userId: notifyPayload.athleteId,
+          type: "weighIn.result",
+          titleKey: notifyPayload.title,
+          bodyKey: notifyPayload.body,
+          locale: notifyPayload.locale,
+          payload: {
+            entryId,
+            status: input.status,
+            tournamentId: entry.application.tournamentId,
+          },
+        },
+      });
+    }
+
+    return result;
   });
 
   await logAudit({
@@ -127,48 +232,22 @@ export async function updateEntryWeighIn(
     targetEntity: "ApplicationEntry",
     targetId: entryId,
     before: { weighInStatus: prevStatus },
-    after: { weighInStatus: updated.weighInStatus, notes: updated.weighInNotes },
+    after: {
+      weighInStatus: updated.weighInStatus,
+      notes: updated.weighInNotes,
+    },
     metadata: {
       applicationId: entry.application.id,
       tournamentId: entry.application.tournamentId,
     },
   });
 
-  // Уведомление спортсмену, если статус изменился (не PENDING)
-  if (input.status !== WeighInStatus.PENDING && input.status !== prevStatus) {
-    const locale = (entry.athlete?.preferredLocale ?? "kk") as "kk" | "ru" | "en";
-    const titles = statusTitles[input.status] ?? statusTitles.PASSED;
-    const tournamentName =
-      typeof entry.application.tournament?.name === "string"
-        ? entry.application.tournament.name
-        : (entry.application.tournament?.name as any)?.[locale] ||
-          (entry.application.tournament?.name as any)?.kk ||
-          "Жарыс";
-
-    const title = titles[locale];
-    const bodyParts = [`${tournamentName}: ${title}`];
-    if (input.notes?.trim()) bodyParts.push(input.notes.trim());
-    const body = bodyParts.join(" — ");
-
-    await prisma.notification.create({
-      data: {
-        userId: entry.athlete.id,
-        type: "weighIn.result",
-        titleKey: title,
-        bodyKey: body,
-        locale,
-        payload: {
-          entryId,
-          status: input.status,
-          tournamentId: entry.application.tournamentId,
-        },
-      },
-    });
-
-    emitToUser(entry.athlete.id, "notification:new", {
+  // Socket emit после успешной транзакции — fire and forget
+  if (notifyPayload) {
+    emitToUser(notifyPayload.athleteId, "notification:new", {
       type: "weighIn.result",
-      titleKey: title,
-      bodyKey: body,
+      titleKey: notifyPayload.title,
+      bodyKey: notifyPayload.body,
     });
   }
 
@@ -177,7 +256,12 @@ export async function updateEntryWeighIn(
 
 async function assertCanOperateWeighIn(actorUserId: string) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor) throw new WeighInError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
+  if (!actor)
+    throw new WeighInError("USER_NOT_FOUND", "Пайдаланушы табылмады", 404);
   if (actor.role === UserRole.ADMIN) return actor;
-  throw new WeighInError("FORBIDDEN", "Таразылау модулін тек админ жүргізеді", 403);
+  throw new WeighInError(
+    "FORBIDDEN",
+    "Таразылау модулін тек админ жүргізеді",
+    403,
+  );
 }

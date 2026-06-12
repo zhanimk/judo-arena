@@ -10,7 +10,15 @@
  */
 
 import { prisma } from "../lib/prisma.js";
+import { Prisma, UserRole } from "@prisma/client";
 import { getRequestContext } from "../lib/request-context.js";
+
+function toJson(
+  value: unknown,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (value === undefined || value === null) return Prisma.JsonNull;
+  return value as Prisma.InputJsonValue;
+}
 
 export interface AuditContext {
   actorUserId: string | null;
@@ -32,16 +40,39 @@ export async function logAudit(ctx: AuditContext): Promise<void> {
       action: ctx.action,
       targetEntity: ctx.targetEntity,
       targetId: ctx.targetId,
-      before: (ctx.before ?? null) as any,
-      after: (ctx.after ?? null) as any,
-      metadata: (ctx.metadata ?? null) as any,
+      before: toJson(ctx.before),
+      after: toJson(ctx.after),
+      metadata: toJson(ctx.metadata),
       ipAddress: ctx.ipAddress ?? reqCtx.ipAddress,
       userAgent: ctx.userAgent ?? reqCtx.userAgent,
     },
   });
 }
 
-export async function getApplicationHistory(applicationId: string) {
+export async function getApplicationHistory(
+  applicationId: string,
+  actorUserId: string,
+  actorRole: string,
+) {
+  // COACH видит только историю своих заявок
+  if (actorRole !== UserRole.ADMIN) {
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      select: { clubId: true },
+    });
+    if (!application) return [];
+    const actor = await prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: { clubId: true },
+    });
+    if (!actor || actor.clubId !== application.clubId) {
+      throw Object.assign(new Error("Доступ запрещён"), {
+        httpStatus: 403,
+        code: "FORBIDDEN",
+      });
+    }
+  }
+
   return prisma.auditLog.findMany({
     where: { targetEntity: "Application", targetId: applicationId },
     orderBy: { createdAt: "asc" },
@@ -59,7 +90,7 @@ export async function listAuditLogs(query: {
   limit?: number;
   offset?: number;
 }) {
-  const where: any = {};
+  const where: Prisma.AuditLogWhereInput = {};
   if (query.targetEntity) where.targetEntity = query.targetEntity;
   if (query.targetId) where.targetId = query.targetId;
   if (query.actorUserId) where.actorUserId = query.actorUserId;

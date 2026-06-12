@@ -58,9 +58,46 @@ const schema = z.object({
     .default(60),
 
   APP_URL: z.string().default("http://localhost:3000"),
-  KASPI_CALLBACK_SECRET: z.string().optional(),
+
+  // Prisma connection pool (tune for your hosting tier)
+  DB_CONNECTION_LIMIT: z.coerce.number().int().positive().default(10),
+  DB_POOL_TIMEOUT: z.coerce.number().int().positive().default(20),
+
+  // FreedomPay (freedompay.kz) — платёжный шлюз для KZ
+  FREEDOMPAY_MERCHANT_ID: z.string().optional(),
+  FREEDOMPAY_SECRET_KEY: z.string().optional(),
+  FREEDOMPAY_API_URL: z.string().url().default("https://api.freedompay.kz"),
+
+  KASPI_CALLBACK_SECRET: z
+    .string()
+    .optional()
+    .refine(
+      (v) => process.env["NODE_ENV"] !== "production" || (v && v.length >= 32),
+      {
+        message:
+          "KASPI_CALLBACK_SECRET обязателен в production (минимум 32 символа)",
+      },
+    ),
 
   SENTRY_DSN: z.string().url().optional(),
+
+  // Резервное копирование (опционально)
+  BACKUP_CRON: z.string().default("0 2 * * *"), // расписание cron (UTC)
+  BACKUP_RETAIN_DAYS: z.coerce.number().int().positive().default(30),
+  BACKUP_SCHEDULER_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+  BACKUP_TRIGGER_SECRET: z.string().min(32).optional(),
+
+  // Архивирование аудит-логов
+  AUDIT_RETAIN_DAYS: z.coerce.number().int().min(30).default(90),
+
+  // Web Push (VAPID) — опционально
+  // Генерация: node -e "const wp = require('web-push'); const k = wp.generateVAPIDKeys(); console.log(JSON.stringify(k))"
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:admin@judo-arena.kz"),
 
   // Версия приложения (задаётся при деплое через CI/CD)
   // Render: задай в Environment Variables: APP_VERSION=${{ github.sha }}
@@ -68,6 +105,7 @@ const schema = z.object({
 
   // S3-совместимое хранилище (опционально, иначе — локальная папка)
   S3_BUCKET: z.string().optional(),
+  S3_PRIVATE_BUCKET: z.string().optional(),
   S3_ENDPOINT: z.string().url().optional(),
   S3_PUBLIC_URL: z.string().url().optional(),
   AWS_ACCESS_KEY_ID: z.string().optional(),
@@ -75,11 +113,66 @@ const schema = z.object({
   AWS_DEFAULT_REGION: z.string().default("us-east-1"),
 });
 
-const parsed = schema.safeParse(process.env);
+const parsedRaw = schema.safeParse(process.env);
+
+// Cross-field validation после базовой схемы
+const parsed = parsedRaw.success
+  ? (() => {
+      const d = parsedRaw.data;
+      const issues: { path: string[]; message: string }[] = [];
+
+      if (d.VAPID_PUBLIC_KEY && !d.VAPID_PRIVATE_KEY) {
+        issues.push({
+          path: ["VAPID_PRIVATE_KEY"],
+          message: "VAPID_PRIVATE_KEY обязателен если задан VAPID_PUBLIC_KEY",
+        });
+      }
+      if (d.VAPID_PRIVATE_KEY && !d.VAPID_PUBLIC_KEY) {
+        issues.push({
+          path: ["VAPID_PUBLIC_KEY"],
+          message: "VAPID_PUBLIC_KEY обязателен если задан VAPID_PRIVATE_KEY",
+        });
+      }
+      const hasS3Bucket = Boolean(d.S3_BUCKET || d.S3_PRIVATE_BUCKET);
+      if (hasS3Bucket && !d.AWS_ACCESS_KEY_ID) {
+        issues.push({
+          path: ["AWS_ACCESS_KEY_ID"],
+          message: "AWS_ACCESS_KEY_ID обязателен если задан S3 bucket",
+        });
+      }
+      if (hasS3Bucket && !d.AWS_SECRET_ACCESS_KEY) {
+        issues.push({
+          path: ["AWS_SECRET_ACCESS_KEY"],
+          message: "AWS_SECRET_ACCESS_KEY обязателен если задан S3 bucket",
+        });
+      }
+      if (
+        d.NODE_ENV === "production" &&
+        d.S3_PUBLIC_URL &&
+        !d.S3_PRIVATE_BUCKET
+      ) {
+        issues.push({
+          path: ["S3_PRIVATE_BUCKET"],
+          message:
+            "S3_PRIVATE_BUCKET обязателен в production при публичном S3_PUBLIC_URL",
+        });
+      }
+
+      if (issues.length > 0) {
+        return {
+          success: false as const,
+          error: { issues },
+        };
+      }
+      return parsedRaw;
+    })()
+  : parsedRaw;
 if (!parsed.success) {
   console.error("❌ Невалидные переменные окружения:");
   for (const issue of parsed.error.issues) {
-    console.error(`  • ${issue.path.join(".")}: ${issue.message}`);
+    console.error(
+      `  • ${(issue.path as string[]).join(".")}: ${issue.message}`,
+    );
   }
   console.error("\n💡 Скопируй .env.example в .env и заполни значения.");
   process.exit(1);
