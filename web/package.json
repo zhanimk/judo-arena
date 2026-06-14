@@ -60,7 +60,7 @@
     "i18next-browser-languagedetector": "^8.0.0",
     "i18next-http-backend": "^4.0.0",
     "input-otp": "^1.4.2",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^1.18.0",
     "nitro": "^3.0.260603-beta",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
