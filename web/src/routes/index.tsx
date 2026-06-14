@@ -1,10 +1,11 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { LazyImage } from "@/components/ui/avatar-image";
-import heroImg from "@/assets/hero-judo.jpg";
+import { LazyImage, Avatar } from "@/components/ui/avatar-image";
+import { TatamiScene } from "@/components/home/TatamiScene";
+import { mediaUrl } from "@/lib/api";
 import emblem from "@/assets/jcl-logo.jpeg";
-import judoka3d from "@/assets/technique-kyu.jpg";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteWomanWhite from "@/assets/athlete-woman-white.jpg";
@@ -23,7 +24,6 @@ import {
   Shield,
   Users,
   ArrowRight,
-  Medal,
   Radio,
   ChevronRight,
   Building2,
@@ -31,7 +31,6 @@ import {
   Calendar,
   MapPin,
   Star,
-  BarChart,
   Search,
   GitBranch,
   BookOpen,
@@ -39,6 +38,7 @@ import {
 import { api } from "@/lib/api";
 import { Bracket, sampleRounds } from "@/components/judo/Bracket";
 import { useTranslation } from "react-i18next";
+import type { AthleteLeaderboardEntry, Tournament, Match, Club } from "@/lib/api-types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,6 +56,7 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  errorComponent: RouteErrorUI,
   component: Home,
 });
 
@@ -67,81 +68,6 @@ const statusText: Record<string, string> = {
   COMPLETED: "Аяқталды",
   CANCELLED: "Болдырылмады",
 };
-
-const partners = [
-  {
-    name: "ҚР Дзюдо Федерациясы",
-    type: "Федерация",
-    city: "Қазақстан",
-    desc: "Ұлттық жарыстар мен төрешілік стандарттарды қолдайды.",
-    image: heroKazakhstan,
-    logo: emblem,
-    accent: "from-sky-500/25",
-  },
-  {
-    name: "Almaty Judo Club",
-    type: "Клуб",
-    city: "Алматы",
-    desc: "Жас спортшыларды республикалық аренаға дайындайды.",
-    image: athleteBlue1,
-    logo: emblem,
-    accent: "from-amber-500/25",
-  },
-  {
-    name: "Astana Pro",
-    type: "Академия",
-    city: "Астана",
-    desc: "Жаттықтырушылар штабы және жарыс аналитикасы серіктесі.",
-    image: teamLineup,
-    logo: emblem,
-    accent: "from-emerald-500/25",
-  },
-  {
-    name: "Tigers Karaganda",
-    type: "Клуб",
-    city: "Қарағанды",
-    desc: "Аймақтық жарыстар мен балалар лигасын дамытады.",
-    image: athleteBlue2,
-    logo: emblem,
-    accent: "from-orange-500/25",
-  },
-  {
-    name: "Shymkent Warriors",
-    type: "Клуб",
-    city: "Шымкент",
-    desc: "Татами мәдениетін және ашық жарыстарды қолдайды.",
-    image: athleteWomanWhite,
-    logo: emblem,
-    accent: "from-rose-500/25",
-  },
-  {
-    name: "IJF Standard",
-    type: "Стандарт",
-    city: "Халықаралық",
-    desc: "Ережелер, хаттама және бағалау логикасына негіз.",
-    image: techniqueKyu,
-    logo: emblem,
-    accent: "from-violet-500/25",
-  },
-  {
-    name: "Aktobe Dojo",
-    type: "Dojo",
-    city: "Ақтөбе",
-    desc: "Өңірлік таланттарды цифрлық дәрежеге қосады.",
-    image: heroImg,
-    logo: emblem,
-    accent: "from-cyan-500/25",
-  },
-  {
-    name: "Pavlodar Elite",
-    type: "Клуб",
-    city: "Павлодар",
-    desc: "Жарыс күніндегі live-табло және хаттама серіктесі.",
-    image: judoka3d,
-    logo: emblem,
-    accent: "from-lime-500/25",
-  },
-];
 
 const clubs = [
   {
@@ -218,62 +144,6 @@ const clubs = [
   },
 ];
 
-const topAthletes = [
-  {
-    rank: 1,
-    name: "Ә. Сәрсенов",
-    club: "Almaty Judo",
-    weight: "−73 кг",
-    points: 460,
-    change: "+2",
-    image: athleteBlue1,
-  },
-  {
-    rank: 2,
-    name: "Н. Қайратұлы",
-    club: "Astana Pro",
-    weight: "−81 кг",
-    points: 410,
-    change: "+1",
-    image: athleteBlue2,
-  },
-  {
-    rank: 3,
-    name: "Д. Нұрлан",
-    club: "Tigers Karaganda",
-    weight: "−66 кг",
-    points: 380,
-    change: "−1",
-    image: athleteWomanWhite,
-  },
-  {
-    rank: 4,
-    name: "С. Бекзат",
-    club: "Shymkent Warriors",
-    weight: "−90 кг",
-    points: 295,
-    change: "+3",
-    image: techniqueKyu,
-  },
-  {
-    rank: 5,
-    name: "Р. Олжас",
-    club: "Aktobe Dojo",
-    weight: "−60 кг",
-    points: 245,
-    change: "—",
-    image: heroKazakhstan,
-  },
-  {
-    rank: 6,
-    name: "М. Ержан",
-    club: "Pavlodar Elite",
-    weight: "−100 кг",
-    points: 215,
-    change: "+1",
-    image: teamLineup,
-  },
-];
 
 function localizeName(name: unknown): string {
   if (!name) return "—";
@@ -293,7 +163,7 @@ function formatDateRange(start?: string | Date | null, end?: string | Date | nul
   return `${fmt.format(startDate)} – ${fmt.format(endDate)}`;
 }
 
-function participantCount(tournament: any) {
+function participantCount(tournament: Tournament) {
   return (
     tournament?._count?.participants ??
     tournament?._count?.entries ??
@@ -305,11 +175,22 @@ function participantCount(tournament: any) {
   );
 }
 
-function athleteName(a: any) {
+function athleteName(a: { name?: string | null; surname?: string | null } | null | undefined) {
   return `${a?.name ?? ""} ${a?.surname ?? ""}`.trim() || "Спортшы";
 }
 
-function categoryName(category: any) {
+function categoryName(
+  category:
+    | {
+        gender?: string | null;
+        ageMin?: number | null;
+        ageMax?: number | null;
+        weightMin?: number | null;
+        weightMax?: number | null;
+      }
+    | null
+    | undefined,
+) {
   if (!category) return "Санат";
   const gender =
     category.gender === "FEMALE" ? "Қыздар" : category.gender === "MALE" ? "Ұлдар" : "Аралас";
@@ -396,14 +277,14 @@ function Home() {
   );
   const featuredTournament = useMemo(() => {
     return (
-      tournaments.find((t: any) => t.status === "IN_PROGRESS") ??
-      tournaments.find((t: any) => t.status === "REGISTRATION_OPEN") ??
+      tournaments.find((t) => t.status === "IN_PROGRESS") ??
+      tournaments.find((t) => t.status === "REGISTRATION_OPEN") ??
       tournaments[0] ??
       null
     );
   }, [tournaments]);
   const upcomingRest = useMemo(
-    () => tournaments.filter((t: any) => t.id !== featuredTournament?.id).slice(0, 3),
+    () => tournaments.filter((t) => t.id !== featuredTournament?.id).slice(0, 3),
     [featuredTournament?.id, tournaments],
   );
   const featuredMatchesQuery = useQuery({
@@ -414,7 +295,7 @@ function Home() {
   });
   const liveMatches = (featuredMatchesQuery.data ?? [])
     .slice(0, 3)
-    .map((match: any, i: number) => ({
+    .map((match: Match, i: number) => ({
       tatami: match.tatamiNumber ?? i + 1,
       category: categoryName(match.bracket?.category),
       current: `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`,
@@ -423,17 +304,17 @@ function Home() {
       progress: match.status === "COMPLETED" ? 100 : match.status === "IN_PROGRESS" ? 64 : 28,
     }));
   const totalApplications = tournaments.reduce(
-    (sum: number, t: any) => sum + (t._count?.applications ?? 0),
+    (sum: number, t: Tournament) => sum + (t._count?.applications ?? 0),
     0,
   );
   const totalCategories = tournaments.reduce(
-    (sum: number, t: any) => sum + (t._count?.categories ?? 0),
+    (sum: number, t: Tournament) => sum + (t._count?.categories ?? 0),
     0,
   );
 
   const teamRowsFromApi = (clubsQuery.data?.items ?? [])
     .slice(0, 4)
-    .map((club: any, i: number) => ({
+    .map((club: Club, i: number) => ({
       name: localizeName(club.name),
       city: club.city ?? "—",
       coach: club.createdBy?.name
@@ -449,15 +330,17 @@ function Home() {
   /* fallback to static demo data while API loads or when no clubs returned */
   const teamRows = teamRowsFromApi.length > 0 ? teamRowsFromApi : clubs.slice(0, 4);
 
-  const athleteRows = (leaderboardQuery.data ?? []).slice(0, 6).map((row: any, i: number) => ({
-    rank: row.rank ?? i + 1,
-    name: `${row.athlete?.name ?? ""} ${row.athlete?.surname ?? ""}`.trim() || "—",
-    club: row.athlete?.club ? localizeName(row.athlete.club.name) : "—",
-    weight: row.athlete?.weightKg ? `−${row.athlete.weightKg} кг` : "—",
-    points: Math.round(row.totalPoints ?? 0),
-    change: i < 3 ? "+1" : "—",
-    image: topAthletes[i]?.image ?? athleteBlue1,
-  }));
+  const athleteRows = (leaderboardQuery.data ?? [])
+    .slice(0, 6)
+    .map((row: AthleteLeaderboardEntry, i: number) => ({
+      rank: row.rank ?? i + 1,
+      name: `${row.athlete?.name ?? ""} ${row.athlete?.surname ?? ""}`.trim() || "—",
+      club: row.athlete?.club ? localizeName(row.athlete.club.name) : "—",
+      weight: row.athlete?.weightKg ? `−${row.athlete.weightKg} кг` : "—",
+      points: Math.round(row.totalPoints ?? 0),
+      change: i < 3 ? "+1" : "—",
+      avatarUrl: row.athlete?.avatarUrl ?? null,
+    }));
   // Count-up for clubs section stats
   const { value: countTournaments, ref: refT } = useCountUp(
     tournamentsQuery.data?.total ?? tournaments.length,
@@ -1217,9 +1100,12 @@ function Home() {
                         {a.rank}
                       </div>
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="h-10 w-10 overflow-hidden rounded-full border border-gold/30 bg-gradient-gold shrink-0">
-                          <LazyImage src={a.image} alt="" className="h-full w-full object-cover" />
-                        </div>
+                        <Avatar
+                          src={a.avatarUrl ? mediaUrl(a.avatarUrl) : null}
+                          name={a.name}
+                          size={40}
+                          className="shrink-0 border border-gold/30"
+                        />
                         <div className="min-w-0">
                           <div className="truncate font-semibold group-hover:text-gold transition-colors">
                             {a.name}
@@ -1257,17 +1143,39 @@ function Home() {
         </div>
       </section>
 
-      {/* ЖАРЫС ХАТТАМАЛАРЫ */}
+      {/* ЖАРЫС ХАТТАМАЛАРЫ — 3D showcase */}
       <section id="hattamalar" className="relative py-16 sm:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero opacity-60" />
-        <div className="absolute inset-0 grid-bg opacity-25" />
+        {/* deep background layers */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-navy-deep/60 to-background" />
+        <div className="absolute inset-0 grid-bg opacity-20" />
+        {/* ambient orbs */}
+        <div className="absolute -left-40 top-1/4 h-[500px] w-[500px] rounded-full bg-gold/8 blur-[120px] pointer-events-none" />
+        <div className="absolute -right-40 bottom-1/4 h-[400px] w-[400px] rounded-full bg-destructive/8 blur-[100px] pointer-events-none" />
+
+        {/* floating gold particles */}
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full bg-gold/60 blur-[1px] pointer-events-none"
+            style={{
+              left: `${(i * 73 + 3) % 96}%`,
+              top: `${(i * 41 + 8) % 88}%`,
+              width: `${2 + (i % 3)}px`,
+              height: `${2 + (i % 3)}px`,
+              opacity: 0.12 + (i % 5) * 0.06,
+              animation: `heroFloat ${3 + (i % 4)}s ease-in-out ${(i * 0.5) % 3}s infinite`,
+            }}
+          />
+        ))}
+
         <div className="container mx-auto px-4 relative">
+          {/* header */}
           <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
             <div className="reveal">
               <div className="text-xs uppercase tracking-[0.3em] text-gold mb-4">
                 {t("home.protocol_section")}
               </div>
-              <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight overflow-hidden">
+              <h2 className="font-display text-5xl md:text-6xl font-bold leading-tight">
                 {t("home.protocol_title").split(" ").slice(0, 1).join(" ")}{" "}
                 <span className="text-gradient-gold italic inline-block">
                   {t("home.protocol_title").split(" ").slice(1).join(" ")}
@@ -1279,51 +1187,65 @@ function Home() {
               <Radio className="h-3.5 w-3.5 animate-pulse" /> {t("home.protocol_live_badge")}
             </span>
           </div>
-          <div className="glass rounded-2xl p-6 border border-gold/20 shadow-elegant">
-            <Bracket rounds={sampleRounds} />
+
+          {/* 3-D perspective bracket frame */}
+          <div className="relative [perspective:1200px]">
+            {/* outer glow ring */}
+            <div className="absolute -inset-px rounded-2xl pointer-events-none"
+              style={{ background: "linear-gradient(135deg, rgba(200,146,42,0.4) 0%, transparent 40%, rgba(200,146,42,0.15) 100%)", filter: "blur(1px)" }}
+            />
+            {/* corner accent lines */}
+            <div className="absolute top-0 left-0 w-16 h-16 pointer-events-none">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-gold to-transparent" />
+              <div className="absolute top-0 left-0 h-full w-px bg-gradient-to-b from-gold to-transparent" />
+            </div>
+            <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none">
+              <div className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-gold to-transparent" />
+              <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-gold to-transparent" />
+            </div>
+            <div className="absolute bottom-0 left-0 w-16 h-16 pointer-events-none">
+              <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-gold to-transparent" />
+              <div className="absolute bottom-0 left-0 h-full w-px bg-gradient-to-t from-gold to-transparent" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-16 h-16 pointer-events-none">
+              <div className="absolute bottom-0 right-0 w-full h-px bg-gradient-to-l from-gold to-transparent" />
+              <div className="absolute bottom-0 right-0 h-full w-px bg-gradient-to-t from-gold to-transparent" />
+            </div>
+
+            {/* bracket card with 3D tilt */}
+            <div
+              className="relative rounded-2xl border border-gold/25 bg-card/70 p-6 shadow-[0_32px_80px_rgba(0,0,0,0.6),0_0_0_1px_rgba(200,146,42,0.15)] backdrop-blur-xl overflow-hidden"
+              style={{ transform: "rotateX(2deg)", transformStyle: "preserve-3d" }}
+            >
+              {/* inner shimmer sweep */}
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_40%,rgba(200,146,42,0.06)_50%,transparent_60%,transparent_100%)]" />
+              {/* top glow line */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
+              {/* bottom shadow */}
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/60 to-transparent pointer-events-none" />
+              <Bracket rounds={sampleRounds} />
+            </div>
+
+            {/* floating status badges */}
+            <div className="absolute -top-3 left-8 inline-flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-destructive backdrop-blur shadow-lg">
+              <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-ping" />
+              LIVE · Татами #2 · −73 кг
+            </div>
+            <div className="absolute -bottom-3 right-8 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-gold backdrop-blur shadow-lg">
+              <Trophy className="h-3 w-3" />
+              ЖАРТЫЛАЙ ФИНАЛ
+            </div>
           </div>
-          <div className="mt-6 text-center">
+
+          <div className="mt-8 text-center">
             <Link
               to="/tournaments"
-              className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
+              onMouseMove={magneticMove}
+              onMouseLeave={magneticLeave}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-gold px-8 py-3.5 text-sm font-bold text-gold-foreground shadow-gold hover:shadow-[0_0_40px_rgba(200,146,42,0.5)] transition-shadow ripple-container overflow-hidden"
             >
               {t("home.go_to_protocol")} <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* PROTOCOL RESULT MODULE */}
-      <section className="container mx-auto px-4 pb-14 sm:pb-20">
-        <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-card/60 px-6 py-5 shadow-elegant backdrop-blur sm:px-8">
-          <div className="absolute inset-0 grid-bg opacity-20" />
-          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
-          <div className="relative flex flex-wrap items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold">
-                <Trophy className="h-5 w-5 text-gold-foreground" />
-              </div>
-              <div>
-                <div className="font-display text-lg font-bold">
-                  {t("home.protocol_ready_title")}
-                </div>
-                <p className="text-sm text-muted-foreground">{t("home.protocol_ready_desc")}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                to="/rankings"
-                className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/15"
-              >
-                <BarChart className="h-4 w-4" /> Дәреже кестесі
-              </Link>
-              <Link
-                to="/tournaments"
-                className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold transition-transform hover:scale-[1.02]"
-              >
-                <GitBranch className="h-4 w-4" /> Жарыстарға өту
-              </Link>
-            </div>
           </div>
         </div>
       </section>
@@ -1451,7 +1373,7 @@ function Home() {
                   </span>
                 ))}
               </div>
-              {upcomingRest.map((tour: any, i: number) => (
+              {upcomingRest.map((tour: Tournament, i: number) => (
                 <Link
                   to="/tournaments/$id"
                   params={{ id: tour.id }}
@@ -1575,50 +1497,45 @@ function Home() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-              <div className="grid gap-4 md:grid-cols-3">
-                {(liveMatches.length ? liveMatches : []).map((item, i) => (
-                  <div
-                    key={item.tatami}
-                    className={`relative overflow-hidden rounded-2xl border border-border/60 bg-background/45 p-4 backdrop-blur blur-reveal reveal-delay-${i + 1} card-glow-border shimmer-card`}
-                  >
-                    <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gold/10 blur-2xl" />
-                    <div className="relative flex items-center justify-between">
-                      <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-destructive">
-                        LIVE
-                      </span>
-                      <span className="font-display text-3xl font-bold text-gold/30">
-                        #{item.tatami}
-                      </span>
-                    </div>
-                    <div className="relative mt-4 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {item.category}
-                    </div>
-                    <h3 className="relative mt-2 min-h-[3rem] font-display text-lg font-semibold leading-tight">
-                      {item.current}
-                    </h3>
-                    <div className="relative mt-4 rounded-xl border border-border/60 bg-card/50 p-3">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Келесі
+              {/* 3-D TATAMI — always visible */}
+              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-background/30 backdrop-blur flex flex-col" style={{ minHeight: 340 }}>
+                <style>{`
+                  @keyframes tatamiPulse { 0%,100%{opacity:0.18} 50%{opacity:0.38} }
+                  @keyframes tatamiGlow  { 0%,100%{filter:drop-shadow(0 0 18px rgba(200,146,42,0.25))} 50%{filter:drop-shadow(0 0 38px rgba(200,146,42,0.55))} }
+                  @keyframes fighterRed  { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+                  @keyframes fighterBlue { 0%,100%{transform:translateY(0)} 60%{transform:translateY(-6px)} }
+                  @keyframes scanLine    { 0%{transform:translateY(-100%)} 100%{transform:translateY(400%)} }
+                `}</style>
+                <div className="pointer-events-none absolute inset-x-0 h-12 opacity-5 bg-gradient-to-b from-transparent via-gold to-transparent" style={{ animation: "scanLine 3.5s linear infinite", top: 0 }} />
+
+                <div className="flex-1 flex items-center justify-center py-4 px-2">
+                  <TatamiScene />
+                </div>
+
+                {/* Live match cards row — shown when matches exist */}
+                {liveMatches.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 px-4 pb-4">
+                    {liveMatches.map((item, i) => (
+                      <div key={`tatami-${item.tatami}-${i}`} className="rounded-xl border border-border/60 bg-background/60 p-3 backdrop-blur">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2 py-0.5 text-[9px] uppercase tracking-widest text-destructive">LIVE</span>
+                          <span className="font-display text-lg font-bold text-gold/40">#{item.tatami}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{item.category}</p>
+                        <p className="text-xs font-semibold mt-1 leading-tight line-clamp-2">{item.current}</p>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background/50">
+                          <div className="h-full rounded-full bg-gradient-gold" style={{ width: `${item.progress}%` }} />
+                        </div>
                       </div>
-                      <div className="mt-1 text-sm text-foreground">{item.next}</div>
-                    </div>
-                    <div className="relative mt-4">
-                      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <span>{item.status}</span>
-                        <span>{item.progress}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full border border-border/50 bg-background/50">
-                        <div
-                          className="h-full rounded-full bg-gradient-gold shadow-gold"
-                          style={{ width: `${item.progress}%` }}
-                        />
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
                 {liveMatches.length === 0 && (
-                  <div className="md:col-span-3 rounded-2xl border border-border/60 bg-background/45 p-8 text-center text-muted-foreground">
-                    Белдесулер live-тор дайындалғаннан кейін осы блокта көрінеді.
+                  <div className="pb-4 text-center">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-gold/25 bg-background/70 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
+                      <Radio className="h-3 w-3 text-destructive animate-pulse" />
+                      Белдесулер жарыс басталғанда live режимде көрінеді
+                    </span>
                   </div>
                 )}
               </div>
@@ -1657,18 +1574,6 @@ function Home() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* PARTNERS MARQUEE */}
-      <section className="border-y border-border/40 bg-navy-deep/40 py-6 overflow-hidden">
-        <div className="flex gap-12 animate-marquee whitespace-nowrap">
-          {[...partners, ...partners].map((p, i) => (
-            <div key={i} className="flex items-center gap-3 shrink-0 text-muted-foreground">
-              <Medal className="h-4 w-4 text-gold/70" />
-              <span className="font-display tracking-wide text-sm uppercase">{p.name}</span>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -1832,66 +1737,28 @@ function Home() {
         </div>
       </section>
 
-      {/* PARTNERS / SPONSORS CAROUSEL */}
+      {/* PARTNERS */}
       <section className="container mx-auto px-4 py-14 sm:py-20">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-12">
-          <div className="max-w-2xl reveal">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-gold mb-3">
-              Серіктестер
+        <div className="reveal relative overflow-hidden rounded-3xl border border-gold/25 bg-card/55 px-6 py-12 text-center shadow-elegant backdrop-blur sm:px-12 sm:py-16">
+          <div className="absolute inset-0 grid-bg opacity-25" />
+          <div className="absolute left-1/2 top-0 h-48 w-48 -translate-x-1/2 rounded-full bg-gold/15 blur-3xl" />
+          <div className="relative mx-auto max-w-3xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-gold/30 bg-gold/10">
+              <Building2 className="h-7 w-7 text-gold" />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold">
-              Бізге <span className="text-gradient-gold italic">сенім артқандар</span>
+            <div className="mt-6 text-xs uppercase tracking-[0.32em] text-gold">
+              Серіктестік бағдарламасы
+            </div>
+            <h2 className="mt-3 font-display text-3xl font-bold sm:text-5xl">
+              Демеушілер бөлімі <span className="text-gradient-gold italic">дайындалуда</span>
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Федерациялар, клубтар және демеушілер. Карталарды көлденең жылжытып көріңіз.
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Қазір ресми демеушілер жарияланған жоқ. Жаңа серіктестер расталғаннан кейін олардың
+              логотиптері мен жобалары осы жерде көрсетіледі.
             </p>
-          </div>
-          <div className="hidden rounded-full border border-gold/20 bg-gold/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-gold sm:block">
-            серіктестер
-          </div>
-        </div>
-
-        <div className="-mx-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none]">
-          <div className="flex gap-5">
-            {partners.map((p) => (
-              <div
-                key={p.name}
-                className="group relative h-[25rem] w-[18rem] shrink-0 overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50 sm:w-[21rem]"
-              >
-                <LazyImage
-                  src={p.image}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-500 group-hover:scale-105"
-                />
-                <div
-                  className={`absolute inset-0 bg-gradient-to-t ${p.accent} via-background/70 to-background/10`}
-                />
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
-                  <LazyImage
-                    src={p.logo}
-                    alt=""
-                    className="h-12 w-12 rounded-xl border border-white/20 bg-white object-cover shadow-gold"
-                  />
-                  <span className="rounded-full border border-gold/30 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-                    {p.type}
-                  </span>
-                </div>
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 text-gold" />
-                    {p.city}
-                  </div>
-                  <h3 className="font-display text-2xl font-bold leading-tight group-hover:text-gold transition-colors">
-                    {p.name}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
-                  <div className="mt-5 flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-gold">
-                    <Medal className="h-4 w-4" />
-                    official partner
-                  </div>
-                </div>
-              </div>
-            ))}
+            <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-5 py-2.5 text-sm font-semibold text-gold">
+              Жаңа серіктестер жақында жарияланады
+            </div>
           </div>
         </div>
       </section>

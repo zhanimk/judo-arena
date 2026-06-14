@@ -42,6 +42,8 @@ export const createTournamentSchema = z
     tatamiCount: z.coerce.number().int().min(1).max(20).default(1),
     primaryLocale: z.enum(["ru", "kk", "en"]).default("kk"),
     posterUrl: z.string().url().optional(),
+    regulationUrl: z.string().url().optional(),
+    regulationFileName: z.string().min(1).max(255).optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).default(0),
     kaspiPaymentUrl: z.string().url().optional(),
   })
@@ -83,6 +85,8 @@ export const updateTournamentSchema = z
     tatamiCount: z.coerce.number().int().min(1).max(20).optional(),
     primaryLocale: z.enum(["ru", "kk", "en"]).optional(),
     posterUrl: z.string().url().nullable().optional(),
+    regulationUrl: z.union([z.string().url(), z.string().startsWith("/uploads/")]).nullable().optional(),
+    regulationFileName: z.string().min(1).max(255).nullable().optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).optional(),
     kaspiPaymentUrl: z.string().url().nullable().optional(),
     // Empty entries preserve the tatami index when only some mats have a stream.
@@ -140,7 +144,7 @@ export const createCategorySchema = z
     gender: z.enum(["MALE", "FEMALE"]),
     ageMin: z.coerce.number().int().min(4).max(99),
     ageMax: z.coerce.number().int().min(4).max(99),
-    weightMin: z.coerce.number().positive().max(300),
+    weightMin: z.coerce.number().nonnegative().max(300),
     weightMax: z.coerce.number().positive().max(300),
     matchDurationSec: z.coerce.number().int().min(60).max(900).default(240),
     goldenScoreSec: z.coerce.number().int().min(0).max(900).default(0),
@@ -159,19 +163,41 @@ export const createCategorySchema = z
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 
+export const createCategoriesBulkSchema = z
+  .object({
+    categories: z.array(createCategorySchema).min(1).max(100),
+  })
+  .strict();
+
+export type CreateCategoriesBulkInput = z.infer<
+  typeof createCategoriesBulkSchema
+>;
+
 export const updateCategorySchema = z
   .object({
     name: i18nName.optional(),
     gender: z.enum(["MALE", "FEMALE"]).optional(),
     ageMin: z.coerce.number().int().min(4).max(99).optional(),
     ageMax: z.coerce.number().int().min(4).max(99).optional(),
-    weightMin: z.coerce.number().positive().max(300).optional(),
+    weightMin: z.coerce.number().nonnegative().max(300).optional(),
     weightMax: z.coerce.number().positive().max(300).optional(),
     matchDurationSec: z.coerce.number().int().min(60).max(900).optional(),
     goldenScoreSec: z.coerce.number().int().min(0).max(900).optional(),
     format: z.enum(["SE_IJF", "ROUND_ROBIN", "MIXED"]).optional(),
     allowYuko: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (v) =>
+      v.ageMin === undefined || v.ageMax === undefined || v.ageMin <= v.ageMax,
+    { message: "ageMin должен быть ≤ ageMax", path: ["ageMin"] },
+  )
+  .refine(
+    (v) =>
+      v.weightMin === undefined ||
+      v.weightMax === undefined ||
+      v.weightMin < v.weightMax,
+    { message: "weightMin должен быть < weightMax", path: ["weightMin"] },
+  );
 
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;

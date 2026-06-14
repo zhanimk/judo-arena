@@ -47,7 +47,9 @@
     "my_club": "My club",
     "panel": "Panel",
     "coaches": "Coaches",
-    "coach": "Coach"
+    "coach": "Coach",
+    "hello": "Hello",
+    "analytics": "Analytics"
   },
   "status": {
     "DRAFT": "Draft",
@@ -72,6 +74,8 @@
     "link": "Link",
     "update": "Update",
     "save": "Save",
+    "save_all": "Save all",
+    "saved": "Saved ✓",
     "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -118,6 +122,7 @@
     "confirm": "Confirm",
     "download": "Download",
     "upload": "Upload",
+    "replace": "Replace",
     "export": "Export",
     "import": "Import",
     "filter": "Filter",
@@ -170,7 +175,12 @@
     "irreversible": "This action cannot be undone.",
     "athletes": "Athletes",
     "language": "Language",
-    "not_found": "Not found"
+    "not_found": "Not found",
+    "all_genders": "All genders",
+    "athlete": "Athlete",
+    "male_short": "M",
+    "female_short": "F",
+    "years": "yrs"
   },
   "auth": {
     "login_title": "Sign in",
@@ -225,7 +235,9 @@
     "reset_email_sent_to": "Instructions sent to:",
     "reset_check_spam": "If you don't see it — check your spam folder. The link is valid for 1 hour.",
     "resend": "Resend",
-    "back_to_login": "Back to login"
+    "back_to_login": "Back to login",
+    "2fa_title": "Authenticator code",
+    "2fa_hint": "Enter the 6-digit code from Google Authenticator or Authy"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -573,7 +585,33 @@
     "athlete_not_found": "No athletes found.",
     "club_not_found": "No clubs found.",
     "search_clubs_placeholder": "Search club or city...",
-    "col_athletes": "Athletes"
+    "col_athletes": "Athletes",
+    "tab_weight": "By weight",
+    "best_place": "Best place",
+    "tournaments": "Tournaments"
+  },
+  "ratings": {
+    "admin_title": "Athlete Rankings",
+    "recalc_title": "Recalculate Ratings",
+    "recalc_hint": "Enter a tournament ID to recalculate its ratings.",
+    "recalc_placeholder": "Tournament ID...",
+    "recalc_btn": "Recalculate",
+    "recalc_ok": "Ratings recalculated successfully.",
+    "athletes_panel": "Top Athletes",
+    "clubs_panel": "Top Clubs",
+    "weight_panel": "By Weight Class",
+    "search_placeholder": "Athlete or club...",
+    "points": "Points",
+    "wins": "Wins",
+    "losses": "Losses",
+    "ippon_wins": "Ippon",
+    "tournaments": "Tournaments",
+    "no_data": "No data",
+    "select_weight_class": "Select category",
+    "select_weight_class_hint": "Select a weight class above",
+    "tab_athletes": "Athletes",
+    "tab_clubs": "Clubs",
+    "tab_weight": "By weight"
   },
   "tournaments_page": {
     "title": "Tournaments",
@@ -631,6 +669,12 @@
     "weigh_in_end": "Weigh-in end",
     "weigh_in_location": "Weigh-in venue",
     "map_url": "Map link",
+    "map_picker_title": "Choose a place on the map",
+    "map_picker_hint": "Click the map to place a marker, then save.",
+    "use_current_location": "My location",
+    "map_zoom_in": "Zoom in",
+    "map_zoom_out": "Zoom out",
+    "center_selected_location": "Center selected location",
     "poster": "Poster",
     "regulations": "Regulations",
     "description": "Description",
@@ -682,6 +726,9 @@
     "not_specified": "Not specified",
     "city_label": "City",
     "rules_file": "Regulations / file",
+    "regulation_title": "Tournament regulations",
+    "regulation_hint": "Attach the official regulations as a PDF or image",
+    "regulation_uploaded": "Uploaded — remember to click Save all",
     "map_link": "Map link",
     "open_dashboard": "Open dashboard",
     "visible_all": "Everything visible in one place",
@@ -740,7 +787,13 @@
     "est_duration": "Estimated duration",
     "no_location": "Location TBD",
     "no_time": "Time TBD",
-    "primary_locale": "Primary language"
+    "primary_locale": "Primary language",
+    "tab_drawsheet": "3 · Draw",
+    "tab_tatami": "4 · Tatami live",
+    "drawsheet_title": "Tournament Draw",
+    "drawsheet_subtitle": "Live brackets and matches by category",
+    "categories_count": "categories",
+    "open_display": "Open scoreboard"
   },
   "athlete": {
     "role_label": "Athlete",
@@ -787,7 +840,8 @@
     "i_applied": "I applied",
     "no_tournaments_hint": "New tournaments will appear here.",
     "remove_entry": "Remove my entry",
-    "confirm_remove_entry": "Remove your entry from this application?"
+    "confirm_remove_entry": "Remove your entry from this application?",
+    "download_certificate": "Download certificate"
   },
   "coach": {
     "role_label": "Coach",
@@ -993,6 +1047,10 @@
     "notification_sent": "Sent to {{count}} recipients ✓",
     "notification_empty": "No broadcasts yet",
     "notification_history": "Recent broadcasts",
+    "notification_updated": "Broadcast updated",
+    "notification_deleted": "Broadcast removed from recipients",
+    "notification_delete_confirm": "Remove this broadcast from all recipients?",
+    "notification_audience_user": "User",
     "weigh_in_template": "Weigh-in template",
     "weigh_in_notification_title": "Weigh-in notification",
     "weigh_in_notification_body": "Weigh-in for tournament {{name}}:",
@@ -1107,7 +1165,19 @@
     "block_reason": "Reason",
     "block_reason_placeholder": "Reason for blocking...",
     "club_not_found": "Club not found",
-    "user_details": "User card"
+    "user_details": "User card",
+    "send_notification": "Send notification",
+    "notification_sent_user": "Notification sent to {{name}}",
+    "notifications_total": "Total sent",
+    "notifications_today": "Sent today",
+    "notification_recipients": "recipients",
+    "backup_title": "Database Backup",
+    "backup_schedule": "Daily pg_dump → S3 at 02:00 UTC.",
+    "backup_create_now": "Create now",
+    "backup_creating": "Creating backup…",
+    "backup_success": "Backup created ✓",
+    "backup_error": "Error. Check logs.",
+    "backup_last": "Last: {{filename}} ({{size}} MB)"
   },
   "profile": {
     "title": "My profile",
@@ -1126,7 +1196,12 @@
     "save_error": "Profile not saved",
     "photo_uploaded": "Photo uploaded ✓",
     "photo_error": "Photo upload failed",
-    "photo_requirements": "3:4 portrait photo, face centered, white or very light background. JPG, PNG or WEBP.",
+    "photo_requirements": "Crop the photo to 3:4 and center the face before uploading. JPG, PNG or WEBP.",
+    "crop_title": "Crop photo",
+    "crop_description": "Position the desired area inside the 3:4 frame.",
+    "crop_zoom": "Photo zoom",
+    "crop_move_hint": "Drag the photo to reposition it",
+    "crop_apply": "Apply and upload",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1159,7 +1234,12 @@
     "search_club_placeholder": "Enter club name...",
     "club_not_found": "Club not found",
     "request_sent": "Sent",
-    "send_request": "Send request"
+    "send_request": "Send request",
+    "push_notifications": "Push notifications",
+    "push_enable": "Enable",
+    "push_disable": "Disable",
+    "active": "Active",
+    "push_active": "Match notifications enabled"
   },
   "onboarding": {
     "athlete_title": "Complete your profile",
@@ -1361,7 +1441,9 @@
     "selected": "Selected tatami",
     "other_tatamis": "Other tatamis",
     "no_stream": "Tatami #{{n}} — no stream, select another",
-    "queue_count": "{{count}} matches in queue"
+    "queue_count": "{{count}} matches in queue",
+    "forfeit": "Technical defeat",
+    "forfeit_confirm": "Confirm technical defeat"
   },
   "live": {
     "title": "Live results",
@@ -1456,7 +1538,8 @@
     "scoreboard": "Board",
     "sec_main": "Main",
     "sec_repechage": "Repechage",
-    "sec_bronze": "Bronze"
+    "sec_bronze": "Bronze",
+    "stream": "Live Stream"
   },
   "judge": {
     "panel_title": "Judge panel",
@@ -1640,6 +1723,8 @@
     "bulk_adding": "Adding…",
     "bulk_add_n": "Add {{count}} categories",
     "bulk_error": "No categories added (duplicates or error)",
+    "bulk_success": "{{count}} categories added",
+    "bulk_already_exists": "All categories from this template already exist",
     "empty": "No categories",
     "empty_hint": "Categories can be added in DRAFT status",
     "preset_hint": "Select an age group → auto-fill",
@@ -1834,5 +1919,43 @@
     "open_file": "Open file",
     "no_documents": "No documents",
     "no_documents_hint": "Documents will appear here after the user uploads them in their profile."
+  },
+  "analytics": {
+    "title": "Federation Analytics",
+    "total_athletes": "Total Athletes",
+    "tournaments_this_year": "Tournaments This Year",
+    "matches_total": "Total Matches",
+    "clubs_active": "Active Clubs",
+    "athlete_registrations": "Athlete Registrations",
+    "last_24_months": "Last 24 months",
+    "gender_breakdown": "Gender Breakdown",
+    "avg_age": "Avg. Age",
+    "matches_per_month": "Matches per Month",
+    "athletes_by_city": "Athletes by City",
+    "popular_weight_classes": "Popular Weight Classes",
+    "top_clubs": "Top Clubs",
+    "top_athletes_year": "Top Athletes This Year",
+    "completed_tournaments": "Completed Tournaments",
+    "categories": "Categories",
+    "club": "Club",
+    "athletes": "Athletes",
+    "athlete": "Athlete",
+    "matches": "Matches",
+    "entries": "Entries",
+    "points": "Points"
+  },
+  "stats": {
+    "section_title": "Statistics",
+    "total_matches": "Total matches",
+    "wins": "Wins",
+    "losses": "Losses",
+    "ippon_wins": "Ippon",
+    "wazaari_wins": "Waza-ari",
+    "gs_wins": "Golden Score",
+    "tournaments": "Tournaments",
+    "rating_points": "Rating points",
+    "of_wins": "of wins",
+    "rating_history": "Rating history",
+    "recent_results": "Recent results"
   }
 }

@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.env
+**/node_modules
+**/dist
+**/.vercel
+**/coverage
+**/playwright-report
+**/test-results
+.wrangler-logs
+backups
+uploads

@@ -22,21 +22,34 @@ import type { Server as HTTPServer } from "node:http";
 import { env } from "../lib/env.js";
 import { verifyAccessToken } from "../lib/jwt.js";
 import { redis } from "../lib/redis.js";
+import { prisma } from "../lib/prisma.js";
+import type {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from "./socket-types.js";
 
-let io: SocketIOServer | null = null;
+type EmitEvent = keyof ServerToClientEvents;
+
+type TypedIO = SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+let io: TypedIO | null = null;
 
 const MAX_ROOMS_PER_SUBSCRIBE = 20;
 const MAX_ROOMS_PER_SOCKET = 50;
 const MAX_SUBSCRIBE_EVENTS_PER_MINUTE = 120;
+/** Максимум любых входящих событий от одного сокета в минуту (защита от flood) */
+const MAX_EVENTS_PER_MINUTE = 300;
 
-export function getIO(): SocketIOServer {
+export function getIO(): TypedIO {
   if (!io) throw new Error("Socket.IO не инициализирован");
   return io;
 }
 
 export async function attachSocketIO(app: FastifyInstance): Promise<void> {
   const server = app.server as HTTPServer;
-  io = new SocketIOServer(server, {
+  io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(server, {
     cors: {
       origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
       credentials: true,
@@ -58,7 +71,7 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
             await redis.expire(key, env.SOCKET_CONNECTION_LIMIT_WINDOW_SEC);
           callback(null, count <= env.SOCKET_CONNECTION_LIMIT_MAX);
         })
-        .catch(() => callback(null, true));
+        .catch(() => callback(null, false)); // fail-closed: Redis недоступен → запрещаем
     },
   });
 
@@ -86,14 +99,25 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
       "Socket connected",
     );
 
-    // Клиент подписывается на комнаты
-    socket.on("subscribe", async (rooms: string[] | string) => {
+    // Глобальный rate limit на все входящие события от этого сокета
+    socket.onAny(async (_event: string) => {
+      const total = await incrementSocketCounter(socket.id, "events").catch(() => 1);
+      if (total > MAX_EVENTS_PER_MINUTE) {
+        app.log.warn({ socketId: socket.id }, "Socket event flood — disconnecting");
+        socket.emit("error", { reason: "RATE_LIMITED" });
+        socket.disconnect(true);
+      }
+    });
+
+    // Клиент подписывается на комнаты; поддерживает ack-callback для подтверждения
+    socket.on("subscribe", async (rooms: string[] | string, ack?: (err: string | null) => void) => {
       const subscribeCount = await incrementSocketCounter(
         socket.id,
         "subscribe",
       ).catch(() => 1);
       if (subscribeCount > MAX_SUBSCRIBE_EVENTS_PER_MINUTE) {
         socket.emit("subscribe:error", { reason: "RATE_LIMITED" });
+        ack?.("RATE_LIMITED");
         return;
       }
 
@@ -104,6 +128,7 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
       for (const room of list) {
         if (socket.rooms.size >= MAX_ROOMS_PER_SOCKET) {
           socket.emit("subscribe:error", { room, reason: "ROOM_LIMIT" });
+          ack?.("ROOM_LIMIT");
           break;
         }
 
@@ -124,25 +149,48 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
               "Blocked subscribe to foreign user room",
             );
             socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
+            ack?.("FORBIDDEN");
             continue;
           }
         }
 
-        // tatami:* — только аутентифицированные пользователи
-        // (анонимные зрители используют публичное tournament:* табло)
+        // tatami:* — только ADMIN.
+        // Зрители и тренеры используют публичное tournament:* табло.
+        // Судьи работают через /tatami/:token (REST + tournament:* комната).
+        // tatami:N комната содержит приватные события до публичного объявления —
+        // поэтому доступ строго ограничен ролью ADMIN.
         if (room.startsWith("tatami:")) {
-          if (!socket.data.userId) {
+          if (!socket.data.userId || socket.data.role !== "ADMIN") {
             app.log.warn(
-              { socketId: socket.id, room },
-              "Blocked anonymous subscribe to tatami room",
+              { socketId: socket.id, room, role: socket.data.role ?? "anon" },
+              "Blocked non-admin subscribe to tatami room",
             );
-            socket.emit("subscribe:error", { room, reason: "AUTH_REQUIRED" });
+            socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
+            ack?.("FORBIDDEN");
             continue;
+          }
+          // Re-validate: проверяем активность пользователя при каждой подписке на татами
+          const active = await isUserActive(socket.data.userId);
+          if (!active) {
+            socket.emit("auth:revoked");
+            socket.disconnect(true);
+            return;
+          }
+        }
+
+        // user:* — дополнительно проверяем активность при подписке
+        if (room.startsWith("user:")) {
+          const active = await isUserActive(socket.data.userId!);
+          if (!active) {
+            socket.emit("auth:revoked");
+            socket.disconnect(true);
+            return;
           }
         }
 
         socket.join(room);
       }
+      ack?.(null);
     });
 
     socket.on("unsubscribe", (rooms: string[] | string) => {
@@ -186,6 +234,9 @@ async function incrementSocketCounter(
 // Утилиты для emit из сервисов
 // ============================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyEmit = (event: string, ...args: any[]) => void;
+
 export function emitMatchEvent(
   match: {
     id: string;
@@ -202,7 +253,7 @@ export function emitMatchEvent(
     `bracket:${match.bracketId}`,
   ];
   if (match.tatamiNumber !== null) rooms.push(`tatami:${match.tatamiNumber}`);
-  for (const r of rooms) io.to(r).emit(eventName, payload);
+  for (const r of rooms) (io.to(r).emit as AnyEmit)(eventName, payload);
 }
 
 export function emitToBracket(
@@ -211,7 +262,7 @@ export function emitToBracket(
   payload: unknown,
 ): void {
   if (!io) return;
-  io.to(`bracket:${bracketId}`).emit(eventName, payload);
+  (io.to(`bracket:${bracketId}`).emit as AnyEmit)(eventName, payload);
 }
 
 export function emitToTournament(
@@ -220,7 +271,7 @@ export function emitToTournament(
   payload: unknown,
 ): void {
   if (!io) return;
-  io.to(`tournament:${tournamentId}`).emit(eventName, payload);
+  (io.to(`tournament:${tournamentId}`).emit as AnyEmit)(eventName, payload);
 }
 
 export function emitToUser(
@@ -229,5 +280,38 @@ export function emitToUser(
   payload: unknown,
 ): void {
   if (!io) return;
-  io.to(`user:${userId}`).emit(eventName, payload);
+  (io.to(`user:${userId}`).emit as AnyEmit)(eventName, payload);
+}
+
+/**
+ * Принудительно отключает все сокеты пользователя.
+ * Вызывается при logout-all, деактивации аккаунта, смене пароля.
+ */
+export function disconnectUserSockets(userId: string): void {
+  if (!io) return;
+  io.to(`user:${userId}`).emit("auth:revoked");
+  // Получаем все сокеты в комнате user:{userId} и дисконнектим
+  io.in(`user:${userId}`).disconnectSockets(true);
+}
+
+/**
+ * Проверяет активность пользователя через Redis-кэш, при промахе — через БД.
+ * Используется при подписке на приватные комнаты (tatami:*, user:*).
+ */
+async function isUserActive(userId: string): Promise<boolean> {
+  try {
+    const cacheKey = `user-cache:${userId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const user = JSON.parse(cached) as { isActive: boolean };
+      return user.isActive;
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isActive: true },
+    });
+    return user?.isActive ?? false;
+  } catch {
+    return false; // fail-closed: при ошибке Redis/DB запрещаем доступ к приватным комнатам
+  }
 }

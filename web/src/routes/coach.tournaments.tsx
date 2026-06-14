@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -19,11 +20,13 @@ import {
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Tournament, Application } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachTournamentsRoute />
@@ -53,7 +56,7 @@ function CoachTournaments() {
     queryFn: () => api.applications.myClub(),
   });
 
-  const appByTournament = new Map((myAppsQuery.data ?? []).map((a: any) => [a.tournamentId, a]));
+  const appByTournament = new Map((myAppsQuery.data ?? []).map((a: Application) => [a.tournamentId, a]));
 
   return (
     <DashboardShell
@@ -68,7 +71,7 @@ function CoachTournaments() {
           <EmptyState title={t("tournament.no_tournaments")} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tQuery.data!.items.map((tournament: any) => {
+            {tQuery.data!.items.map((tournament: Tournament) => {
               const deadline = tournament.applicationDeadline ?? tournament.startDate;
               const deadlinePassed = new Date(deadline).getTime() < Date.now();
               const existingApp = appByTournament.get(tournament.id);
@@ -210,7 +213,7 @@ function applicationButtonStyle(status: string): string {
   return "border-border text-muted-foreground hover:text-foreground";
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

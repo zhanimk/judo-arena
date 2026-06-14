@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStre
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Жаңа құпиясөз — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { token?: string } => ({
     token: typeof search.token === "string" ? search.token : undefined,
   }),

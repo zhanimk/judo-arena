@@ -115,6 +115,52 @@ export async function reorderTatamiQueue(
   return prisma.match.findUniqueOrThrow({ where: { id: matchId } });
 }
 
+/**
+ * Переместить матч на произвольную позицию в очереди (для DnD).
+ * newIndex — 0-based индекс в отсортированной очереди PENDING матчей.
+ */
+export async function moveMatchToPosition(
+  matchId: string,
+  newIndex: number,
+): Promise<void> {
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+  if (!match.tatamiNumber) {
+    throw new MatchError("MATCH_NOT_ASSIGNED", "Матч не назначен на татами", 409);
+  }
+  if (match.status !== MatchStatus.PENDING) {
+    throw new MatchError("MATCH_NOT_PENDING", "Двигать можно только ожидающий матч", 409);
+  }
+
+  const queue = await prisma.match.findMany({
+    where: {
+      tournamentId: match.tournamentId,
+      tatamiNumber: match.tatamiNumber,
+      status: MatchStatus.PENDING,
+    },
+    orderBy: [{ queuePosition: "asc" }, { round: "asc" }, { position: "asc" }],
+    select: { id: true },
+  });
+
+  const oldIndex = queue.findIndex((m) => m.id === matchId);
+  if (oldIndex === -1 || oldIndex === newIndex) return;
+
+  // Переставляем элемент в массиве
+  const ids = queue.map((m) => m.id);
+  ids.splice(oldIndex, 1);
+  ids.splice(Math.max(0, Math.min(newIndex, ids.length)), 0, matchId);
+
+  // Нормализуем все позиции одной транзакцией
+  await prisma.$transaction(
+    ids.map((id, idx) =>
+      prisma.match.update({
+        where: { id },
+        data: { queuePosition: idx + 1 },
+      }),
+    ),
+  );
+}
+
 /** Текущая очередь матчей на татами (PENDING + IN_PROGRESS). */
 export async function getTatamiQueue(
   tournamentId: string,

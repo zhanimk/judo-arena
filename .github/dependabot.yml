@@ -1,0 +1,60 @@
+version: 2
+
+updates:
+  # Root workspace (playwright, shared tooling)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Almaty
+    open-pull-requests-limit: 5
+    groups:
+      dev-tooling:
+        patterns: ["@playwright/*", "playwright", "typescript", "vitest", "*eslint*"]
+
+  # API
+  - package-ecosystem: npm
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Almaty
+    open-pull-requests-limit: 5
+    groups:
+      fastify:
+        patterns: ["fastify", "@fastify/*"]
+      aws:
+        patterns: ["@aws-sdk/*"]
+      sentry:
+        patterns: ["@sentry/*"]
+      prisma:
+        patterns: ["prisma", "@prisma/*"]
+
+  # Web
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Almaty
+    open-pull-requests-limit: 5
+    groups:
+      tanstack:
+        patterns: ["@tanstack/*"]
+      radix:
+        patterns: ["@radix-ui/*"]
+      sentry:
+        patterns: ["@sentry/*"]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Almaty

@@ -7,6 +7,40 @@ on:
     branches: [main]
 
 jobs:
+  # ─── Security ──────────────────────────────────────────────────────────────
+  secrets-scan:
+    name: Security — Secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  security-audit:
+    name: Security — npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Audit API dependencies
+        working-directory: api
+        run: npm audit --audit-level=high --omit=dev
+      - name: Audit Web dependencies
+        working-directory: web
+        run: npm audit --audit-level=high --omit=dev
+
   # ─── API ───────────────────────────────────────────────────────────────────
   api-lint:
     name: API — Lint
@@ -15,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -28,7 +62,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -82,7 +116,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -96,6 +130,63 @@ jobs:
         working-directory: api
         run: npm run test:coverage -- --reporter=verbose
 
+  api-test-db:
+    name: API — DB Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: judo
+          POSTGRES_PASSWORD: judo_test
+          POSTGRES_DB: judo_arena_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://judo:judo_test@localhost:5433/judo_arena_test
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: test_access_secret_at_least_32_chars_long
+      JWT_REFRESH_SECRET: test_refresh_secret_at_least_32_chars_long
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
+      NODE_ENV: test
+      CORS_ORIGIN: http://localhost:5173
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
+      - name: Run migrations
+        working-directory: api
+        run: npx prisma migrate deploy
+      - name: Run DB integration tests
+        working-directory: api
+        run: npm run test:db -- --reporter=verbose
+
   api-build:
     name: API — Build
     runs-on: ubuntu-latest
@@ -104,7 +195,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -123,7 +214,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -136,7 +227,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -155,7 +246,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
@@ -170,7 +261,7 @@ jobs:
   e2e:
     name: E2E — Smoke Tests
     runs-on: ubuntu-latest
-    needs: [api-test, web-build]
+    needs: [api-test, api-test-db, web-build]
 
     services:
       postgres:
@@ -216,10 +307,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.22.1
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
@@ -256,7 +354,13 @@ jobs:
         run: npx wait-on http://localhost:8080 --timeout 120000 --interval 2000
 
       - name: Run E2E smoke tests
-        run: npx playwright test --reporter=github
+        run: npx playwright test e2e/smoke.test.ts --reporter=github
+        env:
+          BASE_URL: http://localhost:8080
+          API_URL: http://localhost:4000
+
+      - name: Run a11y tests
+        run: npx playwright test e2e/a11y.test.ts --reporter=github
         env:
           BASE_URL: http://localhost:8080
           API_URL: http://localhost:4000
@@ -268,3 +372,52 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # ─── Bundle size ───────────────────────────────────────────────────────────
+  bundle-size:
+    name: Web — Bundle Size
+    runs-on: ubuntu-latest
+    needs: [web-build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist/
+      - name: Check bundle size limits
+        run: node scripts/check-bundle-size.mjs
+
+  # ─── OpenAPI artifact ──────────────────────────────────────────────────────
+  openapi:
+    name: API — Generate OpenAPI spec
+    runs-on: ubuntu-latest
+    needs: [api-build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
+      - name: Build API
+        working-directory: api
+        run: npm run build
+      - name: Generate OpenAPI spec
+        run: node scripts/generate-openapi.mjs api/openapi.json
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: api/openapi.json
+          retention-days: 30

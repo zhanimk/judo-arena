@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { LazyImage } from "@/components/ui/avatar-image";
@@ -7,7 +8,9 @@ import athleteBlue from "@/assets/athlete-blue-2.jpg";
 import athleteWhite from "@/assets/athlete-woman-white.jpg";
 import {
   Calendar,
+  CircleDollarSign,
   Clock,
+  FileText,
   GitBranch,
   MapPin,
   Radio,
@@ -19,6 +22,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import type { Tournament } from "@/lib/api-types";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/tournaments")({
@@ -28,6 +32,7 @@ export const Route = createFileRoute("/tournaments")({
       { name: "description", content: "Дзюдо жарыстарының афишасы және live-нәтижелері." },
     ],
   }),
+  errorComponent: RouteErrorUI,
   component: Tournaments,
 });
 
@@ -52,7 +57,9 @@ const statusColor = (s: Status) =>
 
 const tournamentImages = [heroKazakhstan, teamLineup, athleteBlue, athleteWhite];
 
-function localizeName(name: any): string {
+function localizeName(
+  name: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";
@@ -70,7 +77,7 @@ function Tournaments() {
   const tournaments = useMemo(() => data?.items ?? [], [data?.items]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tournaments.filter((tournament: any) => {
+    return tournaments.filter((tournament: Tournament) => {
       const byStatus = filter === "ALL" || tournament.status === filter;
       const text =
         `${localizeName(tournament.name)} ${tournament.city ?? ""} ${tournament.location ?? ""}`.toLowerCase();
@@ -78,12 +85,12 @@ function Tournaments() {
     });
   }, [filter, search, tournaments]);
   const featured = filtered[0] ?? tournaments[0];
-  //   const _liveCount = tournaments.filter((tournament: any) => tournament.status === "IN_PROGRESS").length;
+  //   const _liveCount = tournaments.filter((tournament: Tournament) => tournament.status === "IN_PROGRESS").length;
   const openCount = tournaments.filter(
-    (tournament: any) => tournament.status === "REGISTRATION_OPEN",
+    (tournament: Tournament) => tournament.status === "REGISTRATION_OPEN",
   ).length;
   const totalApplications = tournaments.reduce(
-    (sum: number, tournament: any) => sum + (tournament._count?.applications ?? 0),
+    (sum: number, tournament: Tournament) => sum + (tournament._count?.applications ?? 0),
     0,
   );
 
@@ -154,6 +161,9 @@ function Tournaments() {
                 <div className="mt-4 space-y-2 text-sm text-muted-foreground">
                   <Info icon={Calendar}>{dateRange(featured.startDate, featured.endDate)}</Info>
                   <Info icon={MapPin}>{featured.location || featured.city}</Info>
+                  <Info icon={CircleDollarSign}>
+                    {t("payments.entry_fee")}: {formatKzt(featured.entryFeeKzt ?? 0)}
+                  </Info>
                   <Info icon={Users}>
                     {featured._count?.applications ?? 0} {t("applications.title").toLowerCase()} ·{" "}
                     {featured._count?.categories ?? 0} {t("common.category").toLowerCase()}
@@ -228,7 +238,7 @@ function Tournaments() {
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((tournament: any, index: number) => (
+            {filtered.map((tournament: Tournament, index: number) => (
               <Link
                 key={tournament.id}
                 to="/tournaments/$id"
@@ -265,6 +275,12 @@ function Tournaments() {
                     <Info icon={Clock}>
                       {t("common.deadline")}: {formatDeadline(tournament)}
                     </Info>
+                    <Info icon={CircleDollarSign}>
+                      {t("payments.entry_fee")}: {formatKzt(tournament.entryFeeKzt ?? 0)}
+                    </Info>
+                    {tournament.regulationUrl && (
+                      <Info icon={FileText}>{t("tournament.regulations")}</Info>
+                    )}
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
                     <Metric
@@ -317,7 +333,13 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Info({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
+function Info({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-2">
       <Icon className="h-4 w-4 shrink-0 text-gold/70" />
@@ -326,7 +348,15 @@ function Info({ icon: Icon, children }: { icon: any; children: React.ReactNode }
   );
 }
 
-function Metric({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-md border border-border/60 bg-background/40 p-3">
       <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -346,7 +376,12 @@ function dateRange(start: string, end: string): string {
   return `${s.toLocaleDateString("kk-KZ", { day: "numeric", month: "short" })} - ${e.toLocaleDateString("kk-KZ", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
-function formatDeadline(t: any): string {
+function formatDeadline(t: Tournament): string {
   const value = t.applicationDeadline ?? t.startDate;
   return new Date(value).toLocaleDateString("kk-KZ", { day: "numeric", month: "short" });
+}
+
+function formatKzt(value: number): string {
+  if (value <= 0) return "0 ₸";
+  return `${new Intl.NumberFormat("ru-KZ").format(value)} ₸`;
 }

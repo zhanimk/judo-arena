@@ -167,7 +167,7 @@ export function Bracket({ rounds, champion }: { rounds: Round[]; champion?: stri
 
         {rounds.map((round, roundIndex) => (
           <div
-            key={round.title}
+            key={`round-${roundIndex}-${round.title}`}
             className="absolute z-10"
             style={{ left: positions[roundIndex]?.[0]?.x ?? PAD, top: 0, width: CARD_W }}
           >

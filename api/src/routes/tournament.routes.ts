@@ -42,6 +42,7 @@ import {
   listTournamentsQuerySchema,
   changeStatusSchema,
   createCategorySchema,
+  createCategoriesBulkSchema,
   updateCategorySchema,
 } from "../validators/tournament.schema.js";
 import {
@@ -58,6 +59,7 @@ import {
   deleteTournament,
   listCategories,
   createCategory,
+  createCategoriesBulk,
   updateCategory,
   deleteCategory,
   createIjfCategories,
@@ -208,7 +210,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
                 weightKg: true,
                 beltRank: true,
                 avatarUrl: true,
-                club: { select: { id: true, name: true, city: true } },
+                club: { select: { id: true, name: true, city: true, logoUrl: true } },
               },
             },
           },
@@ -263,6 +265,7 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
                       name: true,
                       shortName: true,
                       city: true,
+                      logoUrl: true,
                     },
                   },
                 },
@@ -290,6 +293,16 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
             athlete: e.athlete,
           })),
         }));
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/:id/categories/bulk",
+    adminOnly,
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const input = createCategoriesBulkSchema.parse(request.body);
+      const result = await createCategoriesBulk(request.params.id, input);
+      return reply.code(201).send(result);
     },
   );
 
@@ -390,12 +403,10 @@ export async function tournamentAdjacentRoutes(
     async (request, reply) => {
       const { id, group } = request.params;
       if (!Object.keys(IJF_CATEGORIES).includes(group)) {
-        return reply
-          .code(400)
-          .send({
-            error: "UNKNOWN_GROUP",
-            validGroups: Object.keys(IJF_CATEGORIES),
-          });
+        return reply.code(400).send({
+          error: "UNKNOWN_GROUP",
+          validGroups: Object.keys(IJF_CATEGORIES),
+        });
       }
       const result = await createIjfCategories(
         id,
@@ -492,12 +503,10 @@ export async function tournamentAdjacentRoutes(
       (request.query as { secret?: string } | undefined)?.secret;
     if (env.KASPI_CALLBACK_SECRET) {
       if (!secret) {
-        return reply
-          .code(401)
-          .send({
-            error: "MISSING_SECRET",
-            message: "x-kaspi-secret header is required",
-          });
+        return reply.code(401).send({
+          error: "MISSING_SECRET",
+          message: "x-kaspi-secret header is required",
+        });
       }
       // Timing-safe сравнение — защита от timing-атак
       const expected = Buffer.from(env.KASPI_CALLBACK_SECRET);
@@ -506,22 +515,18 @@ export async function tournamentAdjacentRoutes(
         expected.length === provided.length &&
         crypto.timingSafeEqual(expected, provided);
       if (!valid) {
-        return reply
-          .code(401)
-          .send({
-            error: "INVALID_SECRET",
-            message: "Invalid callback secret",
-          });
+        return reply.code(401).send({
+          error: "INVALID_SECRET",
+          message: "Invalid callback secret",
+        });
       }
     }
     const reference = body.reference ?? body.orderId;
     if (!reference) {
-      return reply
-        .code(400)
-        .send({
-          error: "MISSING_REFERENCE",
-          message: "reference or orderId is required",
-        });
+      return reply.code(400).send({
+        error: "MISSING_REFERENCE",
+        message: "reference or orderId is required",
+      });
     }
     return confirmKaspiPayment(reference);
   });

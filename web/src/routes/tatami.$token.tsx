@@ -6,12 +6,15 @@
  */
 
 import { createFileRoute, useParams } from "@tanstack/react-router";
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "@/lib/api";
 import { Loader2, Trophy, WifiOff } from "lucide-react";
 import { useRealtime } from "@/lib/socket";
+import { HoldButton } from "@/components/judo/HoldButton";
+import { useTatamiOfflineQueue } from "@/lib/tatami-offline-queue";
 
 /* ─── Offline hook ─── */
 function useOnlineStatus() {
@@ -28,6 +31,7 @@ function useOnlineStatus() {
 
 export const Route = createFileRoute("/tatami/$token")({
   head: () => ({ meta: [{ title: "Татами — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: TatamiJudgePanel,
 });
 
@@ -38,6 +42,11 @@ function TatamiJudgePanel() {
   const [compact, setCompact] = useState(false);
   const [showHotkeys, setShowHotkeys] = useState(false);
   const isOnline = useOnlineStatus();
+  const [actionError, setActionError] = useState("");
+
+  // ── Offline queue: сохраняем действия судьи при потере сети ──────────────
+  const { enqueue: enqueueOffline, pendingCount: offlinePending, isFlushing: offlineFlushing } =
+    useTatamiOfflineQueue(token, isOnline, (msg) => setActionError(msg));
 
   useEffect(() => {
     const check = () => setCompact(window.innerWidth < 768);
@@ -76,7 +85,7 @@ function TatamiJudgePanel() {
 
   const [showResult, setShowResult] = useState(false);
   const [lastFinishedId, setLastFinishedId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState("");
+  const [forfeitConfirm, setForfeitConfirm] = useState<"RED" | "BLUE" | null>(null);
   const [osaeStartedLocal, setOsaeStartedLocal] = useState<number | null>(null);
 
   useEffect(() => {
@@ -103,20 +112,43 @@ function TatamiJudgePanel() {
     [qc, token],
   );
 
+  // ── Sliding expiry: продлеваем сессию каждые 30 минут пока вкладка открыта ──
+  useEffect(() => {
+    // Немедленный первый heartbeat + каждые 30 минут
+    const doHeartbeat = () => {
+      api.tatamiSession.heartbeat(token).catch(() => {
+        // Молчим — сессия могла быть отозвана, getValidTatamiSession это обнаружит
+      });
+    };
+    doHeartbeat();
+    const id = setInterval(doHeartbeat, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [token]);
+
   const matchId = currentMatch?.id;
   const matchVersion = currentMatch?.version;
-  const onErr = (e: any) => setActionError(e instanceof ApiError ? e.message : t("error.generic"));
+  const onErr = (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("error.generic"));
 
-  const startMatch    = useMutation({ mutationFn: () => api.matches.start(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const pauseMatch    = useMutation({ mutationFn: () => api.matches.pause(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const goldenScore   = useMutation({ mutationFn: () => api.matches.goldenScore(matchId!, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const scoreAction   = useMutation({ mutationFn: (p: { type: string; side: "RED" | "BLUE" }) => api.matches.score(matchId!, p.type, p.side, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const osaekomiAct   = useMutation({ mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const toketaAct     = useMutation({ mutationFn: () => api.matches.toketa(matchId!, undefined, token, matchVersion),    onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
-  const finishAction  = useMutation({ mutationFn: (p: { winnerSide: "RED" | "BLUE"; reason?: string }) => api.matches.finish(matchId!, p.winnerSide, p.reason, undefined, token, matchVersion), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  // ── Мутации с offline-поддержкой ─────────────────────────────────────────
+  // Счёт, осаекоми и токета оборачиваются в offline queue — самые критичные.
+  // Управление матчем (start/pause/finish) тоже в очереди.
+  // confirm/cancel/undo — только онлайн (необратимые действия).
+  const startMatch    = useMutation({ mutationFn: () => enqueueOffline("start",    () => api.matches.start(matchId!, undefined, token)),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const pauseMatch    = useMutation({ mutationFn: () => enqueueOffline("pause",    () => api.matches.pause(matchId!, undefined, token)),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const goldenScore   = useMutation({ mutationFn: () => enqueueOffline("golden",   () => api.matches.goldenScore(matchId!, undefined, token)), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const scoreAction   = useMutation({ mutationFn: (p: { type: string; side: "RED" | "BLUE" }) => enqueueOffline(`score_${p.type}_${p.side}`, () => api.matches.score(matchId!, p.type, p.side, undefined, token, matchVersion)), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const osaekomiAct   = useMutation({ mutationFn: (side: "RED" | "BLUE") => enqueueOffline(`osaekomi_${side}`, () => api.matches.osaekomi(matchId!, side, undefined, token, matchVersion)), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const toketaAct     = useMutation({ mutationFn: () => enqueueOffline("toketa",   () => api.matches.toketa(matchId!, undefined, token, matchVersion)), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const finishAction  = useMutation({ mutationFn: (p: { winnerSide: "RED" | "BLUE"; reason?: string }) => enqueueOffline(`finish_${p.winnerSide}`, () => api.matches.finish(matchId!, p.winnerSide, p.reason, undefined, token, matchVersion)), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const confirmAction = useMutation({ mutationFn: () => api.matches.confirm(matchId!, undefined, token),   onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const cancelResult  = useMutation({ mutationFn: () => api.matches.cancelResult(matchId!, undefined, token), onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
   const undoLast      = useMutation({ mutationFn: () => api.matches.undoLast(matchId!, undefined, token),     onMutate: () => setActionError(""), onSuccess: refetch, onError: onErr });
+  const forfeitAction = useMutation({
+    mutationFn: (side: "RED" | "BLUE") => api.matches.forfeit(matchId!, side, "NO_SHOW", undefined, token),
+    onMutate: () => { setActionError(""); setForfeitConfirm(null); },
+    onSuccess: refetch,
+    onError: onErr,
+  });
 
   /* ─── Keyboard shortcuts ─── */
   // Keep latest refs so handler always has current state without re-registering
@@ -259,7 +291,7 @@ function TatamiJudgePanel() {
   /* ─── Computed ─── */
   const red  = currentMatch.redAthlete;
   const blue = currentMatch.blueAthlete;
-  const score_  = currentMatch.scoreSnapshot ?? { red: {}, blue: {} };
+  const score_  = (currentMatch.scoreSnapshot ?? { red: {}, blue: {} }) as import("@/lib/api-types").MatchScoreSnapshot;
   const redS  = score_.red  ?? {};
   const blueS = score_.blue ?? {};
 
@@ -275,7 +307,7 @@ function TatamiJudgePanel() {
   const cat = currentMatch.bracket?.category;
   const matchDurationSec = cat?.matchDurationSec ?? 240;
   const weightLabel = cat ? `${cat.gender === "MALE" ? t("common.male") : t("tatami.female_short")} ${cat.weightMin}-${cat.weightMax} ${t("common.kg")}` : "";
-  const tName = tournament?.name?.kk ?? tournament?.name?.ru ?? "Жарыс";
+  const tName = (typeof tournament?.name === "object" && tournament?.name !== null ? (tournament.name.kk ?? tournament.name.ru) : tournament?.name as string | undefined) ?? "Жарыс";
   const allowYuko = Boolean(cat?.allowYuko);
 
   const canScore = isClockRunning && !pendingResult && !scoreAction.isPending;
@@ -308,6 +340,22 @@ function TatamiJudgePanel() {
         }}>
           <WifiOff style={{ width: 16, height: 16 }} />
           {t("tatami.offline_warning")}
+          {offlinePending > 0 && (
+            <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: 4, padding: "1px 7px", fontSize: 12 }}>
+              {offlinePending} в очереди
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ══ FLUSH BANNER — отправляем накопленные действия ══ */}
+      {isOnline && offlineFlushing && (
+        <div style={{
+          background: "#f59e0b", color: "#111", textAlign: "center",
+          padding: "5px 16px", fontSize: compact ? 12 : 13, fontWeight: 700,
+          letterSpacing: 1, flexShrink: 0,
+        }}>
+          ⟳ Отправляем {offlinePending} действий после восстановления сети...
         </div>
       )}
 
@@ -446,7 +494,7 @@ function TatamiJudgePanel() {
       {queue.length > 0 && (
         <div style={{ background: "#e8eaed", borderTop: "2px solid #d0d3d8", padding: compact ? "5px 10px" : "7px 20px", display: "flex", alignItems: "center", gap: compact ? 10 : 20, overflowX: "auto", flexShrink: 0 }}>
           <span style={{ fontSize: compact ? 11 : 13, fontWeight: 900, color: "#888", letterSpacing: 3, flexShrink: 0 }}>{t("tatami.queue")}</span>
-          {queue.slice(0, 6).map((m: any, i: number) => (
+          {queue.slice(0, 6).map((m: import("@/lib/api-types").Match, i: number) => (
             <span key={m.id} style={{
               fontSize: compact ? 13 : 15, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? "#1a1a2e" : "#666",
               flexShrink: 0, background: i === 0 ? "#fff" : "transparent",
@@ -482,19 +530,83 @@ function TatamiJudgePanel() {
             <Btn label="GOLDEN SCORE" bg="#f59e0b" fg="#111"
               onClick={() => goldenScore.mutate()} disabled={goldenScore.isPending} compact={compact} />
           )}
+          {/* Finish match — hold 800ms, необратимое завершение */}
           {isRunning && !pendingResult && (
             <>
-              <Btn label={t("judge.red_won")} bg="#e5e7eb" fg="#111"
-                onClick={() => finishAction.mutate({ winnerSide: "RED", reason: t("judge.judge_decision") })}
-                disabled={finishAction.isPending} compact={compact} />
-              <Btn label={t("judge.blue_won")} bg="#1e40af" fg="#fff"
-                onClick={() => finishAction.mutate({ winnerSide: "BLUE", reason: t("judge.judge_decision") })}
-                disabled={finishAction.isPending} compact={compact} />
+              <HoldButton
+                onHold={() => finishAction.mutate({ winnerSide: "RED", reason: t("judge.judge_decision") })}
+                holdMs={800}
+                disabled={finishAction.isPending}
+                progressColor="#111"
+                style={{
+                  background: "#e5e7eb", color: "#111",
+                  border: "none", borderRadius: 8,
+                  padding: compact ? "6px 10px" : "8px 14px",
+                  fontSize: compact ? 11 : 13, fontWeight: 800,
+                  fontFamily: "inherit", letterSpacing: 0.5,
+                  minHeight: 44,
+                }}
+              >
+                {t("judge.red_won")}
+                <div style={{ fontSize: 8, opacity: 0.6, fontWeight: 600 }}>HOLD</div>
+              </HoldButton>
+              <HoldButton
+                onHold={() => finishAction.mutate({ winnerSide: "BLUE", reason: t("judge.judge_decision") })}
+                holdMs={800}
+                disabled={finishAction.isPending}
+                progressColor="#fff"
+                style={{
+                  background: "#1e40af", color: "#fff",
+                  border: "none", borderRadius: 8,
+                  padding: compact ? "6px 10px" : "8px 14px",
+                  fontSize: compact ? 11 : 13, fontWeight: 800,
+                  fontFamily: "inherit", letterSpacing: 0.5,
+                  minHeight: 44,
+                }}
+              >
+                {t("judge.blue_won")}
+                <div style={{ fontSize: 8, opacity: 0.6, fontWeight: 600 }}>HOLD</div>
+              </HoldButton>
             </>
           )}
           {isRunning && !pendingResult && (
             <Btn label={`↩ ${t("tatami.undo")}`} bg="#6b7280" fg="#fff"
               onClick={() => undoLast.mutate()} disabled={undoLast.isPending} compact={compact} />
+          )}
+          {/* Forfeit — неявка / отказ. Доступно и в PENDING и в IN_PROGRESS */}
+          {!isFinished && !pendingResult && red && blue && (
+            forfeitConfirm ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: compact ? 11 : 13 }}>
+                  {t("tatami.forfeit_confirm")}:
+                </span>
+                <Btn
+                  label={`✗ ${red.surname ?? t("judge.side_red")}`}
+                  bg="#dc2626" fg="#fff"
+                  onClick={() => forfeitAction.mutate("RED")}
+                  disabled={forfeitAction.isPending} compact={compact}
+                />
+                <Btn
+                  label={`✗ ${blue.surname ?? t("judge.side_blue")}`}
+                  bg="#1e40af" fg="#fff"
+                  onClick={() => forfeitAction.mutate("BLUE")}
+                  disabled={forfeitAction.isPending} compact={compact}
+                />
+                <Btn
+                  label={t("common.cancel")}
+                  bg="#374151" fg="#fff"
+                  onClick={() => setForfeitConfirm(null)}
+                  disabled={forfeitAction.isPending} compact={compact}
+                />
+              </div>
+            ) : (
+              <Btn
+                label={`⚠ ${t("tatami.forfeit")}`}
+                bg="#78350f" fg="#fbbf24"
+                onClick={() => setForfeitConfirm("RED")}
+                disabled={false} compact={compact}
+              />
+            )
           )}
           {pendingResult && (
             <>
@@ -521,7 +633,7 @@ function TatamiJudgePanel() {
 function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
   canScore, ipponScored, isOsaekomiActive, onIPPON, onWAZA, onYUKO, onSHIDO, onOsaekomi, canOsaekomi, allowYuko,
 }: {
-  side: "white" | "blue"; athlete: any; score: any;
+  side: "white" | "blue"; athlete: import("@/lib/api-types").User | null | undefined; score: import("@/lib/api-types").MatchScoreSnapshot["red"] | null | undefined;
   isWinner: boolean; isLoser: boolean; compact: boolean;
   canScore: boolean; ipponScored: boolean; isOsaekomiActive: boolean;
   onIPPON: () => void; onWAZA: () => void; onYUKO: () => void; onSHIDO: () => void;
@@ -584,10 +696,12 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
 
           {/* Score cells — tappable */}
           <div style={{ display: "flex", gap: compact ? 4 : 8, flexShrink: 0 }}>
-            <TapCell label="IPPON"    value={ippon}   active={ippon > 0}   dark={!isWhite} compact={compact} onClick={onIPPON}  disabled={!canScore || ipponScored} />
+            {/* IPPON и HANSOKU-MAKE — требуют удержания 600ms */}
+            <TapCell label="IPPON"    value={ippon}   active={ippon > 0}   dark={!isWhite} compact={compact} onClick={onIPPON}  disabled={!canScore || ipponScored} requireHold />
             <TapCell label="WAZA-ARI" value={wazaari} active={wazaari > 0} dark={!isWhite} compact={compact} onClick={onWAZA}   disabled={!canScore || ipponScored} />
             <TapCell label="YUKO"     value={yuko}    active={yuko > 0}    dark={!isWhite} compact={compact} onClick={onYUKO}   disabled={!canScore || ipponScored} isYuko />
-            <TapCell label="SHIDO"    value={shido}   active={shido > 0}   dark={!isWhite} compact={compact} onClick={onSHIDO}  disabled={!canScore} isShido />
+            {/* SHIDO тоже с hold — 3-й шидо = дисквалификация, необратимо */}
+            <TapCell label="SHIDO"    value={shido}   active={shido > 0}   dark={!isWhite} compact={compact} onClick={onSHIDO}  disabled={!canScore} isShido requireHold />
           </div>
 
           {/* Winner icon */}
@@ -622,9 +736,11 @@ function AthleteCard({ side, athlete, score, isWinner, isLoser, compact,
 }
 
 /* ─── TapCell — нажимаемая ячейка очка ─── */
-function TapCell({ label, value, active, dark, compact, onClick, disabled, isShido, isYuko }: {
+function TapCell({ label, value, active, dark, compact, onClick, disabled, isShido, isYuko, requireHold }: {
   label: string; value: number; active: boolean; dark: boolean;
   compact: boolean; onClick: () => void; disabled: boolean; isShido?: boolean; isYuko?: boolean;
+  /** Если true — требует удержания 600ms (для IPPON, HANSOKU-MAKE) */
+  requireHold?: boolean;
 }) {
   const w = compact ? 60 : 90;  // min 60px — WCAG touch target ≥ 44px
   const h = compact ? 64 : 90;
@@ -636,40 +752,65 @@ function TapCell({ label, value, active, dark, compact, onClick, disabled, isShi
   const inactiveBdr  = dark ? "rgba(255,255,255,0.2)" : "#d1d5db";
   const inactiveTxt  = dark ? "rgba(255,255,255,0.3)" : "#ccc";
 
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: w, height: h, borderRadius: 8, border: `2px solid ${active ? activeBorder : inactiveBdr}`,
-        background: active ? activeBg : inactiveBg,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.35 : 1,
-        pointerEvents: disabled ? "none" : "auto",
-        fontFamily: "inherit",
-        userSelect: "none",
-        WebkitTapHighlightColor: "transparent",
-        transition: "transform 0.08s",
-      }}
-      onPointerDown={(e) => { if (!disabled) (e.currentTarget as HTMLElement).style.transform = "scale(0.93)"; }}
-      onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-      onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-    >
+  const cellStyle: React.CSSProperties = {
+    width: w, height: h, borderRadius: 8,
+    border: `2px solid ${active ? activeBorder : inactiveBdr}`,
+    background: active ? activeBg : inactiveBg,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.35 : 1,
+    pointerEvents: disabled ? "none" : "auto",
+    fontFamily: "inherit",
+    userSelect: "none",
+    WebkitTapHighlightColor: "transparent",
+    transition: "transform 0.08s",
+  };
+
+  const content = (
+    <>
       <span style={{ fontSize: compact ? 8 : 10, fontWeight: 800, letterSpacing: 1, color: active ? activeText : (dark ? "rgba(255,255,255,0.45)" : "#aaa") }}>
         {label}
+        {requireHold && <span style={{ fontSize: 7, opacity: 0.7, display: "block", letterSpacing: 0 }}>HOLD</span>}
       </span>
       <span style={{ fontSize: compact ? 28 : 48, fontWeight: 900, lineHeight: 1, color: active ? activeText : inactiveTxt }}>
         {value}
       </span>
+    </>
+  );
+
+  if (requireHold) {
+    return (
+      <HoldButton
+        onHold={onClick}
+        holdMs={600}
+        disabled={disabled}
+        style={cellStyle}
+        progressColor={isShido ? "#fff" : "#111"}
+        ariaLabel={label}
+      >
+        {content}
+      </HoldButton>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={cellStyle}
+      onPointerDown={(e) => { if (!disabled) (e.currentTarget as HTMLElement).style.transform = "scale(0.93)"; }}
+      onPointerUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+      onPointerLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+    >
+      {content}
     </button>
   );
 }
 
 /* ─── TimerBar ─── */
 function TimerBar({ scoreSnapshot, durationSec, isRunning, isGoldenScore, isFinished, osaekomi, compact }: {
-  scoreSnapshot?: any; durationSec: number; isRunning: boolean;
-  isGoldenScore: boolean; isFinished: boolean; osaekomi: any; compact: boolean;
+  scoreSnapshot?: import("@/lib/api-types").MatchScoreSnapshot; durationSec: number; isRunning: boolean;
+  isGoldenScore: boolean; isFinished: boolean; osaekomi: import("@/lib/api-types").Match["osaekomi"]; compact: boolean;
 }) {
   const [now, setNow] = useState(Date.now());
   const clock = scoreSnapshot?.clock;
@@ -750,7 +891,7 @@ function Btn({ label, bg, fg, onClick, disabled, compact, bold, wide }: {
 }
 
 /* ─── Helpers ─── */
-function clockElapsedSec(score: any, now = Date.now()): number {
+function clockElapsedSec(score: import("@/lib/api-types").MatchScoreSnapshot | null | undefined, now = Date.now()): number {
   const clock = score?.clock;
   const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
   if (!clock?.running || !clock.runningStartedAt) return base;
@@ -764,7 +905,7 @@ function fmtTimer(sec: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function clubStr(club: any): string {
+function clubStr(club: import("@/lib/api-types").Club | null | undefined): string {
   if (!club) return "";
   if (club.shortName) return club.shortName;
   const n = club.name;

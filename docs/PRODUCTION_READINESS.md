@@ -6,20 +6,23 @@ Use this before every real tournament.
 
 Backend must have:
 
-| Variable             | Rule                            |
-| -------------------- | ------------------------------- |
-| `NODE_ENV`           | `production`                    |
-| `DATABASE_URL`       | production PostgreSQL only      |
-| `REDIS_URL`          | production Redis only           |
-| `JWT_ACCESS_SECRET`  | random, 48+ bytes, never shared |
-| `JWT_REFRESH_SECRET` | different random value          |
-| `CORS_ORIGIN`        | exact frontend domain           |
-| `APP_URL`            | exact frontend domain           |
-| `RESEND_API_KEY`     | production email key            |
-| `EMAIL_FROM`         | verified sender domain          |
-| `SENTRY_DSN`         | API Sentry project              |
-| `VITE_SENTRY_DSN`    | Web Sentry project              |
-| `S3_*` / `AWS_*`     | required for durable uploads    |
+| Variable                | Rule                            |
+| ----------------------- | ------------------------------- |
+| `NODE_ENV`              | `production`                    |
+| `DATABASE_URL`          | production PostgreSQL only      |
+| `REDIS_URL`             | production Redis only           |
+| `JWT_ACCESS_SECRET`     | random, 48+ bytes, never shared |
+| `JWT_REFRESH_SECRET`    | different random value          |
+| `CORS_ORIGIN`           | exact frontend domain           |
+| `APP_URL`               | exact frontend domain           |
+| `RESEND_API_KEY`        | production email key            |
+| `EMAIL_FROM`            | verified sender domain          |
+| `SENTRY_DSN`            | API Sentry project              |
+| `VITE_SENTRY_DSN`       | Web Sentry project              |
+| `S3_BUCKET`             | public images/avatars only      |
+| `S3_PRIVATE_BUCKET`     | private documents and backups   |
+| `AWS_*`                 | credentials for both buckets    |
+| `BACKUP_TRIGGER_SECRET` | random 32+ chars                |
 
 Do not use demo passwords or local `.env` values in production.
 
@@ -135,5 +138,6 @@ Minimum recommended launch setup:
 - paid PostgreSQL with backups
 - persistent Redis
 - durable uploads via S3/R2
+- separate private bucket for documents and backups
 - verified email domain
 - tested restore procedure

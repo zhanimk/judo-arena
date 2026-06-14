@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -6,16 +7,26 @@ import {
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { ExternalLink, FileText, Lock, Search, Star, Unlock, X } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Download, FileText, Loader2, Lock, Search, Send, Star, Unlock, X, ZoomIn } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import type {
+  AthleteLeaderboardEntry,
+  Club,
+  User,
+  UserRole,
+  RatingEntry,
+  UserDocument,
+} from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useState, useDeferredValue } from "react";
+import { useState, useDeferredValue, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Спортшылар — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminUsers />
@@ -33,15 +44,18 @@ function AdminUsers() {
   const [clubFilter, setClubFilter] = useState("");
   const [error, setError] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [notifyUser, setNotifyUser] = useState<User | null>(null);
+  const selectedRole = (["ATHLETE", "COACH", "ADMIN"] as const).find((value) => value === role);
+  const selectedActive = activeOnly === "" ? undefined : activeOnly === "true";
 
   const query = useQuery({
     queryKey: ["admin-users", role, deferredSearch, activeOnly, clubFilter],
     queryFn: () =>
       api.admin.listUsers({
-        role: role || undefined,
+        role: selectedRole as UserRole | undefined,
         search: deferredSearch || undefined,
         clubId: clubFilter || undefined,
-        isActive: activeOnly || undefined,
+        isActive: selectedActive,
         limit: 100,
       }),
   });
@@ -56,24 +70,24 @@ function AdminUsers() {
         api.admin.listUsers({
           role: "ATHLETE",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           role: "COACH",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           role: "ADMIN",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
       ]);
@@ -84,17 +98,22 @@ function AdminUsers() {
     queryKey: ["admin-users-leaderboard", clubFilter],
     queryFn: () => api.ratings.leaderboard({ clubId: clubFilter || undefined, limit: 100 }),
   });
+  // Берём базовые данные из уже загруженного списка — модалка открывается мгновенно,
+  // полные данные (документы, рейтинг) догружаются в фоне
+  const userFromList = (query.data?.items ?? []).find((u: User) => u.id === selectedUserId);
+
   const selectedUserQuery = useQuery({
     queryKey: ["admin-user-modal", selectedUserId],
     queryFn: () => api.admin.getUser(selectedUserId!),
     enabled: Boolean(selectedUserId),
+    placeholderData: userFromList,
   });
 
   const toggle = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       api.admin.toggleUserActive(id, active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const roleTabs: [string, string][] = [
@@ -146,7 +165,7 @@ function AdminUsers() {
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("common.all_clubs")}</option>
-              {(clubsQuery.data?.items ?? []).map((c: any) => (
+              {(clubsQuery.data?.items ?? []).map((c: Club) => (
                 <option key={c.id} value={c.id}>
                   {localizeName(c.name)}
                 </option>
@@ -169,7 +188,7 @@ function AdminUsers() {
         ) : query.isError ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={(query.error as any)?.message ?? t("error.api")}
+            hint={((query.error as Error))?.message ?? t("error.api")}
           />
         ) : (query.data?.items ?? []).length === 0 ? (
           <div className="py-8 text-center">
@@ -204,15 +223,26 @@ function AdminUsers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30">
-                {(query.data?.items ?? []).map((u: any) => (
+                {(query.data?.items ?? []).map((u: User) => (
                   <tr
                     key={u.id}
                     onClick={() => setSelectedUserId(u.id)}
                     className="cursor-pointer hover:bg-gold/5"
                   >
                     <td className="py-2 font-medium">
-                      <button type="button" className="text-left hover:text-gold">
-                        {u.name} {u.surname}
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 text-left hover:text-gold"
+                      >
+                        <Avatar
+                          src={u.avatarUrl ? mediaUrl(u.avatarUrl) : null}
+                          name={`${u.name} ${u.surname}`}
+                          size={36}
+                          className="border border-border/60"
+                        />
+                        <span className="whitespace-nowrap">
+                          {u.name} {u.surname}
+                        </span>
                       </button>
                     </td>
                     <td className="text-xs text-muted-foreground">{u.email}</td>
@@ -230,23 +260,35 @@ function AdminUsers() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggle.mutate({ id: u.id, active: !u.isActive });
-                        }}
-                        className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1"
-                      >
-                        {u.isActive ? (
-                          <>
-                            <Lock className="h-3 w-3" /> {t("admin.block_user")}
-                          </>
-                        ) : (
-                          <>
-                            <Unlock className="h-3 w-3" /> {t("admin.unblock_user")}
-                          </>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle.mutate({ id: u.id, active: !u.isActive });
+                          }}
+                          className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1"
+                        >
+                          {u.isActive ? (
+                            <>
+                              <Lock className="h-3 w-3" /> {t("admin.block_user")}
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="h-3 w-3" /> {t("admin.unblock_user")}
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotifyUser(u);
+                          }}
+                          title={t("admin.send_notification")}
+                          className="p-1.5 rounded glass border border-border hover:border-gold/40 text-muted-foreground hover:text-gold"
+                        >
+                          <Bell className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -263,7 +305,7 @@ function AdminUsers() {
           ) : leaderboard.isError ? (
             <EmptyState
               title={t("admin.ratings_load_error")}
-              hint={(leaderboard.error as any)?.message ?? t("error.api")}
+              hint={((leaderboard.error as Error))?.message ?? t("error.api")}
             />
           ) : (leaderboard.data ?? []).length === 0 ? (
             <EmptyState title={t("admin.ratings_empty")} hint={t("admin.ratings_empty_hint")} />
@@ -279,7 +321,7 @@ function AdminUsers() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
-                  {(leaderboard.data ?? []).map((row: any) => (
+                  {(leaderboard.data ?? []).map((row: AthleteLeaderboardEntry) => (
                     <tr key={row.athlete.id} className="hover:bg-gold/5">
                       <td className="py-2 font-display text-lg font-bold text-gold">
                         {row.rank <= 3 && <Star className="mr-1 inline h-3 w-3 fill-current" />}
@@ -313,7 +355,7 @@ function AdminUsers() {
             <EmptyState title={t("admin.clubs_no")} />
           ) : (
             <div className="space-y-2">
-              {(clubsQuery.data?.items ?? []).slice(0, 8).map((c: any) => (
+              {(clubsQuery.data?.items ?? []).slice(0, 8).map((c: Club) => (
                 <Link
                   key={c.id}
                   to="/admin/clubs/$id"
@@ -336,8 +378,17 @@ function AdminUsers() {
         <UserDetailsModal
           user={selectedUserQuery.data}
           loading={selectedUserQuery.isLoading}
+          fetching={selectedUserQuery.isFetching}
           error={selectedUserQuery.error}
           onClose={() => setSelectedUserId(null)}
+          onNotify={(u) => { setSelectedUserId(null); setNotifyUser(u); }}
+        />
+      )}
+
+      {notifyUser && (
+        <SendNotificationModal
+          user={notifyUser}
+          onClose={() => setNotifyUser(null)}
         />
       )}
     </DashboardShell>
@@ -347,17 +398,29 @@ function AdminUsers() {
 function UserDetailsModal({
   user,
   loading,
+  fetching,
   error,
   onClose,
+  onNotify,
 }: {
-  user: any;
+  user?: User;
   loading: boolean;
+  fetching?: boolean;
   error: unknown;
   onClose: () => void;
+  onNotify?: (u: User) => void;
 }) {
   const { t } = useTranslation();
+
+  // Закрытие по Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const totalPoints = (user?.ratingEntries ?? []).reduce(
-    (sum: number, entry: any) => sum + Number(entry.points),
+    (sum: number, entry: RatingEntry) => sum + Number(entry.points),
     0,
   );
   const totalMatches = (user?._count?.redmatches ?? 0) + (user?._count?.bluematches ?? 0);
@@ -371,6 +434,12 @@ function UserDetailsModal({
         className="glass max-h-[92vh] w-full overflow-y-auto rounded-t-2xl p-4 sm:max-w-5xl sm:rounded-xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Тонкая полоска пока грузятся детали (документы, рейтинг) */}
+        {fetching && !loading && (
+          <div className="absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-2xl sm:rounded-t-xl">
+            <div className="h-full w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] bg-gold" />
+          </div>
+        )}
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -380,6 +449,17 @@ function UserDetailsModal({
               {user ? `${user.name} ${user.surname}` : t("common.loading")}
             </h3>
           </div>
+          <div className="flex items-center gap-2">
+            {user && onNotify && (
+              <button
+                type="button"
+                onClick={() => onNotify(user)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
+              >
+                <Bell className="h-3.5 w-3.5" />
+                {t("admin.send_notification")}
+              </button>
+            )}
           <button
             type="button"
             onClick={onClose}
@@ -387,6 +467,7 @@ function UserDetailsModal({
           >
             <X className="h-4 w-4" />
           </button>
+          </div>
         </div>
 
         {loading ? (
@@ -394,7 +475,7 @@ function UserDetailsModal({
         ) : error ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={(error as any)?.message ?? t("error.api")}
+            hint={((error as Error))?.message ?? t("error.api")}
           />
         ) : user ? (
           <div className="space-y-5">
@@ -507,7 +588,7 @@ function UserDetailsModal({
                 <EmptyState title={t("admin.no_tournament_results")} />
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {user.ratingEntries.map((entry: any) => (
+                  {(user.ratingEntries ?? []).map((entry: RatingEntry) => (
                     <div
                       key={entry.id}
                       className="rounded-lg border border-border/60 bg-background/35 p-3 text-sm"
@@ -531,11 +612,13 @@ function UserDetailsModal({
   );
 }
 
-function DocumentList({ documents }: { documents: any[] }) {
+function DocumentList({ documents }: { documents: UserDocument[] }) {
   const { t } = useTranslation();
+  const [viewing, setViewing] = useState<UserDocument | null>(null);
+
   const ordered = ["BIRTH_CERTIFICATE", "STUDY_CERTIFICATE", "COACH_ID"]
     .map((type) => documents.find((document) => document.type === type))
-    .filter(Boolean);
+    .filter((document): document is UserDocument => Boolean(document));
 
   if (ordered.length === 0) {
     return (
@@ -544,27 +627,224 @@ function DocumentList({ documents }: { documents: any[] }) {
   }
 
   return (
-    <div className="space-y-2">
-      {ordered.map((document: any) => (
-        <a
-          key={document.id}
-          href={mediaUrl(document.url)}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/35 p-3 text-sm hover:border-gold/40"
-        >
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 font-semibold">
-              <FileText className="h-4 w-4 shrink-0 text-gold" />
-              {documentTypeLabel(document.type, t)}
+    <>
+      <div className="space-y-2">
+        {ordered.map((document: UserDocument) => (
+          <button
+            type="button"
+            key={document.id}
+            onClick={() => setViewing(document)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/35 p-3 text-sm hover:border-gold/40 text-left"
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 font-semibold">
+                <FileText className="h-4 w-4 shrink-0 text-gold" />
+                {documentTypeLabel(document.type, t)}
+              </span>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">
+                {document.originalName || t("documents.open_file")}
+              </span>
             </span>
-            <span className="mt-1 block truncate text-xs text-muted-foreground">
-              {document.originalName || t("documents.open_file")}
-            </span>
-          </span>
-          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
-      ))}
+            <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+
+      {viewing && (
+        <DocumentViewer
+          document={viewing}
+          documents={ordered}
+          onClose={() => setViewing(null)}
+          onNavigate={setViewing}
+          t={t}
+        />
+      )}
+    </>
+  );
+}
+
+function DocumentViewer({
+  document,
+  documents,
+  onClose,
+  onNavigate,
+  t,
+}: {
+  document: UserDocument;
+  documents: UserDocument[];
+  onClose: () => void;
+  onNavigate: (d: UserDocument) => void;
+  t: (k: string) => string;
+}) {
+  const idx = documents.indexOf(document);
+  const isPdf = document.mimeType === "application/pdf" || document.url?.endsWith(".pdf");
+  const isImage = document.mimeType?.startsWith("image/") || (!isPdf && document.url);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && idx > 0) onNavigate(documents[idx - 1]);
+      if (e.key === "ArrowRight" && idx < documents.length - 1) onNavigate(documents[idx + 1]);
+    };
+    globalThis.document.addEventListener("keydown", handler);
+    return () => globalThis.document.removeEventListener("keydown", handler);
+  }, [document, documents, idx, onClose, onNavigate]);
+
+  // Получаем URL для просмотра через authenticated download
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [docLoading, setDocLoading] = useState(true);
+  const [docError, setDocError] = useState(false);
+
+  useEffect(() => {
+    setObjectUrl(null);
+    setDocLoading(true);
+    setDocError(false);
+    const ctrl = new AbortController();
+
+    import("@/lib/api").then(({ apiBaseUrl, getAccessToken }) => {
+      fetch(`${apiBaseUrl}/api/auth/documents/${document.id}/download`, {
+        credentials: "include",
+        headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
+        signal: ctrl.signal,
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error("load failed");
+          return r.blob();
+        })
+        .then((blob) => {
+          setObjectUrl(URL.createObjectURL(blob));
+          setDocLoading(false);
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") setDocError(true);
+          setDocLoading(false);
+        });
+    });
+
+    return () => {
+      ctrl.abort();
+      setObjectUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    };
+  }, [document.id]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur"
+      onClick={onClose}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between gap-3 p-3 bg-black/60"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-widest text-white/50">{documentTypeLabel(document.type, t)}</div>
+          <div className="truncate text-sm font-medium text-white">
+            {document.originalName || t("documents.open_file")}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Навигация между документами */}
+          {documents.length > 1 && (
+            <div className="flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-1">
+              <button
+                type="button"
+                disabled={idx === 0}
+                onClick={(e) => { e.stopPropagation(); onNavigate(documents[idx - 1]); }}
+                className="p-1 text-white/70 hover:text-white disabled:opacity-30"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs text-white/60">{idx + 1}/{documents.length}</span>
+              <button
+                type="button"
+                disabled={idx === documents.length - 1}
+                onClick={(e) => { e.stopPropagation(); onNavigate(documents[idx + 1]); }}
+                className="p-1 text-white/70 hover:text-white disabled:opacity-30"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (objectUrl) {
+                const a = globalThis.document.createElement("a");
+                a.href = objectUrl;
+                a.download = document.originalName || `document-${document.id}`;
+                a.click();
+              }
+            }}
+            title={t("documents.download")}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div
+        className="flex flex-1 items-center justify-center overflow-hidden p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {docLoading && (
+          <div className="flex flex-col items-center gap-3 text-white/60">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="text-sm">{t("common.loading")}</span>
+          </div>
+        )}
+        {docError && (
+          <div className="text-center text-white/60">
+            <FileText className="mx-auto h-10 w-10 mb-2 opacity-40" />
+            <div className="text-sm">{t("documents.load_error")}</div>
+          </div>
+        )}
+        {!docLoading && !docError && objectUrl && (
+          <>
+            {isPdf ? (
+              <iframe
+                src={objectUrl}
+                className="h-full w-full max-w-3xl rounded-lg border border-white/10"
+                title={document.originalName || "document"}
+              />
+            ) : isImage ? (
+              <img
+                src={objectUrl}
+                alt={document.originalName || "document"}
+                className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+              />
+            ) : (
+              <div className="text-center text-white/60">
+                <FileText className="mx-auto h-10 w-10 mb-2 opacity-40" />
+                <div className="text-sm mb-3">{t("documents.preview_unavailable")}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const a = globalThis.document.createElement("a");
+                    a.href = objectUrl;
+                    a.download = document.originalName || `document-${document.id}`;
+                    a.click();
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+                >
+                  <Download className="h-4 w-4" />
+                  {t("documents.download")}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -598,13 +878,13 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function roleCount(data: any, role: string) {
+function roleCount(data: Record<string, number> | null | undefined, role: string) {
   if (!data) return "";
   const key = role || "ALL";
   return `(${data[key] ?? 0})`;
 }
 
-function placeLabel(place: number, t: any): string {
+function placeLabel(place: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const label = t("admin.place_n", { n: place });
   if (place === 1) return `🥇 ${label}`;
   if (place === 2) return `🥈 ${label}`;
@@ -612,11 +892,96 @@ function placeLabel(place: number, t: any): string {
   return label;
 }
 
-function documentTypeLabel(type: string, t: any): string {
+function documentTypeLabel(type: string, t: (k: string) => string): string {
   if (type === "BIRTH_CERTIFICATE") return t("documents.birth_certificate");
   if (type === "STUDY_CERTIFICATE") return t("documents.study_certificate");
   if (type === "COACH_ID") return t("documents.coach_id");
   return type;
+}
+
+function SendNotificationModal({ user, onClose }: { user: User; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const send = useMutation({
+    mutationFn: () =>
+      api.notifications.broadcast({
+        title,
+        body,
+        type: "announcement",
+        kind: "user",
+        userId: user.id,
+      }),
+    onSuccess: () => {
+      toast.success(t("admin.notification_sent_user", { name: `${user.name} ${user.surname}` }));
+      onClose();
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof ApiError ? e.message : t("error.api"));
+    },
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="glass w-full max-w-lg rounded-t-2xl p-5 sm:rounded-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.send_notification")}</p>
+            <h3 className="mt-0.5 font-display text-base font-semibold">
+              {user.name} {user.surname}
+            </h3>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="space-y-3">
+          <div>
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("admin.notification_subject")}
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              maxLength={100}
+              className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("admin.notification_body")}
+            </label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+              rows={4}
+              maxLength={1000}
+              className="mt-1.5 w-full bg-input border border-border rounded px-3 py-2 text-sm focus:border-gold focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={send.isPending}
+            className="w-full bg-gradient-gold text-gold-foreground py-2.5 rounded font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {t("admin.notification_send")}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function localeLabel(locale: string): string {
@@ -626,7 +991,7 @@ function localeLabel(locale: string): string {
   return locale || "—";
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

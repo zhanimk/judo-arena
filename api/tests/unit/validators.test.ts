@@ -2,12 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   createTournamentSchema,
   createCategorySchema,
+  createCategoriesBulkSchema,
   listTournamentsQuerySchema,
   updateTournamentSchema,
 } from "../../src/validators/tournament.schema.js";
 import {
   registerSchema,
   loginSchema,
+  updateMeProfileSchema,
+  upsertUserDocumentSchema,
 } from "../../src/validators/auth.schema.js";
 
 // ─── Tournament schema ─────────────────────────────────────────────────────────
@@ -58,6 +61,25 @@ describe("createTournamentSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects weighInEnd before weighInStart", () => {
+    const result = createTournamentSchema.safeParse({
+      ...base,
+      weighInStart: "2026-09-01T10:00:00Z",
+      weighInEnd: "2026-09-01T08:00:00Z",
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error)).toContain("weighInEnd");
+  });
+
+  it("accepts weighInEnd equal to weighInStart", () => {
+    const result = createTournamentSchema.safeParse({
+      ...base,
+      weighInStart: "2026-09-01T10:00:00Z",
+      weighInEnd: "2026-09-01T10:00:00Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("enforces tatamiCount between 1 and 20", () => {
     expect(
       createTournamentSchema.safeParse({ ...base, tatamiCount: 0 }).success,
@@ -102,6 +124,16 @@ describe("createCategorySchema", () => {
 
   it("accepts a valid category", () => {
     expect(createCategorySchema.safeParse(base).success).toBe(true);
+  });
+
+  it("accepts zero as the lower bound for the lightest weight category", () => {
+    expect(
+      createCategorySchema.safeParse({
+        ...base,
+        weightMin: 0,
+        weightMax: 46,
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects ageMin > ageMax", () => {
@@ -151,6 +183,31 @@ describe("createCategorySchema", () => {
       matchDurationSec: 30,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("createCategoriesBulkSchema", () => {
+  it("accepts a complete age-group template in one payload", () => {
+    const categories = [46, 50, 55].map((weightMax, index, weights) => ({
+      gender: "MALE",
+      ageMin: 15,
+      ageMax: 17,
+      weightMin: index === 0 ? 0 : weights[index - 1],
+      weightMax,
+      matchDurationSec: 180,
+      goldenScoreSec: 90,
+      format: "SE_IJF",
+    }));
+
+    const result = createCategoriesBulkSchema.safeParse({ categories });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.categories).toHaveLength(3);
+  });
+
+  it("rejects an empty template", () => {
+    expect(
+      createCategoriesBulkSchema.safeParse({ categories: [] }).success,
+    ).toBe(false);
   });
 });
 
@@ -256,5 +313,76 @@ describe("loginSchema", () => {
     expect(
       loginSchema.safeParse({ email: "a@b.com", password: "" }).success,
     ).toBe(false);
+  });
+});
+
+// ─── imageUrlSchema (via updateMeProfileSchema.avatarUrl) ────────────────────
+
+describe("imageUrlSchema", () => {
+  const base = { avatarUrl: "" };
+
+  it("accepts /uploads/ prefix", () => {
+    expect(
+      updateMeProfileSchema.safeParse({ avatarUrl: "/uploads/img.jpg" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts a valid https URL", () => {
+    expect(
+      updateMeProfileSchema.safeParse({
+        avatarUrl: "https://cdn.example.com/img.jpg",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an invalid string that is neither /uploads/ nor a valid URL", () => {
+    const result = updateMeProfileSchema.safeParse({ avatarUrl: "not-a-url" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts null (nullable field)", () => {
+    expect(updateMeProfileSchema.safeParse({ avatarUrl: null }).success).toBe(
+      true,
+    );
+  });
+});
+
+// ─── uploadUrlSchema (via upsertUserDocumentSchema.url) ──────────────────────
+
+describe("uploadUrlSchema", () => {
+  const base = { type: "BIRTH_CERTIFICATE" as const };
+
+  it("accepts private:documents/ prefix", () => {
+    expect(
+      upsertUserDocumentSchema.safeParse({
+        ...base,
+        url: "private:documents/file.pdf",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts /uploads/ prefix", () => {
+    expect(
+      upsertUserDocumentSchema.safeParse({ ...base, url: "/uploads/file.pdf" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts a valid https URL", () => {
+    expect(
+      upsertUserDocumentSchema.safeParse({
+        ...base,
+        url: "https://s3.example.com/doc.pdf",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an invalid string", () => {
+    const result = upsertUserDocumentSchema.safeParse({
+      ...base,
+      url: "bad-url",
+    });
+    expect(result.success).toBe(false);
   });
 });

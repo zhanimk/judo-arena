@@ -77,7 +77,7 @@ export async function listMatches(query: {
   limit: number;
   offset: number;
 }) {
-  const where: any = {};
+  const where: Prisma.MatchWhereInput = {};
   if (query.tournamentId) where.tournamentId = query.tournamentId;
   if (query.bracketId) where.bracketId = query.bracketId;
   if (query.athleteId) {

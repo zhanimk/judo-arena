@@ -74,7 +74,7 @@ export function Avatar({
       alt: alt ?? name ?? "",
       width: size,
       height: size,
-      loading: fetchpriority === "high" ? "eager" : "lazy",
+      loading: "eager",
       decoding: "async",
       fetchPriority: fetchpriority,
       onError: () => setImgError(true),

@@ -6,7 +6,7 @@
 import { initSentry, Sentry } from "./lib/sentry.js";
 initSentry();
 
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -40,9 +40,24 @@ import {
 } from "./routes/admin.routes.js";
 import { notificationRoutes } from "./routes/notification.routes.js";
 import { uploadRoutes } from "./routes/upload.routes.js";
+import { paymentRoutes } from "./routes/payment.routes.js";
 import { attachSocketIO } from "./sockets/io.js";
 import { restoreActiveTimers } from "./services/osaekomi-timer.service.js";
+import { restoreGoldenScoreTimers } from "./services/golden-score-timer.service.js";
 import { verifySmtpConnection } from "./services/email.service.js";
+import {
+  runBackupSafe,
+  startBackupScheduler,
+} from "./services/backup.service.js";
+import { startPendingResultCleanup } from "./services/pending-result-cleanup.service.js";
+import { startAuditArchival } from "./services/audit-archival.service.js";
+import { env as appEnv } from "./lib/env.js";
+import {
+  savePushSubscription,
+  removePushSubscription,
+} from "./services/push.service.js";
+import { authenticate } from "./middlewares/authenticate.js";
+import { issueCsrfToken } from "./middlewares/csrf.js";
 
 async function buildServer() {
   const app = Fastify({
@@ -109,9 +124,12 @@ async function buildServer() {
         scope.setExtra("method", req.method);
         scope.setExtra("ip", req.ip);
         // Attach authenticated user if available
-        const user = (req as any).user;
-        if (user?.sub) {
-          scope.setUser({ id: user.sub, email: user.email, role: user.role });
+        if (req.user?.sub) {
+          scope.setUser({
+            id: req.user.sub,
+            email: req.user.email,
+            role: req.user.role,
+          });
         }
         Sentry.captureException(error);
       });
@@ -121,14 +139,37 @@ async function buildServer() {
 
   // Attach Fastify instrumentation for automatic transaction/performance tracking
   if (env.SENTRY_DSN) {
-    Sentry.setupFastifyErrorHandler(app as any);
+    // FastifyInstance совместим с типом Sentry ожидает — приведение необходимо из-за upstream типов
+    Sentry.setupFastifyErrorHandler(
+      app as Parameters<typeof Sentry.setupFastifyErrorHandler>[0],
+    );
   }
 
-  // Безопасность
+  // Безопасность — HTTP Security Headers
   await app.register(helmet, {
-    contentSecurityPolicy: false, // API-only — no HTML served
-    crossOriginEmbedderPolicy: false, // allow embedding from trusted origins
-    referrerPolicy: { policy: "no-referrer" },
+    // CSP отключён для API-роутов (/api/*): они отдают JSON, не HTML.
+    // Swagger UI имеет собственный CSP через @fastify/swagger-ui.
+    // Если добавить SSR в будущем — включить CSP здесь с nonce.
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false, // разрешает embedding с доверенных origins
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    // HSTS: принудительный HTTPS на 1 год (includeSubDomains + preload)
+    strictTransportSecurity:
+      env.NODE_ENV === "production"
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
+    // X-Content-Type-Options: nosniff — предотвращает MIME-sniffing
+    // X-Frame-Options: DENY — предотвращает clickjacking
+    // X-XSS-Protection: 0 — современные браузеры не используют (может создавать уязвимости)
+    // Все эти заголовки включены helmet по умолчанию.
+  });
+
+  // Дополнительный заголовок: Permissions-Policy (ограничивает API браузера)
+  app.addHook("onSend", async (_req, reply) => {
+    reply.header(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=(), payment=()",
+    );
   });
   await app.register(cookie, { secret: env.JWT_ACCESS_SECRET });
   // CORS: dev — любой localhost; prod — белый список из CORS_ORIGIN
@@ -149,6 +190,10 @@ async function buildServer() {
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
+    // Authenticated requests are keyed by userId — prevents compromised accounts
+    // from bypassing IP-based limits by rotating proxies.
+    keyGenerator: (req) =>
+      (req as typeof req & { user?: { sub: string } }).user?.sub ?? req.ip,
   });
   await app.register(multipart, {
     limits: {
@@ -157,8 +202,18 @@ async function buildServer() {
   });
   if (!env.S3_BUCKET) {
     await app.register(fastifyStatic, {
-      root: path.resolve(env.UPLOADS_DIR),
-      prefix: "/uploads/",
+      root: path.resolve(env.UPLOADS_DIR, "images"),
+      prefix: "/uploads/images/",
+      decorateReply: false,
+    });
+    await app.register(fastifyStatic, {
+      root: path.resolve(env.UPLOADS_DIR, "avatars"),
+      prefix: "/uploads/avatars/",
+      decorateReply: false,
+    });
+    await app.register(fastifyStatic, {
+      root: path.resolve(env.UPLOADS_DIR, "documents"),
+      prefix: "/uploads/documents/",
       decorateReply: false,
     });
   }
@@ -193,23 +248,84 @@ async function buildServer() {
   // Health-check — используется E2E тестами, мониторингом и Render health checks
   const START_TIME = Date.now();
   app.get("/health", async (_req, reply) => {
-    const [dbOk, redisOk] = await Promise.all([
-      prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
-      redis
-        .ping()
-        .then((r) => r === "PONG")
-        .catch(() => false),
+    const TIMEOUT = 3000; // 3 сек на каждую проверку
+
+    const withTimeout = <T>(p: Promise<T>, fallback: T): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((res) => setTimeout(() => res(fallback), TIMEOUT)),
+      ]);
+
+    // Проверяем S3 наличием bucket (только если настроен)
+    const checkS3 = async (): Promise<"ok" | "not_configured" | "error"> => {
+      const buckets = [
+        ...new Set([env.S3_BUCKET, env.S3_PRIVATE_BUCKET].filter(Boolean)),
+      ] as string[];
+      if (buckets.length === 0) return "not_configured";
+      try {
+        const { S3Client, HeadBucketCommand } =
+          await import("@aws-sdk/client-s3");
+        const s3 = new S3Client({
+          region: env.AWS_DEFAULT_REGION,
+          endpoint: env.S3_ENDPOINT,
+          forcePathStyle: Boolean(env.S3_ENDPOINT),
+          credentials: env.AWS_ACCESS_KEY_ID
+            ? {
+                accessKeyId: env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: env.AWS_SECRET_ACCESS_KEY ?? "",
+              }
+            : undefined,
+        });
+        await Promise.all(
+          buckets.map((bucket) =>
+            s3.send(new HeadBucketCommand({ Bucket: bucket })),
+          ),
+        );
+        return "ok";
+      } catch {
+        return "error";
+      }
+    };
+
+    // Проверяем email (только валидность конфигурации, не отправляем)
+    const checkEmail = (): "resend" | "smtp" | "not_configured" => {
+      if (env.RESEND_API_KEY) return "resend";
+      if (env.SMTP_HOST && env.SMTP_HOST !== "localhost") return "smtp";
+      return "not_configured";
+    };
+
+    const [dbOk, redisOk, s3Status] = await Promise.all([
+      withTimeout(
+        prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
+        false,
+      ),
+      withTimeout(
+        redis
+          .ping()
+          .then((r) => r === "PONG")
+          .catch(() => false),
+        false,
+      ),
+      withTimeout(checkS3(), "error" as const),
     ]);
-    const status = dbOk && redisOk ? "ok" : "degraded";
-    if (status === "degraded") reply.code(503);
+
+    const emailStatus = checkEmail();
+    const coreOk = dbOk && redisOk;
+    const status = coreOk ? "ok" : "degraded";
+    if (!coreOk) reply.code(503);
+
     return {
       status,
       service: "judo-arena-api",
       version: env.APP_VERSION ?? "0.1.0",
       timestamp: new Date().toISOString(),
       uptimeSec: Math.floor((Date.now() - START_TIME) / 1000),
-      db: dbOk ? "connected" : "disconnected",
-      redis: redisOk ? "connected" : "disconnected",
+      checks: {
+        db: dbOk ? "ok" : "error",
+        redis: redisOk ? "ok" : "error",
+        s3: s3Status,
+        email: emailStatus,
+      },
     };
   });
 
@@ -219,6 +335,45 @@ async function buildServer() {
     docs: env.NODE_ENV !== "production" ? "/docs" : undefined,
     health: "/health",
   }));
+
+  app.post(
+    "/api/system/backup",
+    {
+      config: { rateLimit: { max: 3, timeWindow: "1 hour" } },
+    },
+    async (request, reply) => {
+      if (!env.BACKUP_TRIGGER_SECRET) {
+        return reply.code(503).send({ error: "BACKUP_TRIGGER_NOT_CONFIGURED" });
+      }
+
+      const supplied = request.headers["x-backup-secret"];
+      if (
+        typeof supplied !== "string" ||
+        !secretsEqual(supplied, env.BACKUP_TRIGGER_SECRET)
+      ) {
+        return reply.code(401).send({ error: "UNAUTHORIZED" });
+      }
+
+      const result = await runBackupSafe((message) =>
+        request.log.error(message),
+      );
+      if (!result) {
+        return reply.code(500).send({ error: "BACKUP_FAILED" });
+      }
+      return reply.send(result);
+    },
+  );
+
+  // CSRF token endpoint — клиент вызывает при загрузке приложения
+  // и сохраняет токен для отправки в заголовке x-csrf-token
+  app.get(
+    "/api/auth/csrf-token",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    async (_req, reply) => {
+      const token = issueCsrfToken(reply);
+      return { csrfToken: token };
+    },
+  );
 
   // ---- API routes ----
   await app.register(authRoutes, { prefix: "/api/auth" });
@@ -238,8 +393,50 @@ async function buildServer() {
   await app.register(pdfRoutes, { prefix: "/api/pdf" });
   await app.register(notificationRoutes, { prefix: "/api/notifications" });
   await app.register(uploadRoutes, { prefix: "/api/upload" });
+  await app.register(paymentRoutes, { prefix: "/api/payments" });
 
-  // ---- Socket.IO ----
+  // ─── Web Push endpoints (must be registered before app.ready()) ──────────
+  app.get("/push/vapid-public-key", async (_req, reply) => {
+    if (!appEnv.VAPID_PUBLIC_KEY) {
+      return reply.code(503).send({ error: "PUSH_NOT_CONFIGURED" });
+    }
+    return reply.send({ publicKey: appEnv.VAPID_PUBLIC_KEY });
+  });
+
+  app.post(
+    "/push/subscribe",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const { z } = await import("zod");
+      const schema = z.object({
+        endpoint: z.string().url(),
+        keys: z.object({ p256dh: z.string(), auth: z.string() }),
+      });
+      const sub = schema.parse(request.body);
+      const ua = request.headers["user-agent"] ?? undefined;
+      await savePushSubscription(
+        request.user!.sub,
+        sub,
+        typeof ua === "string" ? ua : undefined,
+      );
+      return reply.code(201).send({ ok: true });
+    },
+  );
+
+  app.delete(
+    "/push/subscribe",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const { z } = await import("zod");
+      const { endpoint } = z
+        .object({ endpoint: z.string() })
+        .parse(request.body);
+      await removePushSubscription(request.user!.sub, endpoint);
+      return reply.code(204).send();
+    },
+  );
+
+  // ---- Socket.IO (app.ready() finalises route registration) ----
   await app.ready();
   await attachSocketIO(app);
 
@@ -248,8 +445,22 @@ async function buildServer() {
     app.log.error(err, "Failed to restore osaekomi timers"),
   );
 
+  // Восстановить golden score таймеры после рестарта
+  restoreGoldenScoreTimers().catch((err) =>
+    app.log.error(err, "Failed to restore golden score timers"),
+  );
+
   // Проверить SMTP доступность (не блокирует старт)
   verifySmtpConnection().catch(() => {});
+
+  // Запустить планировщик резервного копирования (только если S3 настроен)
+  startBackupScheduler((msg) => app.log.info(msg));
+
+  // Автоматически отменять "зависшие" pending results старше 72 часов
+  startPendingResultCleanup((msg) => app.log.info(msg));
+
+  // Ежесуточная очистка старых audit logs (по умолчанию старше 90 дней)
+  startAuditArchival((msg) => app.log.info(msg));
 
   // Graceful shutdown
   const close = async () => {
@@ -263,6 +474,15 @@ async function buildServer() {
   process.on("SIGTERM", close);
 
   return app;
+}
+
+function secretsEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
 }
 
 // Catch any synchronous throw or unhandled promise rejection that escapes

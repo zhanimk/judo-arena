@@ -121,8 +121,8 @@ export function categoryTitle(c: any, t?: any): string {
   const gender = c.gender === "MALE"
     ? (t ? t("common.male") : "M")
     : (t ? t("tatami.female_short") : "F");
-  const kg = t ? t("common.kg") : "kg";
-  return `${gender} ${c.ageMin}-${c.ageMax} ${t ? t("common.years_short") : "yrs"} ${c.weightMin}-${c.weightMax} ${kg}`;
+  const weightPart = weightLabel(c, t);
+  return `${gender} ${c.ageMin}-${c.ageMax} ${t ? t("common.years_short") : "yrs"} ${weightPart}`;
 }
 
 export function validateApplicationEntry(entry: any, t?: any): string[] {
@@ -143,10 +143,19 @@ export function validateApplicationEntry(entry: any, t?: any): string[] {
   }
 
   const weight = Number(athlete.weightKg);
+  const wMax = Number(category.weightMax);
+  const wMin = Number(category.weightMin);
+  // weightMax=999 означает открытую категорию (+): нижняя граница не ограничена сверху
+  const isOpenCategory = wMax >= 999;
   if (!Number.isFinite(weight)) {
     issues.push(t ? t("validate.no_weight") : "no weight");
-  } else if (weight <= Number(category.weightMin) || weight > Number(category.weightMax)) {
-    issues.push(t ? `${t("validate.weight")} ${weight} ${t("common.kg")}, ${t("validate.need")} (${category.weightMin}, ${category.weightMax}]` : `weight ${weight} kg, need (${category.weightMin}, ${category.weightMax}]`);
+  } else if (weight <= wMin || (!isOpenCategory && weight > wMax)) {
+    const rangeLabel = isOpenCategory
+      ? `>${wMin} ${t ? t("common.kg") : "kg"}`
+      : `(${wMin}, ${wMax}] ${t ? t("common.kg") : "kg"}`;
+    issues.push(t
+      ? `${t("validate.weight")} ${weight} ${t("common.kg")}, ${t("validate.need")} ${rangeLabel}`
+      : `weight ${weight} kg, need ${rangeLabel}`);
   }
 
   return issues;
@@ -187,6 +196,12 @@ export function toDateTimeLocal(value: string): string {
 }
 
 export function mapEmbedUrl(tourney: any): string {
+  const coordinates = String(tourney.mapUrl ?? "").match(
+    /(?:[?&](?:q|query)=|@)(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/,
+  );
+  if (coordinates) {
+    return `https://maps.google.com/maps?q=${coordinates[1]},${coordinates[2]}&z=16&output=embed`;
+  }
   const query = `${tourney.location}, ${tourney.city}`;
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }

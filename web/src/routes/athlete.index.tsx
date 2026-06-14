@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -10,6 +11,7 @@ import {
 import { Loader2, Trophy, Swords, Weight, Star, TrendingUp, Calendar } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Match, RatingEntry } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
@@ -19,6 +21,7 @@ type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 export const Route = createFileRoute("/athlete/")({
   head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
       <AthleteOverview />
@@ -180,15 +183,15 @@ function AthleteOverview() {
     );
 
   const myTournamentsCount = new Set(
-    (matchesQuery.data ?? []).filter((m: any) => m.tournamentId).map((m: any) => m.tournamentId),
+    (matchesQuery.data ?? []).filter((m: Match) => m.tournamentId).map((m: Match) => m.tournamentId),
   ).size;
   const totalMatches = matchesQuery.data?.length ?? 0;
-  const wins = (matchesQuery.data ?? []).filter((m: any) => m.winnerId === athleteId).length;
+  const wins = (matchesQuery.data ?? []).filter((m: Match) => m.winnerId === athleteId).length;
   const losses = (matchesQuery.data ?? []).filter(
-    (m: any) => m.winnerId && m.winnerId !== athleteId,
+    (m: Match) => m.winnerId && m.winnerId !== athleteId,
   ).length;
-  const goldCount = (ratingQuery.data?.entries ?? []).filter((e: any) => e.place === 1).length;
-  const totalMedals = (ratingQuery.data?.entries ?? []).filter((e: any) => e.place <= 3).length;
+  const goldCount = (ratingQuery.data?.entries ?? []).filter((e: RatingEntry) => e.place === 1).length;
+  const totalMedals = (ratingQuery.data?.entries ?? []).filter((e: RatingEntry) => (e.place ?? 99) <= 3).length;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const fullName = `${user.name} ${user.surname}`;
   const belt = normalizeBelt(user.beltRank) || "6 КЮ";
@@ -395,7 +398,7 @@ function AthleteOverview() {
             />
           ) : (
             <ul className="space-y-2 text-sm">
-              {(ratingQuery.data?.entries ?? []).slice(0, 5).map((e: any, i: number) => (
+              {(ratingQuery.data?.entries ?? []).slice(0, 5).map((e: RatingEntry, i: number) => (
                 <li key={i} className="flex items-center gap-3 glass rounded-lg p-3">
                   <span
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
@@ -437,7 +440,7 @@ function AthleteOverview() {
             />
           ) : (
             <ul className="space-y-2 text-sm">
-              {(matchesQuery.data ?? []).slice(0, 5).map((m: any) => {
+              {(matchesQuery.data ?? []).slice(0, 5).map((m: Match) => {
                 const opp = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
                 const won = m.winnerId === athleteId;
                 const oppName = opp ? `${opp.name} ${opp.surname}` : "TBD";
@@ -509,13 +512,13 @@ function normalizeBelt(raw?: string | null): string {
   );
 }
 
-function localizeName(n: any): string | null {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string | null {
   if (!n) return null;
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || null;
 }
 
-function placeLabel(p: number, t: (key: string, opts?: any) => string): string {
+function placeLabel(p: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   if (p === 1) return t("rankings.place_gold");
   if (p === 2) return t("rankings.place_silver");
   if (p === 3) return t("rankings.place_bronze");

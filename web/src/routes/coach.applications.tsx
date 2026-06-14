@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardShell, Panel, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { AlertTriangle, CheckCircle2, Clock3, Plus } from "lucide-react";
@@ -5,11 +6,13 @@ import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Application, Notification } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/applications")({
   head: () => ({ meta: [{ title: "Өтінімдер — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachApplicationsRoute />
@@ -50,27 +53,27 @@ function CoachApplications() {
     },
   });
 
-  const apps = (appsQuery.data ?? []).map((a: any) => ({
+  const apps = (appsQuery.data ?? []).map((a: Application) => ({
     ...a,
     tournamentName: localizeName(a.tournament?.name),
   }));
   const filteredApps = useMemo(() => {
     if (statusFilter === "ALL") return apps;
-    return apps.filter((a: any) => a.status === statusFilter);
+    return apps.filter((a: Application) => a.status === statusFilter);
   }, [apps, statusFilter]);
   const applicationNotifications = useMemo(
-    () => (notificationsQuery.data ?? []).filter((n: any) => String(n.type).startsWith("application_")),
+    () => (notificationsQuery.data ?? []).filter((n: Notification) => String(n.type).startsWith("application_")),
     [notificationsQuery.data],
   );
-  const rejected = apps.filter((a: any) => a.status === "REJECTED").length;
-  const pending = apps.filter((a: any) => a.status === "SUBMITTED").length;
-  const approved = apps.filter((a: any) => a.status === "APPROVED").length;
+  const rejected = apps.filter((a: Application) => a.status === "REJECTED").length;
+  const pending = apps.filter((a: Application) => a.status === "SUBMITTED").length;
+  const approved = apps.filter((a: Application) => a.status === "APPROVED").length;
 
   return (
     <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={t("coach.applications_page_title")}>
       {applicationNotifications.length > 0 && (
         <div className="mb-6 grid gap-3">
-          {applicationNotifications.slice(0, 3).map((n: any) => (
+          {applicationNotifications.slice(0, 3).map((n: Notification) => (
             <div
               key={n.id}
               className={`rounded-md border p-4 text-sm ${
@@ -89,7 +92,7 @@ function CoachApplications() {
                   <div className="mt-2 text-[11px] text-muted-foreground">{new Date(n.createdAt).toLocaleString("kk-KZ")}</div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {n.payload?.applicationId && (
+                  {typeof n.payload?.applicationId === "string" && (
                     <Link
                       to="/coach/applications/$id"
                       params={{ id: n.payload.applicationId }}
@@ -151,7 +154,7 @@ function CoachApplications() {
             <EmptyState title={t("applications.no_applications")} hint={t("coach.apply_hint")} />
           ) : (
             <ul className="space-y-3 text-sm">
-              {filteredApps.map((a: any) => (
+              {filteredApps.map((a: Application) => (
                 <li key={a.id}>
                   <Link
                     to="/coach/applications/$id"
@@ -184,7 +187,7 @@ function CoachApplications() {
   );
 }
 
-function MiniStat({ icon: Icon, label, value, ok, danger }: { icon: any; label: string; value: number; ok?: boolean; danger?: boolean }) {
+function MiniStat({ icon: Icon, label, value, ok, danger }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; ok?: boolean; danger?: boolean }) {
   return (
     <div className="glass rounded-xl p-4">
       <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
@@ -209,4 +212,4 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-[10px] px-2 py-0.5 rounded-full ${cls} shrink-0`}>{String(t(`status.${status}`, status))}</span>;
 }
 
-function localizeName(n: any): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string { if (!n) return "—"; if (typeof n === "string") return n; return n.kk || n.ru || n.en || "—"; }

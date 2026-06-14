@@ -12,6 +12,7 @@
 
 import type { FastifyInstance } from "fastify";
 import { ZodError } from "zod";
+import { Sentry } from "./sentry.js";
 
 /** Любая доменная ошибка с httpStatus + code */
 interface DomainError extends Error {
@@ -74,6 +75,7 @@ export function attachErrorHandler(app: FastifyInstance): void {
 
     // Unexpected errors
     app.log.error(err);
+    Sentry.captureException(err);
     return reply
       .code(500)
       .send({ error: "INTERNAL_ERROR", message: "Внутренняя ошибка сервера" });

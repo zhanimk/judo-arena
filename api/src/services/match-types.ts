@@ -5,7 +5,7 @@
  * можно использовать в тестах без side-effects.
  */
 
-import { MatchEventType } from "@prisma/client";
+import { Prisma, MatchEventType } from "@prisma/client";
 
 // ============================================================
 // ОШИБКА ДОМЕННОГО СЛОЯ
@@ -57,6 +57,8 @@ export interface ScoreSnapshot {
     reason: string;
     triggeredBy: string;
     createdAt: string;
+    /** Алиас createdAt для cleanup-сервиса (ISO string). */
+    proposedAt?: string;
   } | null;
 }
 
@@ -84,6 +86,17 @@ export const UNDOABLE_TYPES = [
 // ============================================================
 // PURE HELPERS — не имеют side effects, легко тестируются
 // ============================================================
+
+/**
+ * Приводит ScoreSnapshot к типу, совместимому с Prisma JSON-полем.
+ * Используется вместо `score as any` во всех match-сервисах.
+ */
+export function scoreToJson(score: ScoreSnapshot): Prisma.InputJsonValue {
+  return score as unknown as Prisma.InputJsonValue;
+}
+
+/** BYE-матч: пустой scoreSnapshot для автозавершённых BYE-матчей. */
+export const BYE_SNAPSHOT: Prisma.InputJsonValue = { bye: true } as Prisma.InputJsonValue;
 
 export function emptyScore(): ScoreSnapshot {
   return {
@@ -147,12 +160,14 @@ export function markPendingResult(
 ): ScoreSnapshot {
   stopClock(score);
   score.osaekomi = null;
+  const now = new Date().toISOString();
   score.pendingResult = {
     winnerSide,
     winnerId,
     reason,
     triggeredBy,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    proposedAt: now,
   };
   return score;
 }

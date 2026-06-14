@@ -143,7 +143,7 @@ export async function generateTournamentProtocolPdf(
 
       for (const e of entries) {
         const medal = placeEmoji(e.place);
-        const athleteName = pdfAthleteFullDisplayName(e.athlete);
+        const athleteName = pdfAthleteFullDisplayName(e.athlete as Parameters<typeof pdfAthleteFullDisplayName>[0]);
         const club = e.athlete.club
           ? localize(e.athlete.club.name, locale)
           : "—";
@@ -199,7 +199,7 @@ export async function generateTournamentProtocolPdf(
         drawBracketOnePage(
           doc,
           fonts,
-          bracketWithTournament,
+          bracketWithTournament as Parameters<typeof drawBracketOnePage>[2],
           locale,
           bracket.format === BracketFormat.ROUND_ROBIN,
         );

@@ -1,0 +1,42 @@
+name: Production DB Backup
+
+on:
+  # Render cron job is the primary scheduler. This workflow is a manual fallback.
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Причина ручного запуска"
+        required: false
+        default: "Manual backup"
+
+jobs:
+  backup:
+    name: Trigger Backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger backup via API
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          BACKUP_TRIGGER_SECRET: ${{ secrets.BACKUP_TRIGGER_SECRET }}
+        run: |
+          test -n "$API_URL"
+          test -n "$BACKUP_TRIGGER_SECRET"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "X-Backup-Secret: $BACKUP_TRIGGER_SECRET" \
+            "$API_URL/api/system/backup")
+
+          echo "HTTP status: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "::error::Backup trigger failed with HTTP $RESPONSE"
+            exit 1
+          fi
+          echo "Backup triggered successfully"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Backup failed! Check Render logs at https://dashboard.render.com"
+          # Здесь можно добавить Slack/Telegram уведомление

@@ -5,9 +5,9 @@
 
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import kkCommon from "../../public/locales/kk/common.json";
-import ruCommon from "../../public/locales/ru/common.json";
-import enCommon from "../../public/locales/en/common.json";
+import kkCommon from "../locales/kk/common.json";
+import ruCommon from "../locales/ru/common.json";
+import enCommon from "../locales/en/common.json";
 
 export type Locale = "kk" | "ru" | "en";
 

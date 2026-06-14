@@ -64,3 +64,4 @@ backups/*.dump
 postgres-data/
 redis-data/
 .vercel
+api/openapi.json

@@ -3,6 +3,8 @@
  * Можно добавлять/удалять спортсменов в категории и отправлять заявку.
  */
 
+import React from "react";
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -34,6 +36,7 @@ import {
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type { Application, ApplicationEntry, Category, User, Match } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
@@ -41,6 +44,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/applications/$id")({
   head: () => ({ meta: [{ title: "Өтінім — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <ApplicationDetail />
@@ -95,7 +99,7 @@ function ApplicationDetail() {
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setAdding(null),
   });
 
@@ -104,17 +108,17 @@ function ApplicationDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const payKaspi = useMutation({
     mutationFn: () => api.applications.payKaspi(id),
-    onSuccess: (updated: any) => {
+    onSuccess: (updated: Application) => {
       qc.invalidateQueries({ queryKey: ["application", id] });
       if (updated?.paymentUrl) {
         window.location.assign(updated.paymentUrl);
       }
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const removeEntry = useMutation({
     mutationFn: (entryId: string) => api.applications.removeEntry(id, entryId),
@@ -123,13 +127,13 @@ function ApplicationDetail() {
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setRemoving(null),
   });
   const withdraw = useMutation({
     mutationFn: () => api.applications.withdraw(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["application", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const moveEntry = useMutation({
     mutationFn: async ({
@@ -152,7 +156,7 @@ function ApplicationDetail() {
       qc.invalidateQueries({ queryKey: ["application", id] });
       setShowMoveFor(null);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setMovingEntry(null),
   });
 
@@ -187,7 +191,7 @@ function ApplicationDetail() {
   const paymentPaid =
     !paymentRequired ||
     (app.paymentStatus === "PAID" && Number(app.paymentAmountKzt ?? 0) >= paymentTotalKzt);
-  const rosterIds = new Set((app.entries ?? []).map((e: any) => e.athleteId));
+  const rosterIds = new Set((app.entries ?? []).map((e: ApplicationEntry) => e.athleteId));
   const deadline = app.tournament?.applicationDeadline ?? app.tournament?.startDate;
   const deadlinePassed = deadline ? new Date(deadline).getTime() < Date.now() : false;
   const canEditRoster = canManageApplication && isEditable && !deadlinePassed;
@@ -195,15 +199,15 @@ function ApplicationDetail() {
   const filteredAthletes = (() => {
     const search = athleteSearch.trim().toLowerCase();
     return (membersQuery.data ?? [])
-      .filter((athlete: any) => {
+      .filter((athlete: User) => {
         const fullName = `${athlete.name ?? ""} ${athlete.surname ?? ""}`.toLowerCase();
         if (search && !fullName.includes(search)) return false;
         if (genderFilter !== "ALL" && athlete.gender !== genderFilter) return false;
         const relevantCategories =
           categoryFilter === "ALL"
             ? categories
-            : categories.filter((category: any) => category.id === categoryFilter);
-        const hasMatch = relevantCategories.some((category: any) =>
+            : categories.filter((category: Category) => category.id === categoryFilter);
+        const hasMatch = relevantCategories.some((category: Category) =>
           fitsCategory(athlete, category),
         );
         if (onlyEligible && !hasMatch) return false;
@@ -212,7 +216,7 @@ function ApplicationDetail() {
       .sort(sortAthletesByAgeWeightName);
   })();
   const clubMatches = (matchesQuery.data ?? []).filter(
-    (m: any) =>
+    (m: Match) =>
       (m.redAthlete?.id && rosterIds.has(m.redAthlete.id)) ||
       (m.blueAthlete?.id && rosterIds.has(m.blueAthlete.id)),
   );
@@ -377,9 +381,11 @@ function ApplicationDetail() {
         {/* Текущие entries */}
         {entriesCount > 0 && (
           <div className="space-y-2 mb-6">
-            {app.entries.map((e: any) => {
+            {(app.entries ?? []).map((e: ApplicationEntry) => {
+              if (!e.athlete) return null;
+              const athlete = e.athlete;
               const moveCategories = categories.filter(
-                (c: any) => c.id !== e.category?.id && fitsCategory(e.athlete, c),
+                (c: Category) => c.id !== e.category?.id && fitsCategory(athlete, c),
               );
               return (
                 <div key={e.id} className="glass rounded-md p-3">
@@ -441,13 +447,13 @@ function ApplicationDetail() {
                         {t("applications.move_to_category")}:
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {moveCategories.map((c: any) => (
+                        {moveCategories.map((c: Category) => (
                           <button
                             key={c.id}
                             onClick={() =>
                               moveEntry.mutate({
                                 entryId: e.id,
-                                athleteId: e.athlete.id,
+                                athleteId: athlete.id,
                                 newCategoryId: c.id,
                               })
                             }
@@ -508,7 +514,7 @@ function ApplicationDetail() {
                 className="rounded-md border border-border bg-background/70 px-3 py-2 text-sm outline-none focus:border-gold/60"
               >
                 <option value="ALL">{t("applications.all_categories")}</option>
-                {categories.map((category: any) => (
+                {categories.map((category: Category) => (
                   <option key={category.id} value={category.id}>
                     {categoryLabel(category, t)}
                   </option>
@@ -534,15 +540,15 @@ function ApplicationDetail() {
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredAthletes.map((athlete: any) => {
-                  const alreadyIn = app.entries.some((e: any) => e.athleteId === athlete.id);
+                {filteredAthletes.map((athlete: User) => {
+                  const alreadyIn = (app.entries ?? []).some((e: ApplicationEntry) => e.athleteId === athlete.id);
                   const relevantCategories =
                     categoryFilter === "ALL"
                       ? categoriesQuery.data!
                       : categoriesQuery.data!.filter(
-                          (category: any) => category.id === categoryFilter,
+                          (category: Category) => category.id === categoryFilter,
                         );
-                  const matching = relevantCategories.filter((c: any) => fitsCategory(athlete, c));
+                  const matching = relevantCategories.filter((c: Category) => fitsCategory(athlete, c));
                   const issues = athleteEligibilityIssues(athlete, relevantCategories, t);
 
                   return (
@@ -567,7 +573,7 @@ function ApplicationDetail() {
                         </div>
                       ) : matching.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {matching.map((c: any) => (
+                          {matching.map((c: Category) => (
                             <button
                               key={c.id}
                               type="button"
@@ -690,19 +696,19 @@ function ApplicationDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
-                  {clubMatches.map((m: any) => (
+                  {clubMatches.map((m: Match) => (
                     <tr key={m.id} className="hover:bg-gold/5">
                       <td className="py-2.5">{m.tatamiNumber ?? "—"}</td>
                       <td className="text-xs text-muted-foreground">
                         {m.bracketSection ?? "main"} · {m.round}
                       </td>
                       <td
-                        className={rosterIds.has(m.redAthlete?.id) ? "font-medium text-gold" : ""}
+                        className={rosterIds.has(m.redAthlete?.id ?? "") ? "font-medium text-gold" : ""}
                       >
                         {athleteName(m.redAthlete)}
                       </td>
                       <td
-                        className={rosterIds.has(m.blueAthlete?.id) ? "font-medium text-gold" : ""}
+                        className={rosterIds.has(m.blueAthlete?.id ?? "") ? "font-medium text-gold" : ""}
                       >
                         {athleteName(m.blueAthlete)}
                       </td>
@@ -721,7 +727,7 @@ function ApplicationDetail() {
   );
 }
 
-function PaymentSummary({ app, entriesCount }: { app: any; entriesCount: number }) {
+function PaymentSummary({ app, entriesCount }: { app: Application; entriesCount: number }) {
   const { t } = useTranslation();
   const fee = Number(app.tournament?.entryFeeKzt ?? 0);
   const expectedTotal = fee * entriesCount;
@@ -785,7 +791,7 @@ function PaymentSummary({ app, entriesCount }: { app: any; entriesCount: number 
   );
 }
 
-function PaymentDraftSummary({ app, entriesCount }: { app: any; entriesCount: number }) {
+function PaymentDraftSummary({ app, entriesCount }: { app: Application; entriesCount: number }) {
   const { t } = useTranslation();
   const fee = Number(app.tournament?.entryFeeKzt ?? 0);
   if (fee <= 0) return null;
@@ -821,7 +827,7 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
     staleTime: 30_000,
   });
 
-  const actionMeta: Record<string, { label: string; icon: any; color: string }> = {
+  const actionMeta: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
     "application.submit": {
       label: t("status.SUBMITTED"),
       icon: Send,
@@ -857,14 +863,14 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
         <EmptyState title={t("applications.no_history")} hint={t("applications.no_history_hint")} />
       ) : (
         <ol className="relative border-l border-border/40 ml-3 space-y-4">
-          {items.map((log: any) => {
+          {items.map((log: import("@/lib/api-types").AuditLog) => {
             const meta = actionMeta[log.action] ?? {
               label: log.action,
               icon: Clock3,
               color: "text-muted-foreground border-border bg-muted/20",
             };
             const Icon = meta.icon;
-            const notes = (log.after as any)?.reviewerNotes;
+            const notes = (log.after as Record<string, unknown>)?.reviewerNotes as string | undefined;
             const actor = log.actor;
             return (
               <li key={log.id} className="ml-5">
@@ -903,7 +909,7 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
     <div className="rounded-md border border-border/50 bg-background/30 p-3">
       <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
@@ -949,12 +955,13 @@ function statusClass(status: string): string {
   return m[status] ?? "bg-muted text-muted-foreground";
 }
 
-function athleteName(a: any): string {
+function athleteName(a: User | null | undefined): string {
   if (!a) return "—";
   return `${a.name ?? ""} ${a.surname ?? ""}`.trim() || "—";
 }
 
-function fitsCategory(athlete: any, category: any): boolean {
+function fitsCategory(athlete: User | null | undefined, category: Category): boolean {
+  if (!athlete) return false;
   if (athlete.gender !== category.gender) return false;
   if (!athlete.weightKg) return false;
   if (!athlete.dateOfBirth) return false;
@@ -967,25 +974,25 @@ function fitsCategory(athlete: any, category: any): boolean {
   );
 }
 
-function athleteEligibilityIssues(athlete: any, categories: any[], t: any): string[] {
+function athleteEligibilityIssues(athlete: User, categories: Category[], t: (k: string, opts?: Record<string, unknown>) => string): string[] {
   const issues: string[] = [];
   if (!athlete.gender) issues.push(t("coach.mismatch_no_gender"));
   if (!athlete.dateOfBirth) issues.push(t("coach.mismatch_no_dob"));
   if (!athlete.weightKg) issues.push(t("coach.mismatch_no_weight"));
   if (issues.length > 0) return issues;
 
-  const sameGender = categories.filter((category: any) => category.gender === athlete.gender);
+  const sameGender = categories.filter((category: Category) => category.gender === athlete.gender);
   if (sameGender.length === 0) return [t("applications.no_gender_category")];
 
-  const age = getAge(athlete.dateOfBirth);
+  const age = getAge(athlete.dateOfBirth!);
   const ageMatches = sameGender.filter(
-    (category: any) => age >= category.ageMin && age <= category.ageMax,
+    (category: Category) => age >= category.ageMin && age <= category.ageMax,
   );
   if (ageMatches.length === 0) return [t("applications.age_mismatch", { age })];
 
   const weightMatches = ageMatches.filter(
-    (category: any) =>
-      athlete.weightKg > category.weightMin && athlete.weightKg <= category.weightMax,
+    (category: Category) =>
+      athlete.weightKg! > category.weightMin && athlete.weightKg! <= category.weightMax,
   );
   if (weightMatches.length === 0)
     return [t("applications.weight_mismatch", { weight: athlete.weightKg })];
@@ -993,7 +1000,7 @@ function athleteEligibilityIssues(athlete: any, categories: any[], t: any): stri
   return [t("applications.no_matching_category")];
 }
 
-function athleteMeta(athlete: any, t: any): string {
+function athleteMeta(athlete: User, t: (k: string) => string): string {
   const gender =
     athlete.gender === "MALE"
       ? t("tournament.gender_male_abbr")
@@ -1009,7 +1016,7 @@ function athleteMeta(athlete: any, t: any): string {
   return `${gender} · ${weight} · ${age}`;
 }
 
-function sortAthletesByAgeWeightName(a: any, b: any): number {
+function sortAthletesByAgeWeightName(a: User, b: User): number {
   const ageA = a.dateOfBirth ? getAge(a.dateOfBirth) : Number.MAX_SAFE_INTEGER;
   const ageB = b.dateOfBirth ? getAge(b.dateOfBirth) : Number.MAX_SAFE_INTEGER;
   if (ageA !== ageB) return ageA - ageB;
@@ -1019,7 +1026,7 @@ function sortAthletesByAgeWeightName(a: any, b: any): number {
   return athleteName(a).localeCompare(athleteName(b), "ru");
 }
 
-function categoryLabel(category: any, t: any): string {
+function categoryLabel(category: Category, t: (k: string) => string): string {
   return `${category.gender === "MALE" ? t("tournament.gender_male_abbr") : t("tournament.gender_female_abbr")} ${category.ageMin}-${category.ageMax} ${t("common.years_short")} ${category.weightMin}-${category.weightMax} ${t("common.kg")}`;
 }
 
@@ -1027,7 +1034,7 @@ function getAge(dob: string): number {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000));
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName): string {
   if (!n) return "";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "";

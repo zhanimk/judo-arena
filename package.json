@@ -29,12 +29,16 @@
     "load:api": "node scripts/load-api.mjs",
     "load:socket": "node scripts/load-socket.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:a11y": "playwright test e2e/a11y.test.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
+    "check:bundle": "node scripts/check-bundle-size.mjs",
+    "gen:openapi": "node scripts/generate-openapi.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "*",
     "concurrently": "^8.2.2",
     "husky": "^9.1.7",
@@ -43,7 +47,10 @@
     "wait-on": "^8.0.1"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.22.1"
+  },
+  "overrides": {
+    "shell-quote": "1.8.4"
   },
   "lint-staged": {
     "api/src/**/*.ts": [

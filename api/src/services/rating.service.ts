@@ -701,6 +701,7 @@ export async function getLeaderboard(options: {
       weightKg: true,
       beltRank: true,
       clubId: true,
+      avatarUrl: true,
       club: { select: { id: true, name: true, shortName: true, city: true } },
     },
   });

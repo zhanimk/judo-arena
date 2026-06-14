@@ -1,3 +1,4 @@
+import React from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,6 +16,16 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   DashboardShell,
   EmptyState,
   LoadingState,
@@ -22,18 +33,88 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { api, ApiError } from "@/lib/api";
+import type { Tournament, TatamiSession } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
 import { buildTatamiState, matchOrder } from "@/lib/tatami-state";
 import { useTranslation } from "react-i18next";
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 
-type Match = any;
+// ─── Типы вместо any ──────────────────────────────────────────────────────────
+interface LocalizedName {
+  ru?: string;
+  kk?: string;
+  en?: string;
+}
+
+interface MatchAthlete {
+  id: string;
+  name: string;
+  surname: string;
+  club?: { shortName?: string | null; name?: LocalizedName | string | null } | null;
+}
+
+interface MatchCategory {
+  weightMin: number;
+  weightMax: number;
+  gender?: string;
+  matchDurationSec?: number;
+}
+
+interface MatchBracket {
+  id: string;
+  category?: MatchCategory | null;
+}
+
+interface MatchSideScore {
+  ippon: number;
+  wazaari: number;
+  yuko: number;
+  shido: number;
+  hansoku: boolean;
+}
+
+interface MatchPendingResult {
+  winnerSide: "RED" | "BLUE";
+  winnerId: string;
+  reason: string;
+  proposedAt?: string;
+}
+
+interface MatchScoreSnapshot {
+  red: MatchSideScore;
+  blue: MatchSideScore;
+  pendingResult?: MatchPendingResult | null;
+}
+
+interface Match {
+  id: string;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  round: number;
+  position: number;
+  tatamiNumber?: number | null;
+  queuePosition?: number | null;
+  redAthleteId?: string | null;
+  blueAthleteId?: string | null;
+  redAthlete?: MatchAthlete | null;
+  blueAthlete?: MatchAthlete | null;
+  winnerId?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  version?: number;
+  bracketId: string;
+  bracketSection?: string | null;
+  bracket?: MatchBracket | null;
+  scoreSnapshot?: MatchScoreSnapshot | null;
+  isGoldenScore?: boolean;
+}
 
 export const Route = createFileRoute("/admin/matches")({
   validateSearch: (search: Record<string, unknown>) => ({
     tournamentId: typeof search.tournamentId === "string" ? search.tournamentId : undefined,
   }),
   head: () => ({ meta: [{ title: "Управление матчами — Админ" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminScoreboard />
@@ -65,6 +146,11 @@ export function TournamentScoreboardPanel({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
   const [selectedTournamentId, setSelectedTournamentId] = useState(
     fixedTournamentId ?? initialTournamentId ?? "",
   );
@@ -88,16 +174,16 @@ export function TournamentScoreboardPanel({
   const tournaments = useMemo(() => tournamentsQuery.data?.items ?? [], [tournamentsQuery.data]);
   const defaultTournament = useMemo(() => {
     const byStartDesc = [...tournaments].sort(
-      (a: any, b: any) =>
+      (a: Tournament, b: Tournament) =>
         new Date(b.startDate ?? 0).getTime() - new Date(a.startDate ?? 0).getTime(),
     );
     return (
-      byStartDesc.find((item: any) => item.status === "IN_PROGRESS") ??
-      byStartDesc.find((item: any) => item.status === "REGISTRATION_CLOSED") ??
+      byStartDesc.find((item: Tournament) => item.status === "IN_PROGRESS") ??
+      byStartDesc.find((item: Tournament) => item.status === "REGISTRATION_CLOSED") ??
       byStartDesc[0]
     );
   }, [tournaments]);
-  const selectedTournament = tournaments.find((t: any) => t.id === selectedTournamentId);
+  const selectedTournament = tournaments.find((t: Tournament) => t.id === selectedTournamentId);
   const tatamiCount = Math.max(3, Number(selectedTournament?.tatamiCount ?? 3));
 
   useEffect(() => {
@@ -148,15 +234,21 @@ export function TournamentScoreboardPanel({
       api.matches.assignTatami(matchId, tatamiNumber),
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.assign_error")),
   });
+  const moveToPosition = useMutation({
+    mutationFn: ({ matchId, newIndex }: { matchId: string; newIndex: number }) =>
+      api.matches.moveToPosition(matchId, newIndex),
+    onSuccess: () => invalidateBoard(),
+  });
+
   const reorderQueue = useMutation({
     mutationFn: ({ matchId, direction }: { matchId: string; direction: "up" | "down" }) =>
       api.matches.reorderQueue(matchId, direction),
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.queue_error")),
   });
 
@@ -164,7 +256,7 @@ export function TournamentScoreboardPanel({
     mutationFn: (matchId: string) => api.matches.reset(matchId),
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.reset_error")),
   });
 
@@ -180,7 +272,7 @@ export function TournamentScoreboardPanel({
     }) => api.admin.override(matchId, winnerSide, reason),
     onMutate: () => setError(""),
     onSuccess: invalidateBoard,
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.override_error")),
   });
 
@@ -216,7 +308,7 @@ export function TournamentScoreboardPanel({
       });
       qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.session_create_error")),
   });
 
@@ -225,11 +317,11 @@ export function TournamentScoreboardPanel({
     onMutate: () => setError(""),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["admin-tatami-sessions", selectedTournamentId] }),
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("matches_admin.session_revoke_error")),
   });
 
-  const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const matches = useMemo(() => (matchesQuery.data ?? []) as Match[], [matchesQuery.data]);
   const tatamiSessions = useMemo(() => tatamiSessionsQuery.data ?? [], [tatamiSessionsQuery.data]);
   const board = useMemo(() => buildTatamiBoard(matches, tatamiCount), [matches, tatamiCount]);
   const unassigned = board.unassigned;
@@ -262,7 +354,7 @@ export function TournamentScoreboardPanel({
     window.setTimeout(() => setWallCopied(false), 1400);
   };
 
-  const copyTatamiSession = async (session: any) => {
+  const copyTatamiSession = async (session: TatamiSession) => {
     if (!session?.token || typeof window === "undefined") return;
     await navigator.clipboard.writeText(`${window.location.origin}/tatami/${session.token}`);
     setCopiedTatamiSessionId(session.id);
@@ -353,7 +445,7 @@ export function TournamentScoreboardPanel({
                 className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
               >
                 <option value="">{t("matches_admin.select_tournament")}</option>
-                {tournaments.map((item: any) => (
+                {tournaments.map((item: Tournament) => (
                   <option key={item.id} value={item.id}>
                     {localizeName(item.name)} · {statusLabel(item.status, t)}
                   </option>
@@ -408,10 +500,10 @@ export function TournamentScoreboardPanel({
           </DropZone>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+        <div className="mt-6 grid items-start justify-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),23rem))]">
           {board.tatamis.map((tatami) => {
             const session = tatamiSessions.find(
-              (s: any) => Number(s.tatamiNumber) === tatami.number,
+              (s: TatamiSession) => Number(s.tatamiNumber) === tatami.number,
             );
             return (
               <DropZone
@@ -513,48 +605,68 @@ export function TournamentScoreboardPanel({
                           ? tatami.queue.findIndex((m: Match) => m.redAthleteId && m.blueAthleteId)
                           : -1;
                       return (
-                        <div className="space-y-2">
-                          {tatami.queue.map((m: Match, index: number) => {
-                            const isMissingAthlete = !m.redAthleteId || !m.blueAthleteId;
-                            const isJudgeNext = index === firstReadyIdx;
-                            return (
-                              <div key={m.id}>
-                                {isJudgeNext && (
-                                  <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
-                                    <span>▶</span> {t("matches_admin.visible_for_judge")}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(event: DragEndEvent) => {
+                            const { active, over } = event;
+                            if (!over || active.id === over.id) return;
+                            const oldIdx = tatami.queue.findIndex((m: Match) => m.id === active.id);
+                            const newIdx = tatami.queue.findIndex((m: Match) => m.id === over.id);
+                            if (oldIdx !== -1 && newIdx !== -1) {
+                              moveToPosition.mutate({
+                                matchId: String(active.id),
+                                newIndex: newIdx,
+                              });
+                            }
+                          }}
+                        >
+                          <SortableContext
+                            items={tatami.queue.map((m: Match) => m.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-2">
+                              {tatami.queue.map((m: Match, index: number) => {
+                                const isMissingAthlete = !m.redAthleteId || !m.blueAthleteId;
+                                const isJudgeNext = index === firstReadyIdx;
+                                return (
+                                  <div key={m.id}>
+                                    {isJudgeNext && (
+                                      <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
+                                        <span>▶</span> {t("matches_admin.visible_for_judge")}
+                                      </div>
+                                    )}
+                                    {isMissingAthlete && (
+                                      <div className="mb-1 text-[10px] text-amber-500 opacity-70">
+                                        {t("matches_admin.missing_athlete_warning")}
+                                      </div>
+                                    )}
+                                    <SortableMatchCard
+                                      match={m}
+                                      queueIndex={index + 1}
+                                      onUnassign={() =>
+                                        assignTatami.mutate({ matchId: m.id, tatamiNumber: null })
+                                      }
+                                      onReset={() => {
+                                        if (window.confirm(t("matches_admin.reset_confirm")))
+                                          resetMatchMutation.mutate(m.id);
+                                      }}
+                                      onOverride={(side) =>
+                                        setOverrideDialog({
+                                          matchId: m.id,
+                                          redName: athleteName(m.redAthlete),
+                                          blueName: athleteName(m.blueAthlete),
+                                          side,
+                                          reason: "",
+                                        })
+                                      }
+                                    />
                                   </div>
-                                )}
-                                {isMissingAthlete && (
-                                  <div className="mb-1 text-[10px] text-amber-500 opacity-70">
-                                    {t("matches_admin.missing_athlete_warning")}
-                                  </div>
-                                )}
-                                <MatchCard
-                                  match={m}
-                                  queueIndex={index + 1}
-                                  onDragStart={() => setDraggedMatchId(m.id)}
-                                  onDragEnd={() => setDraggedMatchId(null)}
-                                  onUnassign={() =>
-                                    assignTatami.mutate({ matchId: m.id, tatamiNumber: null })
-                                  }
-                                  onReset={() => {
-                                    if (window.confirm(t("matches_admin.reset_confirm")))
-                                      resetMatchMutation.mutate(m.id);
-                                  }}
-                                  onOverride={(side) =>
-                                    setOverrideDialog({
-                                      matchId: m.id,
-                                      redName: athleteName(m.redAthlete),
-                                      blueName: athleteName(m.blueAthlete),
-                                      side,
-                                      reason: "",
-                                    })
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
                       );
                     })()
                   )}
@@ -572,8 +684,15 @@ export function TournamentScoreboardPanel({
           ) : (
             <div className="space-y-2">
               {completed.map((m: Match) => {
-                const redScore = m.scoreSnapshot?.red ?? {};
-                const blueScore = m.scoreSnapshot?.blue ?? {};
+                const emptyScore: MatchSideScore = {
+                  ippon: 0,
+                  wazaari: 0,
+                  yuko: 0,
+                  shido: 0,
+                  hansoku: false,
+                };
+                const redScore = m.scoreSnapshot?.red ?? emptyScore;
+                const blueScore = m.scoreSnapshot?.blue ?? emptyScore;
                 const redWon = m.winnerId === m.redAthlete?.id;
                 const blueWon = m.winnerId === m.blueAthlete?.id;
                 const finishedAt = m.finishedAt
@@ -826,7 +945,9 @@ export function TournamentScoreboardPanel({
                 </label>
                 <input
                   value={tatamiJudgeName}
-                  onChange={(e: any) => setTatamiJudgeName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setTatamiJudgeName(e.target.value)
+                  }
                   className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
                   placeholder={t("matches_admin.judge_placeholder")}
                 />
@@ -838,12 +959,13 @@ export function TournamentScoreboardPanel({
                     {t("common.cancel")}
                   </button>
                   {tatamiSessions.find(
-                    (s: any) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber,
+                    (s: TatamiSession) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber,
                   ) && (
                     <button
                       onClick={() => {
                         const session = tatamiSessions.find(
-                          (s: any) => Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber,
+                          (s: TatamiSession) =>
+                            Number(s.tatamiNumber) === tatamiSessionFor.tatamiNumber,
                         );
                         if (session) revokeTatamiSession.mutate(session.id);
                         setTatamiSessionFor(null);
@@ -915,6 +1037,33 @@ function DropZone({
   );
 }
 
+/** Sortable wrapper — добавляет DnD handle к MatchCard через @dnd-kit */
+function SortableMatchCard(
+  props: Omit<Parameters<typeof MatchCard>[0], "onDragStart" | "onDragEnd" | "dragging">,
+) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.match.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <MatchCard
+        {...props}
+        onDragStart={() => {}}
+        onDragEnd={() => {}}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
 function MatchCard({
   match,
   live,
@@ -927,6 +1076,7 @@ function MatchCard({
   onMoveDown,
   onReset,
   onOverride,
+  dragHandleProps,
 }: {
   match: Match;
   live?: boolean;
@@ -939,6 +1089,7 @@ function MatchCard({
   onMoveDown?: () => void;
   onReset?: () => void;
   onOverride?: (winnerSide: "RED" | "BLUE") => void;
+  dragHandleProps?: Record<string, unknown>;
 }) {
   const { t } = useTranslation();
   const catName = match.bracket?.category ? categoryShort(match.bracket.category) : "";
@@ -965,7 +1116,10 @@ function MatchCard({
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <GripVertical
+            className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+            {...(dragHandleProps ?? {})}
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
               {queueIndex ? <span>#{queueIndex}</span> : null}
@@ -1099,7 +1253,7 @@ function MatchCard({
   );
 }
 
-function categoryShort(cat: any): string {
+function categoryShort(cat: MatchCategory | null | undefined): string {
   // Keep category compact and language-neutral for match cards.
   if (!cat) return "";
   const g = cat.gender === "MALE" ? "M" : cat.gender === "FEMALE" ? "F" : "";
@@ -1114,8 +1268,8 @@ function ScoreSide({
   isWinner,
 }: {
   side: "RED" | "BLUE";
-  athlete: any;
-  score: any;
+  athlete: MatchAthlete | null | undefined;
+  score: MatchSideScore | null | undefined;
   isWinner?: boolean;
 }) {
   const { t } = useTranslation();
@@ -1160,7 +1314,7 @@ function buildTatamiBoard(matches: Match[], tatamiCount: number) {
   return { unassigned, tatamis };
 }
 
-function athleteName(athlete: any) {
+function athleteName(athlete: MatchAthlete | null | undefined) {
   if (!athlete) return "TBD";
   return [athlete.name, athlete.surname].filter(Boolean).join(" ") || "TBD";
 }
@@ -1173,7 +1327,7 @@ function statusLabel(
   return String(t(`status.${status}`, { defaultValue: status }));
 }
 
-function localizeName(value: any) {
+function localizeName(value: LocalizedName | string | null | undefined) {
   if (!value) return "—";
   if (typeof value === "string") return value;
   return value.kk ?? value.ru ?? value.en ?? Object.values(value)[0] ?? "—";

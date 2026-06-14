@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -12,6 +13,8 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Lock,
   Medal,
   Plus,
@@ -25,13 +28,26 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type {
+  AthleteLeaderboardEntry,
+  Category,
+  Club,
+  ClubLeaderboardEntry,
+  RatingEntry,
+  User as ApiUser,
+  UserRole,
+} from "@/lib/api-types";
+import { Avatar } from "@/components/ui/avatar-image";
+import { mediaUrl } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import React from "react";
 import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 
 export const Route = createFileRoute("/admin/clubs")({
   head: () => ({ meta: [{ title: "Пайдаланушылар — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminClubsRoute />
@@ -67,7 +83,7 @@ function AdminClubsPage() {
             { id: "clubs" as Tab, label: t("admin.clubs_title"), icon: Building2 },
             { id: "users" as Tab, label: t("admin.users_athletes"), icon: Users },
             { id: "ratings" as Tab, label: t("admin.ratings_title"), icon: Star },
-          ] as { id: Tab; label: string; icon: any }[]
+          ] as { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[]
         ).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -123,7 +139,7 @@ function ClubsTab() {
       setBlockModal(null);
       setReason("");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteClubMut = useMutation({
@@ -132,7 +148,7 @@ function ClubsTab() {
       qc.invalidateQueries({ queryKey: ["admin-clubs"] });
       setDeleteClubModal(null);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const createMut = useMutation({
@@ -148,7 +164,7 @@ function ClubsTab() {
       setShowCreate(false);
       setForm({ nameRu: "", nameKk: "", city: "", country: "KZ", shortName: "" });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const fi = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -185,19 +201,27 @@ function ClubsTab() {
           <EmptyState title={t("admin.clubs_no")} hint={t("admin.add_btn_hint")} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {query.data!.items.map((c: any) => (
+            {query.data!.items.map((c: Club) => (
               <div
                 key={c.id}
-                className={`glass rounded-xl p-5 ${c.isBlocked ? "border-destructive/40" : ""}`}
+                className={`glass rounded-xl p-5 ${c.isBlocked ? "border border-destructive/40" : ""}`}
               >
                 <div className="flex justify-between items-start gap-2 mb-1">
-                  <Link
-                    to="/admin/clubs/$id"
-                    params={{ id: c.id }}
-                    className="font-display text-lg font-semibold hover:text-gold"
-                  >
-                    {localizeName(c.name)}
-                  </Link>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar
+                      src={c.logoUrl ? mediaUrl(c.logoUrl) : null}
+                      name={localizeName(c.name)}
+                      size={36}
+                      className="shrink-0 rounded-lg"
+                    />
+                    <Link
+                      to="/admin/clubs/$id"
+                      params={{ id: c.id }}
+                      className="font-display text-lg font-semibold hover:text-gold truncate"
+                    >
+                      {localizeName(c.name)}
+                    </Link>
+                  </div>
                   {c.isBlocked && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">
                       {t("admin.blocked_status")}
@@ -213,25 +237,26 @@ function ClubsTab() {
                     {c.blockedReason}
                   </div>
                 )}
-                <div className="mt-3 flex justify-between items-center">
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="text-sm">
-                    <span className="text-muted-foreground">{t("dashboard.athletes")}: </span>
+                    <span className="text-muted-foreground text-xs">{t("dashboard.athletes")}: </span>
                     <span className="text-gold font-display text-lg">{c._count?.members ?? 0}</span>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Link
                       to="/admin/clubs/$id"
                       params={{ id: c.id }}
-                      className="text-xs px-2.5 py-1 rounded glass border border-border hover:border-gold/40"
+                      className="text-xs px-2.5 py-1.5 rounded glass border border-border hover:border-gold/40 whitespace-nowrap"
                     >
                       {t("common.details")}
                     </Link>
                     {c.isBlocked ? (
                       <button
                         onClick={() => blockMut.mutate({ id: c.id, blocked: false })}
-                        className="text-xs px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1"
+                        title={t("admin.unblock_club")}
+                        className="p-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/25"
                       >
-                        <Unlock className="h-3 w-3" /> {t("admin.unblock_club")}
+                        <Unlock className="h-3.5 w-3.5" />
                       </button>
                     ) : (
                       <button
@@ -239,9 +264,10 @@ function ClubsTab() {
                           setBlockModal({ id: c.id, name: localizeName(c.name) });
                           setError("");
                         }}
-                        className="text-xs px-2.5 py-1 rounded bg-destructive/15 text-destructive border border-destructive/30 inline-flex items-center gap-1"
+                        title={t("admin.block_club")}
+                        className="p-1.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
                       >
-                        <Lock className="h-3 w-3" /> {t("admin.block_club")}
+                        <Lock className="h-3.5 w-3.5" />
                       </button>
                     )}
                     <button
@@ -249,9 +275,10 @@ function ClubsTab() {
                         setDeleteClubModal({ id: c.id, name: localizeName(c.name) });
                         setError("");
                       }}
-                      className="text-xs px-2.5 py-1 rounded bg-destructive/15 text-destructive border border-destructive/30 inline-flex items-center gap-1"
+                      title={t("common.delete")}
+                      className="p-1.5 rounded bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -272,9 +299,9 @@ function ClubsTab() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-display text-lg font-semibold mb-4">{t("admin.clubs_new")}</h3>
-            {createMut.error && (
+            {Boolean(createMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(createMut.error as any)?.message ?? t("error.generic")}
+                {((createMut.error as Error))?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
@@ -418,9 +445,9 @@ function ClubsTab() {
             </h3>
             <p className="text-sm text-muted-foreground mb-1">{t("admin.delete_club_warning")}</p>
             <p className="text-xs text-destructive/80 mb-4">{t("common.irreversible")}</p>
-            {deleteClubMut.error && (
+            {Boolean(deleteClubMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(deleteClubMut.error as any)?.message ?? t("error.generic")}
+                {((deleteClubMut.error as Error))?.message ?? t("error.generic")}
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -465,6 +492,8 @@ const EMPTY_USER_FORM = {
   clubId: "",
 };
 
+const PAGE_SIZE = 50;
+
 function UsersTab() {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -475,23 +504,30 @@ function UsersTab() {
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [deleteUserModal, setDeleteUserModal] = useState<{ id: string; name: string } | null>(null);
+  const [viewUser, setViewUser] = useState<ApiUser | null>(null);
   const [uform, setUform] = useState(EMPTY_USER_FORM);
+  const [page, setPage] = useState(0);
+  const selectedRole = (["ATHLETE", "COACH", "ADMIN"] as const).find((value) => value === role);
+  const selectedActive = activeOnly === "" ? undefined : activeOnly === "true";
 
   const query = useQuery({
-    queryKey: ["admin-users", role, search, activeOnly, clubFilter],
+    queryKey: ["admin-users", role, search, activeOnly, clubFilter, page],
     queryFn: () =>
       api.admin.listUsers({
-        role: role || undefined,
+        role: selectedRole as UserRole | undefined,
         search: search || undefined,
         clubId: clubFilter || undefined,
-        isActive: activeOnly || undefined,
-        limit: 100,
+        isActive: selectedActive,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
       }),
   });
   const clubsQuery = useQuery({
     queryKey: ["admin-users-clubs"],
     queryFn: () => api.clubs.list({ limit: 1000 }),
   });
+  const totalPages = Math.ceil((query.data?.total ?? 0) / PAGE_SIZE);
+
   const roleCounts = useQuery({
     queryKey: ["admin-users-role-counts", clubFilter, activeOnly],
     queryFn: async () => {
@@ -499,24 +535,24 @@ function UsersTab() {
         api.admin.listUsers({
           role: "ATHLETE",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           role: "COACH",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           role: "ADMIN",
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
         api.admin.listUsers({
           clubId: clubFilter || undefined,
-          isActive: activeOnly || undefined,
+          isActive: selectedActive,
           limit: 1,
         }),
       ]);
@@ -528,7 +564,7 @@ function UsersTab() {
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       api.admin.toggleUserActive(id, active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteUserMut = useMutation({
@@ -538,7 +574,7 @@ function UsersTab() {
       qc.invalidateQueries({ queryKey: ["admin-users-role-counts"] });
       setDeleteUserModal(null);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const createMut = useMutation({
@@ -564,7 +600,7 @@ function UsersTab() {
       setShowCreate(false);
       setUform(EMPTY_USER_FORM);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const ufi =
@@ -614,7 +650,7 @@ function UsersTab() {
               ).map(([value, label]) => (
                 <button
                   key={value || "all"}
-                  onClick={() => setRole(value)}
+                  onClick={() => { setRole(value); setPage(0); }}
                   className={`rounded px-2.5 py-1.5 text-xs transition-colors ${role === value ? "bg-gold text-gold-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {label} <span className="opacity-70">{roleCount(roleCounts.data, value)}</span>
@@ -625,18 +661,18 @@ function UsersTab() {
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                 placeholder={`${t("common.search")}...`}
                 className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none"
               />
             </div>
             <select
               value={clubFilter}
-              onChange={(e) => setClubFilter(e.target.value)}
+              onChange={(e) => { setClubFilter(e.target.value); setPage(0); }}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("admin.clubs_title")}</option>
-              {(clubsQuery.data?.items ?? []).map((c: any) => (
+              {(clubsQuery.data?.items ?? []).map((c: Club) => (
                 <option key={c.id} value={c.id}>
                   {localizeName(c.name)}
                 </option>
@@ -644,7 +680,7 @@ function UsersTab() {
             </select>
             <select
               value={activeOnly}
-              onChange={(e) => setActiveOnly(e.target.value)}
+              onChange={(e) => { setActiveOnly(e.target.value); setPage(0); }}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("admin.users_all")}</option>
@@ -659,7 +695,7 @@ function UsersTab() {
         ) : query.isError ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={(query.error as any)?.message ?? t("error.api")}
+            hint={((query.error as Error))?.message ?? t("error.api")}
           />
         ) : (query.data?.items ?? []).length === 0 ? (
           <div className="py-8 text-center">
@@ -675,7 +711,7 @@ function UsersTab() {
             <table className="w-full text-sm">
               <thead className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40">
                 <tr>
-                  <th className="py-2">{t("admin.field_fullname")}</th>
+                  <th className="py-2" colSpan={2}>{t("admin.field_fullname")}</th>
                   <th>Email</th>
                   <th>{t("common.role")}</th>
                   <th>{t("admin.field_club")}</th>
@@ -683,58 +719,151 @@ function UsersTab() {
                   <th></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/30">
-                {(query.data?.items ?? []).map((u: any) => (
-                  <tr key={u.id} className="hover:bg-gold/5">
-                    <td className="py-2 font-medium">
-                      <Link to="/admin/users/$id" params={{ id: u.id }} className="hover:text-gold">
-                        {u.name} {u.surname}
-                      </Link>
-                    </td>
-                    <td className="text-xs text-muted-foreground">{u.email}</td>
-                    <td className="text-xs">
-                      <RoleBadge role={u.role} />
-                    </td>
-                    <td className="text-xs text-muted-foreground">
-                      {u.club ? localizeName(u.club.name) : "—"}
-                    </td>
-                    <td>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}
+              <tbody>
+                {(query.data?.items ?? []).map((u: ApiUser) => {
+                  const expanded = viewUser?.id === u.id;
+                  const docs: import("@/lib/api-types").UserDocument[] = (u as any).documents ?? [];
+                  return (
+                    <React.Fragment key={u.id}>
+                      <tr
+                        className={`border-b border-border/30 cursor-pointer transition-colors ${expanded ? "bg-gold/8 border-gold/30" : "hover:bg-gold/5"}`}
+                        onClick={() => setViewUser(expanded ? null : u)}
                       >
-                        {u.isActive ? t("admin.active") : t("admin.blocked_status")}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => toggle.mutate({ id: u.id, active: !u.isActive })}
-                          className="text-xs px-2 py-1 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1"
-                        >
-                          {u.isActive ? (
-                            <>
-                              <Lock className="h-3 w-3" /> {t("admin.block_user")}
-                            </>
-                          ) : (
-                            <>
-                              <Unlock className="h-3 w-3" /> {t("admin.unblock_user")}
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDeleteUserModal({ id: u.id, name: `${u.name} ${u.surname}` })
-                          }
-                          className="text-xs p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        <td className="py-2 pr-3" colSpan={2}>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar
+                              src={u.avatarUrl ? mediaUrl(u.avatarUrl) : null}
+                              name={`${u.name} ${u.surname}`}
+                              size={32}
+                            />
+                            <span className={`font-medium ${expanded ? "text-gold" : ""}`}>{u.name} {u.surname}</span>
+                          </div>
+                        </td>
+                        <td className="text-xs text-muted-foreground">{u.email}</td>
+                        <td className="text-xs"><RoleBadge role={u.role} /></td>
+                        <td className="text-xs text-muted-foreground">
+                          {u.club ? localizeName(u.club.name) : "—"}
+                        </td>
+                        <td>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+                            {u.isActive ? t("admin.active") : t("admin.blocked_status")}
+                          </span>
+                        </td>
+                        <td>
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180 text-gold" : ""}`} />
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr className="border-b border-gold/20 bg-gold/5">
+                          <td colSpan={7} className="px-3 pb-4 pt-3">
+                            <div className="flex flex-col sm:flex-row gap-5">
+                              {/* Avatar + basic info */}
+                              <div className="flex items-start gap-4 flex-1 min-w-0">
+                                <Avatar
+                                  src={u.avatarUrl ? mediaUrl(u.avatarUrl) : null}
+                                  name={`${u.name} ${u.surname}`}
+                                  size={64}
+                                  className="shrink-0"
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs flex-1 min-w-0">
+                                  {u.email && <InfoRow label="Email" value={u.email} />}
+                                  {(u as any).phone && <InfoRow label={t("admin.field_phone")} value={(u as any).phone} />}
+                                  {(u as any).dateOfBirth && (
+                                    <InfoRow label={t("admin.field_dob")} value={new Date((u as any).dateOfBirth).toLocaleDateString()} />
+                                  )}
+                                  {(u as any).weightKg && (
+                                    <InfoRow label={t("admin.field_weight_kg")} value={`${(u as any).weightKg} ${t("common.kg")}`} />
+                                  )}
+                                  {(u as any).gender && <InfoRow label={t("common.gender")} value={(u as any).gender === "MALE" ? t("common.male") : t("common.female")} />}
+                                  {(u as any).beltRank && <InfoRow label={t("admin.field_belt")} value={(u as any).beltRank} />}
+                                  {u.club && <InfoRow label={t("admin.field_club")} value={localizeName(u.club.name)} />}
+                                </div>
+                              </div>
+                              {/* Documents */}
+                              {docs.length > 0 && (
+                                <div className="shrink-0">
+                                  <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                                    {t("documents.title")}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {docs.map((doc) => (
+                                      <a
+                                        key={doc.id}
+                                        href={mediaUrl(doc.url)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="group block overflow-hidden rounded-lg border border-border/60 hover:border-gold/50 transition-colors"
+                                        title={docTypeLabel(doc.type)}
+                                      >
+                                        {doc.mimeType?.startsWith("image/") ? (
+                                          <img
+                                            src={mediaUrl(doc.url)}
+                                            alt={docTypeLabel(doc.type)}
+                                            className="h-24 w-24 object-cover group-hover:opacity-90 transition-opacity"
+                                          />
+                                        ) : (
+                                          <div className="flex h-24 w-24 flex-col items-center justify-center gap-1 bg-card/60 text-muted-foreground">
+                                            <User className="h-6 w-6" />
+                                            <span className="text-[9px] text-center px-1">{docTypeLabel(doc.type)}</span>
+                                          </div>
+                                        )}
+                                        <div className="bg-card/80 px-1.5 py-1 text-[9px] text-center text-muted-foreground truncate w-24">
+                                          {docTypeLabel(doc.type)}
+                                        </div>
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Actions */}
+                              <div className="flex flex-row sm:flex-col gap-2 shrink-0">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggle.mutate({ id: u.id, active: !u.isActive }); }}
+                                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:border-gold/40 whitespace-nowrap"
+                                >
+                                  {u.isActive ? <><Lock className="h-3 w-3" /> {t("admin.block_user")}</> : <><Unlock className="h-3 w-3" /> {t("admin.unblock_user")}</>}
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDeleteUserModal({ id: u.id, name: `${u.name} ${u.surname}` }); }}
+                                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 whitespace-nowrap"
+                                >
+                                  <Trash2 className="h-3 w-3" /> {t("common.delete")}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
+          </div>
+        )}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <span className="text-xs text-muted-foreground">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data?.total ?? 0)} / {query.data?.total ?? 0}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="p-1.5 rounded glass border border-border hover:border-gold/40 disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="px-2 text-xs">{page + 1} / {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="p-1.5 rounded glass border border-border hover:border-gold/40 disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
       </Panel>
@@ -787,9 +916,9 @@ function UsersTab() {
             <h3 className="font-display text-lg font-semibold mb-4">
               {t("admin.create_user_title")}
             </h3>
-            {createMut.error && (
+            {Boolean(createMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {(createMut.error as any)?.message ?? t("error.generic")}
+                {((createMut.error as Error))?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
@@ -948,7 +1077,7 @@ function UsersTab() {
                 </label>
                 <select value={uform.clubId} onChange={ufi("clubId")} className={INPUT}>
                   <option value="">— {t("admin.no_club")} —</option>
-                  {(clubsQuery.data?.items ?? []).map((c: any) => (
+                  {(clubsQuery.data?.items ?? []).map((c: Club) => (
                     <option key={c.id} value={c.id}>
                       {localizeName(c.name)} ({c.city})
                     </option>
@@ -1010,7 +1139,7 @@ function RatingsTab() {
     staleTime: 30_000,
   });
 
-  const rows: any[] = leaderboardQuery.data ?? [];
+  const rows: AthleteLeaderboardEntry[] = leaderboardQuery.data ?? [];
   const filtered = rows.filter((row) => {
     const a = row.athlete;
     if (gender !== "ALL" && a?.gender !== gender) return false;
@@ -1031,7 +1160,7 @@ function RatingsTab() {
   const totalAthletes = rows.length;
   const topPoints = rows[0]?.totalPoints ?? 0;
   const activeClubName = clubId
-    ? localizeName((clubsQuery.data?.items ?? []).find((c: any) => c.id === clubId)?.name)
+    ? localizeName((clubsQuery.data?.items ?? []).find((c: Club) => c.id === clubId)?.name)
     : null;
 
   return (
@@ -1108,7 +1237,7 @@ function RatingsTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
-                  {(clubLeaderboardQuery.data ?? []).map((row: any) => {
+                  {(clubLeaderboardQuery.data ?? []).map((row: ClubLeaderboardEntry) => {
                     const medal =
                       row.rank === 1
                         ? "text-yellow-400"
@@ -1193,7 +1322,7 @@ function RatingsTab() {
           className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 outline-none transition-colors focus:border-gold"
         >
           <option value="">{t("admin.clubs_title")}</option>
-          {(clubsQuery.data?.items ?? []).map((club: any) => (
+          {(clubsQuery.data?.items ?? []).map((club: Club) => (
             <option key={club.id} value={club.id}>
               {localizeName(club.name)}
             </option>
@@ -1243,9 +1372,12 @@ function RatingsTab() {
                       {displayRank}
                     </div>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-full bg-gradient-gold flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4 text-gold-foreground" />
-                      </div>
+                      <Avatar
+                        src={a.avatarUrl ? mediaUrl(a.avatarUrl) : null}
+                        name={`${a.name ?? ""} ${a.surname ?? ""}`}
+                        size={36}
+                        className="shrink-0"
+                      />
                       <div className="min-w-0">
                         <div className="font-semibold truncate">
                           {`${a?.name ?? ""} ${a?.surname ?? ""}`.trim() || "—"}
@@ -1320,7 +1452,7 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
     );
   }
 
-  const entries: any[] = q.data?.entries ?? [];
+  const entries: RatingEntry[] = q.data?.entries ?? [];
   if (entries.length === 0) {
     return (
       <div className="px-6 py-4 bg-background/30 border-t border-border/30 text-sm text-muted-foreground">
@@ -1335,7 +1467,7 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
         {t("admin.tournament_results")}
       </div>
       <div className="space-y-2">
-        {entries.map((e: any) => (
+        {entries.map((e: RatingEntry) => (
           <div
             key={e.id}
             className="flex items-center justify-between gap-4 text-sm rounded-lg glass px-4 py-2.5"
@@ -1344,7 +1476,7 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
               <div className="font-medium truncate">
                 <Link
                   to="/admin/tournaments/$id"
-                  params={{ id: e.tournament?.id }}
+                  params={{ id: e.tournamentId }}
                   className="hover:text-gold transition-colors"
                 >
                   {localizeName(e.tournament?.name)}
@@ -1386,6 +1518,15 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
 // ============================================================
 // Helpers
 // ============================================================
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-muted-foreground w-28 shrink-0 text-xs uppercase tracking-widest pt-0.5">{label}</span>
+      <span className="font-medium break-all">{value}</span>
+    </div>
+  );
+}
+
 function RoleBadge({ role }: { role: string }) {
   const m: Record<string, string> = {
     ADMIN: "bg-gold/15 text-gold",
@@ -1397,12 +1538,12 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function roleCount(data: any, role: string) {
+function roleCount(data: Record<string, number> | undefined | null, role: string) {
   if (!data) return "";
   return `(${data[role || "ALL"] ?? 0})`;
 }
 
-function placeLabel(place: number, t: any): string {
+function placeLabel(place: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const label = t("admin.place_n", { n: place });
   if (place === 1) return `🥇 ${label}`;
   if (place === 2) return `🥈 ${label}`;
@@ -1411,7 +1552,7 @@ function placeLabel(place: number, t: any): string {
   return label;
 }
 
-function categoryTitle(cat: any, t: any): string {
+function categoryTitle(cat: Category | null | undefined, t: (k: string) => string): string {
   if (!cat) return "—";
   const name = localizeName(cat.name);
   const weight =
@@ -1423,7 +1564,14 @@ function categoryTitle(cat: any, t: any): string {
   return [name, gender, weight].filter(Boolean).join(" · ");
 }
 
-function localizeName(n: any): string {
+function docTypeLabel(type: string): string {
+  if (type === "BIRTH_CERTIFICATE") return "Туу туралы";
+  if (type === "STUDY_CERTIFICATE") return "Оқу куәлігі";
+  if (type === "COACH_ID") return "Тренер куәлігі";
+  return "Құжат";
+}
+
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

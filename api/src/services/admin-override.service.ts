@@ -21,6 +21,7 @@ import {
   Prisma,
   MatchStatus,
   BracketFormat,
+  TournamentStatus,
   UserRole,
   type Match,
 } from "@prisma/client";
@@ -63,13 +64,20 @@ export async function overrideMatchResult(
 
   const match = await prisma.match.findUnique({
     where: { id: matchId },
-    include: { bracket: true },
+    include: { bracket: true, tournament: { select: { status: true } } },
   });
   if (!match) throw new OverrideError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status !== MatchStatus.COMPLETED) {
     throw new OverrideError(
       "NOT_COMPLETED",
       "Override доступен только для завершённых матчей",
+      409,
+    );
+  }
+  if (match.tournament.status === TournamentStatus.COMPLETED) {
+    throw new OverrideError(
+      "TOURNAMENT_FINALIZED",
+      "Нельзя изменить результат после финализации турнира — рейтинги уже начислены",
       409,
     );
   }

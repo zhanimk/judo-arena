@@ -10,6 +10,8 @@
 import { prisma } from "../lib/prisma.js";
 import { Prisma, UserRole } from "@prisma/client";
 import { emitToUser } from "../sockets/io.js";
+import { logAudit } from "./audit.service.js";
+import crypto from "node:crypto";
 
 export class NotificationError extends Error {
   constructor(
@@ -133,9 +135,11 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     }
   }
 
-  if (recipients.length === 0) {
-    return { count: 0 };
-  }
+  const campaignId = crypto.randomUUID();
+  const campaignPayload: Prisma.InputJsonObject = {
+    ...(input.payload ?? {}),
+    campaignId,
+  };
 
   // Создаём уведомления batch'ем с учётом preferred locale каждого получателя
   const data = recipients.map(({ id: userId, locale }) => ({
@@ -143,10 +147,13 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     type: input.type,
     titleKey: input.titleKey,
     bodyKey: input.bodyKey,
-    payload: input.payload ?? Prisma.JsonNull,
+    payload: campaignPayload,
     locale,
   }));
-  const created = await prisma.notification.createMany({ data });
+  const created =
+    data.length > 0
+      ? await prisma.notification.createMany({ data })
+      : { count: 0 };
 
   // N2: Socket.IO push в личную комнату каждого получателя
   for (const item of data) {
@@ -158,7 +165,157 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     });
   }
 
-  return { count: created.count };
+  await logAudit({
+    actorUserId,
+    action: "notification.broadcast",
+    targetEntity: "NotificationBroadcast",
+    targetId: campaignId,
+    metadata: {
+      title: input.titleKey,
+      body: input.bodyKey,
+      type: input.type,
+      target: input.target,
+      count: created.count,
+    },
+  });
+
+  return {
+    id: campaignId,
+    count: created.count,
+    title: input.titleKey,
+    body: input.bodyKey,
+    type: input.type,
+    target: input.target,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function assertAdmin(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  if (user?.role !== UserRole.ADMIN) {
+    throw new NotificationError("FORBIDDEN", "Тек әкімшіге рұқсат", 403);
+  }
+}
+
+export async function listBroadcasts(actorUserId: string, limit = 50) {
+  await assertAdmin(actorUserId);
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      action: "notification.broadcast",
+      targetEntity: "NotificationBroadcast",
+    },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(Math.max(limit, 1), 200),
+    include: {
+      actor: { select: { id: true, name: true, surname: true } },
+    },
+  });
+
+  return logs.map((log) => {
+    const metadata = (log.metadata ?? {}) as Record<string, unknown>;
+    return {
+      id: log.targetId,
+      title: String(metadata.title ?? ""),
+      body: String(metadata.body ?? ""),
+      type: String(metadata.type ?? "announcement"),
+      target: metadata.target ?? { kind: "all" },
+      count: Number(metadata.count ?? 0),
+      createdAt: log.createdAt,
+      actor: log.actor,
+    };
+  });
+}
+
+export async function updateBroadcast(
+  actorUserId: string,
+  campaignId: string,
+  input: { title: string; body: string },
+) {
+  await assertAdmin(actorUserId);
+  const log = await prisma.auditLog.findFirst({
+    where: {
+      action: "notification.broadcast",
+      targetEntity: "NotificationBroadcast",
+      targetId: campaignId,
+    },
+  });
+  if (!log) {
+    throw new NotificationError(
+      "BROADCAST_NOT_FOUND",
+      "Рассылка табылмады",
+      404,
+    );
+  }
+
+  const updated = await prisma.notification.updateMany({
+    where: {
+      payload: { path: ["campaignId"], equals: campaignId },
+    },
+    data: { titleKey: input.title, bodyKey: input.body },
+  });
+  const metadata = (log.metadata ?? {}) as Record<string, unknown>;
+  await prisma.auditLog.update({
+    where: { id: log.id },
+    data: {
+      metadata: {
+        ...metadata,
+        title: input.title,
+        body: input.body,
+        updatedAt: new Date().toISOString(),
+        updatedBy: actorUserId,
+      } as Prisma.InputJsonObject,
+    },
+  });
+
+  await logAudit({
+    actorUserId,
+    action: "notification.broadcast.update",
+    targetEntity: "NotificationBroadcast",
+    targetId: campaignId,
+    before: { title: metadata.title, body: metadata.body },
+    after: input,
+    metadata: { recipientsUpdated: updated.count },
+  });
+
+  return { id: campaignId, updated: updated.count, ...input };
+}
+
+export async function deleteBroadcast(actorUserId: string, campaignId: string) {
+  await assertAdmin(actorUserId);
+  const log = await prisma.auditLog.findFirst({
+    where: {
+      action: "notification.broadcast",
+      targetEntity: "NotificationBroadcast",
+      targetId: campaignId,
+    },
+  });
+  if (!log) {
+    throw new NotificationError(
+      "BROADCAST_NOT_FOUND",
+      "Рассылка табылмады",
+      404,
+    );
+  }
+
+  const deleted = await prisma.notification.deleteMany({
+    where: {
+      payload: { path: ["campaignId"], equals: campaignId },
+    },
+  });
+  await prisma.auditLog.delete({ where: { id: log.id } });
+  await logAudit({
+    actorUserId,
+    action: "notification.broadcast.delete",
+    targetEntity: "NotificationBroadcast",
+    targetId: campaignId,
+    before: log.metadata,
+    metadata: { recipientsDeleted: deleted.count },
+  });
+
+  return { id: campaignId, deleted: deleted.count };
 }
 
 /** Список уведомлений текущего пользователя. */

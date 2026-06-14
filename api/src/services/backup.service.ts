@@ -52,7 +52,8 @@ export async function runBackup(): Promise<BackupResult> {
 
   // Запускаем pg_dump в потоковом режиме через spawn
   const { spawn } = await import("node:child_process");
-  const pgDump = spawn("pg_dump", pgArgs, { env: pgEnv });
+  const BACKUP_TIMEOUT_MS = 5 * 60 * 1000; // 5 минут максимум
+  const pgDump = spawn("pg_dump", pgArgs, { env: pgEnv, timeout: BACKUP_TIMEOUT_MS });
   let stderr = "";
   pgDump.stderr.on("data", (data: Buffer) => {
     stderr += data.toString();

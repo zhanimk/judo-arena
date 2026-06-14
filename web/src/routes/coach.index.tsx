@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -23,12 +24,14 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Application, User, Tournament } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/")({
   head: () => ({ meta: [{ title: "Жаттықтырушы — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachOverview />
@@ -63,17 +66,17 @@ function CoachOverview() {
   const openTournaments = tournamentsQuery.data?.items ?? [];
   const myApps = myAppsQuery.data ?? [];
 
-  const appByTournament = new Map(myApps.map((a: any) => [a.tournamentId, a]));
+  const appByTournament = new Map(myApps.map((a: Application) => [a.tournamentId, a]));
 
-  const pendingApps = myApps.filter((a: any) => a.status === "SUBMITTED").length;
-  const approvedApps = myApps.filter((a: any) => a.status === "APPROVED").length;
-  const rejectedApps = myApps.filter((a: any) => a.status === "REJECTED").length;
+  const pendingApps = myApps.filter((a: Application) => a.status === "SUBMITTED").length;
+  const approvedApps = myApps.filter((a: Application) => a.status === "APPROVED").length;
+  const rejectedApps = myApps.filter((a: Application) => a.status === "REJECTED").length;
 
   const clubName = clubQuery.data ? localizeName(clubQuery.data.name) : "—";
 
   const members = membersQuery.data ?? [];
-  const athletes = members.filter((a: any) => a.role === "ATHLETE");
-  const readyCount = athletes.filter((a: any) => a.weightKg && a.beltRank).length;
+  const athletes = members.filter((a: User) => a.role === "ATHLETE");
+  const readyCount = athletes.filter((a: User) => a.weightKg && a.beltRank).length;
   const readinessPct = athletes.length > 0 ? Math.round((readyCount / athletes.length) * 100) : 0;
 
   return (
@@ -218,7 +221,7 @@ function CoachOverview() {
             />
           ) : (
             <div className="space-y-3">
-              {openTournaments.slice(0, 5).map((tournament: any) => {
+              {openTournaments.slice(0, 5).map(( tournament: Tournament) => {
                 const deadline = tournament.applicationDeadline ?? tournament.startDate;
                 const deadlinePassed = new Date(deadline).getTime() < Date.now();
                 const existingApp = appByTournament.get(tournament.id);
@@ -301,7 +304,7 @@ function CoachOverview() {
               <EmptyState title={t("coach.no_athletes")} hint={t("coach.no_athletes_hint")} />
             ) : (
               <div className="space-y-2">
-                {members.slice(0, 5).map((a: any) => (
+                {members.slice(0, 5).map((a: User) => (
                   <Link
                     key={a.id}
                     to="/coach/athletes/$id"
@@ -345,7 +348,7 @@ function CoachOverview() {
               <EmptyState title={t("applications.no_applications")} hint={t("coach.apply_hint")} />
             ) : (
               <div className="space-y-2">
-                {myApps.slice(0, 4).map((a: any) => (
+                {myApps.slice(0, 4).map((a: Application) => (
                   <Link
                     key={a.id}
                     to="/coach/applications/$id"
@@ -395,7 +398,7 @@ function AppStatusBadge({ status }: { status: string }) {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "";

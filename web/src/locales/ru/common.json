@@ -47,7 +47,9 @@
     "my_club": "Мой клуб",
     "panel": "Панель",
     "coaches": "Тренеры",
-    "coach": "Тренер"
+    "coach": "Тренер",
+    "hello": "Привет",
+    "analytics": "Аналитика"
   },
   "status": {
     "DRAFT": "Черновик",
@@ -72,6 +74,8 @@
     "link": "Ссылка",
     "update": "Обновить",
     "save": "Сохранить",
+    "save_all": "Сохранить всё",
+    "saved": "Сохранено ✓",
     "saving": "Сохранение...",
     "cancel": "Отмена",
     "delete": "Удалить",
@@ -118,6 +122,7 @@
     "confirm": "Подтвердить",
     "download": "Скачать",
     "upload": "Загрузить",
+    "replace": "Заменить",
     "export": "Экспорт",
     "import": "Импорт",
     "filter": "Фильтр",
@@ -170,7 +175,12 @@
     "irreversible": "Это действие нельзя отменить.",
     "athletes": "Спортсмены",
     "language": "Язык",
-    "not_found": "Не найдено"
+    "not_found": "Не найдено",
+    "all_genders": "Все",
+    "athlete": "Спортсмен",
+    "male_short": "М",
+    "female_short": "Ж",
+    "years": "лет"
   },
   "auth": {
     "login_title": "Вход в систему",
@@ -225,7 +235,9 @@
     "reset_email_sent_to": "Инструкции отправлены на адрес:",
     "reset_check_spam": "Если письмо не пришло — проверьте папку «Спам». Ссылка действительна 1 час.",
     "resend": "Отправить снова",
-    "back_to_login": "Вернуться к входу"
+    "back_to_login": "Вернуться к входу",
+    "2fa_title": "Код аутентификатора",
+    "2fa_hint": "Введите 6-значный код из Google Authenticator или Authy"
   },
   "scoring": {
     "ippon": "Иппон",
@@ -573,7 +585,33 @@
     "athlete_not_found": "Спортсмен не найден.",
     "club_not_found": "Клуб не найден.",
     "search_clubs_placeholder": "Поиск клуба или города...",
-    "col_athletes": "Спортсмены"
+    "col_athletes": "Спортсмены",
+    "tab_weight": "По весу",
+    "best_place": "Лучшее место",
+    "tournaments": "Турниров"
+  },
+  "ratings": {
+    "admin_title": "Рейтинг спортсменов",
+    "recalc_title": "Пересчёт рейтинга",
+    "recalc_hint": "Введите ID турнира и пересчитайте рейтинг.",
+    "recalc_placeholder": "ID турнира...",
+    "recalc_btn": "Пересчитать",
+    "recalc_ok": "Рейтинг успешно пересчитан.",
+    "athletes_panel": "Топ спортсменов",
+    "clubs_panel": "Топ клубов",
+    "weight_panel": "По весовым категориям",
+    "search_placeholder": "Спортсмен или клуб...",
+    "points": "Очки",
+    "wins": "Победы",
+    "losses": "Поражения",
+    "ippon_wins": "Иппон",
+    "tournaments": "Турниров",
+    "no_data": "Нет данных",
+    "select_weight_class": "Выберите категорию",
+    "select_weight_class_hint": "Выберите весовую категорию выше",
+    "tab_athletes": "Спортсмены",
+    "tab_clubs": "Клубы",
+    "tab_weight": "По весу"
   },
   "tournaments_page": {
     "title": "Турниры",
@@ -631,6 +669,12 @@
     "weigh_in_end": "Конец взвешивания",
     "weigh_in_location": "Место взвешивания",
     "map_url": "Ссылка на карту",
+    "map_picker_title": "Выберите место на карте",
+    "map_picker_hint": "Нажмите на карту, чтобы поставить точку, затем сохраните.",
+    "use_current_location": "Моё местоположение",
+    "map_zoom_in": "Приблизить карту",
+    "map_zoom_out": "Отдалить карту",
+    "center_selected_location": "Показать выбранную точку",
     "poster": "Постер",
     "regulations": "Положение",
     "description": "Описание",
@@ -682,6 +726,9 @@
     "not_specified": "Не указано",
     "city_label": "Город",
     "rules_file": "Положение / файл",
+    "regulation_title": "Регламент турнира",
+    "regulation_hint": "Прикрепите PDF или изображение с официальным положением",
+    "regulation_uploaded": "Загружено — не забудьте нажать «Сохранить всё»",
     "map_link": "Ссылка на карту",
     "open_dashboard": "Открытая панель",
     "visible_all": "Видно всё в одном месте",
@@ -740,7 +787,13 @@
     "est_duration": "Ориентировочная длительность",
     "no_location": "Место не указано",
     "no_time": "Время не указано",
-    "primary_locale": "Основной язык"
+    "primary_locale": "Основной язык",
+    "tab_drawsheet": "3 · Сетки",
+    "tab_tatami": "4 · Татами live",
+    "drawsheet_title": "Сетки турнира",
+    "drawsheet_subtitle": "Live-сетка и матчи по категориям",
+    "categories_count": "категорий",
+    "open_display": "Открыть табло"
   },
   "athlete": {
     "role_label": "Спортсмен",
@@ -787,7 +840,8 @@
     "i_applied": "Я заявлен",
     "no_tournaments_hint": "Здесь появятся новые турниры.",
     "remove_entry": "Убрать мою запись",
-    "confirm_remove_entry": "Убрать вашу запись из этой заявки?"
+    "confirm_remove_entry": "Убрать вашу запись из этой заявки?",
+    "download_certificate": "Скачать сертификат"
   },
   "coach": {
     "role_label": "Тренер",
@@ -993,6 +1047,10 @@
     "notification_sent": "Отправлено {{count}} получателям ✓",
     "notification_empty": "Рассылок пока нет",
     "notification_history": "Последние рассылки",
+    "notification_updated": "Рассылка обновлена",
+    "notification_deleted": "Рассылка удалена у получателей",
+    "notification_delete_confirm": "Удалить эту рассылку у всех получателей?",
+    "notification_audience_user": "Пользователь",
     "weigh_in_template": "Шаблон взвешивания",
     "weigh_in_notification_title": "Уведомление о взвешивании",
     "weigh_in_notification_body": "Взвешивание на турнире {{name}}:",
@@ -1107,7 +1165,19 @@
     "block_reason": "Причина",
     "block_reason_placeholder": "Причина блокировки...",
     "club_not_found": "Клуб не найден",
-    "user_details": "Карточка пользователя"
+    "user_details": "Карточка пользователя",
+    "send_notification": "Отправить уведомление",
+    "notification_sent_user": "Уведомление отправлено {{name}}",
+    "notifications_total": "Всего отправлено",
+    "notifications_today": "Отправлено сегодня",
+    "notification_recipients": "получ.",
+    "backup_title": "Резервное копирование БД",
+    "backup_schedule": "Ежедневный pg_dump → S3, 02:00 UTC.",
+    "backup_create_now": "Создать сейчас",
+    "backup_creating": "Создаётся…",
+    "backup_success": "Резервная копия создана ✓",
+    "backup_error": "Ошибка. Проверьте логи.",
+    "backup_last": "Последняя: {{filename}} ({{size}} МБ)"
   },
   "profile": {
     "title": "Мой профиль",
@@ -1126,7 +1196,12 @@
     "save_error": "Профиль не сохранён",
     "photo_uploaded": "Фото загружено ✓",
     "photo_error": "Фото не загружено",
-    "photo_requirements": "Фото 3:4, лицо по центру, белый или очень светлый фон. JPG, PNG или WEBP.",
+    "photo_requirements": "При загрузке обрежьте фото до формата 3:4 и расположите лицо по центру. JPG, PNG или WEBP.",
+    "crop_title": "Обрезать фото",
+    "crop_description": "Расположите нужную область внутри рамки 3:4.",
+    "crop_zoom": "Масштаб фото",
+    "crop_move_hint": "Фото можно двигать",
+    "crop_apply": "Применить и загрузить",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1159,7 +1234,12 @@
     "search_club_placeholder": "Введите название клуба...",
     "club_not_found": "Клуб не найден",
     "request_sent": "Отправлено",
-    "send_request": "Подать заявку"
+    "send_request": "Подать заявку",
+    "push_notifications": "Push-уведомления",
+    "push_enable": "Включить",
+    "push_disable": "Отключить",
+    "active": "Активен",
+    "push_active": "Уведомления о матчах включены"
   },
   "onboarding": {
     "athlete_title": "Заполнение профиля",
@@ -1361,7 +1441,9 @@
     "selected": "Выбранное татами",
     "other_tatamis": "Другие татами",
     "no_stream": "Татами #{{n}} — трансляции нет, выберите другое",
-    "queue_count": "{{count}} матчей в очереди"
+    "queue_count": "{{count}} матчей в очереди",
+    "forfeit": "Техническое поражение",
+    "forfeit_confirm": "Подтвердить техническое поражение"
   },
   "live": {
     "title": "Live результаты",
@@ -1456,7 +1538,8 @@
     "scoreboard": "Табло",
     "sec_main": "Основной",
     "sec_repechage": "Утешение",
-    "sec_bronze": "Бронза"
+    "sec_bronze": "Бронза",
+    "stream": "Прямой эфир"
   },
   "judge": {
     "panel_title": "Судейская панель",
@@ -1640,6 +1723,8 @@
     "bulk_adding": "Добавление…",
     "bulk_add_n": "Добавить {{count}} категорий",
     "bulk_error": "Категории не добавлены (дубликаты или ошибка)",
+    "bulk_success": "Добавлено категорий: {{count}}",
+    "bulk_already_exists": "Все категории этого шаблона уже добавлены",
     "empty": "Категорий нет",
     "empty_hint": "Категории можно добавить в статусе DRAFT",
     "preset_hint": "Выберите возрастную группу → автозаполнение",
@@ -1834,5 +1919,43 @@
     "open_file": "Открыть файл",
     "no_documents": "Документов нет",
     "no_documents_hint": "Они появятся здесь, когда пользователь загрузит документы в профиле."
+  },
+  "analytics": {
+    "title": "Аналитика федерации",
+    "total_athletes": "Всего спортсменов",
+    "tournaments_this_year": "Турниров в году",
+    "matches_total": "Всего матчей",
+    "clubs_active": "Активных клубов",
+    "athlete_registrations": "Регистрации спортсменов",
+    "last_24_months": "Последние 24 месяца",
+    "gender_breakdown": "По гендеру",
+    "avg_age": "Ср. возраст",
+    "matches_per_month": "Матчей в месяц",
+    "athletes_by_city": "По городам",
+    "popular_weight_classes": "Популярные весовые",
+    "top_clubs": "Топ клубов",
+    "top_athletes_year": "Лучшие спортсмены года",
+    "completed_tournaments": "Завершённые турниры",
+    "categories": "Категории",
+    "club": "Клуб",
+    "athletes": "Спортсмены",
+    "athlete": "Спортсмен",
+    "matches": "Матчи",
+    "entries": "Участники",
+    "points": "Очки"
+  },
+  "stats": {
+    "section_title": "Статистика",
+    "total_matches": "Всего матчей",
+    "wins": "Победы",
+    "losses": "Поражения",
+    "ippon_wins": "Иппон",
+    "wazaari_wins": "Ваза-ари",
+    "gs_wins": "Золотой балл",
+    "tournaments": "Турниры",
+    "rating_points": "Рейтинговые очки",
+    "of_wins": "от побед",
+    "rating_history": "История рейтинга",
+    "recent_results": "Последние результаты"
   }
 }

@@ -1,8 +1,9 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
-import { ApiError } from "@/lib/api";
+import { api, ApiError, setAccessToken } from "@/lib/api";
 import {
   Lock,
   UserPlus,
@@ -30,6 +31,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Judo-Arena — вход и регистрация" }] }),
+  errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
     mode: search.mode === "register" ? "register" : search.mode === "login" ? "login" : undefined,
   }),
@@ -42,15 +44,13 @@ export const Route = createFileRoute("/login")({
 
 type Mode = "login" | "register";
 
-/* inputs use dark: prefix so they respond to Tailwind's dark-mode class */
 const INPUT_CLS =
-  "w-full rounded-xl border px-4 py-3 pl-11 text-sm shadow-inner transition-all focus:outline-none focus:ring-2 backdrop-blur-sm " +
-  "border-black/10 bg-black/[0.04] text-foreground placeholder:text-foreground/40 focus:border-gold/50 focus:bg-black/[0.07] focus:ring-gold/15 " +
-  "dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40 dark:focus:border-gold/60 dark:focus:bg-white/10 dark:focus:ring-gold/20";
+  "lp-input w-full rounded-xl border px-4 py-3 pl-11 text-sm transition-all focus:outline-none focus:ring-2 " +
+  "focus:border-[#c8922a]/60 focus:ring-[#c8922a]/20";
 
 function InputIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground/35 dark:text-white/40">
+    <span className="lp-input-icon pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
       {children}
     </span>
   );
@@ -74,6 +74,9 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  // 2FA state
+  const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 60);
@@ -102,9 +105,9 @@ function Login() {
     setConfirmPassword("");
   };
 
-  const redirectToDashboard = (userRole: "ATHLETE" | "COACH" | "ADMIN") => {
+  const redirectToDashboard = (userRole: string, userClubId?: string | null) => {
     if (userRole === "ADMIN") navigate({ to: "/admin" });
-    else if (userRole === "COACH") navigate({ to: "/coach/onboarding" });
+    else if (userRole === "COACH") navigate({ to: userClubId ? "/coach" : "/coach/onboarding" });
     else navigate({ to: "/athlete/onboarding" });
   };
 
@@ -122,9 +125,28 @@ function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const user = await login(email, password);
+        // Если уже в стадии 2FA challenge
+        if (totpChallenge) {
+          const result = await api.auth.twofa.challenge(totpChallenge, totpCode);
+          setAccessToken((result as { accessToken: string }).accessToken);
+          const { bootstrap, getCurrentUser } = await import("@/lib/auth-store");
+          await bootstrap();
+          const user = getCurrentUser();
+          toast.success(`${t("auth.welcome_back")} 👋`);
+          if (user) redirectToDashboard(user.role, user.clubId);
+          return;
+        }
+        const result = await login(email, password);
+        // Проверяем 2FA challenge
+        if ("totpRequired" in result && result.totpRequired) {
+          setTotpChallenge((result as unknown as { challengeToken: string }).challengeToken);
+          setError("");
+          setLoading(false);
+          return;
+        }
+        const user = result as import("@/lib/auth-store").User;
         toast.success(`${t("auth.welcome_back")} ${user.name} 👋`);
-        redirectToDashboard(user.role);
+        redirectToDashboard(user.role, user.clubId);
       } else {
         const user = await register({
           email,
@@ -135,7 +157,7 @@ function Login() {
           preferredLocale: i18n.language.slice(0, 2) as Locale,
         });
         toast.success(t("auth.welcome_back") + " 🎉");
-        redirectToDashboard(user.role);
+        redirectToDashboard(user.role, user.clubId);
       }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : t("error.generic");
@@ -160,11 +182,30 @@ function Login() {
   return (
     <div className="lp-root min-h-screen overflow-x-hidden">
       {/* ambient orbs */}
-      <div className="lp-orb1 absolute h-[600px] w-[600px] rounded-full blur-3xl pointer-events-none -top-40 -left-40" />
-      <div className="lp-orb2 absolute h-[500px] w-[500px] rounded-full blur-3xl pointer-events-none bottom-0 right-0" />
+      <div className="lp-orb1 absolute h-[700px] w-[700px] rounded-full blur-3xl pointer-events-none -top-40 -left-40 opacity-60" />
+      <div className="lp-orb2 absolute h-[600px] w-[600px] rounded-full blur-3xl pointer-events-none bottom-0 right-0 opacity-50" />
+      {/* floating gold dots */}
+      <div className="lp-dots">
+        {[
+          { left:"8%",  top:"20%", dur:"7s",  delay:"0s" },
+          { left:"18%", top:"65%", dur:"9s",  delay:"1.2s" },
+          { left:"32%", top:"35%", dur:"11s", delay:"0.5s" },
+          { left:"55%", top:"80%", dur:"8s",  delay:"2s" },
+          { left:"70%", top:"15%", dur:"10s", delay:"0.8s" },
+          { left:"82%", top:"55%", dur:"7s",  delay:"1.8s" },
+          { left:"92%", top:"30%", dur:"12s", delay:"0.3s" },
+          { left:"45%", top:"10%", dur:"9s",  delay:"3s" },
+        ].map((d, i) => (
+          <div
+            key={i}
+            className="lp-dot"
+            style={{ left:d.left, top:d.top, ["--dur" as string]:d.dur, ["--delay" as string]:d.delay }}
+          />
+        ))}
+      </div>
 
       <div className="absolute inset-x-0 top-0 z-30 px-3 pt-3 sm:px-5 sm:pt-5">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 rounded-full border border-gold/20 bg-background/85 p-1.5 pl-2 shadow-[0_10px_40px_rgba(0,0,0,0.20)] backdrop-blur-2xl">
+        <div className="lp-nav-bar mx-auto flex max-w-[1500px] items-center justify-between gap-3 rounded-full border border-gold/20 bg-background/85 p-1.5 pl-2 shadow-[0_10px_40px_rgba(0,0,0,0.40)] backdrop-blur-2xl">
           <Link to="/" className="group flex min-w-0 items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/35 transition-transform group-hover:scale-105">
               <img src={emblem} alt="" className="h-full w-full object-cover" />
@@ -584,14 +625,42 @@ function Login() {
                 />
               </div>
 
-              <div>
+              {/* 2FA challenge screen */}
+              {totpChallenge && (
+                <div className="rounded-xl border border-gold/30 bg-gold/5 p-5 text-center space-y-3">
+                  <div className="text-gold text-2xl">🔐</div>
+                  <div className="font-semibold text-sm">{t("auth.2fa_title") ?? "Аутентификатор коды"}</div>
+                  <div className="text-xs text-muted-foreground">{t("auth.2fa_hint") ?? "Google Authenticator немесе Authy қолданбасынан 6 санды кодты енгізіңіз"}</div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    autoFocus
+                    required
+                    placeholder="000000"
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className={`${INPUT_CLS} text-center text-2xl font-mono tracking-[0.5em]`}
+                  />
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline underline-offset-2"
+                    onClick={() => { setTotpChallenge(null); setTotpCode(""); }}
+                  >
+                    {t("auth.back_to_login") ?? "← Артқа"}
+                  </button>
+                </div>
+              )}
+
+              <div className={totpChallenge ? "hidden" : ""}>
                 <div className="relative">
                   <InputIcon>
                     <KeyRound className="h-4 w-4" />
                   </InputIcon>
                   <input
                     type={showPwd ? "text" : "password"}
-                    required
+                    required={!totpChallenge}
                     placeholder={t("common.password")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -743,101 +812,102 @@ function Login() {
         </div>
 
         <style>{`
-        /* ── LIGHT (default) ── */
-        :root {
-          --lp-page-bg:   linear-gradient(135deg,#fdf8f0 0%,#f5edd8 45%,#faf6ef 100%);
-          --lp-orb1:      rgba(200,146,42,0.18);
-          --lp-orb2:      rgba(200,146,42,0.10);
-          --lp-grid:      rgba(200,146,42,0.09) 1px, transparent 1px;
-          --lp-glow:      radial-gradient(circle,rgba(200,146,42,0.12) 0%,transparent 65%);
-          --lp-badge-bg:  rgba(200,146,42,0.12);
-          --lp-badge-bdr: rgba(200,146,42,0.30);
-          --lp-heading:   #1a1005;
-          --lp-sub:       rgba(26,16,5,0.52);
-          --lp-chip-bg:   rgba(0,0,0,0.05);
-          --lp-chip-bdr:  rgba(0,0,0,0.09);
-          --lp-chip-lbl:  rgba(26,16,5,0.40);
-          --lp-orbit-bdr: rgba(200,146,42,0.28);
-          --lp-dan:       rgba(26,16,5,0.35);
-          --lp-brand-bg:  rgba(0,0,0,0.05);
-          --lp-brand-bdr: rgba(0,0,0,0.09);
-          --lp-brand-fg:  #1a1005;
-          --lp-right-bdr: rgba(0,0,0,0.07);
-          --lp-right-glow:radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.09) 0%,transparent 60%);
-          --lp-card-bg:   rgba(255,255,255,0.82);
-          --lp-card-bdr:  rgba(0,0,0,0.08);
-          --lp-card-shad: 0 40px 100px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.9) inset;
-          --lp-mobile-fg: #1a1005;
-          --lp-title:     #1a1005;
-          --lp-subtitle:  rgba(26,16,5,0.50);
-          --lp-home-btn:  rgba(0,0,0,0.09);
-          --lp-home-fg:   rgba(26,16,5,0.40);
-          --lp-tabs-bg:   rgba(0,0,0,0.05);
-          --lp-tabs-bdr:  rgba(0,0,0,0.07);
-          --lp-tab-inactive: rgba(26,16,5,0.45);
-          --lp-role-bg:   rgba(0,0,0,0.03);
-          --lp-role-bdr:  rgba(0,0,0,0.10);
-          --lp-role-fg:   rgba(26,16,5,0.45);
-          --lp-role-icon: rgba(0,0,0,0.07);
-          --lp-eye:       rgba(26,16,5,0.35);
-          --lp-forgot:    rgba(26,16,5,0.40);
-          --lp-sep:       rgba(0,0,0,0.07);
-          --lp-demo-lbl:  rgba(26,16,5,0.35);
-          --lp-demo-bg:   rgba(0,0,0,0.03);
-          --lp-demo-bdr:  rgba(0,0,0,0.08);
-          --lp-demo-icon: rgba(26,16,5,0.35);
-          --lp-demo-text: rgba(26,16,5,0.40);
-          --lp-demo-pwd:  rgba(26,16,5,0.30);
-        }
-
-        /* ── DARK ── */
+        /* ── DARK theme ── */
+        :root,
         html.dark {
-          --lp-page-bg:   linear-gradient(135deg,#050814 0%,#0a1128 40%,#060d1e 100%);
-          --lp-orb1:      rgba(200,146,42,0.12);
-          --lp-orb2:      rgba(26,58,122,0.30);
-          --lp-grid:      rgba(200,146,42,0.05) 1px, transparent 1px;
-          --lp-glow:      radial-gradient(circle,rgba(200,146,42,0.10) 0%,transparent 65%);
-          --lp-badge-bg:  rgba(200,146,42,0.12);
-          --lp-badge-bdr: rgba(200,146,42,0.28);
-          --lp-heading:   #ffffff;
-          --lp-sub:       rgba(255,255,255,0.45);
-          --lp-chip-bg:   rgba(255,255,255,0.06);
-          --lp-chip-bdr:  rgba(255,255,255,0.10);
-          --lp-chip-lbl:  rgba(255,255,255,0.35);
-          --lp-orbit-bdr: rgba(200,146,42,0.22);
-          --lp-dan:       rgba(255,255,255,0.30);
-          --lp-brand-bg:  rgba(255,255,255,0.05);
-          --lp-brand-bdr: rgba(255,255,255,0.08);
-          --lp-brand-fg:  #ffffff;
-          --lp-right-bdr: rgba(255,255,255,0.06);
-          --lp-right-glow:radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.07) 0%,transparent 60%);
-          --lp-card-bg:   rgba(255,255,255,0.04);
-          --lp-card-bdr:  rgba(255,255,255,0.09);
-          --lp-card-shad: 0 40px 100px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.05) inset;
-          --lp-mobile-fg: #ffffff;
-          --lp-title:     #ffffff;
-          --lp-subtitle:  rgba(255,255,255,0.45);
-          --lp-home-btn:  rgba(255,255,255,0.10);
-          --lp-home-fg:   rgba(255,255,255,0.40);
-          --lp-tabs-bg:   rgba(255,255,255,0.04);
-          --lp-tabs-bdr:  rgba(255,255,255,0.07);
+          --lp-page-bg:    linear-gradient(135deg,#04060f 0%,#08102a 45%,#050c1c 100%);
+          --lp-orb1:       rgba(200,146,42,0.18);
+          --lp-orb2:       rgba(30,60,140,0.45);
+          --lp-grid:       rgba(200,146,42,0.06) 1px, transparent 1px;
+          --lp-glow:       radial-gradient(circle,rgba(200,146,42,0.14) 0%,transparent 65%);
+          --lp-badge-bg:   rgba(200,146,42,0.13);
+          --lp-badge-bdr:  rgba(200,146,42,0.35);
+          --lp-heading:    #ffffff;
+          --lp-sub:        rgba(255,255,255,0.55);
+          --lp-chip-bg:    rgba(255,255,255,0.05);
+          --lp-chip-bdr:   rgba(200,146,42,0.20);
+          --lp-chip-lbl:   rgba(255,255,255,0.40);
+          --lp-orbit-bdr:  rgba(200,146,42,0.30);
+          --lp-dan:        rgba(255,255,255,0.35);
+          --lp-brand-bg:   rgba(255,255,255,0.04);
+          --lp-brand-bdr:  rgba(255,255,255,0.09);
+          --lp-brand-fg:   #ffffff;
+          --lp-right-bdr:  rgba(200,146,42,0.12);
+          --lp-right-glow: radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.10) 0%,transparent 65%);
+          --lp-card-bg:    rgba(8,14,38,0.85);
+          --lp-card-bdr:   rgba(200,146,42,0.22);
+          --lp-card-shad:  0 40px 100px rgba(0,0,0,0.70), 0 0 0 1px rgba(200,146,42,0.08) inset;
+          --lp-mobile-fg:  #ffffff;
+          --lp-title:      #ffffff;
+          --lp-subtitle:   rgba(255,255,255,0.48);
+          --lp-home-btn:   rgba(255,255,255,0.08);
+          --lp-home-fg:    rgba(255,255,255,0.40);
+          --lp-tabs-bg:    rgba(255,255,255,0.04);
+          --lp-tabs-bdr:   rgba(255,255,255,0.08);
           --lp-tab-inactive: rgba(255,255,255,0.45);
-          --lp-role-bg:   rgba(255,255,255,0.03);
-          --lp-role-bdr:  rgba(255,255,255,0.08);
-          --lp-role-fg:   rgba(255,255,255,0.45);
-          --lp-role-icon: rgba(255,255,255,0.07);
-          --lp-eye:       rgba(255,255,255,0.35);
-          --lp-forgot:    rgba(255,255,255,0.40);
-          --lp-sep:       rgba(255,255,255,0.07);
-          --lp-demo-lbl:  rgba(255,255,255,0.30);
-          --lp-demo-bg:   rgba(255,255,255,0.03);
-          --lp-demo-bdr:  rgba(255,255,255,0.07);
-          --lp-demo-icon: rgba(255,255,255,0.35);
-          --lp-demo-text: rgba(255,255,255,0.35);
-          --lp-demo-pwd:  rgba(255,255,255,0.25);
+          --lp-role-bg:    rgba(255,255,255,0.03);
+          --lp-role-bdr:   rgba(255,255,255,0.08);
+          --lp-role-fg:    rgba(255,255,255,0.50);
+          --lp-role-icon:  rgba(255,255,255,0.06);
+          --lp-eye:        rgba(255,255,255,0.35);
+          --lp-forgot:     rgba(255,255,255,0.40);
+          --lp-sep:        rgba(255,255,255,0.08);
+          --lp-demo-lbl:   rgba(255,255,255,0.30);
+          --lp-demo-bg:    rgba(255,255,255,0.03);
+          --lp-demo-bdr:   rgba(255,255,255,0.08);
+          --lp-demo-icon:  rgba(255,255,255,0.40);
+          --lp-demo-text:  rgba(255,255,255,0.40);
+          --lp-demo-pwd:   rgba(255,255,255,0.28);
         }
 
-        .lp-root           { background: var(--lp-page-bg); }
+        /* ── LIGHT theme ── */
+        html.light {
+          --lp-page-bg:    linear-gradient(135deg,#f0f4ff 0%,#e8edf8 45%,#f5f7ff 100%);
+          --lp-orb1:       rgba(200,146,42,0.12);
+          --lp-orb2:       rgba(100,140,220,0.20);
+          --lp-grid:       rgba(200,146,42,0.07) 1px, transparent 1px;
+          --lp-glow:       radial-gradient(circle,rgba(200,146,42,0.10) 0%,transparent 65%);
+          --lp-badge-bg:   rgba(200,146,42,0.10);
+          --lp-badge-bdr:  rgba(200,146,42,0.30);
+          --lp-heading:    #0d1325;
+          --lp-sub:        rgba(13,19,37,0.60);
+          --lp-chip-bg:    rgba(255,255,255,0.75);
+          --lp-chip-bdr:   rgba(200,146,42,0.25);
+          --lp-chip-lbl:   rgba(13,19,37,0.50);
+          --lp-orbit-bdr:  rgba(200,146,42,0.25);
+          --lp-dan:        rgba(13,19,37,0.40);
+          --lp-brand-bg:   rgba(13,19,37,0.05);
+          --lp-brand-bdr:  rgba(13,19,37,0.12);
+          --lp-brand-fg:   #0d1325;
+          --lp-right-bdr:  rgba(200,146,42,0.15);
+          --lp-right-glow: radial-gradient(ellipse at 50% 0%,rgba(200,146,42,0.08) 0%,transparent 65%);
+          --lp-card-bg:    rgba(255,255,255,0.92);
+          --lp-card-bdr:   rgba(200,146,42,0.25);
+          --lp-card-shad:  0 20px 60px rgba(13,19,37,0.12), 0 0 0 1px rgba(200,146,42,0.10) inset;
+          --lp-mobile-fg:  #0d1325;
+          --lp-title:      #0d1325;
+          --lp-subtitle:   rgba(13,19,37,0.50);
+          --lp-home-btn:   rgba(13,19,37,0.08);
+          --lp-home-fg:    rgba(13,19,37,0.45);
+          --lp-tabs-bg:    rgba(13,19,37,0.04);
+          --lp-tabs-bdr:   rgba(13,19,37,0.10);
+          --lp-tab-inactive: rgba(13,19,37,0.45);
+          --lp-role-bg:    rgba(13,19,37,0.03);
+          --lp-role-bdr:   rgba(13,19,37,0.10);
+          --lp-role-fg:    rgba(13,19,37,0.55);
+          --lp-role-icon:  rgba(13,19,37,0.06);
+          --lp-eye:        rgba(13,19,37,0.35);
+          --lp-forgot:     rgba(13,19,37,0.45);
+          --lp-sep:        rgba(13,19,37,0.10);
+          --lp-demo-lbl:   rgba(13,19,37,0.35);
+          --lp-demo-bg:    rgba(13,19,37,0.03);
+          --lp-demo-bdr:   rgba(13,19,37,0.10);
+          --lp-demo-icon:  rgba(13,19,37,0.40);
+          --lp-demo-text:  rgba(13,19,37,0.45);
+          --lp-demo-pwd:   rgba(13,19,37,0.30);
+        }
+
+        .lp-root           { background: var(--lp-page-bg); color-scheme: light dark; }
         .lp-orb1           { background: var(--lp-orb1); }
         .lp-orb2           { background: var(--lp-orb2); }
         .lp-grid           { background-image: linear-gradient(var(--lp-grid)),linear-gradient(90deg,var(--lp-grid)); background-size: 56px 56px; }
@@ -873,6 +943,91 @@ function Login() {
         .lp-demo-icon      { color: var(--lp-demo-icon); }
         .lp-demo-text      { color: var(--lp-demo-text); }
         .lp-demo-pwd       { color: var(--lp-demo-pwd); }
+
+        /* animated gold border on card */
+        .lp-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 24px;
+          padding: 1px;
+          background: linear-gradient(120deg, transparent 20%, rgba(200,146,42,0.6) 50%, transparent 80%);
+          background-size: 200% 200%;
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          animation: borderSweep 4s linear infinite;
+          pointer-events: none;
+        }
+        /* scan line */
+        .lp-card::after {
+          content: '';
+          position: absolute;
+          left: 0; right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(200,146,42,0.5), transparent);
+          animation: scanLine 6s ease-in-out infinite;
+          pointer-events: none;
+        }
+        /* stat chips glow on hover */
+        .lp-chip:hover { border-color: rgba(200,146,42,0.45); box-shadow: 0 0 20px rgba(200,146,42,0.12); transition: all 0.3s; }
+        /* floating dots background */
+        .lp-dots {
+          position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+        }
+        .lp-dot {
+          position: absolute;
+          width: 3px; height: 3px;
+          border-radius: 50%;
+          background: rgba(200,146,42,0.5);
+          animation: dotFloat var(--dur, 8s) ease-in-out infinite var(--delay, 0s);
+        }
+        /* navbar: dark by default, adapts in light mode */
+        html.dark .lp-nav-bar, :root .lp-nav-bar {
+          background: rgba(6,10,24,0.90) !important;
+          border-color: rgba(200,146,42,0.15) !important;
+        }
+        html.dark .lp-nav-bar *, :root .lp-nav-bar * { color: rgba(255,255,255,0.85) !important; }
+        html.dark .lp-nav-bar a:hover *, :root .lp-nav-bar a:hover * { color: #c8922a !important; }
+        html.light .lp-nav-bar {
+          background: rgba(245,247,255,0.92) !important;
+          border-color: rgba(200,146,42,0.18) !important;
+        }
+        html.light .lp-nav-bar * { color: rgba(13,19,37,0.80) !important; }
+        html.light .lp-nav-bar a:hover * { color: #c8922a !important; }
+
+        /* inputs */
+        html.dark .lp-input, :root .lp-input {
+          border-color: rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.05);
+          color: #ffffff;
+        }
+        html.dark .lp-input::placeholder, :root .lp-input::placeholder { color: rgba(255,255,255,0.35); }
+        html.dark .lp-input:focus, :root .lp-input:focus { background: rgba(255,255,255,0.08); }
+        html.dark .lp-input-icon, :root .lp-input-icon { color: rgba(255,255,255,0.40); }
+        html.light .lp-input {
+          border-color: rgba(13,19,37,0.14);
+          background: rgba(13,19,37,0.04);
+          color: #0d1325;
+        }
+        html.light .lp-input::placeholder { color: rgba(13,19,37,0.38); }
+        html.light .lp-input:focus { background: rgba(255,255,255,0.90); border-color: rgba(200,146,42,0.50); }
+        html.light .lp-input-icon { color: rgba(13,19,37,0.40); }
+
+        @keyframes borderSweep {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @keyframes scanLine {
+          0%   { top: 10%; opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { top: 90%; opacity: 0; }
+        }
+        @keyframes dotFloat {
+          0%, 100% { transform: translateY(0px) scale(1); opacity: 0.4; }
+          50%      { transform: translateY(-30px) scale(1.3); opacity: 0.8; }
+        }
 
         @keyframes floatMedal {
           0%,100% { transform: translateY(0px) rotate(0deg); }

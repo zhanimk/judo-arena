@@ -51,8 +51,8 @@ export function LiveBracket({ tournamentId, categoryId }: Props) {
 
   return (
     <OlympicBracket
-      matches={query.data.matches ?? []}
-      size={query.data.size}
+      matches={(query.data.matches ?? []) as any}
+      size={query.data.size ?? 0}
       format={query.data.format}
     />
   );

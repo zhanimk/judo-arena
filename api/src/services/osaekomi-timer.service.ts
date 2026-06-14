@@ -12,6 +12,7 @@
 import { prisma } from "../lib/prisma.js";
 import { MatchStatus } from "@prisma/client";
 import { emitMatchEvent } from "../sockets/io.js";
+import { normalizeScore } from "./match-types.js";
 
 const IPPON_SEC = 20;
 
@@ -54,8 +55,8 @@ export async function restoreActiveTimers(): Promise<void> {
 
   let restored = 0;
   for (const m of matches) {
-    const snap = m.scoreSnapshot as any;
-    if (snap?.osaekomi?.startedAt) {
+    const snap = normalizeScore(m.scoreSnapshot);
+    if (snap.osaekomi?.startedAt) {
       scheduleOsaekomiTimer(m.id, snap.osaekomi.startedAt);
       restored++;
     }
@@ -78,22 +79,17 @@ async function triggerAutoEndOsaekomi(matchId: string): Promise<void> {
     // Emit real-time update
     try {
       
-      const match = result.match as any;
       emitMatchEvent(
-        {
-          id: match.id,
-          tournamentId: match.tournamentId,
-          bracketId: match.bracketId,
-          tatamiNumber: match.tatamiNumber,
-        },
+        result.match,
         result.autoFinished ? "match:finished" : "match:scoreUpdate",
         { matchId, scoredType: result.scoredType, autoFinished: result.autoFinished },
       );
     } catch {
       // IO may not be ready — non-critical
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Match may have already ended or be in a bad state — safe to ignore
-    process.stderr.write(`[osaekomi-timer] Auto-end failed for match ${matchId}: ${err?.message}\n`);
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[osaekomi-timer] Auto-end failed for match ${matchId}: ${message}\n`);
   }
 }

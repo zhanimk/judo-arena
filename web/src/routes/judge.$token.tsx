@@ -5,6 +5,7 @@
  *  Большие кнопки для мобильника. Серверная проверка таймера osaekomi.
  */
 
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { useRealtime } from "@/lib/socket";
 
 export const Route = createFileRoute("/judge/$token")({
   head: () => ({ meta: [{ title: "Төреші панелі — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: JudgePanel,
 });
 
@@ -77,51 +79,51 @@ function JudgePanel() {
     mutationFn: () => api.matches.start(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
   });
   const pauseMatch = useMutation({
     mutationFn: () => api.matches.pause(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
   });
   const score = useMutation({
     mutationFn: (params: { type: string; side: "RED" | "BLUE" }) =>
       api.matches.score(matchId!, params.type, params.side, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.score_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.score_error")),
   });
   const osaekomi = useMutation({
     mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.osaekomi_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.osaekomi_error")),
   });
   const toketa = useMutation({
     mutationFn: () => api.matches.toketa(matchId!, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.toketa_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.toketa_error")),
   });
   const goldenScore = useMutation({
     mutationFn: () => api.matches.goldenScore(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.golden_score_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.golden_score_error")),
   });
   const confirmResult = useMutation({
     mutationFn: () => api.matches.confirm(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.confirm_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.confirm_error")),
   });
   const finishMatch = useMutation({
     mutationFn: (params: { winnerSide: "RED" | "BLUE"; reason?: string }) =>
       api.matches.finish(matchId!, params.winnerSide, params.reason, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: any) => setActionError(e instanceof ApiError ? e.message : t("judge.finish_error")),
+    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.finish_error")),
   });
 
   if (sessionQuery.isLoading) {
@@ -146,7 +148,7 @@ function JudgePanel() {
 
   const red = match?.redAthlete;
   const blue = match?.blueAthlete;
-  const score_ = match?.scoreSnapshot ?? { red: {}, blue: {} };
+  const score_ = (match?.scoreSnapshot ?? { red: {}, blue: {} }) as import("@/lib/api-types").MatchScoreSnapshot;
   const redS = score_.red ?? {};
   const blueS = score_.blue ?? {};
   const isRunning = match?.status === "IN_PROGRESS";
@@ -175,7 +177,7 @@ function JudgePanel() {
             {t("judge.panel_title")}
           </div>
           <div className="text-sm text-gold">
-            {match?.tournament?.name?.kk ?? match?.tournament?.name?.ru ?? t("common.tournament")}
+            {(typeof match?.tournament?.name === "object" && match.tournament?.name !== null ? (match.tournament.name.kk ?? match.tournament.name.ru) : match?.tournament?.name as string | undefined) ?? t("common.tournament")}
             {match?.tatamiNumber ? ` · ${t("common.tatami")} #${match.tatamiNumber}` : ""}
           </div>
         </div>
@@ -296,7 +298,7 @@ function JudgePanel() {
         <div className="grid gap-4 md:grid-cols-2">
           {(["RED", "BLUE"] as const).map((side) => {
             const a = side === "RED" ? red : blue;
-            const s: any = side === "RED" ? redS : blueS;
+            const s: import("@/lib/api-types").MatchScoreSnapshot["red"] = side === "RED" ? redS : blueS;
             const isOsae = osaekomiActive && osaekomiSide === side;
             return (
               <div
@@ -390,7 +392,7 @@ function ScoreBtn({
   );
 }
 
-function getClockElapsedSec(score: any): number {
+function getClockElapsedSec(score: import("@/lib/api-types").MatchScoreSnapshot | null | undefined): number {
   const clock = score?.clock;
   const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
   if (!clock?.running || !clock.runningStartedAt) return base;

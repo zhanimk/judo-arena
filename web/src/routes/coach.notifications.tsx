@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -8,6 +9,7 @@ import {
 import { Check, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type { Notification } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { toast } from "sonner";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
@@ -16,6 +18,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/notifications")({
   head: () => ({ meta: [{ title: "Хабарландырулар — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachNotifications />
@@ -52,20 +55,20 @@ function CoachNotifications() {
       qc.invalidateQueries({ queryKey: ["my-notifications"] });
       toast.success(t("notification.mark_all_read") + " ✓");
     },
-    onError: (e: any) => toast.error(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => toast.error(e instanceof ApiError ? e.message : t("error.generic")),
   });
   const markOne = useMutation({
     mutationFn: (id: string) => api.notifications.markRead(id),
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: ["my-notifications", filter] });
-      const prev = qc.getQueryData<any[]>(["my-notifications", filter]);
-      qc.setQueryData(["my-notifications", filter], (old: any[]) =>
+      const previous = qc.getQueryData<Notification[]>(["my-notifications", filter]) ?? [];
+      qc.setQueryData(["my-notifications", filter], (old: Notification[]) =>
         (old ?? []).map((n) => (n.id === id ? { ...n, read: true } : n)),
       );
-      return { prev };
+      return { previous };
     },
-    onError: (_e, _id, ctx: any) => {
-      if (ctx?.prev) qc.setQueryData(["my-notifications", filter], ctx.prev);
+    onError: (_e, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["my-notifications", filter], ctx.previous);
       toast.error(t("error.generic"));
     },
     onSettled: () => {
@@ -75,7 +78,7 @@ function CoachNotifications() {
   });
 
   const items = query.data ?? [];
-  const unread = items.filter((n: any) => !n.read).length;
+  const unread = items.filter((n: Notification) => !n.read).length;
 
   return (
     <DashboardShell
@@ -120,7 +123,7 @@ function CoachNotifications() {
           <EmptyState title={t("notification.empty")} hint={t("notification.empty_hint")} />
         ) : (
           <ul className="space-y-2">
-            {items.map((n: any) => (
+            {items.map((n: Notification) => (
               <li
                 key={n.id}
                 className={`glass rounded-md p-4 flex justify-between items-start gap-3 ${n.read ? "opacity-60" : "border-gold/30"}`}

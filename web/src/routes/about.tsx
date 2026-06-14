@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/about")({
       { name: "description", content: "Judo-Arena жобасы туралы: технологиялар, архитектура және стандарттар." },
     ],
   }),
+  errorComponent: RouteErrorUI,
   component: About,
 });
 

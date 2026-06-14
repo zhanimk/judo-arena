@@ -20,14 +20,18 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { attachErrorHandler } from "../lib/error-handler.js";
+import { adminOnly, withRateLimit } from "../lib/route-guards.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { overrideMatchResult } from "../services/admin-override.service.js";
 import {
   finalizeTournament,
   getAthleteRating,
+  getAthleteStats,
   getLeaderboard,
   getClubLeaderboard,
+  getWeightClassLeaderboard,
+  getAvailableWeightClasses,
 } from "../services/rating.service.js";
 import { listAuditLogs } from "../services/audit.service.js";
 import {
@@ -41,6 +45,8 @@ import {
   getSystemConfig,
   updateSystemConfig,
   getStats,
+  getBusinessMetrics,
+  getFederationAnalytics,
   createUserByAdmin,
   updateUserByAdmin,
   changeUserClub,
@@ -58,6 +64,7 @@ import {
   generateAllBracketsPdf,
   generateTournamentProtocolPdf,
 } from "../services/pdf.service.js";
+import { generateCertificate } from "../services/pdf-certificate.service.js";
 import {
   adminForceRemoveEntry,
   adminForceMoveEntry,
@@ -67,7 +74,16 @@ import {
   getTournamentWeighIn,
   updateEntryWeighIn,
 } from "../services/weigh-in.service.js";
+import { exportTournamentExcel } from "../services/excel-export.service.js";
+import { runBackupSafe } from "../services/backup.service.js";
 import { updateWeighInSchema } from "../validators/application.schema.js";
+import { disconnectUserSockets } from "../sockets/io.js";
+import { revokeAllUserTokens } from "../lib/refresh-store.js";
+import { redis } from "../lib/redis.js";
+import {
+  CACHE_PUBLIC_LONG,
+  setCacheHeaders,
+} from "../lib/cache-headers.js";
 
 const overrideSchema = z
   .object({
@@ -193,7 +209,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/admin/applications?status=...&tournamentId=...
   app.get(
     "/applications",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request) => {
       const q = request.query as { status?: string; tournamentId?: string };
       return listAllApplicationsAdmin(q.status, q.tournamentId);
@@ -202,10 +218,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/matches/:id/override",
-    {
-      preHandler: [authenticate, authorize("ADMIN")],
-      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
-    },
+    withRateLimit(adminOnly, { max: 20, timeWindow: "1 minute" }),
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { winnerSide, reason } = overrideSchema.parse(request.body);
       return overrideMatchResult(
@@ -219,10 +232,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/tournaments/:id/finalize",
-    {
-      preHandler: [authenticate, authorize("ADMIN")],
-      config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
-    },
+    withRateLimit(adminOnly, { max: 5, timeWindow: "1 minute" }),
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return finalizeTournament(request.user!.sub, request.params.id);
     },
@@ -230,7 +240,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get<{ Params: { id: string } }>(
     "/tournaments/:id/weigh-in",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return getTournamentWeighIn(request.user!.sub, request.params.id);
     },
@@ -238,7 +248,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { entryId: string } }>(
     "/application-entries/:entryId/weigh-in",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { entryId: string } }>) => {
       const input = updateWeighInSchema.parse(request.body);
       return updateEntryWeighIn(
@@ -251,7 +261,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     "/audit-logs",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request) => {
       const q = auditQuerySchema.parse(request.query);
       return listAuditLogs(q);
@@ -263,7 +273,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.post(
     "/clubs",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest, reply) => {
       const input = createClubSchema.parse(request.body);
       const club = await createClubByAdmin(request.user!.sub, input);
@@ -273,7 +283,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     "/clubs/:id/details",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const input = updateClubSchema.parse(request.body);
       return updateClubByAdmin(request.user!.sub, request.params.id, input);
@@ -282,7 +292,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     "/clubs/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return deleteClubByAdmin(request.user!.sub, request.params.id);
     },
@@ -293,7 +303,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     Body: { blocked: boolean; reason?: string };
   }>(
     "/clubs/:id/block",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (
       request: FastifyRequest<{
         Params: { id: string };
@@ -311,7 +321,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get<{ Params: { id: string } }>(
     "/clubs/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return getClubFullDetails(request.params.id);
     },
@@ -322,7 +332,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.post<{ Params: { id: string } }>(
     "/clubs/:id/groups",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const input = groupSchema.parse(request.body);
       return createGroupByAdmin(request.user!.sub, request.params.id, input);
@@ -331,7 +341,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     "/club-groups/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const input = groupSchema.partial().parse(request.body);
       return updateGroupByAdmin(request.user!.sub, request.params.id, input);
@@ -340,7 +350,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     "/club-groups/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return deleteGroupByAdmin(request.user!.sub, request.params.id);
     },
@@ -351,7 +361,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.post(
     "/users",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest, reply) => {
       const input = createUserSchema.parse(request.body);
       const user = await createUserByAdmin(request.user!.sub, input);
@@ -361,7 +371,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     "/users/:id/profile",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const input = updateUserSchema.parse(request.body);
       return updateUserByAdmin(request.user!.sub, request.params.id, input);
@@ -370,7 +380,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string } }>(
     "/users/:id/club",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { clubId } = z
         .object({ clubId: z.string().nullable() })
@@ -381,7 +391,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/users/:id/reset-password",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       const { password } = z
         .object({ password: strongPassword })
@@ -401,7 +411,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     };
   }>(
     "/users",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request) => {
       const q = request.query;
       return listAllUsers({
@@ -422,7 +432,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get<{ Params: { id: string } }>(
     "/users/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return getUserDetails(request.params.id);
     },
@@ -430,24 +440,31 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string }; Body: { active: boolean } }>(
     "/users/:id/active",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (
       request: FastifyRequest<{
         Params: { id: string };
         Body: { active: boolean };
       }>,
     ) => {
-      return toggleUserBlock(
+      const result = await toggleUserBlock(
         request.user!.sub,
         request.params.id,
         request.body.active,
       );
+      // При деактивации — отзываем все токены и выгоняем активные сокеты
+      if (!request.body.active) {
+        await revokeAllUserTokens(request.params.id);
+        await redis.del(`user-cache:${request.params.id}`);
+        disconnectUserSockets(request.params.id);
+      }
+      return result;
     },
   );
 
   app.delete<{ Params: { id: string } }>(
     "/users/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteUserByAdmin(request.user!.sub, request.params.id);
       return reply.code(204).send();
@@ -459,7 +476,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.patch<{ Params: { id: string }; Body: { featured: boolean } }>(
     "/tournaments/:id/feature",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (
       request: FastifyRequest<{
         Params: { id: string };
@@ -476,7 +493,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { id: string }; Body: { archive: boolean } }>(
     "/tournaments/:id/archive",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (
       request: FastifyRequest<{
         Params: { id: string };
@@ -496,7 +513,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.get<{ Params: { key: string } }>(
     "/system-config/:key",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { key: string } }>) => {
       const cfg = await getSystemConfig(request.params.key);
       return cfg ?? { key: request.params.key, value: null };
@@ -505,7 +522,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { key: string }; Body: { value: unknown } }>(
     "/system-config/:key",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (
       request: FastifyRequest<{
         Params: { key: string };
@@ -525,8 +542,47 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // ============================================================
   app.get(
     "/stats",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async () => getStats(),
+  );
+
+  // Бизнес-метрики — операционный дашборд (что происходит сейчас + за 24ч)
+  app.get(
+    "/metrics",
+    withRateLimit(adminOnly, { max: 30, timeWindow: "1 minute" }),
+    async () => getBusinessMetrics(),
+  );
+
+  // Аналитика федерации — отчёты для Министерства спорта
+  app.get(
+    "/analytics",
+    withRateLimit(adminOnly, { max: 10, timeWindow: "1 minute" }),
+    async () => getFederationAnalytics(),
+  );
+
+  // ---- POST /backup — ручной запуск резервного копирования ----
+  app.post(
+    "/backup",
+    withRateLimit(adminOnly, { max: 2, timeWindow: "1 hour" }),
+    async (request, reply) => {
+      // Запускаем в фоне — не блокируем ответ
+      const result = await runBackupSafe(
+        (msg) => request.log.info(msg),
+      );
+      if (!result) {
+        return reply.code(500).send({
+          error: "BACKUP_FAILED",
+          message: "Резервное копирование завершилось с ошибкой. Проверьте логи.",
+        });
+      }
+      return reply.send({
+        ok: true,
+        filename: result.filename,
+        sizeBytes: result.sizeBytes,
+        s3Key: result.s3Key,
+        durationMs: result.durationMs,
+      });
+    },
   );
 }
 
@@ -539,28 +595,75 @@ export async function ratingRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     "/athletes/:id",
     { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
-    async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      return getAthleteRating(request.params.id);
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await getAthleteRating(request.params.id);
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG); // Рейтинг спортсмена — 5 мин
+      return result;
+    },
+  );
+
+  // Весовые категории — список доступных для фильтра
+  app.get(
+    "/weight-classes",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (_request, reply) => {
+      const result = await getAvailableWeightClasses();
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG); // Весовые классы не меняются
+      return result;
+    },
+  );
+
+  // Рейтинг по весовой категории — сквозной по всем турнирам
+  app.get(
+    "/weight-class",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (request: FastifyRequest, reply) => {
+      const { gender, weightMax, limit } = z
+        .object({
+          gender: z.enum(["MALE", "FEMALE"]),
+          weightMax: z.coerce.number().int().positive(),
+          limit: z.coerce.number().int().min(1).max(200).default(50),
+        })
+        .parse(request.query);
+      const result = await getWeightClassLeaderboard({ gender, weightMax, limit });
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG);
+      return result;
+    },
+  );
+
+  // Полная статистика спортсмена — публичная (матчи, победы, типы, рейтинг)
+  app.get(
+    "/athletes/:id/stats",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await getAthleteStats(request.params.id);
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG);
+      return result;
     },
   );
 
   app.get(
     "/leaderboard",
     { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
-    async (request) => {
+    async (request, reply) => {
       const q = leaderboardQuerySchema.parse(request.query);
-      return getLeaderboard(q);
+      const result = await getLeaderboard(q);
+      // Лидерборд пересчитывается после турниров, кэш 5 мин допустим
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG);
+      return result;
     },
   );
 
   app.get(
     "/clubs",
     { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
-    async (request) => {
+    async (request, reply) => {
       const { limit } = z
         .object({ limit: z.coerce.number().int().min(1).max(100).default(50) })
         .parse(request.query);
-      return getClubLeaderboard({ limit });
+      const result = await getClubLeaderboard({ limit });
+      setCacheHeaders(reply, CACHE_PUBLIC_LONG);
+      return result;
     },
   );
 }
@@ -646,10 +749,7 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
   // PDF всех сеток турнира — один файл с обложкой + все категории
   app.get(
     "/tournament-brackets",
-    {
-      preHandler: [authenticate, authorize("ADMIN")],
-      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
-    },
+    withRateLimit(adminOnly, { max: 10, timeWindow: "1 minute" }),
     async (request, reply) => {
       const q = pdfAllBracketsQuerySchema.parse(request.query);
       const buffer = await generateAllBracketsPdf(q.tournamentId);
@@ -663,5 +763,42 @@ export async function pdfRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Участников PDF и Диплом PDF удалены по требованию ТЗ
+  // PDF сертификат победителю — публичный (результаты турнира публичны)
+  app.get(
+    "/certificate",
+    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { athleteId, tournamentId } = z
+        .object({
+          athleteId: z.string().min(1),
+          tournamentId: z.string().min(1),
+        })
+        .parse(request.query);
+      const buffer = await generateCertificate(athleteId, tournamentId);
+      return reply
+        .type("application/pdf")
+        .header(
+          "Content-Disposition",
+          `attachment; filename="certificate-${athleteId.slice(-8)}.pdf"`,
+        )
+        .send(buffer);
+    },
+  );
+
+  // Excel экспорт результатов турнира — ADMIN
+  app.get(
+    "/export/excel",
+    withRateLimit(adminOnly, { max: 5, timeWindow: "1 minute" }),
+    async (request, reply) => {
+      const { tournamentId } = z
+        .object({ tournamentId: z.string().min(1) })
+        .parse(request.query);
+      const buffer = await exportTournamentExcel(tournamentId);
+      const safeName = tournamentId.slice(-10);
+      return reply
+        .type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .header("Content-Disposition", `attachment; filename="tournament-${safeName}.xlsx"`)
+        .send(buffer);
+    },
+  );
 }

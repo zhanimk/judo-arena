@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -21,11 +22,13 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import type { Tournament, Match, AuditLog } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Әкімші — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminOverview />
@@ -68,7 +71,7 @@ function AdminOverview() {
 
   const tournaments = tournamentsQuery.data?.items ?? [];
   const active = tournaments.filter(
-    (t: any) => t.status === "REGISTRATION_OPEN" || t.status === "IN_PROGRESS",
+    (t: Tournament) => t.status === "REGISTRATION_OPEN" || t.status === "IN_PROGRESS",
   );
   const liveCount = liveMatchesQuery.data?.length ?? 0;
 
@@ -98,7 +101,7 @@ function AdminOverview() {
 
             {/* Status pills */}
             <div className="mt-3 flex flex-wrap gap-2">
-              {active.map((trn: any) => (
+              {active.map((trn: Tournament) => (
                 <span
                   key={trn.id}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
@@ -187,7 +190,7 @@ function AdminOverview() {
             <EmptyState title={t("admin.no_live_matches")} hint={t("admin.live_auto_refresh")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {(liveMatchesQuery.data ?? []).slice(0, 5).map((m: any) => (
+              {(liveMatchesQuery.data ?? []).slice(0, 5).map((m: Match) => (
                 <li key={m.id} className="glass rounded-lg p-3 flex items-center gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-[10px] font-bold text-emerald-500">
                     T{m.tatamiNumber ?? "?"}
@@ -233,7 +236,7 @@ function AdminOverview() {
                 },
                 { to: "/admin/users", icon: Users, label: t("dashboard.users") },
                 { to: "/admin/ratings", icon: ShieldAlert, label: t("dashboard.ratings") },
-              ].map(({ to, icon: Icon, label, search }: any) => (
+              ].map(({ to, icon: Icon, label, search }: { to: string; icon: React.ComponentType<{ className?: string }>; label: string; search?: Record<string, unknown> }) => (
                 <Link
                   key={to}
                   to={to}
@@ -255,7 +258,7 @@ function AdminOverview() {
             <EmptyState title={t("admin.audit_empty")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {(auditQuery.data?.items ?? []).slice(0, 6).map((a: any) => {
+              {(auditQuery.data?.items ?? []).slice(0, 6).map((a: AuditLog) => {
                 const actionLower = (a.action ?? "").toLowerCase();
                 const actionKey =
                   Object.keys(ACTION_COLORS).find((k) => actionLower.includes(k)) ?? "";
@@ -285,7 +288,7 @@ function AdminOverview() {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

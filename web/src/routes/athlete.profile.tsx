@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardShell, Panel } from "@/components/dashboard/DashboardShell";
 import {
@@ -16,9 +17,12 @@ import {
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useState, type InputHTMLAttributes } from "react";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import type { Club, UserDocument } from "@/lib/api-types";
 import { ProfilePhoto } from "@/components/ui/profile-photo";
+import { AvatarCropDialog } from "@/components/ui/avatar-crop-dialog";
 import { toast } from "sonner";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
@@ -27,17 +31,17 @@ type UserDocumentType = "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 const BELT_RANKS = [
-  { value: "6 КЮ", labelKey: "athlete_dashboard.belt_white" },
-  { value: "5 КЮ", labelKey: "athlete_dashboard.belt_yellow" },
-  { value: "4 КЮ", labelKey: "athlete_dashboard.belt_orange" },
-  { value: "3 КЮ", labelKey: "athlete_dashboard.belt_green" },
-  { value: "2 КЮ", labelKey: "athlete_dashboard.belt_blue" },
-  { value: "1 КЮ", labelKey: "athlete_dashboard.belt_brown" },
-  { value: "1 ДАН", labelKey: "athlete_dashboard.belt_black" },
-  { value: "2 ДАН", labelKey: "athlete_dashboard.belt_black" },
-  { value: "3 ДАН", labelKey: "athlete_dashboard.belt_black" },
-  { value: "4 ДАН", labelKey: "athlete_dashboard.belt_black" },
-  { value: "5 ДАН", labelKey: "athlete_dashboard.belt_black" },
+  { value: "6 КЮ", labelKey: "athlete_dashboard.belt_white", gradient: "from-zinc-100 to-zinc-300" },
+  { value: "5 КЮ", labelKey: "athlete_dashboard.belt_yellow", gradient: "from-yellow-300 to-yellow-500" },
+  { value: "4 КЮ", labelKey: "athlete_dashboard.belt_orange", gradient: "from-orange-400 to-orange-600" },
+  { value: "3 КЮ", labelKey: "athlete_dashboard.belt_green", gradient: "from-green-500 to-emerald-700" },
+  { value: "2 КЮ", labelKey: "athlete_dashboard.belt_blue", gradient: "from-sky-500 to-blue-700" },
+  { value: "1 КЮ", labelKey: "athlete_dashboard.belt_brown", gradient: "from-amber-700 to-amber-950" },
+  { value: "1 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
+  { value: "2 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
+  { value: "3 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
+  { value: "4 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
+  { value: "5 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
 ];
 
 // Normalize any belt rank string to our canonical form "N КЮ" / "N ДАН"
@@ -151,6 +155,7 @@ function techniqueLabel(technique: string, t: TranslateFn): string {
 
 export const Route = createFileRoute("/athlete/profile")({
   head: () => ({ meta: [{ title: "Профиль — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
       <Profile />
@@ -162,7 +167,17 @@ function Profile() {
   const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
   const [editing, setEditing] = useState(false);
+
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
+
+  const statsQuery = useQuery({
+    queryKey: ["athlete-stats", user?.id],
+    queryFn: () => api.ratings.athleteStats(user!.id),
+    enabled: Boolean(user?.id),
+    staleTime: 5 * 60 * 1000,
+  });
   const [error, setError] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [form, setForm] = useState(() => ({
     name: user?.name ?? "",
     surname: user?.surname ?? "",
@@ -198,7 +213,7 @@ function Profile() {
       setEditing(false);
       toast.success(t("profile.profile_saved"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("profile.profile_save_error");
       setError(msg);
       toast.error(msg);
@@ -213,11 +228,12 @@ function Profile() {
       return { url };
     },
     onSuccess: async ({ url }) => {
+      setAvatarFile(null);
       setForm((current) => ({ ...current, avatarUrl: url }));
       await refreshMe();
       toast.success(t("profile.photo_uploaded"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("profile.avatar_upload_error");
       setError(msg);
       toast.error(msg);
@@ -227,6 +243,7 @@ function Profile() {
   if (!user) return null;
 
   const fullName = `${user.name} ${user.surname}`;
+  const beltEntry = BELT_RANKS.find((b) => b.value === normalizeBelt(user.beltRank));
 
   return (
     <DashboardShell
@@ -234,28 +251,76 @@ function Profile() {
       navItems={nav}
       accentTitle={t("profile.my_profile")}
     >
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="space-y-5">
+        {/* ── Hero card ── */}
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky-500/5 pointer-events-none" />
+          <div className="relative flex flex-wrap items-center gap-5">
+            <div className="relative shrink-0">
+              <ProfilePhoto
+                src={user.avatarUrl ? mediaUrl(user.avatarUrl) : null}
+                name={fullName}
+                width={80}
+              />
+              {beltEntry && (
+                <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-b ${beltEntry.gradient} border-2 border-card shadow`} />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-display font-bold leading-tight">{fullName}</h2>
+              {(user.nameLatin || user.surnameLatin) && (
+                <p className="text-sm text-muted-foreground mt-0.5">{user.nameLatin} {user.surnameLatin}</p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {user.beltRank && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium">
+                    {beltEntry && <span className={`h-2.5 w-2.5 rounded-full bg-gradient-to-b ${beltEntry.gradient} shrink-0`} />}
+                    {user.beltRank}
+                  </span>
+                )}
+                {user.gender && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium">
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
+                    {user.gender === "MALE" ? t("common.male") : t("common.female")}
+                  </span>
+                )}
+                {user.weightKg && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    ⚖ {user.weightKg} {t("common.kg")}
+                  </span>
+                )}
+                {user.club && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/8 px-2.5 py-1 text-xs font-medium text-emerald-400">
+                    🏛 {localizeName(user.club.name)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0 self-start">
+              {editing ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" /> {t("common.cancel")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-md bg-gradient-gold px-3 py-1.5 text-sm font-medium text-gold-foreground shadow-gold"
+                >
+                  {t("common.edit")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[2fr_1fr] lg:items-start">
         <Panel
           title={t("profile.personal_info")}
-          action={
-            editing ? (
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" /> {t("common.cancel")}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-md bg-gradient-gold px-3 py-1.5 text-sm font-medium text-gold-foreground shadow-gold"
-              >
-                {t("common.edit")}
-              </button>
-            )
-          }
         >
           {error && (
             <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -268,7 +333,7 @@ function Profile() {
                 e.preventDefault();
                 saveProfile.mutate();
               }}
-              className="grid gap-3 sm:grid-cols-2"
+              className="grid gap-3 grid-cols-1 sm:grid-cols-2"
             >
               <Input
                 label={t("common.name")}
@@ -302,16 +367,19 @@ function Profile() {
                 <label className="text-xs uppercase tracking-widest text-muted-foreground">
                   {t("common.gender")}
                 </label>
-                <select
-                  value={form.gender}
-                  onChange={(e) =>
-                    setForm({ ...form, gender: e.target.value as "MALE" | "FEMALE" })
-                  }
-                  className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
-                >
-                  <option value="MALE">{t("common.male")}</option>
-                  <option value="FEMALE">{t("common.female")}</option>
-                </select>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className={`h-9 w-2.5 shrink-0 rounded-full ${form.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
+                  <select
+                    value={form.gender}
+                    onChange={(e) =>
+                      setForm({ ...form, gender: e.target.value as "MALE" | "FEMALE" })
+                    }
+                    className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
+                  >
+                    <option value="MALE">{t("common.male")}</option>
+                    <option value="FEMALE">{t("common.female")}</option>
+                  </select>
+                </div>
               </div>
               <Input
                 label={t("profile.weight_kg")}
@@ -326,18 +394,26 @@ function Profile() {
                 <label className="text-xs uppercase tracking-widest text-muted-foreground">
                   {t("common.belt")}
                 </label>
-                <select
-                  value={form.beltRank}
-                  onChange={(e) => setForm({ ...form, beltRank: e.target.value })}
-                  className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
-                >
-                  <option value="">{t("profile.belt_placeholder")}</option>
-                  {BELT_RANKS.map((b) => (
-                    <option key={b.value} value={b.value}>
-                      {b.value} - {t(b.labelKey)}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1.5 flex items-center gap-2">
+                  {form.beltRank && (() => {
+                    const belt = BELT_RANKS.find((b) => b.value === form.beltRank);
+                    return belt ? (
+                      <div className={`h-9 w-2.5 shrink-0 rounded-full bg-gradient-to-b ${belt.gradient}`} />
+                    ) : null;
+                  })()}
+                  <select
+                    value={form.beltRank}
+                    onChange={(e) => setForm({ ...form, beltRank: e.target.value })}
+                    className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
+                  >
+                    <option value="">{t("profile.belt_placeholder")}</option>
+                    {BELT_RANKS.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.value} — {t(b.labelKey)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <Input
                 label={t("profile.phone")}
@@ -367,7 +443,7 @@ function Profile() {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) uploadAvatar.mutate(file);
+                        if (file) setAvatarFile(file);
                         e.currentTarget.value = "";
                       }}
                     />
@@ -404,21 +480,33 @@ function Profile() {
                   user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString("kk-KZ") : "—"
                 }
               />
-              <Field
-                label={t("common.gender")}
-                value={
-                  user.gender === "MALE"
-                    ? t("common.male")
-                    : user.gender === "FEMALE"
-                      ? t("common.female")
-                      : "—"
-                }
-              />
+              <div className="flex items-center justify-between pb-2 border-b border-border/20">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.gender")}</span>
+                <div className="flex items-center gap-2">
+                  {user.gender && (
+                    <div className={`h-4 w-4 rounded-full ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
+                  )}
+                  <span className="text-sm font-medium">
+                    {user.gender === "MALE" ? t("common.male") : user.gender === "FEMALE" ? t("common.female") : "—"}
+                  </span>
+                </div>
+              </div>
               <Field
                 label={t("common.weight")}
                 value={user.weightKg ? `${user.weightKg} ${t("common.kg")}` : "—"}
               />
-              <Field label={t("common.belt")} value={user.beltRank ?? "—"} />
+              <div className="flex items-center justify-between pb-2 border-b border-border/20">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.belt")}</span>
+                <div className="flex items-center gap-2">
+                  {user.beltRank && (() => {
+                    const belt = BELT_RANKS.find((b) => b.value === normalizeBelt(user.beltRank));
+                    return belt ? (
+                      <div className={`h-5 w-2.5 rounded-full bg-gradient-to-b ${belt.gradient}`} />
+                    ) : null;
+                  })()}
+                  <span className="text-sm font-medium">{user.beltRank ?? "—"}</span>
+                </div>
+              </div>
               <Field label={t("profile.phone")} value={user.phone ?? "—"} />
             </div>
           )}
@@ -465,11 +553,6 @@ function Profile() {
 
           <Panel title={t("dashboard.settings")}>
             <div className="space-y-3">
-              <ProfilePhoto
-                src={user.avatarUrl ? mediaUrl(user.avatarUrl) : null}
-                name={`${user.name} ${user.surname}`}
-                width={100}
-              />
               <Field label={t("profile.language")} value={localeLabel(user.preferredLocale)} />
               <Field
                 label={t("profile.registered_at")}
@@ -479,10 +562,51 @@ function Profile() {
                 label={t("profile.account_status")}
                 value={user.isActive ? t("common.active") : t("profile.blocked")}
               />
+
+              {/* Push-уведомления */}
+              {pushSupported && (
+                <div className="pt-2 border-t border-border/30">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {t("profile.push_notifications") ?? "Push-хабарламалар"}
+                  </div>
+                  <button
+                    onClick={pushSubscribed ? unsubscribePush : subscribePush}
+                    disabled={pushLoading}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      pushSubscribed
+                        ? "border border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10"
+                        : "border border-gold/40 bg-gold/10 text-gold hover:bg-gold/20"
+                    } disabled:opacity-50`}
+                  >
+                    {pushLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : pushSubscribed ? (
+                      "🔕 " + (t("profile.push_disable") ?? "Өшіру")
+                    ) : (
+                      "🔔 " + (t("profile.push_enable") ?? "Қосу")
+                    )}
+                  </button>
+                  {pushSubscribed && (
+                    <p className="mt-1 text-[11px] text-emerald-500">
+                      ✓ {t("profile.push_active") ?? "Матч хабарламалары қосылған"}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </Panel>
         </div>
-      </div>
+        </div>{/* closes 2-col grid */}
+
+        {/* ── Статистика ── */}
+        {statsQuery.data && <AthleteStatsPanel stats={statsQuery.data} t={t} />}
+      </div>{/* closes space-y-5 */}
+      <AvatarCropDialog
+        file={avatarFile}
+        busy={uploadAvatar.isPending}
+        onCancel={() => setAvatarFile(null)}
+        onConfirm={(file) => uploadAvatar.mutate(file)}
+      />
     </DashboardShell>
   );
 }
@@ -497,7 +621,7 @@ function DocumentUploadRow({
   type: UserDocumentType;
   label: string;
   hint: string;
-  document?: any;
+  document?: UserDocument;
   refreshMe: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -519,7 +643,7 @@ function DocumentUploadRow({
       await refreshMe();
       toast.success(t("documents.saved"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("documents.upload_error");
       setError(msg);
       toast.error(msg);
@@ -536,15 +660,14 @@ function DocumentUploadRow({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
           {document ? (
-            <a
-              href={mediaUrl(document.url)}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => api.auth.downloadDocument(document).catch(() => undefined)}
               className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
             >
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{document.originalName || t("documents.open_file")}</span>
-            </a>
+            </button>
           ) : (
             <div className="mt-2 text-xs text-muted-foreground">{t("documents.not_uploaded")}</div>
           )}
@@ -573,7 +696,7 @@ function DocumentUploadRow({
   );
 }
 
-function findDocument(documents: any[] | undefined, type: UserDocumentType) {
+function findDocument(documents: UserDocument[] | undefined, type: UserDocumentType) {
   return documents?.find((document) => document.type === type);
 }
 
@@ -638,7 +761,7 @@ function ClubJoinSection({ userId }: { userId: string }) {
       setClubError("");
       qc.invalidateQueries({ queryKey: ["my-join-requests"] });
     },
-    onError: (e: any) => setClubError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setClubError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const cancelRequest = useMutation({
@@ -646,7 +769,7 @@ function ClubJoinSection({ userId }: { userId: string }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-join-requests"] }),
   });
 
-  const pending = (requestsQuery.data ?? []).filter((r: any) => r.status === "PENDING");
+  const pending = (requestsQuery.data ?? []).filter((request) => request.status === "PENDING");
 
   return (
     <div className="space-y-4">
@@ -656,7 +779,7 @@ function ClubJoinSection({ userId }: { userId: string }) {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
             {t("profile.sent_requests")}
           </p>
-          {pending.map((r: any) => (
+          {pending.map((r) => (
             <div
               key={r.id}
               className="flex items-center justify-between gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3"
@@ -710,9 +833,9 @@ function ClubJoinSection({ userId }: { userId: string }) {
             search.length >= 2 && (
               <p className="text-xs text-muted-foreground">{t("profile.club_not_found")}</p>
             )}
-          {(clubsQuery.data?.items ?? []).map((club: any) => {
+          {(clubsQuery.data?.items ?? []).map((club: Club) => {
             const alreadySent = (requestsQuery.data ?? []).some(
-              (r: any) => r.clubId === club.id && r.status === "PENDING",
+              (r: { clubId?: string; status: string }) => r.clubId === club.id && r.status === "PENDING",
             );
             return (
               <div
@@ -781,7 +904,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function localizeName(name: any): string {
+function localizeName(name: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";
@@ -789,4 +912,127 @@ function localizeName(name: any): string {
 
 function localeLabel(l: string): string {
   return l === "kk" ? "Қазақша" : l === "ru" ? "Русский" : l === "en" ? "English" : l;
+}
+
+// ─── AthleteStatsPanel ────────────────────────────────────────────────────────
+
+type AthleteStatsData = Awaited<ReturnType<typeof import("@/lib/api").api.ratings.athleteStats>>;
+
+function AthleteStatsPanel({
+  stats,
+  t,
+}: {
+  stats: AthleteStatsData;
+  t: (k: string) => string;
+}) {
+  const m = stats.matches;
+  const r = stats.rating;
+
+  const statCards = [
+    { label: t("stats.total_matches"),  value: String(m.total),              sub: "" },
+    { label: t("stats.wins"),           value: String(m.wins),               sub: `${m.winRate}%`, color: "text-emerald-500" },
+    { label: t("stats.losses"),         value: String(m.losses),             sub: "", color: "text-rose-400" },
+    { label: t("stats.ippon_wins"),     value: String(m.ipponWins),          sub: `${m.ipponWinRate}% ${t("stats.of_wins")}`, color: "text-yellow-500" },
+    { label: t("stats.wazaari_wins"),   value: String(m.wazaariWins),        sub: "" },
+    { label: t("stats.gs_wins"),        value: String(m.goldenScoreWins),    sub: "" },
+    { label: t("stats.tournaments"),    value: String(stats.tournaments.total), sub: "" },
+    { label: t("stats.rating_points"),  value: r.totalPoints.toFixed(0),     sub: "", color: "text-gold" },
+  ];
+
+  return (
+    <div className="mt-2">
+      <div className="mb-3 text-xs uppercase tracking-[0.3em] text-gold font-semibold px-1">
+        {t("stats.section_title")}
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {statCards.map((card) => (
+          <div key={card.label} className="rounded-xl border border-border/40 bg-card/60 p-4 flex flex-col gap-1">
+            <div className="text-[11px] text-muted-foreground font-medium">{card.label}</div>
+            <div className={`text-3xl font-black tabular-nums ${card.color ?? ""}`}>{card.value}</div>
+            {card.sub && <div className="text-[11px] text-muted-foreground">{card.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Рейтинговая история */}
+      {r.history.length > 1 && (
+        <div className="mt-4 rounded-xl border border-border/40 bg-card/60 p-4">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("stats.rating_history")}
+          </div>
+          <RatingSparkline history={r.history} />
+        </div>
+      )}
+
+      {/* Последние результаты */}
+      {(stats.rating.recent as unknown[]).length > 0 && (
+        <div className="mt-4 rounded-xl border border-border/40 bg-card/60 p-4">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("stats.recent_results")}
+          </div>
+          <div className="space-y-2">
+            {(stats.rating.recent as Array<{
+              place: number; points: number;
+              tournament: { name: unknown; startDate: string };
+              category: { gender: string; weightMin: number; weightMax: number };
+            }>).map((entry, i) => {
+              const tName = entry.tournament.name;
+              const name = typeof tName === "object" && tName !== null
+                ? ((tName as Record<string, string>)["kk"] ?? (tName as Record<string, string>)["ru"] ?? "—")
+                : String(tName ?? "—");
+              const w = entry.category.weightMax >= 200
+                ? `+${entry.category.weightMin}`
+                : `-${entry.category.weightMax}`;
+              const placeColor = entry.place === 1 ? "text-yellow-500" : entry.place === 2 ? "text-slate-400" : entry.place === 3 ? "text-amber-600" : "text-muted-foreground";
+              return (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className={`w-6 font-black tabular-nums ${placeColor}`}>{entry.place}</span>
+                  <span className="flex-1 truncate">{name}</span>
+                  <span className="text-muted-foreground shrink-0">{w} кг</span>
+                  <span className="text-gold font-semibold shrink-0">+{Number(entry.points).toFixed(0)} pts</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RatingSparkline({
+  history,
+}: {
+  history: Array<{ date: string; points: number; tournamentName: string }>;
+}) {
+  if (history.length < 2) return null;
+  const max = Math.max(...history.map((h) => h.points));
+  const min = 0;
+  const W = 400;
+  const H = 60;
+  const pad = 4;
+
+  const pts = history.map((h, i) => {
+    const x = pad + (i / (history.length - 1)) * (W - 2 * pad);
+    const y = H - pad - ((h.points - min) / (max - min || 1)) * (H - 2 * pad);
+    return `${x},${y}`;
+  });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-12" preserveAspectRatio="none">
+      <polyline
+        fill="none"
+        stroke="hsl(var(--gold))"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={pts.join(" ")}
+      />
+      {history.map((h, i) => {
+        const x = pad + (i / (history.length - 1)) * (W - 2 * pad);
+        const y = H - pad - ((h.points - min) / (max - min || 1)) * (H - 2 * pad);
+        return <circle key={i} cx={x} cy={y} r="3" fill="hsl(var(--gold))" />;
+      })}
+    </svg>
+  );
 }

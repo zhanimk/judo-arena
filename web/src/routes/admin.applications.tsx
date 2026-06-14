@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -8,6 +9,7 @@ import {
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type { Application, Tournament } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -15,6 +17,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/applications")({
   head: () => ({ meta: [{ title: "Өтінімдер — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminApplications />
@@ -44,7 +47,7 @@ function AdminApplications() {
     queryKey: ["admin-all-applications"],
     queryFn: async () => {
       const apps = await api.admin.allApplications();
-      return apps.map((a: any) => ({
+      return apps.map((a: Application) => ({
         ...a,
         tournamentName: localizeName(a.tournament?.name),
         tournamentId: a.tournament?.id ?? a.tournamentId,
@@ -61,7 +64,7 @@ function AdminApplications() {
       setComment("");
       toast.success(t("applications.approved") + " ✓");
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const m = e instanceof ApiError ? e.message : t("error.generic");
       setError(m);
       toast.error(m);
@@ -76,7 +79,7 @@ function AdminApplications() {
       setComment("");
       toast.success(t("applications.rejected"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const m = e instanceof ApiError ? e.message : t("error.generic");
       setError(m);
       toast.error(m);
@@ -93,7 +96,7 @@ function AdminApplications() {
         toast.success(t("applications.bulk_approved", { count: data.approved }));
       }
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const m = e instanceof ApiError ? e.message : t("error.generic");
       setError(m);
       toast.error(m);
@@ -106,7 +109,7 @@ function AdminApplications() {
       setError("");
       toast.success(t("payments.marked_paid"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const m = e instanceof ApiError ? e.message : t("error.generic");
       setError(m);
       toast.error(m);
@@ -114,7 +117,7 @@ function AdminApplications() {
   });
 
   const filtered = useMemo(() => {
-    return (appsQuery.data ?? []).filter((a: any) => {
+    return (appsQuery.data ?? []).filter((a: Application) => {
       if (statusFilter && a.status !== statusFilter) return false;
       if (tournamentFilter && a.tournamentId !== tournamentFilter) return false;
       return true;
@@ -155,7 +158,7 @@ function AdminApplications() {
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("applications.all_tournaments")}</option>
-              {(tQuery.data?.items ?? []).map((tournament: any) => (
+              {(tQuery.data?.items ?? []).map((tournament: Tournament) => (
                 <option key={tournament.id} value={tournament.id}>
                   {localizeName(tournament.name)}
                 </option>
@@ -165,7 +168,7 @@ function AdminApplications() {
               <button
                 onClick={() => {
                   const submittedCount = (appsQuery.data ?? []).filter(
-                    (a: any) => a.tournamentId === tournamentFilter && a.status === "SUBMITTED",
+                    (a: Application) => a.tournamentId === tournamentFilter && a.status === "SUBMITTED",
                   ).length;
                   if (submittedCount === 0) {
                     setError(t("applications.bulk_approve_none"));
@@ -196,7 +199,7 @@ function AdminApplications() {
           <EmptyState title={t("applications.empty")} />
         ) : (
           <div className="space-y-2">
-            {filtered.map((a: any) => (
+            {filtered.map((a: Application) => (
               <div key={a.id} className="glass rounded-lg p-4">
                 <div className="flex justify-between items-start gap-3 mb-2">
                   <div>
@@ -363,7 +366,7 @@ function PaymentBadge({ status, amount }: { status: string; amount: number }) {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

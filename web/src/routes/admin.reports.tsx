@@ -2,6 +2,7 @@
  * Есептер — merged page: Статистика + Хаттамалар + Аудит
  */
 
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -20,17 +21,34 @@ import {
   FileText,
   MapPin,
   ShieldAlert,
+  TrendingUp,
   Trophy,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Tournament, Bracket, AuditLog, FederationAnalytics } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OlympicBracket } from "@/components/judo/OlympicBracket";
+import {
+  BarChart as RBarChart,
+  Bar as RBar,
+  LineChart as RLineChart,
+  Line as RLine,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  PieChart as RPieChart,
+  Pie as RPie,
+  Cell,
+} from "recharts";
 
 export const Route = createFileRoute("/admin/reports")({
   head: () => ({ meta: [{ title: "Есептер — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminReports />
@@ -38,7 +56,7 @@ export const Route = createFileRoute("/admin/reports")({
   ),
 });
 
-type Tab = "stats" | "protocols" | "audit";
+type Tab = "stats" | "protocols" | "audit" | "analytics";
 
 function AdminReports() {
   const { t } = useTranslation();
@@ -46,6 +64,7 @@ function AdminReports() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "stats", label: t("reports.tab_stats"), icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "analytics", label: t("dashboard.analytics"), icon: <TrendingUp className="h-4 w-4" /> },
     { id: "protocols", label: t("reports.tab_protocols"), icon: <Trophy className="h-4 w-4" /> },
     { id: "audit", label: t("reports.tab_audit"), icon: <ShieldAlert className="h-4 w-4" /> },
   ];
@@ -75,6 +94,7 @@ function AdminReports() {
       </div>
 
       {tab === "stats" && <StatsTab />}
+      {tab === "analytics" && <AnalyticsTab />}
       {tab === "protocols" && <ProtocolsTab />}
       {tab === "audit" && <AuditTab />}
     </DashboardShell>
@@ -92,15 +112,15 @@ function StatsTab() {
   if (stats.isLoading) return <LoadingState />;
 
   const tournamentByStatus = (stats.data?.tournaments ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }),
+    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({ ...acc, [item.status]: item._count.id }),
     {},
   );
   const usersByRole = (stats.data?.users ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.role]: item._count.id }),
+    (acc: Record<string, number>, item: { role: string; _count: { id: number } }) => ({ ...acc, [item.role]: item._count.id }),
     {},
   );
   const matchesByStatus = (stats.data?.matches ?? []).reduce(
-    (acc: any, item: any) => ({ ...acc, [item.status]: item._count.id }),
+    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({ ...acc, [item.status]: item._count.id }),
     {},
   );
 
@@ -115,13 +135,13 @@ function StatsTab() {
         <StatCard
           label={t("reports.stat_tournaments")}
           value={String(
-            (stats.data?.tournaments ?? []).reduce((s: number, item: any) => s + item._count.id, 0),
+            (stats.data?.tournaments ?? []).reduce((s: number, item: { _count: { id: number } }) => s + item._count.id, 0),
           )}
         />
         <StatCard
           label={t("reports.stat_matches")}
           value={String(
-            (stats.data?.matches ?? []).reduce((s: number, item: any) => s + item._count.id, 0),
+            (stats.data?.matches ?? []).reduce((s: number, item: { _count: { id: number } }) => s + item._count.id, 0),
           )}
         />
         <StatCard
@@ -145,7 +165,7 @@ function StatsTab() {
             ).map(([k, l]) => {
               const count = tournamentByStatus[k] ?? 0;
               const total = Object.values(tournamentByStatus).reduce(
-                (s: number, x: any) => s + x,
+                (s: number, x: number) => s + x,
                 0,
               );
               const pct = total ? Math.round((count / total) * 100) : 0;
@@ -164,7 +184,7 @@ function StatsTab() {
               ] as [string, string][]
             ).map(([k, l]) => {
               const count = usersByRole[k] ?? 0;
-              const total = Object.values(usersByRole).reduce((s: number, x: any) => s + x, 0);
+              const total = Object.values(usersByRole).reduce((s: number, x: number) => s + x, 0);
               const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
@@ -182,7 +202,7 @@ function StatsTab() {
               ] as [string, string][]
             ).map(([k, l]) => {
               const count = matchesByStatus[k] ?? 0;
-              const total = Object.values(matchesByStatus).reduce((s: number, x: any) => s + x, 0);
+              const total = Object.values(matchesByStatus).reduce((s: number, x: number) => s + x, 0);
               const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
@@ -212,7 +232,7 @@ function ProtocolsTab() {
     queryFn: () => api.tournaments.list({ limit: 100 }),
   });
 
-  const tournaments = (tournamentsQuery.data?.items ?? []).filter((item: any) =>
+  const tournaments = (tournamentsQuery.data?.items ?? []).filter((item: Tournament) =>
     VISIBLE_STATUSES.includes(item.status),
   );
 
@@ -225,7 +245,7 @@ function ProtocolsTab() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t("reports.protocols_desc")}</p>
-      {tournaments.map((tourney: any) => (
+      {tournaments.map((tourney: Tournament) => (
         <TournamentProtocolCard
           key={tourney.id}
           tournament={tourney}
@@ -254,7 +274,7 @@ function TournamentProtocolCard({
   openBracket,
   onToggleBracket,
 }: {
-  tournament: any;
+  tournament: Tournament;
   isOpen: boolean;
   onToggle: () => void;
   openBracket: { tournamentId: string; categoryId: string } | null;
@@ -315,6 +335,18 @@ function TournamentProtocolCard({
               {t("admin.protocol_pdf")}
             </a>
           )}
+          {isCompleted && (
+            <a
+              href={api.admin.excelExportUrl(tourney.id)}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Excel
+            </a>
+          )}
           <Link
             to="/admin/tournaments/$id"
             params={{ id: tourney.id }}
@@ -351,7 +383,7 @@ function TournamentProtocolCard({
             </div>
           ) : (
             <div className="space-y-3">
-              {brackets.map((b: any) => {
+              {brackets.map((b: Bracket) => {
                 const genderLabel =
                   b.category?.gender === "MALE" ? t("common.male") : t("common.female");
                 const catLabel = `${genderLabel} ${b.category?.weightMin ?? ""}–${b.category?.weightMax ?? ""} ${t("common.kg")} · ${b.category?.ageMin ?? ""}–${b.category?.ageMax ?? ""} ${t("common.years_short")}`;
@@ -399,7 +431,11 @@ function TournamentProtocolCard({
 
                     {isShowingBracket && (
                       <div className="border-t border-border/40 p-4">
-                        <OlympicBracket matches={b.matches ?? []} size={b.size} format={b.format} />
+                        <OlympicBracket
+                          matches={b.matches ?? []}
+                          size={b.size ?? 0}
+                          format={b.format}
+                        />
                       </div>
                     )}
                   </div>
@@ -451,7 +487,7 @@ function AuditTab() {
         t("audit.col_entity"),
         "ID",
       ],
-      ...items.map((a: any) => [
+      ...items.map((a: AuditLog) => [
         new Date(a.createdAt).toLocaleString("kk-KZ"),
         `${a.actor?.name ?? "-"} ${a.actor?.surname ?? ""}`.trim(),
         a.actor?.role ?? "-",
@@ -520,7 +556,7 @@ function AuditTab() {
           <EmptyState title={t("audit.empty")} />
         ) : (
           <div className="space-y-1.5">
-            {(query.data?.items ?? []).map((auditItem: any) => {
+            {(query.data?.items ?? []).map((auditItem: AuditLog) => {
               const open = expanded.has(auditItem.id);
               return (
                 <div key={auditItem.id} className="glass rounded">
@@ -548,7 +584,7 @@ function AuditTab() {
                   </button>
                   {open && (
                     <div className="px-2.5 pb-2.5 text-xs">
-                      {auditItem.before && (
+                      {Boolean(auditItem.before) && (
                         <div className="mt-2">
                           <div className="text-[10px] text-destructive uppercase">Before</div>
                           <pre className="mt-1 bg-background/50 rounded p-2 overflow-x-auto">
@@ -556,7 +592,7 @@ function AuditTab() {
                           </pre>
                         </div>
                       )}
-                      {auditItem.after && (
+                      {Boolean(auditItem.after) && (
                         <div className="mt-2">
                           <div className="text-[10px] text-emerald-300 uppercase">After</div>
                           <pre className="mt-1 bg-background/50 rounded p-2 overflow-x-auto">
@@ -564,7 +600,7 @@ function AuditTab() {
                           </pre>
                         </div>
                       )}
-                      {auditItem.metadata && (
+                      {Boolean(auditItem.metadata) && (
                         <div className="mt-2">
                           <div className="text-[10px] text-gold uppercase">Metadata</div>
                           <pre className="mt-1 bg-background/50 rounded p-2 overflow-x-auto">
@@ -651,8 +687,186 @@ function statusDot(status: string): string {
   return "bg-amber-400";
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
+}
+
+// ── Analytics Tab (вынесена из admin.analytics.tsx) ───────────────────────────
+
+const GENDER_COLORS: Record<string, string> = { MALE: "#3b82f6", FEMALE: "#ec4899", UNKNOWN: "#9ca3af" };
+const CHART_COLORS = ["#c9a84c","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#84cc16"];
+function monthLabel(year: number, month: number) { return `${String(month).padStart(2,"0")}.${String(year).slice(2)}`; }
+
+function AnalyticsTab() {
+  const { t } = useTranslation();
+  const { data, isLoading } = useQuery<FederationAnalytics>({
+    queryKey: ["federation-analytics"],
+    queryFn: () => api.admin.analytics(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const athletesByMonth = useMemo(() => (data?.athletes.byMonth ?? []).map((r) => ({ label: monthLabel(r.year, r.month), count: r.count })), [data]);
+  const matchesByMonth  = useMemo(() => (data?.matches.byMonth ?? []).map((r) => ({ label: monthLabel(r.year, r.month), count: r.count })), [data]);
+  const totalAthletes   = useMemo(() => data?.athletes.byGender.reduce((s, g) => s + g.count, 0) ?? 0, [data]);
+  const genderPie       = useMemo(() => (data?.athletes.byGender ?? []).map((g) => ({
+    name: g.gender === "MALE" ? t("common.male") : g.gender === "FEMALE" ? t("tatami.female_short") : "—",
+    value: g.count,
+    color: GENDER_COLORS[g.gender] ?? "#9ca3af",
+  })), [data, t]);
+  const weightClasses   = useMemo(() => (data?.categories.popularWeightClasses ?? []).slice(0, 10).map((w) => ({
+    label: `${w.gender === "MALE" ? "♂" : "♀"} ${w.weightMax >= 200 ? "+" : "-"}${w.weightMax}kg`,
+    count: w.count,
+  })), [data]);
+
+  if (isLoading || !data) return <LoadingState />;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: t("analytics.total_athletes"), value: totalAthletes, color: "#3b82f6" },
+          { label: t("analytics.tournaments_this_year"), value: data.tournaments.completedThisYear.length, color: "#c9a84c" },
+          { label: t("analytics.matches_total"), value: data.matches.byMonth.reduce((s,m)=>s+m.count,0), color: "#10b981" },
+          { label: t("analytics.clubs_active"), value: data.athletes.topClubs.length, color: "#8b5cf6" },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-xl border border-border bg-card p-4">
+            <div className="text-2xl font-bold" style={{ color: kpi.color }}>{kpi.value.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">{kpi.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Registration trend */}
+      <Panel title={t("analytics.athlete_registrations")} action={<span className="text-xs text-muted-foreground">{t("analytics.last_24_months")}</span>}>
+        <ResponsiveContainer width="100%" height={200}>
+          <RLineChart data={athletesByMonth} margin={{ top:4, right:16, left:0, bottom:0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="label" tick={{ fontSize:11 }} />
+            <YAxis tick={{ fontSize:11 }} allowDecimals={false} />
+            <RTooltip />
+            <RLine type="monotone" dataKey="count" stroke="#c9a84c" strokeWidth={2} dot={false} name={t("analytics.athletes")} />
+          </RLineChart>
+        </ResponsiveContainer>
+      </Panel>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Gender pie */}
+        <Panel title={t("analytics.gender_breakdown")}>
+          <div className="flex items-center gap-4">
+            <ResponsiveContainer width="50%" height={160}>
+              <RPieChart>
+                <RPie data={genderPie} dataKey="value" innerRadius={45} outerRadius={70} paddingAngle={3}>
+                  {genderPie.map((e,i) => <Cell key={i} fill={e.color} />)}
+                </RPie>
+                <RTooltip formatter={(v:number)=>[v,""]} />
+              </RPieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-col gap-2 flex-1">
+              {genderPie.map((g,i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ background: g.color }} />{g.name}</div>
+                  <span className="font-semibold">{g.value.toLocaleString()}</span>
+                </div>
+              ))}
+              {data.athletes.avgAgeByGender.map((a,i) => (
+                <div key={i} className="text-xs text-muted-foreground">
+                  {a.gender === "MALE" ? t("common.male") : t("tatami.female_short")} — {t("analytics.avg_age")}: <strong>{a.avgAge} {t("common.years")}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+
+        {/* Matches per month */}
+        <Panel title={t("analytics.matches_per_month")}>
+          <ResponsiveContainer width="100%" height={160}>
+            <RBarChart data={matchesByMonth} margin={{ top:4, right:8, left:0, bottom:0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="label" tick={{ fontSize:10 }} />
+              <YAxis tick={{ fontSize:10 }} allowDecimals={false} />
+              <RTooltip />
+              <RBar dataKey="count" fill="#3b82f6" radius={[3,3,0,0]} name={t("analytics.matches")} />
+            </RBarChart>
+          </ResponsiveContainer>
+        </Panel>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Athletes by city */}
+        <Panel title={t("analytics.athletes_by_city")}>
+          <ResponsiveContainer width="100%" height={180}>
+            <RBarChart data={data.athletes.byCity} layout="vertical" margin={{ top:4, right:16, left:50, bottom:0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis type="number" tick={{ fontSize:10 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="city" tick={{ fontSize:10 }} width={50} />
+              <RTooltip />
+              <RBar dataKey="count" fill="#10b981" radius={[0,3,3,0]} name={t("analytics.athletes")} />
+            </RBarChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        {/* Popular weight classes */}
+        <Panel title={t("analytics.popular_weight_classes")}>
+          <ResponsiveContainer width="100%" height={180}>
+            <RBarChart data={weightClasses} layout="vertical" margin={{ top:4, right:16, left:80, bottom:0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis type="number" tick={{ fontSize:10 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ fontSize:10 }} width={80} />
+              <RTooltip />
+              <RBar dataKey="count" radius={[0,3,3,0]} name={t("analytics.entries")}>
+                {weightClasses.map((_,i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </RBar>
+            </RBarChart>
+          </ResponsiveContainer>
+        </Panel>
+      </div>
+
+      {/* Top clubs */}
+      <Panel title={t("analytics.top_clubs")}>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border text-muted-foreground text-xs uppercase">
+            <th className="pb-2 text-left w-8">#</th>
+            <th className="pb-2 text-left">{t("analytics.club")}</th>
+            <th className="pb-2 text-left">{t("common.city")}</th>
+            <th className="pb-2 text-right">{t("analytics.athletes")}</th>
+          </tr></thead>
+          <tbody>
+            {data.athletes.topClubs.map((c,i) => (
+              <tr key={c.clubId} className="border-b border-border/40 hover:bg-muted/30">
+                <td className="py-1.5 text-muted-foreground">{i+1}</td>
+                <td className="py-1.5 font-medium">{localizeName(c.name)}</td>
+                <td className="py-1.5 text-muted-foreground">{c.city}</td>
+                <td className="py-1.5 text-right font-semibold">{c.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
+
+      {/* Top athletes */}
+      <Panel title={t("analytics.top_athletes_year")} action={<span className="text-xs text-muted-foreground">{new Date().getFullYear()}</span>}>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border text-muted-foreground text-xs uppercase">
+            <th className="pb-2 text-left w-8">#</th>
+            <th className="pb-2 text-left">{t("analytics.athlete")}</th>
+            <th className="pb-2 text-left">{t("common.city")}</th>
+            <th className="pb-2 text-right">{t("analytics.points")}</th>
+          </tr></thead>
+          <tbody>
+            {data.ratings.topAthletesThisYear.map((a,i) => (
+              <tr key={a.athleteId} className="border-b border-border/40 hover:bg-muted/30">
+                <td className="py-1.5 font-bold">{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                <td className="py-1.5 font-medium">{a.surname} {a.name}</td>
+                <td className="py-1.5 text-muted-foreground">{a.clubCity ?? "—"}</td>
+                <td className="py-1.5 text-right font-semibold text-amber-400">{a.total.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
+    </div>
+  );
 }

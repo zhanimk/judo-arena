@@ -14,6 +14,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22.22.1
       - key: API_PORT
         value: "10000"
 
@@ -25,7 +27,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: judo-arena-redis
-          type: redis
+          type: keyvalue
           property: connectionString
 
       - key: JWT_ACCESS_SECRET
@@ -38,12 +40,12 @@ services:
         value: 7d
 
       - key: CORS_ORIGIN
-        value: https://judo-arena.vercel.app
+        sync: false
       - key: APP_URL
-        value: https://judo-arena.vercel.app
+        sync: false
 
       - key: EMAIL_FROM
-        value: "Judo-Arena <onboarding@resend.dev>"
+        sync: false # Установите в настройках Render: "Judo-Arena <noreply@yourdomain.com>"
 
       - key: BCRYPT_ROUNDS
         value: "12"
@@ -60,8 +62,61 @@ services:
       - key: APP_VERSION
         fromMetadata: commitSHA
 
-  # ── Redis ─────────────────────────────────────────────────
-  - type: redis
+      # Backup
+      - key: BACKUP_CRON
+        value: "0 2 * * *"
+      - key: BACKUP_RETAIN_DAYS
+        value: "30"
+      - key: BACKUP_SCHEDULER_ENABLED
+        value: "false"
+      - key: BACKUP_TRIGGER_SECRET
+        sync: false
+
+      # Persistent object storage. Keep documents/backups outside the public bucket.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PRIVATE_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        value: us-east-1
+
+  # ── Backup Cron Job ───────────────────────────────────────
+  - type: cron
+    name: judo-backup
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    schedule: "0 2 * * *" # 02:00 UTC ежедневно
+    dockerfilePath: ./api/Dockerfile.backup
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: judo-arena-db
+          property: connectionString
+      - key: S3_PRIVATE_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        value: us-east-1
+      - key: BACKUP_RETAIN_DAYS
+        value: "30"
+
+  # ── Key Value (Redis-compatible) ─────────────────────────
+  - type: keyvalue
     name: judo-arena-redis
     region: frankfurt
     plan: free

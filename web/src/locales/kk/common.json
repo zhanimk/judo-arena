@@ -47,7 +47,9 @@
     "my_club": "Менің клубым",
     "panel": "Панель",
     "coaches": "Жаттықтырушылар",
-    "coach": "Жаттықтырушы"
+    "coach": "Жаттықтырушы",
+    "hello": "Сәлем",
+    "analytics": "Аналитика"
   },
   "status": {
     "DRAFT": "Жоба",
@@ -72,6 +74,8 @@
     "link": "Сілтеме",
     "update": "Жаңарту",
     "save": "Сақтау",
+    "save_all": "Барлығын сақтау",
+    "saved": "Сақталды ✓",
     "saving": "Сақталуда...",
     "cancel": "Болдырмау",
     "delete": "Жою",
@@ -170,7 +174,12 @@
     "irreversible": "Бұл әрекетті кері қайтаруға болмайды.",
     "athletes": "Спортшылар",
     "language": "Тіл",
-    "not_found": "Табылмады"
+    "not_found": "Табылмады",
+    "all_genders": "Барлық жыныс",
+    "athlete": "Спортшы",
+    "male_short": "Ер",
+    "female_short": "Қыз",
+    "years": "жас"
   },
   "auth": {
     "login_title": "Жүйеге кіру",
@@ -225,7 +234,9 @@
     "reset_email_sent_to": "Нұсқаулар мына мекенжайға жіберілді:",
     "reset_check_spam": "Хатты таппасаңыз — спам қалтасын тексеріңіз. Сілтеме 1 сағат бойы жарамды.",
     "resend": "Қайта жіберу",
-    "back_to_login": "Кіру бетіне оралу"
+    "back_to_login": "Кіру бетіне оралу",
+    "2fa_title": "Аутентификатор коды",
+    "2fa_hint": "Google Authenticator немесе Authy қолданбасынан 6 санды кодты енгізіңіз"
   },
   "scoring": {
     "ippon": "Ippon",
@@ -573,7 +584,33 @@
     "athlete_not_found": "Спортшы табылмады.",
     "club_not_found": "Клуб табылмады.",
     "search_clubs_placeholder": "Клуб немесе қала іздеу...",
-    "col_athletes": "Спортшылар"
+    "col_athletes": "Спортшылар",
+    "tab_weight": "Салмақ бойынша",
+    "best_place": "Үздік орын",
+    "tournaments": "Жарыстар"
+  },
+  "ratings": {
+    "admin_title": "Спортшылар рейтингі",
+    "recalc_title": "Рейтингті қайта есептеу",
+    "recalc_hint": "Жарыс ID енгізіп, рейтингті қайта есептеңіз.",
+    "recalc_placeholder": "Жарыс ID...",
+    "recalc_btn": "Есептеу",
+    "recalc_ok": "Рейтинг сәтті жаңартылды.",
+    "athletes_panel": "Үздік спортшылар",
+    "clubs_panel": "Үздік клубтар",
+    "weight_panel": "Салмақ бойынша",
+    "search_placeholder": "Спортшы немесе клуб...",
+    "points": "Ұпайлар",
+    "wins": "Жеңістер",
+    "losses": "Жеңіліс",
+    "ippon_wins": "Иппон",
+    "tournaments": "Жарыстар",
+    "no_data": "Деректер жоқ",
+    "select_weight_class": "Санатты таңдаңыз",
+    "select_weight_class_hint": "Жоғарыдан салмақ санатын таңдаңыз",
+    "tab_athletes": "Спортшылар",
+    "tab_clubs": "Клубтар",
+    "tab_weight": "Салмақ бойынша"
   },
   "tournaments_page": {
     "title": "Жарыстар",
@@ -631,6 +668,12 @@
     "weigh_in_end": "Салмақ өлшеу аяқталуы",
     "weigh_in_location": "Өлшеу орны",
     "map_url": "Карта сілтемесі",
+    "map_picker_title": "Картадан орынды таңдаңыз",
+    "map_picker_hint": "Нүктені қою үшін картаға басыңыз, содан кейін сақтаңыз.",
+    "use_current_location": "Менің орным",
+    "map_zoom_in": "Картаны үлкейту",
+    "map_zoom_out": "Картаны кішірейту",
+    "center_selected_location": "Таңдалған нүктені ортаға қою",
     "poster": "Постер",
     "regulations": "Ереже",
     "description": "Сипаттама",
@@ -682,6 +725,9 @@
     "not_specified": "Көрсетілмеген",
     "city_label": "Қала",
     "rules_file": "Ереже / файл",
+    "regulation_title": "Турнир регламенті",
+    "regulation_hint": "Ресми ережесі бар PDF немесе суретті тіркеңіз",
+    "regulation_uploaded": "Жүктелді — сақтауды ұмытпаңыз",
     "map_link": "Карта сілтемесі",
     "open_dashboard": "Ашық дэшборд",
     "visible_all": "Бір жерде көрінеді",
@@ -740,7 +786,13 @@
     "est_duration": "Болжамды ұзақтық",
     "no_location": "Орын белгісіз",
     "no_time": "Уақыт белгісіз",
-    "primary_locale": "Негізгі тіл"
+    "primary_locale": "Негізгі тіл",
+    "tab_drawsheet": "3 · Торлар",
+    "tab_tatami": "4 · Татами live",
+    "drawsheet_title": "Жарыс торлары",
+    "drawsheet_subtitle": "Санат бойынша live-тор және белдесулер",
+    "categories_count": "санат",
+    "open_display": "Табло ашу"
   },
   "athlete": {
     "role_label": "Спортшы",
@@ -787,7 +839,8 @@
     "i_applied": "Мен заявлен",
     "no_tournaments_hint": "Жаңа жарыс жарияланғанда осы жерде көрінеді.",
     "remove_entry": "Жазбамды алып тастау",
-    "confirm_remove_entry": "Осы өтінімнен жазбаңызды алып тастайсыз ба?"
+    "confirm_remove_entry": "Осы өтінімнен жазбаңызды алып тастайсыз ба?",
+    "download_certificate": "Сертификат жүктеу"
   },
   "coach": {
     "role_label": "Жаттықтырушы",
@@ -993,6 +1046,10 @@
     "notification_sent": "{{count}} адамға жіберілді ✓",
     "notification_empty": "Әзірше рассылкалар жоқ",
     "notification_history": "Соңғы рассылкалар",
+    "notification_updated": "Хабарландыру жаңартылды",
+    "notification_deleted": "Хабарландыру алушылардан жойылды",
+    "notification_delete_confirm": "Бұл хабарландыруды барлық алушыдан жою керек пе?",
+    "notification_audience_user": "Пайдаланушы",
     "weigh_in_template": "Таразылау шаблоны",
     "weigh_in_notification_title": "Таразылау туралы хабарландыру",
     "weigh_in_notification_body": "{{name}} жарысының таразылауы:",
@@ -1107,7 +1164,19 @@
     "block_reason": "Себебі",
     "block_reason_placeholder": "Блоктау себебі...",
     "club_not_found": "Клуб табылмады",
-    "user_details": "Пайдаланушы карточкасы"
+    "user_details": "Пайдаланушы карточкасы",
+    "send_notification": "Хабарландыру жіберу",
+    "notification_sent_user": "{{name}} хабарландыру жіберілді",
+    "notifications_total": "Барлық жіберілді",
+    "notifications_today": "Бүгін жіберілді",
+    "notification_recipients": "алушы",
+    "backup_title": "Деректер қорын резервтеу",
+    "backup_schedule": "Күнделікті pg_dump → S3, 02:00 UTC.",
+    "backup_create_now": "Қазір жасау",
+    "backup_creating": "Жасалуда…",
+    "backup_success": "Резервтік көшірме жасалды ✓",
+    "backup_error": "Қате. Журналдарды тексеріңіз.",
+    "backup_last": "Соңғысы: {{filename}} ({{size}} МБ)"
   },
   "profile": {
     "title": "Менің профилім",
@@ -1126,7 +1195,12 @@
     "save_error": "Профиль сақталмады",
     "photo_uploaded": "Сурет жүктелді ✓",
     "photo_error": "Сурет жүктелмеді",
-    "photo_requirements": "Фото 3:4, бет ортада, фон ақ немесе өте ашық. JPG, PNG немесе WEBP.",
+    "photo_requirements": "Фотоны жүктегенде 3:4 форматқа қиып, бетті ортаға орналастырыңыз. JPG, PNG немесе WEBP.",
+    "crop_title": "Фотоны қиып алу",
+    "crop_description": "3:4 рамкасына керекті бөлікті орналастырыңыз.",
+    "crop_zoom": "Фото масштабы",
+    "crop_move_hint": "Фотоны жылжытуға болады",
+    "crop_apply": "Қолдану және жүктеу",
     "lang_kk": "Қазақша",
     "lang_ru": "Русский",
     "lang_en": "English",
@@ -1159,7 +1233,12 @@
     "search_club_placeholder": "Клуб атын енгізіңіз...",
     "club_not_found": "Клуб табылмады",
     "request_sent": "Жіберілді",
-    "send_request": "Өтінім беру"
+    "send_request": "Өтінім беру",
+    "push_notifications": "Push-хабарламалар",
+    "push_enable": "Қосу",
+    "push_disable": "Өшіру",
+    "active": "Белсенді",
+    "push_active": "Матч хабарламалары қосылған"
   },
   "onboarding": {
     "athlete_title": "Профильді толтыру",
@@ -1361,7 +1440,9 @@
     "selected": "Таңдалған татами",
     "other_tatamis": "Басқа татамилер",
     "no_stream": "Татами #{{n}} үшін трансляция жоқ — басқа татами таңдаңыз",
-    "queue_count": "{{count}} матч кезекте"
+    "queue_count": "{{count}} матч кезекте",
+    "forfeit": "Техникалық жеңіліс",
+    "forfeit_confirm": "Техникалық жеңілісті растайсыз ба"
   },
   "live": {
     "title": "Live нәтижелер",
@@ -1456,7 +1537,8 @@
     "scoreboard": "Табло",
     "sec_main": "Негізгі",
     "sec_repechage": "Жұбату",
-    "sec_bronze": "Қола"
+    "sec_bronze": "Қола",
+    "stream": "Тікелей эфир"
   },
   "judge": {
     "panel_title": "Төреші панелі",
@@ -1640,6 +1722,8 @@
     "bulk_adding": "Қосылуда…",
     "bulk_add_n": "{{count}} санат қосу",
     "bulk_error": "Санаттар қосылмады (қайталанулар немесе қате)",
+    "bulk_success": "{{count}} санат қосылды",
+    "bulk_already_exists": "Бұл шаблонның барлық санаттары бұрын қосылған",
     "empty": "Санаттар жоқ",
     "empty_hint": "DRAFT мәртебесінде санаттар қосуға болады",
     "preset_hint": "Жас тобын таңдаңыз → автоматты толтыру",
@@ -1828,11 +1912,50 @@
     "coach_id_hint": "Жаттықтырушыны растайтын куәлік немесе құжат.",
     "upload": "Жүктеу",
     "replace": "Ауыстыру",
+    "replace": "Ауыстыру",
     "saved": "Құжат сақталды",
     "upload_error": "Құжат жүктелмеді",
     "not_uploaded": "Әлі жүктелмеген",
     "open_file": "Файлды ашу",
     "no_documents": "Құжаттар жоқ",
     "no_documents_hint": "Пайдаланушы профильден құжат жүктеген кезде осында көрінеді."
+  },
+  "analytics": {
+    "title": "Федерация аналитикасы",
+    "total_athletes": "Барлық спортшылар",
+    "tournaments_this_year": "Биылғы турнирлер",
+    "matches_total": "Барлық матчтар",
+    "clubs_active": "Белсенді клубтар",
+    "athlete_registrations": "Спортшылар тіркелуі",
+    "last_24_months": "Соңғы 24 ай",
+    "gender_breakdown": "Жыныс бойынша",
+    "avg_age": "Орт. жасы",
+    "matches_per_month": "Ай сайын матчтар",
+    "athletes_by_city": "Қаласы бойынша",
+    "popular_weight_classes": "Танымал салмақтар",
+    "top_clubs": "Топ клубтар",
+    "top_athletes_year": "Жылдың үздік спортшылары",
+    "completed_tournaments": "Аяқталған турнирлер",
+    "categories": "Санаттар",
+    "club": "Клуб",
+    "athletes": "Спортшылар",
+    "athlete": "Спортшы",
+    "matches": "Матчтар",
+    "entries": "Қатысушылар",
+    "points": "Ұпайлар"
+  },
+  "stats": {
+    "section_title": "Статистика",
+    "total_matches": "Барлық матчтар",
+    "wins": "Жеңістер",
+    "losses": "Жеңілістер",
+    "ippon_wins": "Иппон",
+    "wazaari_wins": "Васаари",
+    "gs_wins": "Алтын балл",
+    "tournaments": "Жарыстар",
+    "rating_points": "Рейтинг ұпайы",
+    "of_wins": "жеңістен",
+    "rating_history": "Рейтинг тарихы",
+    "recent_results": "Соңғы нәтижелер"
   }
 }

@@ -1,89 +1,63 @@
 /**
  * pdf-bracket.service.ts — генерация PDF для сеток турнира.
  *
- * Содержит:
- *   generateBracketPdf       — PDF одной сетки
- *   generateAllBracketsPdf   — PDF всех сеток турнира (один файл)
- *   Все приватные функции рисования (pdfDraw*, pdfMatch*, etc.)
+ * Типы, ошибки и утилиты вынесены в ./pdf-bracket/
+ *   types.ts  — интерфейсы, PdfError, localize, dateRange, placeEmoji
+ *   fonts.ts  — registerFonts (TTF ArialUnicode / Helvetica fallback)
  *
- * Экспортирует вспомогательные функции нужные pdf-protocol.service.ts:
- *   registerFonts, localize, dateRange, placeEmoji,
- *   drawBracketOnePage, pdfAthleteFullDisplayName
+ * Этот файл содержит функции рисования PDFKit (drawBracketOnePage и т.д.)
+ * + генераторы (generateBracketPdf, generateAllBracketsPdf).
+ *
+ * Обратная совместимость сохранена: все реэкспортируется из этого файла.
  */
 
 import PDFDocument from "pdfkit";
-import path from "path";
-import fs from "fs";
 import { prisma } from "../lib/prisma.js";
 import { BracketFormat, type Locale } from "@prisma/client";
 
-export class PdfError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public httpStatus = 400,
-  ) {
-    super(message);
-    this.name = "PdfError";
-  }
-}
+// ── Импорты из подмодуля ──────────────────────────────────────────────────────
+import {
+  PdfError,
+  localize,
+  dateRange,
+  placeEmoji,
+  registerFonts,
+} from "./pdf-bracket/index.js";
 
-// ── Шрифт ────────────────────────────────────────────────────────────────────
-const FONT_PATH = path.resolve(
-  process.cwd(),
-  "src/assets/fonts/ArialUnicode.ttf",
-);
-const FONT_BOLD_PATH = path.resolve(
-  process.cwd(),
-  "src/assets/fonts/ArialUnicodeBold.ttf",
-);
+import type {
+  PdfLocalized,
+  PdfClub,
+  PdfAthlete,
+  PdfSideScore,
+  PdfScoreSnapshot,
+  PdfMatch,
+  PdfCategory,
+  PdfBracket,
+  PdfTournament,
+} from "./pdf-bracket/types.js";
 
-/** Регистрирует шрифт в документе и возвращает имя для использования */
-export function registerFonts(doc: PDFKit.PDFDocument): {
-  regular: string;
-  bold: string;
-} {
-  const hasFont = fs.existsSync(FONT_PATH);
-  if (hasFont) {
-    doc.registerFont("Unicode", FONT_PATH);
-    // Bold fallback — если нет отдельного bold-файла, используем тот же
-    const hasBold = fs.existsSync(FONT_BOLD_PATH);
-    doc.registerFont("UnicodeBold", hasBold ? FONT_BOLD_PATH : FONT_PATH);
-    return { regular: "Unicode", bold: "UnicodeBold" };
-  }
-  // Fallback — Helvetica (не поддерживает кириллицу, но не падает)
-  return { regular: "Helvetica", bold: "Helvetica-Bold" };
-}
+// ── Реэкспорт для обратной совместимости ─────────────────────────────────────
+// Код, который импортирует из "./pdf-bracket.service.js", продолжает работать без изменений.
+export {
+  PdfError,
+  localize,
+  dateRange,
+  placeEmoji,
+  registerFonts,
+};
+// pdfAthleteFullDisplayName — определена локально ниже (своя реализация)
 
-// ── Утилиты ──────────────────────────────────────────────────────────────────
-
-export function localize(value: any, locale: Locale): string {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object") {
-    return value[locale] || value.kk || value.ru || value.en || "";
-  }
-  return String(value);
-}
-
-export function dateRange(start: Date, end: Date, locale: Locale): string {
-  const lng = locale === "en" ? "en-US" : locale === "kk" ? "kk-KZ" : "ru-RU";
-  const opt: Intl.DateTimeFormatOptions = {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  };
-  const s = start.toLocaleDateString(lng, opt);
-  const e = end.toLocaleDateString(lng, opt);
-  return s === e ? s : `${s} — ${e}`;
-}
-
-export function placeEmoji(place: number): string {
-  if (place === 1) return "1.";
-  if (place === 2) return "2.";
-  if (place === 3) return "3.";
-  return `${place}.`;
-}
+export type {
+  PdfLocalized,
+  PdfClub,
+  PdfAthlete,
+  PdfSideScore,
+  PdfScoreSnapshot,
+  PdfMatch,
+  PdfCategory,
+  PdfBracket,
+  PdfTournament,
+};
 
 // ============================================================
 // PDF ОДНОЙ СЕТКИ
@@ -122,7 +96,7 @@ export async function generateBracketPdf(bracketId: string): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    drawBracketOnePage(doc, fonts, bracket, locale, isRR);
+    drawBracketOnePage(doc, fonts, bracket as unknown as PdfBracket, locale, isRR);
     doc.end();
   });
 }
@@ -180,14 +154,14 @@ export async function generateAllBracketsPdf(
     doc.on("error", reject);
 
     // Титульная страница
-    drawTournamentCover(doc, fonts, tournament, brackets, locale);
+    drawTournamentCover(doc, fonts, tournament as unknown as PdfTournament, brackets as unknown as PdfBracket[], locale);
 
     // По странице на каждую сетку
     for (const bracket of brackets) {
       doc.addPage({ size: "A4", margin: 0, layout: "landscape" });
       const bracketWithTournament = { ...bracket, tournament };
       const isRR = bracket.format === BracketFormat.ROUND_ROBIN;
-      drawBracketOnePage(doc, fonts, bracketWithTournament, locale, isRR);
+      drawBracketOnePage(doc, fonts, bracketWithTournament as unknown as PdfBracket, locale, isRR);
     }
 
     doc.end();
@@ -199,8 +173,8 @@ export async function generateAllBracketsPdf(
 function drawTournamentCover(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  tournament: any,
-  brackets: any[],
+  tournament: PdfTournament,
+  brackets: PdfBracket[],
   locale: Locale,
 ) {
   const PW = doc.page.width;
@@ -275,7 +249,7 @@ function drawTournamentCover(
             ? "Women"
             : "Жен";
     const wMax =
-      br.category.weightMax >= 200
+      (br.category.weightMax ?? 0) >= 200
         ? `+${br.category.weightMin} кг`
         : `-${br.category.weightMax} кг`;
     const formatLabel =
@@ -314,7 +288,7 @@ function drawTournamentCover(
 export function drawBracketOnePage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
+  bracket: PdfBracket,
   locale: Locale,
   isRR: boolean,
 ) {
@@ -341,7 +315,7 @@ export function drawBracketOnePage(
           ? "Women"
           : "Женщины";
   const catWeight =
-    bracket.category.weightMax >= 200
+    (bracket.category.weightMax ?? 0) >= 200
       ? `+${bracket.category.weightMin} кг`
       : `-${bracket.category.weightMax} кг`;
   const catLabel =
@@ -541,8 +515,8 @@ export function drawBracketOnePage(
 function pdfDrawSEVisualOnePage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
-  allMatches: any[],
+  bracket: PdfBracket,
+  allMatches: PdfMatch[],
   locale: Locale,
   top: number,
   bottom: number,
@@ -591,9 +565,9 @@ function pdfDrawSEVisualOnePage(
         (m) =>
           m.bracketSection === "main" &&
           m.round === round &&
-          matchPoolIdx(m.position, round, bracketSize) === poolIdx,
+          matchPoolIdx(m.position ?? 0, round, bracketSize) === poolIdx,
       )
-      .sort((a: any, b: any) => a.position - b.position);
+      .sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0));
 
   for (let poolIdx = 0; poolIdx < 4; poolIdx++) {
     const x = poolX(poolIdx);
@@ -670,8 +644,8 @@ function pdfDrawSEVisualOnePage(
 function pdfDrawSECompactOnePage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
-  allMatches: any[],
+  bracket: PdfBracket,
+  allMatches: PdfMatch[],
   locale: Locale,
   top: number,
   bottom: number,
@@ -684,7 +658,7 @@ function pdfDrawSECompactOnePage(
     1,
     Math.ceil(Math.log2(Math.max(2, bracketSize))),
   );
-  const mainRounds: any[][] = [];
+  const mainRounds: PdfMatch[][] = [];
 
   for (let round = 1; round <= totalRounds; round++) {
     const roundMatches = allMatches
@@ -918,7 +892,7 @@ function pdfDrawSECompactOnePage(
   });
 }
 
-function pdfSEFinalMatches(allMatches: any[], bracketSize: number): any[] {
+function pdfSEFinalMatches(allMatches: PdfMatch[], bracketSize: number): PdfMatch[] {
   const totalRounds = Math.max(
     1,
     Math.ceil(Math.log2(Math.max(2, bracketSize))),
@@ -936,8 +910,8 @@ function pdfSEFinalMatches(allMatches: any[], bracketSize: number): any[] {
 function pdfDrawSEFinalsVisualPage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
-  finalMatches: any[],
+  bracket: PdfBracket,
+  finalMatches: PdfMatch[],
   locale: Locale,
 ) {
   const PW = doc.page.width;
@@ -964,7 +938,7 @@ function pdfDrawSEFinalsVisualPage(
           ? "Women"
           : "Женщины";
   const catWeight =
-    bracket.category.weightMax >= 200
+    (bracket.category.weightMax ?? 0) >= 200
       ? `+${bracket.category.weightMin} кг`
       : `-${bracket.category.weightMax} кг`;
   const catLabel =
@@ -1222,7 +1196,7 @@ function pdfDrawSEFinalsVisualPage(
 function _drawBracketPage(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
+  bracket: PdfBracket,
   locale: Locale,
   isRR: boolean,
 ) {
@@ -1249,7 +1223,7 @@ function _drawBracketPage(
           ? "Women"
           : "Женщины";
   const catWeight =
-    bracket.category.weightMax >= 200
+    (bracket.category.weightMax ?? 0) >= 200
       ? `+${bracket.category.weightMin} кг`
       : `-${bracket.category.weightMax} кг`;
   const catLabel =
@@ -1369,7 +1343,7 @@ function pdfMatchSectionOrder(section?: string | null): number {
   return order[section || "main"] ?? 9;
 }
 
-function pdfMatchSort(a: any, b: any, bracketSize: number): number {
+function pdfMatchSort(a: PdfMatch, b: PdfMatch, bracketSize: number): number {
   const ao = pdfMatchSectionOrder(a.bracketSection);
   const bo = pdfMatchSectionOrder(b.bracketSection);
   if (ao !== bo) return ao - bo;
@@ -1383,7 +1357,7 @@ function pdfMatchSort(a: any, b: any, bracketSize: number): number {
 }
 
 function pdfMatchStageLabel(
-  match: any,
+  match: PdfMatch,
   bracketSize: number,
   locale: Locale,
 ): string {
@@ -1422,20 +1396,20 @@ function pdfMatchStageLabel(
   return section;
 }
 
-function pdfAthleteShortName(athlete: any): string {
+function pdfAthleteShortName(athlete: PdfAthlete | null | undefined): string {
   if (!athlete) return "TBD";
   const first = pdfCleanNamePart(athlete.name);
   const surname = pdfCleanNamePart(athlete.surname);
   return `${first} ${surname}`.trim() || "TBD";
 }
 
-function pdfMatchPairLabel(match: any): string {
+function pdfMatchPairLabel(match: PdfMatch): string {
   const red = pdfAthleteShortName(match.redAthlete);
   const blue = pdfAthleteShortName(match.blueAthlete);
   return `${red} vs ${blue}`;
 }
 
-function pdfMatchResultLabel(match: any, locale: Locale): string {
+function pdfMatchResultLabel(match: PdfMatch, locale: Locale): string {
   if (!match.winnerId) {
     if (match.status === "IN_PROGRESS") return "LIVE";
     return locale === "kk"
@@ -1456,21 +1430,21 @@ function pdfMatchResultLabel(match: any, locale: Locale): string {
   return winnerScore ? `${winnerName} · ${winnerScore}` : winnerName;
 }
 
-function pdfAthleteBracketName(athlete: any): string {
+function pdfAthleteBracketName(athlete: PdfAthlete | null | undefined): string {
   if (!athlete) return "TBD";
   const surname = pdfCleanNamePart(athlete.surname);
   const name = pdfCleanNamePart(athlete.name);
   return (surname || name || "TBD").toUpperCase();
 }
 
-export function pdfAthleteFullDisplayName(athlete: any): string {
+export function pdfAthleteFullDisplayName(athlete: PdfAthlete | null | undefined): string {
   if (!athlete) return "TBD";
   const first = pdfCleanNamePart(athlete.name);
   const surname = pdfCleanNamePart(athlete.surname).toUpperCase();
   return `${first} ${surname}`.trim() || "TBD";
 }
 
-function pdfCleanNamePart(value: any): string {
+function pdfCleanNamePart(value: string | null | undefined): string {
   return String(value ?? "")
     .trim()
     .replace(/\s+/g, " ")
@@ -1481,7 +1455,7 @@ function pdfCleanNamePart(value: any): string {
 function drawPageHeader(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  bracket: any,
+  bracket: PdfBracket,
   locale: Locale,
   BAND_H: number,
   PW: number,
@@ -1505,7 +1479,7 @@ function drawPageHeader(
           ? "Women"
           : "Женщины";
   const catWeight =
-    bracket.category.weightMax >= 200
+    (bracket.category.weightMax ?? 0) >= 200
       ? `+${bracket.category.weightMin} кг`
       : `-${bracket.category.weightMax} кг`;
   const catLabel =
@@ -1533,14 +1507,14 @@ function drawPageHeader(
 function pdfDrawSE(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  allMatches: any[],
+  allMatches: PdfMatch[],
   bracketSize: number,
   locale: Locale,
   headerH: number,
   PW: number,
   PH: number,
   M: number,
-  bracket?: any, // needed for headers on new pages
+  bracket?: PdfBracket, // needed for headers on new pages
 ) {
   const totalRounds = Math.max(
     1,
@@ -1612,9 +1586,9 @@ function pdfDrawSE(
         (m) =>
           m.bracketSection === "main" &&
           m.round === round &&
-          matchPoolIdx(m.position, round, bracketSize) === poolIdx,
+          matchPoolIdx(m.position ?? 0, round, bracketSize) === poolIdx,
       )
-      .sort((a: any, b: any) => a.position - b.position);
+      .sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0));
 
   // ── Draw pool pair (left=poolA, right=poolB) ──────────────────────────────
   const drawPoolPair = (poolA: number, poolB: number) => {
@@ -1726,7 +1700,7 @@ function pdfDrawSE(
           ? "Әйелдер"
           : "Women";
     const catWeight =
-      bracket.category?.weightMax >= 200
+      (bracket.category?.weightMax ?? 0) >= 200
         ? `+${bracket.category?.weightMin} кг`
         : `-${bracket.category?.weightMax} кг`;
     const catLbl =
@@ -1756,7 +1730,7 @@ function pdfDrawSE(
           ? "Әйелдер"
           : "Women";
     const catWeight2 =
-      bracket.category?.weightMax >= 200
+      (bracket.category?.weightMax ?? 0) >= 200
         ? `+${bracket.category?.weightMin} кг`
         : `-${bracket.category?.weightMax} кг`;
     const catLbl2 =
@@ -1790,7 +1764,7 @@ function pdfDrawSE(
 function pdfDrawFinals(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  allMatches: any[],
+  allMatches: PdfMatch[],
   _bracketSize: number,
   locale: Locale,
   headerH: number,
@@ -1826,7 +1800,7 @@ function pdfDrawFinals(
         (m.bracketSection === "main" || m.bracketSection === "final") &&
         m.round === semisRound,
     )
-    .sort((a: any, b: any) => a.position - b.position);
+    .sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0));
 
   doc
     .font(fonts.bold)
@@ -1971,7 +1945,7 @@ function pdfDrawFinals(
   // --- Repechage ---
   const repechage = allMatches
     .filter((m) => m.bracketSection === "repechage")
-    .sort((a: any, b: any) => a.position - b.position);
+    .sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0));
 
   const REP_CW = Math.min(
     CARD_W,
@@ -2002,7 +1976,7 @@ function pdfDrawFinals(
     .filter(
       (m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
     )
-    .sort((a: any, b: any) => a.bracketSection.localeCompare(b.bracketSection));
+    .sort((a: PdfMatch, b: PdfMatch) => (a.bracketSection ?? "").localeCompare(b.bracketSection ?? ""));
 
   const BRN_X = PW / 2;
   const BRN_CW = Math.min(
@@ -2045,7 +2019,7 @@ function pdfDrawFinals(
 function pdfDrawFlatSE(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  allMatches: any[],
+  allMatches: PdfMatch[],
   bracketSize: number,
   locale: Locale,
   headerH: number,
@@ -2057,7 +2031,7 @@ function pdfDrawFlatSE(
     1,
     Math.ceil(Math.log2(Math.max(2, bracketSize))),
   );
-  const mainRounds: any[][] = [];
+  const mainRounds: PdfMatch[][] = [];
   for (let r = 1; r <= totalRounds; r++) {
     const ms = allMatches
       .filter(
@@ -2065,7 +2039,7 @@ function pdfDrawFlatSE(
           (m.bracketSection === "main" || m.bracketSection === "final") &&
           m.round === r,
       )
-      .sort((a: any, b: any) => a.position - b.position);
+      .sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0));
     if (ms.length) mainRounds.push(ms);
   }
   if (mainRounds.length === 0) return;
@@ -2135,7 +2109,7 @@ function pdfDrawFlatSE(
 
   // Champion slot — keep existing logic
   const finalMatch = allMatches.find(
-    (m: any) => m.bracketSection === "final" && m.status === "COMPLETED",
+    (m: PdfMatch) => m.bracketSection === "final" && m.status === "COMPLETED",
   );
   const champion = finalMatch?.winnerId
     ? finalMatch.redAthlete?.id === finalMatch.winnerId
@@ -2198,10 +2172,10 @@ function pdfDrawFlatSE(
 
   // Repechage & Bronze
   const repechage = allMatches.filter(
-    (m: any) => m.bracketSection === "repechage",
+    (m: PdfMatch) => m.bracketSection === "repechage",
   );
-  const bronze = allMatches.filter((m: any) =>
-    m.bracketSection.startsWith("bronze"),
+  const bronze = allMatches.filter((m: PdfMatch) =>
+    m.bracketSection?.startsWith("bronze") ?? false,
   );
   const extra = [...repechage, ...bronze];
   if (extra.length > 0) {
@@ -2239,7 +2213,7 @@ function pdfDrawFlatSE(
 function pdfDrawRR(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  matches: any[],
+  matches: PdfMatch[],
   locale: Locale,
   headerH: number,
   PW: number,
@@ -2278,7 +2252,7 @@ function pdfDrawRR(
       .text(roundLabel, M, curY, { lineBreak: false });
     curY += 13;
     let col = 0;
-    for (const m of [...ms].sort((a: any, b: any) => a.position - b.position)) {
+    for (const m of [...ms].sort((a: PdfMatch, b: PdfMatch) => (a.position ?? 0) - (b.position ?? 0))) {
       pdfDrawCard(
         doc,
         fonts,
@@ -2309,7 +2283,7 @@ function pdfDrawRR(
 function pdfDrawCard(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  match: any,
+  match: PdfMatch,
   x: number,
   y: number,
   w: number,
@@ -2439,7 +2413,7 @@ function pdfDrawCard(
 function pdfDrawTinyCard(
   doc: PDFKit.PDFDocument,
   fonts: { regular: string; bold: string },
-  match: any,
+  match: PdfMatch,
   x: number,
   y: number,
   w: number,
@@ -2515,7 +2489,7 @@ function pdfStrongText(
   text: string,
   x: number,
   y: number,
-  options: any,
+  options: PDFKit.Mixins.TextOptions,
 ) {
   doc.text(text, x, y, options);
   doc.text(text, x + 0.28, y, options);
@@ -2545,22 +2519,22 @@ function pdfEllipsize(
   return normalized.slice(0, Math.max(1, lo)).trimEnd() + ellipsis;
 }
 
-function pdfFormatScore(s: any): string | undefined {
+function pdfFormatScore(s: PdfSideScore | null | undefined): string | undefined {
   if (!s) return undefined;
-  if (s.ippon > 0) return "Ippon";
-  if (s.wazaari >= 2) return "W×2";
-  if (s.wazaari > 0) return "Waza";
-  if (s.yuko > 0) return "Yuko";
-  if (s.shido > 0) return `S×${s.shido}`;
+  if ((s.ippon ?? 0) > 0) return "Ippon";
+  if ((s.wazaari ?? 0) >= 2) return "W×2";
+  if ((s.wazaari ?? 0) > 0) return "Waza";
+  if ((s.yuko ?? 0) > 0) return "Yuko";
+  if ((s.shido ?? 0) > 0) return `S×${s.shido}`;
   return undefined;
 }
 
-function _pdfFormatScoreShort(s: any): string | undefined {
+function _pdfFormatScoreShort(s: PdfSideScore | null | undefined): string | undefined {
   if (!s) return undefined;
-  if (s.ippon > 0) return "IPP";
-  if (s.wazaari >= 2) return "W2";
-  if (s.wazaari > 0) return "WAZ";
-  if (s.yuko > 0) return "YUK";
-  if (s.shido > 0) return `S${s.shido}`;
+  if ((s.ippon ?? 0) > 0) return "IPP";
+  if ((s.wazaari ?? 0) >= 2) return "W2";
+  if ((s.wazaari ?? 0) > 0) return "WAZ";
+  if ((s.yuko ?? 0) > 0) return "YUK";
+  if ((s.shido ?? 0) > 0) return `S${s.shido}`;
   return undefined;
 }

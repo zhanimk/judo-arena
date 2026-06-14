@@ -4,6 +4,7 @@
  * Клик → /athlete/matches/$id
  */
 
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -15,6 +16,7 @@ import { Calendar, Search, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import type { Match } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
@@ -22,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches")({
   head: () => ({ meta: [{ title: "Жекпе-жектер — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
       <AthleteMatchesList />
@@ -46,7 +49,7 @@ function AthleteMatchesList() {
     staleTime: 30_000,
   });
 
-  const matches: any[] = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const matches: Match[] = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
 
   const filtered = useMemo(() => {
     let list = matches;
@@ -145,7 +148,7 @@ function AthleteMatchesList() {
           />
         ) : (
           <ul className="space-y-2">
-            {filtered.map((m: any) => (
+            {filtered.map((m: Match) => (
               <MatchRow key={m.id} match={m} athleteId={athleteId} />
             ))}
           </ul>
@@ -164,7 +167,7 @@ function AthleteMatchesList() {
 
 // ─── Строка матча ────────────────────────────────────────────────────────────
 
-function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
+function MatchRow({ match: m, athleteId }: { match: Match; athleteId: string }) {
   const { t } = useTranslation();
   const opp = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
   const mySide = m.redAthlete?.id === athleteId ? "red" : "blue";
@@ -219,7 +222,7 @@ function MatchRow({ match: m, athleteId }: { match: any; athleteId: string }) {
               {localizeName(m.tournament?.name) ?? "—"}
             </span>
             <span>
-              {sectionLabel(m.bracketSection, t)} · {t("matches.round")} {m.round}
+              {sectionLabel(m.bracketSection ?? null, t)} · {t("matches.round")} {m.round}
             </span>
             {m.tatamiNumber && (
               <span>
@@ -284,7 +287,7 @@ function ScoreChip({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

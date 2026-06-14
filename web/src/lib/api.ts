@@ -20,12 +20,14 @@ export function mediaUrl(url?: string | null): string {
   return `${API_BASE}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-function qs(params?: Record<string, any>): string {
+function qs(params?: Record<string, string | number | boolean | null | undefined>): string {
   if (!params) return "";
   const filtered = Object.fromEntries(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""),
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== null && v !== "")
+      .map(([k, v]) => [k, String(v)]),
   );
-  const q = new URLSearchParams(filtered as any).toString();
+  const q = new URLSearchParams(filtered).toString();
   return q ? "?" + q : "";
 }
 
@@ -35,6 +37,38 @@ let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 let refreshFailCount = 0;
 const MAX_REFRESH_FAILURES = 3;
+
+// Дедупликация GET-запросов — предотвращает дублирующие fetch при двойном клике
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+// ── CSRF Protection ────────────────────────────────────────────────────────
+// Получаем CSRF токен один раз при загрузке и передаём в заголовке
+// x-csrf-token при каждом state-changing запросе (POST/PATCH/PUT/DELETE).
+let csrfToken: string | null = null;
+
+async function fetchCsrfToken(): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/csrf-token`, {
+      credentials: "include",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      csrfToken = data.csrfToken ?? null;
+    }
+  } catch {
+    // Не блокируем — токен будет запрошен при следующей ошибке
+  }
+}
+
+export async function initCsrf(): Promise<void> {
+  return fetchCsrfToken();
+}
+
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function getCsrfToken(): string | null {
+  return csrfToken;
+}
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -90,7 +124,7 @@ async function refreshTokens(): Promise<string | null> {
         return null;
       }
       const data = await res.json();
-      accessToken = data.accessToken ?? null;
+      setAccessToken(data.accessToken ?? null);
       refreshFailCount = 0;
       return accessToken;
     } catch {
@@ -111,12 +145,41 @@ export function resetRefreshFailCount(): void {
 async function request<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { json, judgeToken, tatamiToken, skipRefresh, headers, ...rest } = opts;
 
+  // Дедупликация: одинаковые GET-запросы не дублируются пока первый в процессе
+  const method = (rest.method ?? "GET").toUpperCase();
+  if (method === "GET" && !judgeToken && !tatamiToken) {
+    const dedupKey = path;
+    const inflight = pendingRequests.get(dedupKey);
+    if (inflight) return inflight as Promise<T>;
+    const promise = _doRequest<T>(path, opts);
+    pendingRequests.set(dedupKey, promise);
+    promise.finally(() => pendingRequests.delete(dedupKey));
+    return promise;
+  }
+
+  return _doRequest<T>(path, opts);
+}
+
+async function _doRequest<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const { json, judgeToken, tatamiToken, skipRefresh, headers, ...rest } = opts;
+
+  const method = (rest.method ?? "GET").toUpperCase();
+
   const buildHeaders = (token?: string | null): HeadersInit => {
     const h: Record<string, string> = {};
     if (json !== undefined) h["Content-Type"] = "application/json";
     if (judgeToken) h["X-Judge-Token"] = judgeToken;
     else if (tatamiToken) h["X-Tatami-Token"] = tatamiToken;
     else if (token) h["Authorization"] = `Bearer ${token}`;
+    // Добавляем CSRF токен на все state-changing запросы
+    if (!CSRF_SAFE_METHODS.has(method)) {
+      const csrf = getCsrfToken();
+      if (csrf) {
+        h["x-csrf-token"] = csrf;
+      } else {
+        console.warn(`[api] CSRF token missing for ${method} ${path} — request may fail with 403`);
+      }
+    }
     if (headers) Object.assign(h, headers as Record<string, string>);
     return h;
   };
@@ -138,6 +201,24 @@ async function request<T = unknown>(path: string, opts: RequestOptions = {}): Pr
       res = await doFetch(newToken);
     } else {
       if (onUnauthorized) onUnauthorized();
+    }
+  }
+
+  // Если 403 из-за устаревшего CSRF-токена — обновляем и повторяем один раз
+  if (res.status === 403 && !CSRF_SAFE_METHODS.has(method) && !judgeToken && !tatamiToken) {
+    const body403 = await res.json().catch(() => null);
+    if (body403?.error === "CSRF_INVALID" || body403?.error === "CSRF_MISSING") {
+      await fetchCsrfToken();
+      res = await doFetch(accessToken);
+    } else {
+      // Не CSRF-ошибка — вернуть тело обратно в поток для дальнейшей обработки
+      const errBody = body403 ?? { error: "FORBIDDEN", message: res.statusText };
+      throw new ApiError(
+        403,
+        errBody?.error ?? "FORBIDDEN",
+        errBody?.message ?? "Доступ запрещён",
+        errBody?.issues,
+      );
     }
   }
 
@@ -181,6 +262,47 @@ export async function downloadWithAuth(path: string, filename: string): Promise<
 // API методы (типизированные удобные функции)
 // ============================================================
 
+import type {
+  User,
+  UserDocument,
+  Club,
+  ClubGroup,
+  Tournament,
+  Category,
+  Application,
+  ApplicationEntry,
+  Bracket,
+  Match,
+  RatingEntry,
+  Notification,
+  NotificationBroadcast,
+  AdminStats,
+  AuditLog,
+  TatamiSession,
+  Paginated,
+  // Input types
+  UpdateProfileInput,
+  CreateClubInput,
+  UpdateClubInput,
+  CreateGroupInput,
+  UpdateGroupInput,
+  CreateTournamentInput,
+  UpdateTournamentInput,
+  CreateCategoryInput,
+  UpdateCategoryInput,
+  CreateUserInput,
+  UpdateUserInput,
+  AddAthleteInput,
+  AdminListUsersParams,
+  BroadcastNotificationInput,
+  ClubJoinRequest,
+  AthleteLeaderboardEntry,
+  ClubLeaderboardEntry,
+  WeightClassLeaderboardEntry,
+  FederationAnalytics,
+  PaymentInitResult,
+} from "./api-types";
+
 export const api = {
   // --- AUTH ---
   auth: {
@@ -195,18 +317,45 @@ export const api = {
       weightKg?: number;
       preferredLocale?: "ru" | "kk" | "en";
     }) =>
-      request<{ user: any; accessToken: string }>("/api/auth/register", {
+      request<{ user: User; accessToken: string }>("/api/auth/register", {
         method: "POST",
         json: data,
         skipRefresh: true,
       }),
 
+    // 2FA (TOTP)
+    twofa: {
+      status: () => request<{ enabled: boolean }>("/api/auth/2fa/status"),
+      setup: () =>
+        request<{ secret: string; otpauthUrl: string; qrDataUrl: string }>("/api/auth/2fa/setup", {
+          method: "POST",
+        }),
+      verifySetup: (code: string) =>
+        request<{ ok: boolean }>("/api/auth/2fa/verify-setup", {
+          method: "POST",
+          json: { code },
+        }),
+      disable: (code: string) =>
+        request<{ ok: boolean }>("/api/auth/2fa/disable", {
+          method: "POST",
+          json: { code },
+        }),
+      challenge: (challengeToken: string, code: string) =>
+        request<{ accessToken: string; user: unknown }>("/api/auth/2fa/challenge", {
+          method: "POST",
+          json: { challengeToken, code },
+          skipRefresh: true,
+        }),
+    },
     login: (email: string, password: string) =>
-      request<{ user: any; accessToken: string }>("/api/auth/login", {
-        method: "POST",
-        json: { email, password },
-        skipRefresh: true,
-      }),
+      request<{ user: User; accessToken: string } | { totpRequired: true; challengeToken: string }>(
+        "/api/auth/login",
+        {
+          method: "POST",
+          json: { email, password },
+          skipRefresh: true,
+        },
+      ),
 
     refresh: () => refreshTokens(),
 
@@ -214,7 +363,7 @@ export const api = {
 
     cancelRegistration: () => request<void>("/api/auth/me", { method: "DELETE" }),
 
-    me: () => request<{ user: any }>("/api/auth/me"),
+    me: () => request<{ user: User }>("/api/auth/me"),
 
     setLocale: (locale: "ru" | "kk" | "en") =>
       request<{ ok: boolean; locale: string }>("/api/auth/me/locale", {
@@ -222,8 +371,11 @@ export const api = {
         json: { locale },
       }),
 
-    updateProfile: (data: any) =>
-      request<{ user: any }>("/api/auth/me/profile", { method: "PATCH", json: data }),
+    updateProfile: (data: UpdateProfileInput) =>
+      request<{ user: User }>("/api/auth/me/profile", { method: "PATCH", json: data }),
+
+    changePassword: (data: { currentPassword: string; newPassword: string }) =>
+      request<{ ok: boolean }>("/api/auth/me/change-password", { method: "POST", json: data }),
 
     saveDocument: (data: {
       type: "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
@@ -231,7 +383,14 @@ export const api = {
       originalName?: string | null;
       mimeType?: string | null;
       sizeBytes?: number | null;
-    }) => request<{ document: any }>("/api/auth/me/documents", { method: "PUT", json: data }),
+    }) =>
+      request<{ document: UserDocument }>("/api/auth/me/documents", { method: "PUT", json: data }),
+
+    downloadDocument: (document: Pick<UserDocument, "id" | "originalName">) =>
+      downloadWithAuth(
+        `/api/auth/documents/${document.id}/download`,
+        document.originalName || `document-${document.id}`,
+      ),
 
     forgotPassword: (email: string) =>
       request<{ ok: boolean }>("/api/auth/forgot-password", {
@@ -246,6 +405,9 @@ export const api = {
         json: { token, password },
         skipRefresh: true,
       }),
+
+    resendVerification: () =>
+      request<{ ok: boolean }>("/api/auth/resend-verification", { method: "POST" }),
   },
 
   uploads: {
@@ -267,36 +429,45 @@ export const api = {
         { method: "POST", body: form },
       );
     },
+    regulation: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<{ url: string; fileName: string; mimeType: string; size: number }>(
+        "/api/upload/regulation",
+        { method: "POST", body: form },
+      );
+    },
   },
 
   // --- CLUBS ---
   clubs: {
     list: (params?: { city?: string; search?: string; limit?: number }) => {
       const q = qs(params);
-      return request<{ items: any[]; total: number }>(`/api/clubs${q}`);
+      return request<Paginated<Club>>(`/api/clubs${q}`);
     },
-    get: (id: string) => request<any>(`/api/clubs/${id}`),
-    create: (data: any) => request<any>("/api/clubs", { method: "POST", json: data }),
-    update: (id: string, data: any) =>
-      request<any>(`/api/clubs/${id}`, { method: "PATCH", json: data }),
-    groups: (id: string) => request<any[]>(`/api/clubs/${id}/groups`),
-    createGroup: (id: string, data: any) =>
-      request<any>(`/api/clubs/${id}/groups`, { method: "POST", json: data }),
-    updateGroup: (id: string, data: any) =>
-      request<any>(`/api/club-groups/${id}`, { method: "PATCH", json: data }),
+    get: (id: string) => request<Club>(`/api/clubs/${id}`),
+    create: (data: CreateClubInput) => request<Club>("/api/clubs", { method: "POST", json: data }),
+    update: (id: string, data: UpdateClubInput) =>
+      request<Club>(`/api/clubs/${id}`, { method: "PATCH", json: data }),
+    groups: (id: string) => request<ClubGroup[]>(`/api/clubs/${id}/groups`),
+    createGroup: (id: string, data: CreateGroupInput) =>
+      request<ClubGroup>(`/api/clubs/${id}/groups`, { method: "POST", json: data }),
+    updateGroup: (id: string, data: UpdateGroupInput) =>
+      request<ClubGroup>(`/api/club-groups/${id}`, { method: "PATCH", json: data }),
     deleteGroup: (id: string) => request<void>(`/api/club-groups/${id}`, { method: "DELETE" }),
-    members: (id: string) => request<any[]>(`/api/clubs/${id}/members`),
-    addAthlete: (clubId: string, data: any) =>
-      request<any>(`/api/clubs/${clubId}/athletes`, { method: "POST", json: data }),
-    bulkImportAthletes: (clubId: string, rows: any[]) =>
-      request<{ created: number; skipped: number; errors: any[] }>(
-        `/api/clubs/${clubId}/athletes/bulk-import`,
-        { method: "POST", json: { rows } },
-      ),
+    members: (id: string) => request<User[]>(`/api/clubs/${id}/members`),
+    addAthlete: (clubId: string, data: AddAthleteInput) =>
+      request<User>(`/api/clubs/${clubId}/athletes`, { method: "POST", json: data }),
+    bulkImportAthletes: (clubId: string, rows: AddAthleteInput[]) =>
+      request<{
+        created: number;
+        skipped: number;
+        errors: Array<{ row: number; email: string; reason: string }>;
+      }>(`/api/clubs/${clubId}/athletes/bulk-import`, { method: "POST", json: { rows } }),
     joinRequest: (clubId: string) =>
-      request<any>(`/api/clubs/${clubId}/join-request`, { method: "POST" }),
+      request<ClubJoinRequest>(`/api/clubs/${clubId}/join-request`, { method: "POST" }),
     coachJoinRequest: (clubId: string) =>
-      request<any>(`/api/clubs/${clubId}/coach-join-request`, { method: "POST" }),
+      request<ClubJoinRequest>(`/api/clubs/${clubId}/coach-join-request`, { method: "POST" }),
     removeCoach: (clubId: string, coachId: string) =>
       request<{ ok: boolean }>(`/api/clubs/${clubId}/coaches/${coachId}`, { method: "DELETE" }),
     transferOwner: (clubId: string, coachId: string) =>
@@ -307,9 +478,9 @@ export const api = {
 
   // --- JOIN REQUESTS ---
   joinRequests: {
-    myList: () => request<any[]>("/api/athlete/join-requests"),
+    myList: () => request<ClubJoinRequest[]>("/api/athlete/join-requests"),
     cancel: (id: string) => request<void>(`/api/athlete/join-requests/${id}`, { method: "DELETE" }),
-    coachList: () => request<any[]>("/api/coach/join-requests"),
+    coachList: () => request<ClubJoinRequest[]>("/api/coach/join-requests"),
     review: (id: string, approve: boolean) =>
       request<{ ok: boolean }>(`/api/coach/join-requests/${id}/review`, {
         method: "POST",
@@ -317,10 +488,10 @@ export const api = {
       }),
   },
   coachClubRequests: {
-    myList: () => request<any[]>("/api/coach/club-join-requests"),
+    myList: () => request<ClubJoinRequest[]>("/api/coach/club-join-requests"),
     cancel: (id: string) =>
       request<{ ok: boolean }>(`/api/coach/club-join-requests/${id}`, { method: "DELETE" }),
-    incoming: () => request<any[]>("/api/coach/club-join-requests/incoming"),
+    incoming: () => request<ClubJoinRequest[]>("/api/coach/club-join-requests/incoming"),
     review: (id: string, approve: boolean) =>
       request<{ ok: boolean }>(`/api/coach/club-join-requests/${id}/review`, {
         method: "POST",
@@ -328,8 +499,8 @@ export const api = {
       }),
   },
   athletes: {
-    update: (id: string, data: any) =>
-      request<any>(`/api/athletes/${id}`, { method: "PATCH", json: data }),
+    update: (id: string, data: UpdateUserInput) =>
+      request<User>(`/api/athletes/${id}`, { method: "PATCH", json: data }),
     detachFromClub: (id: string) => request<void>(`/api/athletes/${id}/club`, { method: "DELETE" }),
   },
 
@@ -345,24 +516,33 @@ export const api = {
       includeArchived?: boolean;
     }) => {
       const q = qs(params);
-      return request<{ items: any[]; total: number }>(`/api/tournaments${q}`);
+      return request<Paginated<Tournament>>(`/api/tournaments${q}`);
     },
-    get: (id: string) => request<any>(`/api/tournaments/${id}`),
-    create: (data: any) => request<any>("/api/tournaments", { method: "POST", json: data }),
-    update: (id: string, data: any) =>
-      request<any>(`/api/tournaments/${id}`, { method: "PATCH", json: data }),
+    get: (id: string) => request<Tournament>(`/api/tournaments/${id}`),
+    create: (data: CreateTournamentInput) =>
+      request<Tournament>("/api/tournaments", { method: "POST", json: data }),
+    update: (id: string, data: UpdateTournamentInput) =>
+      request<Tournament>(`/api/tournaments/${id}`, { method: "PATCH", json: data }),
     delete: (id: string) => request<void>(`/api/tournaments/${id}`, { method: "DELETE" }),
     setStatus: (id: string, status: string) =>
-      request<any>(`/api/tournaments/${id}/status`, { method: "POST", json: { status } }),
-    categories: (id: string) => request<any[]>(`/api/tournaments/${id}/categories`),
-    addCategory: (id: string, data: any) =>
-      request<any>(`/api/tournaments/${id}/categories`, { method: "POST", json: data }),
-    updateCategory: (id: string, data: any) =>
-      request<any>(`/api/categories/${id}`, { method: "PATCH", json: data }),
+      request<Tournament>(`/api/tournaments/${id}/status`, { method: "POST", json: { status } }),
+    categories: (id: string) => request<Category[]>(`/api/tournaments/${id}/categories`),
+    addCategory: (id: string, data: CreateCategoryInput) =>
+      request<Category>(`/api/tournaments/${id}/categories`, { method: "POST", json: data }),
+    addCategoriesBulk: (id: string, categories: CreateCategoryInput[]) =>
+      request<{ added: number; skipped: number; categories: Category[] }>(
+        `/api/tournaments/${id}/categories/bulk`,
+        { method: "POST", json: { categories } },
+      ),
+    updateCategory: (id: string, data: UpdateCategoryInput) =>
+      request<Category>(`/api/categories/${id}`, { method: "PATCH", json: data }),
     deleteCategory: (id: string) => request<void>(`/api/categories/${id}`, { method: "DELETE" }),
-    applications: (id: string) => request<any[]>(`/api/tournaments/${id}/applications`),
+    applications: (id: string) => request<Application[]>(`/api/tournaments/${id}/applications`),
     createApplication: (id: string, notes?: string) =>
-      request<any>(`/api/tournaments/${id}/applications`, { method: "POST", json: { notes } }),
+      request<Application>(`/api/tournaments/${id}/applications`, {
+        method: "POST",
+        json: { notes },
+      }),
     bulkApprove: (id: string, notes?: string) =>
       request<{ approved: number }>(`/api/tournaments/${id}/applications/bulk-approve`, {
         method: "POST",
@@ -384,41 +564,79 @@ export const api = {
             weightKg: number | null;
             beltRank: string | null;
             avatarUrl: string | null;
-            club: { id: string; name: any; city: string | null } | null;
+            club: { id: string; name: any; city: string | null; logoUrl: string | null } | null;
           };
         }>
       >(`/api/tournaments/${tournamentId}/categories/${categoryId}/participants`),
+
+    // Все участники по всем категориям — полный drawsheet
+    allParticipants: (tournamentId: string) =>
+      request<
+        Array<{
+          categoryId: string;
+          gender: string;
+          ageMin: number;
+          ageMax: number;
+          weightMin: number;
+          weightMax: number;
+          name: unknown;
+          count: number;
+          athletes: Array<{
+            entryId: string;
+            weighInStatus: string;
+            athlete: {
+              id: string;
+              name: string;
+              surname: string;
+              nameLatin: string | null;
+              surnameLatin: string | null;
+              weightKg: number | null;
+              beltRank: string | null;
+              avatarUrl: string | null;
+              club: {
+                id: string;
+                name: unknown;
+                shortName: string | null;
+                city: string | null;
+                logoUrl: string | null;
+              } | null;
+            };
+          }>;
+        }>
+      >(`/api/tournaments/${tournamentId}/participants`),
   },
 
   // --- APPLICATIONS ---
   applications: {
-    myClub: () => request<any[]>("/api/coach/applications"),
-    mineAsAthlete: () => request<any[]>("/api/athlete/applications"),
-    get: (id: string) => request<any>(`/api/applications/${id}`),
+    myClub: () => request<Application[]>("/api/coach/applications"),
+    mineAsAthlete: () => request<ApplicationEntry[]>("/api/athlete/applications"),
+    get: (id: string) => request<Application>(`/api/applications/${id}`),
     addEntry: (id: string, athleteId: string, categoryId: string) =>
-      request<any>(`/api/applications/${id}/entries`, {
+      request<ApplicationEntry>(`/api/applications/${id}/entries`, {
         method: "POST",
         json: { athleteId, categoryId },
       }),
     removeEntry: (id: string, entryId: string) =>
       request<void>(`/api/applications/${id}/entries/${entryId}`, { method: "DELETE" }),
     payKaspi: (id: string) =>
-      request<any>(`/api/applications/${id}/payment/kaspi`, { method: "POST" }),
-    submit: (id: string) => request<any>(`/api/applications/${id}/submit`, { method: "POST" }),
+      request<Application>(`/api/applications/${id}/payment/kaspi`, { method: "POST" }),
+    submit: (id: string) =>
+      request<Application>(`/api/applications/${id}/submit`, { method: "POST" }),
     markPaid: (id: string, providerReference?: string) =>
-      request<any>(`/api/applications/${id}/payment/paid`, {
+      request<Application>(`/api/applications/${id}/payment/paid`, {
         method: "POST",
         json: { providerReference },
       }),
-    withdraw: (id: string) => request<any>(`/api/applications/${id}/withdraw`, { method: "POST" }),
-    history: (id: string) => request<any[]>(`/api/applications/${id}/history`),
+    withdraw: (id: string) =>
+      request<Application>(`/api/applications/${id}/withdraw`, { method: "POST" }),
+    history: (id: string) => request<AuditLog[]>(`/api/applications/${id}/history`),
     approve: (id: string, notes?: string) =>
-      request<any>(`/api/applications/${id}/approve`, {
+      request<Application>(`/api/applications/${id}/approve`, {
         method: "POST",
         json: { reviewerNotes: notes },
       }),
     reject: (id: string, notes?: string) =>
-      request<any>(`/api/applications/${id}/reject`, {
+      request<Application>(`/api/applications/${id}/reject`, {
         method: "POST",
         json: { reviewerNotes: notes },
       }),
@@ -426,7 +644,7 @@ export const api = {
     adminRemoveEntry: (appId: string, entryId: string) =>
       request<void>(`/api/admin/applications/${appId}/entries/${entryId}`, { method: "DELETE" }),
     adminMoveEntry: (appId: string, entryId: string, newCategoryId: string) =>
-      request<any>(`/api/admin/applications/${appId}/entries/${entryId}/category`, {
+      request<ApplicationEntry>(`/api/admin/applications/${appId}/entries/${entryId}/category`, {
         method: "PATCH",
         json: { newCategoryId },
       }),
@@ -435,16 +653,18 @@ export const api = {
   // --- BRACKETS ---
   brackets: {
     generate: (tournamentId: string, categoryId: string) =>
-      request<any>(`/api/tournaments/${tournamentId}/categories/${categoryId}/bracket`, {
+      request<Bracket>(`/api/tournaments/${tournamentId}/categories/${categoryId}/bracket`, {
         method: "POST",
       }),
     getByCategory: (tournamentId: string, categoryId: string) =>
-      request<any>(`/api/tournaments/${tournamentId}/categories/${categoryId}/bracket`),
+      request<Bracket>(`/api/tournaments/${tournamentId}/categories/${categoryId}/bracket`),
     forTournament: (tournamentId: string) =>
-      request<any[]>(`/api/tournaments/${tournamentId}/brackets`),
+      request<Bracket[]>(`/api/tournaments/${tournamentId}/brackets`),
     prepareTournament: (tournamentId: string) =>
-      request<any>(`/api/tournaments/${tournamentId}/brackets/prepare`, { method: "POST" }),
-    get: (id: string) => request<any>(`/api/brackets/${id}`),
+      request<{ ok: boolean }>(`/api/tournaments/${tournamentId}/brackets/prepare`, {
+        method: "POST",
+      }),
+    get: (id: string) => request<Bracket>(`/api/brackets/${id}`),
     delete: (id: string) => request<void>(`/api/brackets/${id}`, { method: "DELETE" }),
   },
 
@@ -460,13 +680,13 @@ export const api = {
       offset?: number;
     }) => {
       const q = qs(params);
-      return request<any[]>(`/api/matches${q}`);
+      return request<Match[]>(`/api/matches${q}`);
     },
-    get: (id: string) => request<any>(`/api/matches/${id}`),
+    get: (id: string) => request<Match>(`/api/matches/${id}`),
     start: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/start`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/start`, { method: "POST", judgeToken, tatamiToken }),
     pause: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/pause`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/pause`, { method: "POST", judgeToken, tatamiToken }),
     score: (
       id: string,
       type: string,
@@ -475,7 +695,7 @@ export const api = {
       tatamiToken?: string,
       version?: number,
     ) =>
-      request<any>(`/api/matches/${id}/score`, {
+      request<Match>(`/api/matches/${id}/score`, {
         method: "POST",
         json: { type, side, version },
         judgeToken,
@@ -488,14 +708,14 @@ export const api = {
       tatamiToken?: string,
       version?: number,
     ) =>
-      request<any>(`/api/matches/${id}/osaekomi`, {
+      request<Match>(`/api/matches/${id}/osaekomi`, {
         method: "POST",
         json: { side, version },
         judgeToken,
         tatamiToken,
       }),
     toketa: (id: string, judgeToken?: string, tatamiToken?: string, version?: number) =>
-      request<any>(`/api/matches/${id}/toketa`, {
+      request<Match>(`/api/matches/${id}/toketa`, {
         method: "POST",
         json: { reason: "TOKETA", version },
         judgeToken,
@@ -509,42 +729,81 @@ export const api = {
       tatamiToken?: string,
       version?: number,
     ) =>
-      request<any>(`/api/matches/${id}/finish`, {
+      request<Match>(`/api/matches/${id}/finish`, {
         method: "POST",
         json: { winnerSide, reason, version },
         judgeToken,
         tatamiToken,
       }),
     confirm: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/confirm`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/confirm`, { method: "POST", judgeToken, tatamiToken }),
     cancelResult: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/cancel-result`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/cancel-result`, {
+        method: "POST",
+        judgeToken,
+        tatamiToken,
+      }),
     undoLast: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/undo`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/undo`, { method: "POST", judgeToken, tatamiToken }),
     assignTatami: (id: string, tatamiNumber: number | null) =>
-      request<any>(`/api/matches/${id}/tatami`, { method: "PATCH", json: { tatamiNumber } }),
+      request<Match>(`/api/matches/${id}/tatami`, { method: "PATCH", json: { tatamiNumber } }),
     reorderQueue: (id: string, direction: "up" | "down") =>
-      request<any>(`/api/matches/${id}/queue`, { method: "PATCH", json: { direction } }),
+      request<Match>(`/api/matches/${id}/queue`, { method: "PATCH", json: { direction } }),
     tatamiQueue: (tournamentId: string, tatamiNumber: number) =>
-      request<any[]>(`/api/tatami/${tournamentId}/${tatamiNumber}/queue`),
+      request<Match[]>(`/api/tatami/${tournamentId}/${tatamiNumber}/queue`),
     createJudgeSession: (id: string, judgeName?: string) =>
-      request<any>(`/api/matches/${id}/judge-session`, { method: "POST", json: { judgeName } }),
-    judgeByToken: (token: string) => request<any>(`/api/judge/${token}`),
-    reset: (id: string) => request<any>(`/api/matches/${id}/reset`, { method: "POST" }),
+      request<{ token: string; judgeName?: string | null; expiresAt: string }>(
+        `/api/matches/${id}/judge-session`,
+        { method: "POST", json: { judgeName } },
+      ),
+    judgeByToken: (token: string) =>
+      request<{ match: Match; judgeName?: string | null; expiresAt?: string }>(
+        `/api/judge/${token}`,
+      ),
+    forfeit: (
+      id: string,
+      forfeitSide: "RED" | "BLUE",
+      reason: "NO_SHOW" | "INJURY" | "DISQUALIFIED" | "WITHDREW" = "NO_SHOW",
+      judgeToken?: string,
+      tatamiToken?: string,
+    ) =>
+      request<unknown>(`/api/matches/${id}/forfeit`, {
+        method: "POST",
+        json: { forfeitSide, reason },
+        judgeToken,
+        tatamiToken,
+      }),
+    moveToPosition: (id: string, newIndex: number) =>
+      request<void>(`/api/matches/${id}/queue-position`, {
+        method: "PATCH",
+        json: { newIndex },
+      }),
+    reset: (id: string) => request<Match>(`/api/matches/${id}/reset`, { method: "POST" }),
     goldenScore: (id: string, judgeToken?: string, tatamiToken?: string) =>
-      request<any>(`/api/matches/${id}/golden-score`, { method: "POST", judgeToken, tatamiToken }),
+      request<Match>(`/api/matches/${id}/golden-score`, {
+        method: "POST",
+        judgeToken,
+        tatamiToken,
+      }),
   },
 
   // --- TATAMI SESSIONS ---
   tatamiSession: {
+    /** Продлить сессию на +2 часа (heartbeat, вызывать каждые 30 мин) */
+    heartbeat: (token: string) =>
+      request<{ expiresAt: string }>(`/api/tatami-session/${token}/heartbeat`, {
+        method: "POST",
+        tatamiToken: token,
+      }),
     create: (tournamentId: string, tatamiNumber: number, judgeName?: string) =>
-      request<any>(`/api/tournaments/${tournamentId}/tatami-sessions`, {
+      request<TatamiSession>(`/api/tournaments/${tournamentId}/tatami-sessions`, {
         method: "POST",
         json: { tatamiNumber, judgeName },
       }),
-    get: (token: string) => request<any>(`/api/tatami-session/${token}`, { skipRefresh: true }),
+    get: (token: string) =>
+      request<TatamiSession>(`/api/tatami-session/${token}`, { skipRefresh: true }),
     list: (tournamentId: string) =>
-      request<any[]>(`/api/tournaments/${tournamentId}/tatami-sessions`),
+      request<TatamiSession[]>(`/api/tournaments/${tournamentId}/tatami-sessions`),
     revoke: (sessionId: string) =>
       request<void>(`/api/tatami-sessions/${sessionId}/revoke`, { method: "POST" }),
   },
@@ -552,112 +811,213 @@ export const api = {
   // --- ADMIN ---
   admin: {
     override: (matchId: string, winnerSide: "RED" | "BLUE", reason: string) =>
-      request<any>(`/api/admin/matches/${matchId}/override`, {
+      request<Match>(`/api/admin/matches/${matchId}/override`, {
         method: "POST",
         json: { winnerSide, reason },
       }),
     finalize: (tournamentId: string) =>
-      request<any>(`/api/admin/tournaments/${tournamentId}/finalize`, { method: "POST" }),
-    auditLogs: (params?: any) => {
+      request<Tournament>(`/api/admin/tournaments/${tournamentId}/finalize`, { method: "POST" }),
+    auditLogs: (params?: {
+      entity?: string;
+      targetEntity?: string;
+      targetId?: string;
+      action?: string;
+      userId?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
       const q = qs(params);
-      return request<any>(`/api/admin/audit-logs${q}`);
+      return request<Paginated<AuditLog>>(`/api/admin/audit-logs${q}`);
     },
     bracketPdfUrl: (bracketId: string) => `${API_BASE}/api/pdf/bracket?bracketId=${bracketId}`,
     allBracketsPdfUrl: (tournamentId: string) =>
       `${API_BASE}/api/pdf/tournament-brackets?tournamentId=${tournamentId}`,
     protocolPdfUrl: (tournamentId: string) =>
       `${API_BASE}/api/pdf/protocol?tournamentId=${tournamentId}`,
+    excelExportUrl: (tournamentId: string) =>
+      `${API_BASE}/api/pdf/export/excel?tournamentId=${tournamentId}`,
+    certificateUrl: (athleteId: string, tournamentId: string) =>
+      `${API_BASE}/api/pdf/certificate?athleteId=${athleteId}&tournamentId=${tournamentId}`,
+    triggerBackup: () =>
+      request<{ ok: boolean; filename: string; sizeBytes: number; durationMs: number }>(
+        "/api/admin/backup",
+        { method: "POST" },
+      ),
 
     // Клубы — полный CRUD
-    getClub: (id: string) => request<any>(`/api/admin/clubs/${id}`),
+    getClub: (id: string) => request<Club>(`/api/admin/clubs/${id}`),
     createClub: (data: {
       name: { ru: string; kk?: string; en?: string };
       city: string;
       country?: string;
       shortName?: string;
-    }) => request<any>("/api/admin/clubs", { method: "POST", json: data }),
-    updateClub: (id: string, data: any) =>
-      request<any>(`/api/admin/clubs/${id}/details`, { method: "PATCH", json: data }),
-    deleteClub: (id: string) => request<any>(`/api/admin/clubs/${id}`, { method: "DELETE" }),
+    }) => request<Club>("/api/admin/clubs", { method: "POST", json: data }),
+    updateClub: (id: string, data: UpdateClubInput) =>
+      request<Club>(`/api/admin/clubs/${id}/details`, { method: "PATCH", json: data }),
+    deleteClub: (id: string) =>
+      request<{ ok: boolean }>(`/api/admin/clubs/${id}`, { method: "DELETE" }),
     blockClub: (id: string, blocked: boolean, reason?: string) =>
-      request<any>(`/api/admin/clubs/${id}/block`, { method: "PATCH", json: { blocked, reason } }),
+      request<Club>(`/api/admin/clubs/${id}/block`, { method: "PATCH", json: { blocked, reason } }),
 
     // Группы клуба — полный CRUD
     createGroup: (clubId: string, data: { name: string; ageMin: number; ageMax: number }) =>
-      request<any>(`/api/admin/clubs/${clubId}/groups`, { method: "POST", json: data }),
+      request<ClubGroup>(`/api/admin/clubs/${clubId}/groups`, { method: "POST", json: data }),
     updateGroup: (groupId: string, data: { name?: string; ageMin?: number; ageMax?: number }) =>
-      request<any>(`/api/admin/club-groups/${groupId}`, { method: "PATCH", json: data }),
+      request<ClubGroup>(`/api/admin/club-groups/${groupId}`, { method: "PATCH", json: data }),
     deleteGroup: (groupId: string) =>
-      request<any>(`/api/admin/club-groups/${groupId}`, { method: "DELETE" }),
+      request<{ ok: boolean }>(`/api/admin/club-groups/${groupId}`, { method: "DELETE" }),
 
     // Пользователи — полный CRUD
-    listUsers: (params?: any) => {
-      const q = qs(params);
-      return request<{ items: any[]; total: number }>(`/api/admin/users${q}`);
+    listUsers: (params?: AdminListUsersParams) => {
+      const q = qs(params as Record<string, string | number | boolean | null | undefined>);
+      return request<Paginated<User>>(`/api/admin/users${q}`);
     },
-    getUser: (id: string) => request<any>(`/api/admin/users/${id}`),
-    createUser: (data: any) => request<any>("/api/admin/users", { method: "POST", json: data }),
-    updateUser: (id: string, data: any) =>
-      request<any>(`/api/admin/users/${id}/profile`, { method: "PATCH", json: data }),
+    getUser: (id: string) => request<User>(`/api/admin/users/${id}`),
+    createUser: (data: CreateUserInput) =>
+      request<User>("/api/admin/users", { method: "POST", json: data }),
+    updateUser: (id: string, data: UpdateUserInput) =>
+      request<User>(`/api/admin/users/${id}/profile`, { method: "PATCH", json: data }),
     changeUserClub: (id: string, clubId: string | null) =>
-      request<any>(`/api/admin/users/${id}/club`, { method: "PATCH", json: { clubId } }),
+      request<User>(`/api/admin/users/${id}/club`, { method: "PATCH", json: { clubId } }),
     resetUserPassword: (id: string, password: string) =>
-      request<any>(`/api/admin/users/${id}/reset-password`, { method: "POST", json: { password } }),
+      request<{ ok: boolean }>(`/api/admin/users/${id}/reset-password`, {
+        method: "POST",
+        json: { password },
+      }),
     toggleUserActive: (id: string, active: boolean) =>
-      request<any>(`/api/admin/users/${id}/active`, { method: "PATCH", json: { active } }),
+      request<User>(`/api/admin/users/${id}/active`, { method: "PATCH", json: { active } }),
     deleteUser: (id: string) => request<void>(`/api/admin/users/${id}`, { method: "DELETE" }),
     // Турниры — featured/archive
     featureTournament: (id: string, featured: boolean) =>
-      request<any>(`/api/admin/tournaments/${id}/feature`, { method: "PATCH", json: { featured } }),
+      request<Tournament>(`/api/admin/tournaments/${id}/feature`, {
+        method: "PATCH",
+        json: { featured },
+      }),
     archiveTournament: (id: string, archive: boolean) =>
-      request<any>(`/api/admin/tournaments/${id}/archive`, { method: "PATCH", json: { archive } }),
+      request<Tournament>(`/api/admin/tournaments/${id}/archive`, {
+        method: "PATCH",
+        json: { archive },
+      }),
 
     // SystemConfig
-    getConfig: (key: string) => request<any>(`/api/admin/system-config/${key}`),
+    getConfig: (key: string) =>
+      request<{ key: string; value: unknown }>(`/api/admin/system-config/${key}`),
     updateConfig: (key: string, value: unknown) =>
-      request<any>(`/api/admin/system-config/${key}`, { method: "PATCH", json: { value } }),
+      request<{ key: string; value: unknown }>(`/api/admin/system-config/${key}`, {
+        method: "PATCH",
+        json: { value },
+      }),
 
     // Все заявки (один запрос вместо N+1)
     allApplications: (params?: { status?: string; tournamentId?: string }) => {
       const q = qs(params);
-      return request<any[]>(`/api/admin/applications${q}`);
+      return request<Application[]>(`/api/admin/applications${q}`);
     },
 
     // Stats
-    stats: () => request<any>("/api/admin/stats"),
+    stats: () => request<AdminStats>("/api/admin/stats"),
+    analytics: () => request<FederationAnalytics>("/api/admin/analytics"),
     weighIn: (tournamentId: string) =>
-      request<any>(`/api/admin/tournaments/${tournamentId}/weigh-in`),
+      request<{ applications: Application[] }>(`/api/admin/tournaments/${tournamentId}/weigh-in`),
     updateWeighIn: (entryId: string, data: { status: string; notes?: string | null }) =>
-      request<any>(`/api/admin/application-entries/${entryId}/weigh-in`, {
+      request<ApplicationEntry>(`/api/admin/application-entries/${entryId}/weigh-in`, {
         method: "PATCH",
         json: data,
+      }),
+  },
+
+  // --- PAYMENTS ---
+  payments: {
+    init: (applicationId: string) =>
+      request<PaymentInitResult>("/api/payments/init", { method: "POST", json: { applicationId } }),
+    adminConfirm: (appId: string, reference?: string) =>
+      request<{ ok: boolean }>(`/api/payments/${appId}/confirm`, {
+        method: "POST",
+        json: { reference },
       }),
   },
 
   // --- NOTIFICATIONS ---
   notifications: {
     list: (params?: { type?: string; unreadOnly?: boolean }) =>
-      request<any[]>(`/api/notifications${qs(params as any)}`),
+      request<Notification[]>(`/api/notifications${qs(params as any)}`),
     unreadCount: () => request<{ count: number }>("/api/notifications/unread-count"),
     markAllRead: () => request<void>("/api/notifications/mark-read", { method: "POST" }),
-    markRead: (id: string) => request<any>(`/api/notifications/${id}/read`, { method: "POST" }),
-    broadcast: (data: any) =>
-      request<{ count: number }>("/api/notifications/broadcast", { method: "POST", json: data }),
+    markRead: (id: string) =>
+      request<Notification>(`/api/notifications/${id}/read`, { method: "POST" }),
+    broadcast: (data: BroadcastNotificationInput) =>
+      request<NotificationBroadcast>("/api/notifications/broadcast", {
+        method: "POST",
+        json: data,
+      }),
+    broadcastHistory: () => request<NotificationBroadcast[]>("/api/notifications/broadcasts"),
+    updateBroadcast: (id: string, data: { title: string; body: string }) =>
+      request<{ id: string; updated: number; title: string; body: string }>(
+        `/api/notifications/broadcasts/${id}`,
+        { method: "PATCH", json: data },
+      ),
+    deleteBroadcast: (id: string) =>
+      request<{ id: string; deleted: number }>(`/api/notifications/broadcasts/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // --- WEB PUSH ---
+  push: {
+    vapidPublicKey: () => request<{ publicKey: string }>("/push/vapid-public-key"),
+    subscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+      request<{ ok: boolean }>("/push/subscribe", { method: "POST", json: sub }),
+    unsubscribe: (body: { endpoint: string }) =>
+      request<void>("/push/subscribe", { method: "DELETE", json: body }),
   },
 
   // --- RATINGS ---
   ratings: {
     athlete: (id: string) =>
-      request<{ athleteId: string; totalPoints: number; entries: any[] }>(
+      request<{ athleteId: string; totalPoints: number; entries: RatingEntry[] }>(
         `/api/ratings/athletes/${id}`,
       ),
+    athleteStats: (id: string) =>
+      request<{
+        athleteId: string;
+        matches: {
+          total: number;
+          wins: number;
+          losses: number;
+          winRate: number;
+          goldenScoreWins: number;
+          ipponWins: number;
+          wazaariWins: number;
+          hansokuWins: number;
+          ipponWinRate: number;
+        };
+        tournaments: { total: number; bestPlace: number | null };
+        rating: {
+          totalPoints: number;
+          entriesCount: number;
+          history: Array<{ date: string; points: number; tournamentName: string }>;
+          recent: RatingEntry[];
+        };
+      }>(`/api/ratings/athletes/${id}/stats`),
     leaderboard: (params?: { categoryId?: string; clubId?: string; limit?: number }) => {
       const q = qs(params);
-      return request<any[]>(`/api/ratings/leaderboard${q}`);
+      return request<AthleteLeaderboardEntry[]>(`/api/ratings/leaderboard${q}`);
     },
     clubLeaderboard: (params?: { limit?: number }) => {
       const q = qs(params);
-      return request<any[]>(`/api/ratings/clubs${q}`);
+      return request<ClubLeaderboardEntry[]>(`/api/ratings/clubs${q}`);
+    },
+    weightClasses: () =>
+      request<Array<{ gender: string; weightMax: number; weightMin: number; label: string }>>(
+        "/api/ratings/weight-classes",
+      ),
+    weightClassLeaderboard: (params: {
+      gender: "MALE" | "FEMALE";
+      weightMax: number;
+      limit?: number;
+    }) => {
+      const q = qs(params);
+      return request<WeightClassLeaderboardEntry[]>(`/api/ratings/weight-class${q}`);
     },
   },
 };

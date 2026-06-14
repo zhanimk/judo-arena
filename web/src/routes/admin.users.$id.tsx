@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import type { Club, User, RatingEntry, UserDocument } from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
@@ -26,6 +28,7 @@ import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStre
 
 export const Route = createFileRoute("/admin/users/$id")({
   head: () => ({ meta: [{ title: "Пайдаланушы — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminUserDetail />
@@ -70,7 +73,7 @@ function AdminUserDetail() {
     queryFn: () => api.clubs.list({ limit: 1000 }),
   });
 
-  const initEditForm = (u: any) => {
+  const initEditForm = (u: User) => {
     setEform({
       name: u.name ?? "",
       surname: u.surname ?? "",
@@ -88,7 +91,7 @@ function AdminUserDetail() {
   const toggleMut = useMutation({
     mutationFn: () => api.admin.toggleUserActive(id, !query.data?.isActive),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-user", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const editMut = useMutation({
@@ -109,7 +112,7 @@ function AdminUserDetail() {
       qc.invalidateQueries({ queryKey: ["admin-user", id] });
       setShowEdit(false);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const changeClubMut = useMutation({
@@ -119,7 +122,7 @@ function AdminUserDetail() {
       setShowChangeClub(false);
       setNewClubId("");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const resetPwdMut = useMutation({
@@ -129,7 +132,7 @@ function AdminUserDetail() {
       setNewPassword("");
       setConfirmPassword("");
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   if (query.isLoading)
@@ -151,7 +154,7 @@ function AdminUserDetail() {
     );
 
   const totalPoints = (u.ratingEntries ?? []).reduce(
-    (s: number, e: any) => s + Number(e.points),
+    (s: number, e: RatingEntry) => s + Number(e.points),
     0,
   );
   const totalMatches = (u._count?.redmatches ?? 0) + (u._count?.bluematches ?? 0);
@@ -340,7 +343,7 @@ function AdminUserDetail() {
             <EmptyState title={t("admin.no_tournament_results")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {u.ratingEntries.map((e: any) => (
+              {(u.ratingEntries ?? []).map((e: RatingEntry) => (
                 <li key={e.id} className="flex justify-between glass rounded-md p-3">
                   <div>
                     <div className="font-medium">{localizeName(e.tournament?.name)}</div>
@@ -359,7 +362,7 @@ function AdminUserDetail() {
       {/* Edit profile */}
       {showEdit && (
         <Modal title={t("admin.edit_profile")} onClose={() => setShowEdit(false)}>
-          {editMut.error && <ErrBox msg={(editMut.error as any)?.message} />}
+          {Boolean(editMut.error) && <ErrBox msg={(editMut.error as Error)?.message} />}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -477,7 +480,7 @@ function AdminUserDetail() {
       {/* Change club */}
       {showChangeClub && (
         <Modal title={t("admin.change_club")} onClose={() => setShowChangeClub(false)}>
-          {changeClubMut.error && <ErrBox msg={(changeClubMut.error as any)?.message} />}
+          {Boolean(changeClubMut.error) && <ErrBox msg={(changeClubMut.error as Error)?.message} />}
           <p className="text-sm text-muted-foreground mb-3">
             {t("admin.current_club_label")}:{" "}
             <strong>{u.club ? localizeName(u.club.name) : t("admin.no_club")}</strong>
@@ -492,7 +495,7 @@ function AdminUserDetail() {
               className={INPUT}
             >
               <option value="">— {t("admin.no_club")} —</option>
-              {(clubsQuery.data?.items ?? []).map((c: any) => (
+              {(clubsQuery.data?.items ?? []).map((c: Club) => (
                 <option key={c.id} value={c.id}>
                   {localizeName(c.name)} ({c.city})
                 </option>
@@ -527,7 +530,7 @@ function AdminUserDetail() {
             setConfirmPassword("");
           }}
         >
-          {resetPwdMut.error && <ErrBox msg={(resetPwdMut.error as any)?.message} />}
+          {Boolean(resetPwdMut.error) && <ErrBox msg={(resetPwdMut.error as Error)?.message} />}
           <div className="space-y-3">
             <div>
               <label className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -587,11 +590,11 @@ function AdminUserDetail() {
   );
 }
 
-function DocumentList({ documents }: { documents: any[] }) {
+function DocumentList({ documents }: { documents: UserDocument[] }) {
   const { t } = useTranslation();
   const ordered = ["BIRTH_CERTIFICATE", "STUDY_CERTIFICATE", "COACH_ID"]
     .map((type) => documents.find((document) => document.type === type))
-    .filter(Boolean);
+    .filter((document): document is UserDocument => Boolean(document));
 
   if (ordered.length === 0) {
     return (
@@ -601,12 +604,11 @@ function DocumentList({ documents }: { documents: any[] }) {
 
   return (
     <div className="space-y-2">
-      {ordered.map((document: any) => (
-        <a
+      {ordered.map((document: UserDocument) => (
+        <button
+          type="button"
           key={document.id}
-          href={mediaUrl(document.url)}
-          target="_blank"
-          rel="noreferrer"
+          onClick={() => api.auth.downloadDocument(document).catch(() => undefined)}
           className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/35 p-3 text-sm hover:border-gold/40"
         >
           <span className="min-w-0">
@@ -619,7 +621,7 @@ function DocumentList({ documents }: { documents: any[] }) {
             </span>
           </span>
           <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
+        </button>
       ))}
     </div>
   );
@@ -661,7 +663,7 @@ function ErrBox({ msg }: { msg?: string }) {
   );
 }
 
-function StatCard({ label, value, hint, accent }: any) {
+function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint?: string; accent?: boolean }) {
   return (
     <div className={`glass rounded-xl p-5 ${accent ? "border-gold/40" : ""}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -682,7 +684,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function placeLabel(p: number, t: any): string {
+function placeLabel(p: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const place = t("admin.place_n", { n: p });
   if (p === 1) return `🥇 ${place}`;
   if (p === 2) return `🥈 ${place}`;
@@ -690,14 +692,14 @@ function placeLabel(p: number, t: any): string {
   return place;
 }
 
-function documentTypeLabel(type: string, t: any): string {
+function documentTypeLabel(type: string, t: (k: string) => string): string {
   if (type === "BIRTH_CERTIFICATE") return t("documents.birth_certificate");
   if (type === "STUDY_CERTIFICATE") return t("documents.study_certificate");
   if (type === "COACH_ID") return t("documents.coach_id");
   return type;
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

@@ -18,8 +18,7 @@ import {
   prepareTournamentDraw,
   deleteBracket,
 } from "../services/bracket.service.js";
-import { authenticate } from "../middlewares/authenticate.js";
-import { authorize } from "../middlewares/authorize.js";
+import { adminOnly, withRateLimit } from "../lib/route-guards.js";
 
 
 // Подключается с prefix "/api/tournaments"
@@ -28,7 +27,7 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 
   app.post<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
-    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    withRateLimit(adminOnly, { max: 10, timeWindow: "1 minute" }),
     async (
       request: FastifyRequest<{ Params: { tournamentId: string; categoryId: string } }>,
       reply,
@@ -58,7 +57,7 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 
   app.post<{ Params: { tournamentId: string } }>(
     "/:tournamentId/brackets/prepare",
-    { preHandler: [authenticate, authorize("ADMIN")], config: { rateLimit: { max: 5, timeWindow: "1 minute" } } },
+    withRateLimit(adminOnly, { max: 5, timeWindow: "1 minute" }),
     async (request: FastifyRequest<{ Params: { tournamentId: string } }>, reply) => {
       const result = await prepareTournamentDraw(request.user!.sub, request.params.tournamentId);
       return reply.code(201).send(result);
@@ -76,7 +75,7 @@ export async function bracketDirectRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>(
     "/:id",
-    { preHandler: [authenticate, authorize("ADMIN")] },
+    adminOnly,
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteBracket(request.user!.sub, request.params.id);
       return reply.code(204).send();

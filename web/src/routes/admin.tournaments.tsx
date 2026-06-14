@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -15,16 +16,19 @@ import {
   Monitor,
   Plus,
   Power,
+  Search,
   Trash2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type { Tournament } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, type InputHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminTournamentsRoute />
@@ -50,6 +54,8 @@ function AdminTournaments() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const transitions: Record<string, { next: string; label: string }[]> = {
     DRAFT: [{ next: "REGISTRATION_OPEN", label: t("admin.tournament_open_registration") }],
@@ -76,7 +82,7 @@ function AdminTournaments() {
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-all-tournaments"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setBusy(null),
   });
 
@@ -87,7 +93,7 @@ function AdminTournaments() {
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-all-tournaments"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setBusy(null),
   });
 
@@ -99,18 +105,23 @@ function AdminTournaments() {
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-all-tournaments"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setBusy(null),
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => api.tournaments.delete(id),
-    onMutate: (id) => {
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      if (status !== "DRAFT" && status !== "CANCELLED") {
+        await api.tournaments.setStatus(id, "CANCELLED");
+      }
+      await api.tournaments.delete(id);
+    },
+    onMutate: ({ id }) => {
       setBusy(id);
       setError("");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-all-tournaments"] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
     onSettled: () => setBusy(null),
   });
 
@@ -123,13 +134,37 @@ function AdminTournaments() {
       <Panel
         title={t("common.total") + ` ${query.data?.items.length ?? 0}`}
         action={
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="inline-flex items-center gap-1.5 text-sm bg-gradient-gold text-gold-foreground px-3 py-1.5 rounded-md shadow-gold"
-          >
-            <Plus className="h-4 w-4" />{" "}
-            {showCreate ? t("common.close") : t("admin.tournament_new")}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`${t("common.search")}...`}
+                className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 w-48 focus:border-gold focus:outline-none"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-sm bg-input border border-border rounded px-2 py-1.5"
+            >
+              <option value="">{t("admin.users_all")}</option>
+              <option value="DRAFT">{t("status.DRAFT")}</option>
+              <option value="REGISTRATION_OPEN">{t("status.REGISTRATION_OPEN")}</option>
+              <option value="REGISTRATION_CLOSED">{t("status.REGISTRATION_CLOSED")}</option>
+              <option value="IN_PROGRESS">{t("status.IN_PROGRESS")}</option>
+              <option value="COMPLETED">{t("status.COMPLETED")}</option>
+              <option value="CANCELLED">{t("status.CANCELLED")}</option>
+            </select>
+            <button
+              onClick={() => setShowCreate(!showCreate)}
+              className="inline-flex items-center gap-1.5 text-sm bg-gradient-gold text-gold-foreground px-3 py-1.5 rounded-md shadow-gold"
+            >
+              <Plus className="h-4 w-4" />{" "}
+              {showCreate ? t("common.close") : t("admin.tournament_new")}
+            </button>
+          </div>
         }
       >
         {error && (
@@ -153,7 +188,14 @@ function AdminTournaments() {
           <EmptyState title={t("tournament.no_tournaments")} hint={t("admin.tournament_new")} />
         ) : (
           <div className="space-y-3 mt-4">
-            {query.data!.items.map((tournament: any) => {
+            {(query.data!.items as Tournament[])
+              .filter((tr) => {
+                const q = search.toLowerCase();
+                const nameMatch = !q || localizeName(tr.name).toLowerCase().includes(q) || (tr.city ?? "").toLowerCase().includes(q);
+                const statusMatch = !statusFilter || tr.status === statusFilter;
+                return nameMatch && statusMatch;
+              })
+              .map((tournament: Tournament) => {
               const trans = transitions[tournament.status] ?? [];
               return (
                 <div key={tournament.id} className="glass rounded-xl p-4 md:p-5">
@@ -301,11 +343,15 @@ function AdminTournaments() {
                         <Power className="h-3.5 w-3.5" /> {t("tournament.cancel")}
                       </button>
                     )}
-                    {(tournament.status === "DRAFT" || tournament.status === "CANCELLED") && (
+                    {tournament.status !== "COMPLETED" && (
                       <button
                         onClick={() => {
-                          if (window.confirm(t("admin.tournament_delete_confirm")))
-                            remove.mutate(tournament.id);
+                          const needsCancel = tournament.status !== "DRAFT" && tournament.status !== "CANCELLED";
+                          const msg = needsCancel
+                            ? t("admin.tournament_delete_confirm") + "\n\n(Сначала будет отменён, затем удалён)"
+                            : t("admin.tournament_delete_confirm");
+                          if (window.confirm(msg))
+                            remove.mutate({ id: tournament.id, status: tournament.status });
                         }}
                         disabled={busy === tournament.id}
                         className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
@@ -356,7 +402,7 @@ function CreateTournamentForm({ onDone }: { onDone: () => void }) {
         kaspiPaymentUrl: form.kaspiPaymentUrl || undefined,
       }),
     onSuccess: onDone,
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   return (
@@ -491,7 +537,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

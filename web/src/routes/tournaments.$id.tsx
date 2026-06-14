@@ -1,10 +1,13 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
+  CircleDollarSign,
   Clock,
   Download,
+  FileDown,
   FileText,
   Loader2,
   MapPin,
@@ -12,8 +15,8 @@ import {
   Radio,
   Shield,
   Trophy,
-  User,
   Users,
+  Youtube,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { Avatar } from "@/components/ui/avatar-image";
@@ -21,9 +24,102 @@ import { api, mediaUrl } from "@/lib/api";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { buildTatamiState } from "@/lib/tatami-state";
 import { useTranslation } from "react-i18next";
+import { mapEmbedUrl } from "@/components/tournament/shared";
+
+// ── Local types ─────────────────────────────────────────────────────────────
+
+type LocalizedName = Record<string, string> | string | null | undefined;
+
+interface TClub {
+  id: string;
+  name: LocalizedName;
+  shortName?: string | null;
+  city?: string | null;
+  logoUrl?: string | null;
+}
+
+interface TAthlete {
+  id: string;
+  name: string;
+  surname: string;
+  nameLatin?: string | null;
+  surnameLatin?: string | null;
+  avatarUrl?: string | null;
+  gender?: string | null;
+  weightKg?: number | null;
+  clubId?: string | null;
+  club?: TClub | null;
+}
+
+interface TMatch {
+  id: string;
+  status: string;
+  round?: number | null;
+  queuePosition?: number | null;
+  bracketSection?: string | null;
+  bracketId?: string | null;
+  tatamiNumber?: number | null;
+  winnerId?: string | null;
+  redAthleteId?: string | null;
+  blueAthleteId?: string | null;
+  redAthlete?: TAthlete | null;
+  blueAthlete?: TAthlete | null;
+  whiteAthlete?: TAthlete | null;
+  blueAthleteObj?: TAthlete | null;
+  scheduledAt?: string | null;
+  bracket?: { id: string; categoryId: string; category?: TCategory | null } | null;
+}
+
+interface TCategory {
+  id: string;
+  name?: LocalizedName;
+  gender?: string | null;
+  ageMin?: number | null;
+  ageMax?: number | null;
+  weightMin?: number | null;
+  weightMax?: number | null;
+  format?: string | null;
+}
+
+interface TBracket {
+  id: string;
+  categoryId: string;
+  category?: TCategory | null;
+  format?: string | null;
+  size?: number | null;
+}
+
+interface TTournament {
+  id: string;
+  name: LocalizedName;
+  description?: LocalizedName;
+  city?: string | null;
+  location?: string | null;
+  startDate: string;
+  endDate: string;
+  applicationDeadline?: string | null;
+  weighInStart?: string | null;
+  weighInEnd?: string | null;
+  weighInLocation?: string | null;
+  status: string;
+  tatamiCount?: number | null;
+  mapUrl?: string | null;
+  posterUrl?: string | null;
+  regulationUrl?: string | null;
+  regulationFileName?: string | null;
+  videoUrls?: string[] | null;
+  primaryLocale?: string | null;
+  entryFeeKzt?: number | null;
+  kaspiPaymentUrl?: string | null;
+  categories?: TCategory[];
+  _count?: { categories?: number; applications?: number };
+}
+
+// ── Route ────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   validateSearch: (s: Record<string, unknown>): { categoryId?: string } => ({
     categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
   }),
@@ -40,12 +136,15 @@ function TournamentDetail() {
     urlCategoryId ?? null,
   );
   const [activeTab, setActiveTab] = useState<
-    "overview" | "categories" | "wall" | "protocol" | "results"
+    "overview" | "categories" | "wall" | "liveTop" | "results"
   >("overview");
 
   function setSelectedCategoryId(catId: string | null) {
     setSelectedCategoryIdRaw(catId);
-    navigate({ search: (prev) => ({ ...prev, categoryId: catId ?? undefined }), replace: true });
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, categoryId: catId ?? undefined }),
+      replace: true,
+    });
   }
 
   const tQuery = useQuery({ queryKey: ["tournament", id], queryFn: () => api.tournaments.get(id) });
@@ -75,16 +174,16 @@ function TournamentDetail() {
     const hash = window.location.hash;
     if (hash === "#sanattar") setActiveTab("categories");
     if (hash === "#tatami-live") setActiveTab("wall");
-    if (hash === "#hattamalar") setActiveTab("protocol");
+    if (hash === "#hattamalar") setActiveTab("liveTop");
     if (hash === "#natijeler") setActiveTab("results");
     if (hash === "#overview") setActiveTab("overview");
   }, []);
 
   const categoryRows = useMemo(() => {
-    return (tourney?.categories ?? []).map((category: any) => {
-      const bracket = brackets.find((b: any) => b.categoryId === category.id);
-      const categoryMatches = matches.filter(
-        (m: any) => m.bracket?.categoryId === category.id || m.bracketId === bracket?.id,
+    return (tourney?.categories ?? ([] as TCategory[])).map((category: TCategory) => {
+      const bracket = (brackets as TBracket[]).find((b: TBracket) => b.categoryId === category.id);
+      const categoryMatches = (matches as TMatch[]).filter(
+        (m: TMatch) => m.bracket?.categoryId === category.id || m.bracketId === bracket?.id,
       );
       const participants = new Set<string>();
       for (const match of categoryMatches) {
@@ -99,6 +198,10 @@ function TournamentDetail() {
       };
     });
   }, [brackets, matches, tourney?.categories]);
+  const selectedBracket =
+    brackets.find((bracket: TBracket) => bracket.categoryId === selectedCategoryId) ??
+    brackets[0] ??
+    null;
 
   if (tQuery.isLoading) {
     return (
@@ -128,11 +231,6 @@ function TournamentDetail() {
 
   const name = localizeName(tourney.name);
   const desc = localizeName(tourney.description);
-  const completedMatches = matches.filter((m: any) => m.status === "COMPLETED").length;
-  const inProgressMatches = matches.filter((m: any) => m.status === "IN_PROGRESS").length;
-  const selectedBracket =
-    brackets.find((b: any) => b.categoryId === selectedCategoryId) ?? brackets[0] ?? null;
-
   return (
     <div className="min-h-screen flex flex-col pt-20 sm:pt-22">
       <SiteHeader fixed />
@@ -158,7 +256,7 @@ function TournamentDetail() {
           </h1>
           {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
 
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Metric
               icon={Calendar}
               label={t("tournament.metric_date")}
@@ -184,6 +282,11 @@ function TournamentDetail() {
               label={t("tournament.metric_tatami")}
               value={String(tourney.tatamiCount ?? 1)}
             />
+            <Metric
+              icon={CircleDollarSign}
+              label={t("payments.entry_fee")}
+              value={formatKzt(tourney.entryFeeKzt ?? 0)}
+            />
           </div>
         </div>
       </section>
@@ -195,7 +298,7 @@ function TournamentDetail() {
               { id: "overview" as const, label: t("tournament.tab_overview") },
               { id: "categories" as const, label: t("tournament.tab_categories") },
               { id: "wall" as const, label: "3 · Татами live" },
-              { id: "protocol" as const, label: "4 · Live-тор" },
+              { id: "liveTop" as const, label: "4 · Live-топ" },
               ...(tourney?.status === "COMPLETED"
                 ? [{ id: "results" as const, label: "5 · Нәтижелер" }]
                 : []),
@@ -219,100 +322,167 @@ function TournamentDetail() {
 
       {activeTab === "overview" && (
         <section id="overview-detail" className="container mx-auto px-4 py-12">
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold">
-                {t("tournament.full_info")}
-              </div>
-              <h2 className="mt-3 font-display text-3xl font-bold">{t("tournament.about")}</h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                {desc || t("tournament.no_desc")}
-              </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoCard label={t("tournament.deadline")} value={deadlineText(tourney)} />
-                <InfoCard
-                  label={t("tournament.weigh_in_time")}
-                  value={weighInText(tourney, t("tournament.tbd_later"))}
-                />
-                <InfoCard
-                  label={t("tournament.weigh_in_location")}
-                  value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")}
-                />
-                <InfoCard
-                  label={t("tournament.primary_locale")}
-                  value={tourney.primaryLocale || "kk"}
-                />
-                <InfoCard
-                  label={t("tournament.city_label")}
-                  value={tourney.city || t("tournament.not_specified")}
-                />
-                <InfoCard
-                  label={t("tournament.tatami_count")}
-                  value={String(tourney.tatamiCount ?? 1)}
-                />
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-border/40 pt-5">
-                {tourney.posterUrl && (
-                  <a
-                    href={tourney.posterUrl}
-                    target="_blank"
-                    rel="noopener"
+          <div className="space-y-5">
+            {/* ── Row 1: About + Map ── */}
+            <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
+              {/* About */}
+              <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.full_info")}</div>
+                <h2 className="mt-3 font-display text-3xl font-bold">{t("tournament.about")}</h2>
+                {desc && (
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+                )}
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <InfoCard label={t("tournament.deadline")} value={deadlineText(tourney)} />
+                  <InfoCard label={t("tournament.weigh_in_time")} value={weighInText(tourney, t("tournament.tbd_later"))} />
+                  <InfoCard label={t("tournament.weigh_in_location")} value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")} />
+                  <InfoCard label={t("tournament.city_label")} value={tourney.city || t("tournament.not_specified")} />
+                  <InfoCard label={t("payments.entry_fee")} value={formatKzt(tourney.entryFeeKzt ?? 0)} />
+                  <InfoCard label={t("tournament.tatami_count")} value={String(tourney.tatamiCount ?? 1)} />
+                  <InfoCard label={t("tournament.metric_location")} value={[tourney.location, tourney.city].filter(Boolean).join(", ")} />
+                  <InfoCard label={t("tournament.stat_categories")} value={String(tourney.categories?.length ?? 0)} />
+                </div>
+                {/* Action buttons */}
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-border/40 pt-4">
+                  {tourney.kaspiPaymentUrl && (
+                    <a
+                      href={tourney.kaspiPaymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold hover:opacity-90"
+                    >
+                      <CircleDollarSign className="h-4 w-4" /> {t("payments.pay_kaspi")}
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("categories")}
                     className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                   >
-                    <FileText className="h-4 w-4" /> {t("tournament.rules_file")}
-                  </a>
-                )}
-                {tourney.mapUrl && (
-                  <a
-                    href={tourney.mapUrl}
-                    target="_blank"
-                    rel="noopener"
+                    <Users className="h-4 w-4" /> {t("tournament.view_categories")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("liveTop")}
                     className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:border-gold/50 hover:text-gold"
                   >
-                    <MapPin className="h-4 w-4" /> {t("tournament.map_link")}
-                  </a>
+                    <Radio className="h-4 w-4" /> {t("tournament.tab_live")}
+                  </button>
+                </div>
+              </div>
+
+              {/* Map */}
+              <div className="rounded-2xl border border-border/60 bg-card/55 shadow-elegant backdrop-blur overflow-hidden flex flex-col">
+                {/* Embedded map — shown only when mapUrl is set */}
+                {tourney.mapUrl ? (
+                  <iframe
+                    title={t("tournament.map_link")}
+                    src={mapEmbedUrl(tourney)}
+                    className="w-full h-52 border-0"
+                    loading="lazy"
+                    allow="fullscreen"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                ) : (
+                  <div className="flex h-40 items-center justify-center bg-card/30">
+                    <MapPin className="h-10 w-10 text-gold/30" />
+                  </div>
                 )}
+                <div className="p-5 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg border border-gold/30 bg-gold/10 p-2 text-gold shrink-0">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm">{tourney.location}</div>
+                      <div className="text-xs text-muted-foreground">{tourney.city}</div>
+                    </div>
+                  </div>
+                  {tourney.weighInLocation && (
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-lg border border-border/40 bg-card/50 p-2 text-muted-foreground shrink-0">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">{t("tournament.weigh_in_location")}</div>
+                        <div className="text-sm font-medium">{tourney.weighInLocation}</div>
+                      </div>
+                    </div>
+                  )}
+                  {tourney.mapUrl && (
+                    <a
+                      href={tourney.mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-1.5 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
+                    >
+                      <MapPin className="h-3.5 w-3.5" /> {t("tournament.map_link")}
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-card/55 p-6 shadow-elegant backdrop-blur">
-              <div className="text-xs uppercase tracking-[0.3em] text-gold">
-                {t("tournament.open_dashboard")}
+
+            {/* ── Row 2: Regulation + Stats ── */}
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Regulation */}
+              <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("tournament.regulation_title")}</div>
+                {tourney.regulationUrl ? (
+                  <div className="flex items-start gap-4">
+                    <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-gold shrink-0">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate">
+                        {tourney.regulationFileName || t("tournament.regulation_title")}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">{t("tournament.regulation_hint")}</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <a
+                          href={mediaUrl(tourney.regulationUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold hover:opacity-90"
+                        >
+                          <FileDown className="h-4 w-4" /> {t("tournament.rules_file")}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <FileText className="h-6 w-6 shrink-0" />
+                    <span className="text-sm">{t("tournament.regulation_hint")}</span>
+                  </div>
+                )}
               </div>
-              <h3 className="mt-3 font-display text-2xl font-bold">
-                {t("tournament.visible_all")}
-              </h3>
-              <div className="mt-5 grid gap-3">
-                <InfoCard
-                  label={t("tournament.stat_categories")}
-                  value={String(tourney.categories?.length ?? 0)}
-                />
-                <InfoCard
-                  label={t("tournament.metric_applications")}
-                  value={String(tourney._count?.applications ?? 0)}
-                />
-                <InfoCard
-                  label={t("tournament.tab_live")}
-                  value={
-                    brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")
-                  }
-                />
-                <InfoCard label={t("tournament.stat_matches")} value={String(matches.length)} />
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("categories")}
-                  className="rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
-                >
-                  {t("tournament.view_categories")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("protocol")}
-                  className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold"
-                >
-                  {t("tournament.protocol_btn")}
-                </button>
+
+              {/* Live stats */}
+              <div className="rounded-2xl border border-border/60 bg-card/55 p-6 shadow-elegant backdrop-blur">
+                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("tournament.open_dashboard")}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <InfoCard label={t("tournament.metric_applications")} value={String(tourney._count?.applications ?? 0)} />
+                  <InfoCard label={t("tournament.stat_matches")} value={String(matches.length)} />
+                  <InfoCard label={t("tournament.tab_live")} value={brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")} />
+                  <InfoCard label={t("tournament.tatami_count")} value={String(tourney.tatamiCount ?? 1)} />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("categories")}
+                    className="rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
+                  >
+                    {t("tournament.view_categories")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("wall")}
+                    className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold"
+                  >
+                    Татами live
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -349,8 +519,8 @@ function TournamentDetail() {
                   matches: matchCount,
                   participants,
                 }: {
-                  category: any;
-                  bracket: any;
+                  category: TCategory;
+                  bracket: TBracket | null | undefined;
                   matches: number;
                   participants: number;
                 }) => (
@@ -386,10 +556,7 @@ function TournamentDetail() {
                         value={participants || "—"}
                       />
                       <SmallMetric label={t("tournament.stat_matches")} value={matchCount} />
-                      <SmallMetric
-                        label={t("tournament.tab_live")}
-                        value={bracket ? bracket.size : "—"}
-                      />
+                      <SmallMetric label={t("tournament.tab_live")} value={bracket?.size ?? "—"} />
                     </div>
                   </button>
                 ),
@@ -406,8 +573,8 @@ function TournamentDetail() {
                     {categoryTitle(
                       categoryRows.find(
                         (r: {
-                          category: any;
-                          bracket: any;
+                          category: TCategory;
+                          bracket: TBracket | null | undefined;
                           matches: number;
                           participants: number;
                         }) => r.category.id === selectedCategoryId,
@@ -448,18 +615,12 @@ function TournamentDetail() {
                           {i + 1}
                         </div>
                         <div className="flex items-center gap-3 min-w-0">
-                          {a.avatarUrl ? (
-                            <Avatar
-                              src={mediaUrl(a.avatarUrl)}
-                              name={`${a.name} ${a.surname}`}
-                              size={36}
-                              className="border border-border/40"
-                            />
-                          ) : (
-                            <div className="h-9 w-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-                              <User className="h-4 w-4 text-gold/60" />
-                            </div>
-                          )}
+                          <Avatar
+                            src={a.avatarUrl ? mediaUrl(a.avatarUrl) : null}
+                            name={`${a.name} ${a.surname}`}
+                            size={36}
+                            className="border border-border/40"
+                          />
                           <div className="min-w-0">
                             <div className="font-semibold text-sm truncate">
                               {a.surname} {a.name}
@@ -472,10 +633,20 @@ function TournamentDetail() {
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground min-w-0 truncate">
-                          {a.club ? localizeName(a.club.name) : "—"}
-                          {a.club?.city && (
-                            <span className="text-xs opacity-60"> · {a.club.city}</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {a.club?.logoUrl && (
+                              <Avatar
+                                src={mediaUrl(a.club.logoUrl)}
+                                name={localizeName(a.club.name)}
+                                size={18}
+                                className="rounded"
+                              />
+                            )}
+                            {a.club ? localizeName(a.club.name) : "—"}
+                            {a.club?.city && (
+                              <span className="text-xs opacity-60"> · {a.club.city}</span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-sm">
                           {a.weightKg ? `${a.weightKg} ${t("common.kg")}` : "—"}
@@ -513,207 +684,14 @@ function TournamentDetail() {
         />
       )}
 
-      {activeTab === "protocol" && (
-        <section
-          id="hattamalar"
-          className="relative overflow-hidden border-y border-border/40 bg-navy-deep/30 py-12 sm:py-16"
-        >
-          <div className="absolute inset-0 grid-bg opacity-25" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
-          <div className="container mx-auto px-4">
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.3em] text-gold">
-                  {t("tournament.protocol_section")}
-                </div>
-                <h2 className="mt-3 font-display text-3xl font-bold sm:text-5xl">
-                  {t("tournament.live_title")}
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                  {t("tournament.live_desc")}
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <SmallMetric label={t("tournament.total_label")} value={matches.length} />
-                <SmallMetric label="LIVE" value={inProgressMatches} />
-                <SmallMetric label={t("tournament.completed_label")} value={completedMatches} />
-              </div>
-            </div>
-
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-2xl border border-gold/20 bg-card/55 p-4 shadow-elegant backdrop-blur sm:p-6">
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
-                      {t("tournament.bracket_section")}
-                    </div>
-                    <h3 className="mt-1 font-display text-2xl font-bold">
-                      {t("tournament.bracket_by_category")}
-                    </h3>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedBracket && (
-                      <a
-                        href={api.admin.bracketPdfUrl(selectedBracket.id)}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
-                      >
-                        <Download className="h-4 w-4" /> {t("tournament.bracket_pdf")}
-                      </a>
-                    )}
-                    {brackets.length > 0 && (
-                      <a
-                        href={api.admin.allBracketsPdfUrl(id)}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:border-gold/40 hover:text-foreground"
-                      >
-                        <FileText className="h-4 w-4" /> {t("tournament.all_brackets_pdf")}
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {brackets.length === 0 ? (
-                  <Empty text={t("tournament.no_bracket")} />
-                ) : (
-                  <>
-                    <div className="mb-4 space-y-2">
-                      {(["MALE", "FEMALE"] as const).map((gender) => {
-                        const genderBrackets = brackets.filter(
-                          (b: any) => b.category?.gender === gender,
-                        );
-                        if (genderBrackets.length === 0) return null;
-                        return (
-                          <div key={gender} className="flex flex-wrap items-center gap-1.5">
-                            <span
-                              className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
-                                gender === "MALE"
-                                  ? "bg-sky-500/15 text-sky-400"
-                                  : "bg-rose-500/15 text-rose-400"
-                              }`}
-                            >
-                              {gender === "MALE"
-                                ? t("tournament.gender_male_abbr")
-                                : t("tournament.gender_female_abbr")}
-                            </span>
-                            {genderBrackets
-                              .slice()
-                              .sort(
-                                (a: any, b: any) =>
-                                  (a.category?.weightMax ?? 0) - (b.category?.weightMax ?? 0),
-                              )
-                              .map((bracket: any) => {
-                                const active =
-                                  (selectedCategoryId ?? selectedBracket?.categoryId) ===
-                                  bracket.categoryId;
-                                const w = bracket.category;
-                                const label = w
-                                  ? w.weightMax >= 200
-                                    ? `+${w.weightMin} ${t("common.kg")}`
-                                    : `-${w.weightMax} ${t("common.kg")}`
-                                  : categoryTitle(bracket.category, t);
-                                return (
-                                  <button
-                                    key={bracket.id}
-                                    type="button"
-                                    onClick={() => setSelectedCategoryId(bracket.categoryId)}
-                                    className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                                      active
-                                        ? "bg-gradient-gold text-gold-foreground shadow-sm"
-                                        : "border border-border/60 bg-background/50 hover:border-gold/40 hover:text-gold"
-                                    }`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {selectedBracket && (
-                      <LiveBracket tournamentId={id} categoryId={selectedBracket.categoryId} />
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="grid gap-5">
-                <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/55 shadow-elegant backdrop-blur">
-                  <div className="flex items-center justify-between border-b border-border/50 px-4 py-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
-                        {t("tournament.matches_section")}
-                      </div>
-                      <h3 className="font-display text-xl font-bold">
-                        {t("tournament.queue_result")}
-                      </h3>
-                    </div>
-                    <Radio className="h-5 w-5 text-destructive" />
-                  </div>
-                  {matchesQuery.isLoading ? (
-                    <div className="flex justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-gold" />
-                    </div>
-                  ) : matches.length === 0 ? (
-                    <div className="p-6">
-                      <Empty text={t("tournament.no_matches")} />
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border/40">
-                      {matches.slice(0, 10).map((match: any) => (
-                        <Link
-                          key={match.id}
-                          to="/athlete/matches/$id"
-                          params={{ id: match.id }}
-                          className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-4 transition-colors hover:bg-gold/5"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate font-semibold">
-                              {athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {categoryTitle(match.bracket?.category, t)} ·{" "}
-                              {t("tournament.round_label")} {match.round} ·{" "}
-                              {t("tournament.metric_tatami")} #{match.tatamiNumber ?? "—"}
-                            </div>
-                          </div>
-                          <StatusBadge status={match.status} />
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-gold/25 bg-card/65 p-6 text-center shadow-elegant backdrop-blur">
-                  <FileText className="mx-auto mb-4 h-10 w-10 text-gold" />
-                  <h3 className="font-display text-2xl font-bold">
-                    {t("tournament.official_protocol")}
-                  </h3>
-                  <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-                    {t("tournament.protocol_desc")}
-                  </p>
-                  {tourney.status === "COMPLETED" ? (
-                    <a
-                      href={api.admin.protocolPdfUrl(tourney.id)}
-                      target="_blank"
-                      rel="noopener"
-                      className="mt-6 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
-                    >
-                      <Download className="h-4 w-4" /> {t("tournament.download_protocol")}
-                    </a>
-                  ) : (
-                    <div className="mt-6 inline-flex rounded-md border border-border/60 bg-background/45 px-5 py-3 text-sm text-muted-foreground">
-                      {t("tournament.protocol_pending")}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+      {activeTab === "liveTop" && (
+        <LiveTopTab
+          tournamentId={id}
+          brackets={brackets}
+          matches={matches}
+          selectedBracket={selectedBracket}
+          onSelectCategory={setSelectedCategoryId}
+        />
       )}
 
       {activeTab === "results" && tourney?.status === "COMPLETED" && (
@@ -728,20 +706,6 @@ function TournamentDetail() {
   );
 }
 
-function youtubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    let videoId = u.searchParams.get("v");
-    if (!videoId && u.hostname === "youtu.be") videoId = u.pathname.slice(1);
-    if (!videoId) return null;
-    const isLive = u.searchParams.get("feature") === "share" || url.includes("live");
-    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0${isLive ? "&live=1" : ""}`;
-  } catch {
-    return null;
-  }
-}
-
 function TatamiLiveTab({
   tournamentId,
   matches,
@@ -749,7 +713,7 @@ function TatamiLiveTab({
   youtubeUrls,
 }: {
   tournamentId: string;
-  matches: any[];
+  matches: TMatch[];
   tatamiCount: number;
   youtubeUrls: string[];
 }) {
@@ -758,32 +722,18 @@ function TatamiLiveTab({
     () => buildTatamiState(matches, Math.max(1, tatamiCount || 1)),
     [matches, tatamiCount],
   );
-  const [selectedTatami, setSelectedTatami] = useState(1);
-  const activeTatami = tatamis.find((tatami) => tatami.number === selectedTatami) ?? tatamis[0];
-  const otherTatamis = tatamis.filter((tatami) => tatami.number !== activeTatami?.number);
-
-  useEffect(() => {
-    if (!tatamis.some((tatami) => tatami.number === selectedTatami)) {
-      setSelectedTatami(tatamis[0]?.number ?? 1);
-    }
-  }, [selectedTatami, tatamis]);
-
-  const hasAnyStream = youtubeUrls.some((u) => u);
 
   return (
     <section id="tatami-live" className="mx-auto w-full max-w-7xl px-4 py-10">
-      {/* ── Header ── */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-destructive">
             <Radio className="h-3.5 w-3.5 animate-pulse" />
-            Public live
+            Live wall
           </div>
-          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-            Татами трансляциялары
-          </h2>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Татами алаңдары</h2>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Татами таңдап, тікелей эфирді қараңыз
+            Барлық татами бірдей ықшам модульдерде. Карточканы басып, толық экранды ашыңыз.
           </p>
         </div>
         <Link
@@ -795,234 +745,271 @@ function TatamiLiveTab({
         </Link>
       </div>
 
-      {/* ── Tatami selector ── */}
-      <div className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-border/50 bg-card/45 p-2 [scrollbar-width:none]">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         {tatamis.map((tatami) => {
-          const hasStream = Boolean(youtubeUrls[tatami.number - 1]);
+          const current = tatami.current;
+          const next = tatami.queue[0];
+          const streamUrl = youtubeUrls[tatami.number - 1];
+          const embedUrl = youtubeEmbedUrl(streamUrl);
           return (
-            <button
+            <article
               key={tatami.number}
-              type="button"
-              onClick={() => setSelectedTatami(tatami.number)}
-              className={`relative shrink-0 rounded-xl border px-5 py-3 text-left transition-all ${
-                activeTatami?.number === tatami.number
-                  ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
-                  : "border-border/60 bg-background/45 text-muted-foreground hover:border-gold/40 hover:text-gold"
-              }`}
+              className="group overflow-hidden rounded-xl border-2 border-border/70 bg-[#f5f6f8] text-[#161a25] shadow-elegant transition hover:-translate-y-1 hover:border-gold"
             >
-              {hasStream && (
-                <span className="absolute -right-1 -top-1 flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
-                </span>
-              )}
-              <div className="text-[10px] font-bold uppercase tracking-widest">Tatami</div>
-              <div className="mt-1 flex items-end gap-1.5">
-                <span className="font-display text-2xl font-black">#{tatami.number}</span>
-                <span className="pb-0.5 text-[11px] font-semibold">
-                  {tatami.current ? "LIVE" : `${tatami.queue.length} кезек`}
+              <div className="flex min-h-20 items-center justify-between bg-[#17182c] px-4 py-3 text-white">
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-4xl font-black text-amber-400">
+                    {tatami.number}
+                  </span>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">
+                    <div>Tatami</div>
+                    <div>{tatami.queue.length} кезекте</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-widest ${
+                    current ? "text-red-400" : embedUrl ? "text-amber-300" : "text-white/45"
+                  }`}
+                >
+                  {current ? "● Live" : embedUrl ? "● Stream" : "Күтуде"}
                 </span>
               </div>
-            </button>
+              <div className="p-4">
+                {embedUrl ? (
+                  <div className="overflow-hidden rounded-xl border border-[#d4d8df] bg-black shadow-lg">
+                    <iframe
+                      className="aspect-video w-full"
+                      src={embedUrl}
+                      title={`Tatami ${tatami.number} live`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : streamUrl ? (
+                  <div className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-red-300 bg-white px-6 text-center">
+                    <Youtube className="h-8 w-8 text-red-500" />
+                    <div className="mt-3 text-sm font-black">YouTube сілтемесі танылмады</div>
+                    <div className="mt-1 text-xs text-[#7a8190]">
+                      watch, live, embed немесе youtu.be форматындағы сілтемені қолданыңыз.
+                    </div>
+                    <a
+                      href={streamUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 text-xs font-bold text-red-600 hover:underline"
+                    >
+                      Сілтемені YouTube-та ашу ↗
+                    </a>
+                  </div>
+                ) : current ? (
+                  <div className="overflow-hidden rounded-lg border border-[#d4d8df] bg-white">
+                    <div className="flex items-center border-b border-[#d4d8df]">
+                      <div className="w-16 bg-[#e1e4e8] px-3 py-4 text-sm font-black">АҚ</div>
+                      <div className="min-w-0 flex-1 px-3 py-3">
+                        <div className="truncate text-sm font-black">
+                          {athleteName(current.redAthlete)}
+                        </div>
+                        <div className="text-[10px] text-[#7a8190]">{matchMeta(current)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center bg-[#2457c5] text-white">
+                      <div className="w-16 bg-[#1647ad] px-3 py-4 text-sm font-black">КӨК</div>
+                      <div className="min-w-0 flex-1 px-3 py-3">
+                        <div className="truncate text-sm font-black">
+                          {athleteName(current.blueAthlete)}
+                        </div>
+                        <div className="text-[10px] text-white/65">{t("tatami.now")}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-36 items-center justify-center rounded-lg border-2 border-dashed border-[#d7dbe2] bg-white text-sm font-bold uppercase tracking-[0.22em] text-[#c0c4cc]">
+                    Матч жоқ
+                  </div>
+                )}
+                {embedUrl && current && (
+                  <div className="mt-3 rounded-lg border border-[#d4d8df] bg-white px-3 py-2.5">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-red-500">
+                      Қазір татамиде
+                    </div>
+                    <div className="mt-1 truncate text-sm font-black">{matchTitle(current)}</div>
+                    <div className="mt-0.5 truncate text-[10px] text-[#7a8190]">
+                      {matchMeta(current)}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate text-[#7a8190]">
+                    {next ? `Келесі: ${matchTitle(next)}` : "Келесі матч жоспарланбаған"}
+                  </span>
+                  <Link
+                    to="/live-wall/$tournamentId"
+                    params={{ tournamentId }}
+                    search={{ tatami: tatami.number }}
+                    target="_blank"
+                    className="shrink-0 font-bold transition group-hover:text-amber-600"
+                  >
+                    Толық экран ↗
+                  </Link>
+                </div>
+              </div>
+            </article>
           );
         })}
       </div>
-
-      {activeTatami && (
-        <>
-          {/* ── YouTube showcase — FULL WIDTH on top ── */}
-          {youtubeUrls[activeTatami.number - 1] ? (
-            <div className="mb-6 overflow-hidden rounded-3xl border border-red-500/40 bg-[#0d0d14] shadow-[0_0_60px_rgba(239,68,68,0.15)]">
-              {/* top bar */}
-              <div className="flex items-center justify-between gap-3 border-b border-red-500/20 bg-gradient-to-r from-red-950/60 to-transparent px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                  </span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-red-400">
-                    LIVE · Татами #{activeTatami.number}
-                  </span>
-                </div>
-                <a
-                  href={youtubeUrls[activeTatami.number - 1]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg bg-red-600/20 px-3 py-1 text-[11px] font-semibold text-red-400 transition hover:bg-red-600/40"
-                >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                  </svg>
-                  YouTube-те ашу
-                </a>
-              </div>
-              {/* 16:9 player */}
-              <div className="relative w-full" style={{ paddingTop: "42%" }}>
-                <iframe
-                  key={`yt-${activeTatami.number}`}
-                  className="absolute inset-0 h-full w-full border-0"
-                  src={youtubeEmbedUrl(youtubeUrls[activeTatami.number - 1])!}
-                  title={`Tatami ${activeTatami.number} live`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-              {/* bottom bar — current match overlay */}
-              {activeTatami.current && (
-                <div className="border-t border-red-500/20 bg-gradient-to-r from-red-950/50 to-transparent px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-md bg-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
-                      {t("tatami.now")}
-                    </span>
-                    <span className="font-display font-bold text-white/90">
-                      {matchTitle(activeTatami.current)}
-                    </span>
-                    <span className="hidden text-xs text-white/40 sm:block">
-                      {matchMeta(activeTatami.current)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : hasAnyStream ? (
-            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 px-5 py-4 text-sm text-muted-foreground">
-              <svg
-                className="h-5 w-5 shrink-0 text-red-500/50"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-              </svg>
-              {t("tatami.no_stream", { n: activeTatami.number })}
-            </div>
-          ) : null}
-
-          {/* ── Detail + sidebar ── */}
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <TatamiDetailCard tatami={activeTatami} />
-
-            <div className="hidden space-y-3 xl:block">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                {t("tatami.other_tatamis")}
-              </div>
-              {otherTatamis.map((tatami) => {
-                const hasStream = Boolean(youtubeUrls[tatami.number - 1]);
-                return (
-                  <button
-                    key={tatami.number}
-                    type="button"
-                    onClick={() => setSelectedTatami(tatami.number)}
-                    className="relative w-full rounded-xl border border-border/60 bg-card/45 p-4 text-left transition hover:border-gold/40 hover:bg-gold/5"
-                  >
-                    {hasStream && (
-                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-red-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" /> live
-                      </span>
-                    )}
-                    <div className="flex items-center justify-between pr-12">
-                      <span className="font-display text-xl font-black text-gradient-gold">
-                        Tatami #{tatami.number}
-                      </span>
-                      <StatusBadge status={tatami.current?.status ?? "PENDING"} />
-                    </div>
-                    <div className="mt-3 truncate text-sm font-semibold">
-                      {tatami.current ? matchTitle(tatami.current) : t("tatami.now_empty")}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {t("tatami.queue_count", { count: tatami.queue.length })}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
     </section>
   );
 }
 
-function TatamiDetailCard({
-  tatami,
+function youtubeEmbedUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    let videoId = parsed.searchParams.get("v");
+    if (!videoId && parsed.hostname === "youtu.be") videoId = parsed.pathname.slice(1);
+    if (!videoId && parsed.pathname.startsWith("/live/")) {
+      videoId = parsed.pathname.split("/")[2] ?? null;
+    }
+    if (!videoId && parsed.pathname.startsWith("/embed/")) {
+      videoId = parsed.pathname.split("/")[2] ?? null;
+    }
+    if (!videoId && parsed.pathname.startsWith("/shorts/")) {
+      videoId = parsed.pathname.split("/")[2] ?? null;
+    }
+    return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1` : null;
+  } catch {
+    return null;
+  }
+}
+
+function LiveTopTab({
+  tournamentId,
+  brackets,
+  matches,
+  selectedBracket,
+  onSelectCategory,
 }: {
-  tatami: ReturnType<typeof buildTatamiState<any>>[number];
+  tournamentId: string;
+  brackets: TBracket[];
+  matches: TMatch[];
+  selectedBracket: TBracket | null;
+  onSelectCategory: (categoryId: string) => void;
 }) {
   const { t } = useTranslation();
-  const current = tatami.current;
-  const next = tatami.queue[0];
-  const waiting = tatami.queue.slice(1);
+  const liveMatches = matches.filter((match) => match.status === "IN_PROGRESS");
+  const queuedMatches = matches
+    .filter((match) => match.status === "PENDING")
+    .sort((a, b) => (a.queuePosition ?? 999) - (b.queuePosition ?? 999));
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 bg-background/35 px-5 py-4">
+    <section id="hattamalar" className="container mx-auto px-4 py-12">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.28em] text-gold">
-            {t("tatami.selected")}
+          <div className="inline-flex items-center gap-2 rounded-full border border-destructive/35 bg-destructive/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-destructive">
+            <Radio className="h-3.5 w-3.5 animate-pulse" /> Live-топ
           </div>
-          <h3 className="font-display text-4xl font-black text-gradient-gold">#{tatami.number}</h3>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            {t("tournament.live_title")}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {t("tournament.live_desc")}
+          </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <SmallMetric label={t("tatami.now")} value={current ? 1 : 0} />
-          <SmallMetric label={t("tatami.next")} value={next ? 1 : 0} />
-          <SmallMetric label={t("tatami.queue")} value={waiting.length} />
+          <SmallMetric label="LIVE" value={liveMatches.length} />
+          <SmallMetric label={t("tatami.queue")} value={queuedMatches.length} />
+          <SmallMetric label={t("tournament.stat_matches")} value={matches.length} />
         </div>
       </div>
 
-      <div className="grid gap-4 p-5 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-destructive">
-            {t("tatami.now")}
-          </div>
-          <div className="mt-2 min-h-[3.25rem] font-display text-2xl font-bold leading-tight">
-            {current ? matchTitle(current) : t("tatami.no_current_match")}
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            {current ? matchMeta(current) : t("tatami.schedule_hint")}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gold/25 bg-gold/10 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-gold">{t("tatami.next")}</div>
-          <div className="mt-2 min-h-[3.25rem] font-display text-xl font-bold leading-tight">
-            {next ? matchTitle(next) : t("tatami.no_next_match")}
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">{next ? matchMeta(next) : "—"}</div>
-        </div>
-      </div>
-
-      <div className="border-t border-border/40 px-5 pb-5">
-        <div className="sticky top-36 z-10 -mx-5 mb-3 border-b border-border/40 bg-card/95 px-5 py-3 backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Толық кезек
+      {brackets.length === 0 ? (
+        <Empty text={t("tournament.no_bracket")} />
+      ) : (
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="overflow-hidden rounded-2xl border border-gold/20 bg-card/60 shadow-elegant backdrop-blur">
+            <div className="border-b border-border/40 p-4 sm:p-5">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
+                {brackets.map((bracket) => (
+                  <button
+                    key={bracket.id}
+                    type="button"
+                    onClick={() => onSelectCategory(bracket.categoryId)}
+                    className={`min-h-16 rounded-xl border-2 px-4 py-3 text-left transition ${
+                      selectedBracket?.id === bracket.id
+                        ? "border-gold bg-gradient-gold text-gold-foreground shadow-gold"
+                        : "border-border bg-background/75 text-foreground shadow-sm hover:border-gold/70 hover:bg-gold/10"
+                    }`}
+                  >
+                    <span
+                      className={`block text-[9px] font-black uppercase tracking-[0.2em] ${
+                        selectedBracket?.id === bracket.id
+                          ? "text-gold-foreground/70"
+                          : bracket.category?.gender === "FEMALE"
+                            ? "text-rose-400"
+                            : "text-sky-400"
+                      }`}
+                    >
+                      {bracket.category?.gender === "FEMALE"
+                        ? t("tournament.gender_female_abbr")
+                        : t("tournament.gender_male_abbr")}{" "}
+                      · {bracket.category?.ageMin}-{bracket.category?.ageMax}{" "}
+                      {t("common.years_short")}
+                    </span>
+                    <span className="mt-1 block font-display text-base font-black">
+                      {categoryWeightLabel(bracket.category, t)}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="rounded-full border border-border/60 bg-background/45 px-2.5 py-1 text-[10px] text-muted-foreground">
-              {waiting.length} матч
+            <div className="p-3 sm:p-5">
+              {selectedBracket && (
+                <LiveBracket tournamentId={tournamentId} categoryId={selectedBracket.categoryId} />
+              )}
             </div>
           </div>
-        </div>
 
-        {waiting.length ? (
-          <div className="max-h-[34rem] overflow-y-auto pr-1">
-            <div className="divide-y divide-border/30 overflow-hidden rounded-xl border border-border/50 bg-background/30">
-              {waiting.map((match: any, index: number) => (
-                <div key={match.id} className="grid grid-cols-[2.5rem_1fr] gap-3 px-3 py-3 text-sm">
-                  <div className="font-display text-lg font-black text-gold/70">{index + 2}</div>
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold">{matchTitle(match)}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{matchMeta(match)}</div>
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/60 shadow-elegant backdrop-blur">
+            <div className="flex items-center justify-between border-b border-border/40 px-4 py-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-gold">
+                  Матч орталығы
+                </div>
+                <h3 className="font-display text-xl font-bold">{t("tournament.queue_result")}</h3>
+              </div>
+              <Radio className="h-5 w-5 text-destructive" />
+            </div>
+            <div className="divide-y divide-border/35">
+              {[...liveMatches, ...queuedMatches].slice(0, 10).map((match, index) => (
+                <div key={match.id} className="px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-widest ${
+                        match.status === "IN_PROGRESS" ? "text-destructive" : "text-gold"
+                      }`}
+                    >
+                      {match.status === "IN_PROGRESS" ? "● Live" : `Кезек ${index + 1}`}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Tatami #{match.tatamiNumber ?? "—"}
+                    </span>
+                  </div>
+                  <div className="mt-1 truncate text-sm font-semibold">{matchTitle(match)}</div>
+                  <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                    {matchMeta(match)}
                   </div>
                 </div>
               ))}
+              {liveMatches.length === 0 && queuedMatches.length === 0 && (
+                <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  {t("tournament.no_matches")}
+                </div>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="rounded-xl border border-border/50 bg-background/35 px-4 py-8 text-center text-sm text-muted-foreground">
-            Қосымша кезек жоқ
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1036,28 +1023,28 @@ function ResultsTab({
   matches,
   tournamentId,
 }: {
-  categories: any[];
-  brackets: any[];
-  matches: any[];
+  categories: TCategory[];
+  brackets: TBracket[];
+  matches: TMatch[];
   tournamentId: string;
 }) {
   const { t } = useTranslation();
 
   const results = useMemo(() => {
     return categories
-      .map((cat: any) => {
-        const bracket = brackets.find((b: any) => b.categoryId === cat.id);
+      .map((cat: TCategory) => {
+        const bracket = brackets.find((b: TBracket) => b.categoryId === cat.id);
         if (!bracket) return null;
 
         const catMatches = matches.filter(
-          (m: any) => m.bracketId === bracket.id && m.status === "COMPLETED",
+          (m: TMatch) => m.bracketId === bracket.id && m.status === "COMPLETED",
         );
 
         const finalMatch =
-          catMatches.find((m: any) => m.bracketSection === "final") ??
+          catMatches.find((m: TMatch) => m.bracketSection === "final") ??
           catMatches
-            .filter((m: any) => m.bracketSection === "main")
-            .sort((a: any, b: any) => b.round - a.round)[0];
+            .filter((m: TMatch) => m.bracketSection === "main")
+            .sort((a: TMatch, b: TMatch) => (b.round ?? 0) - (a.round ?? 0))[0];
 
         const gold = finalMatch?.winnerId
           ? finalMatch.redAthlete?.id === finalMatch.winnerId
@@ -1071,21 +1058,26 @@ function ResultsTab({
           : null;
 
         const bronzeMatches = catMatches.filter(
-          (m: any) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
+          (m: TMatch) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2",
         );
         const bronzeWinners = bronzeMatches
-          .filter((m: any) => m.winnerId)
-          .map((m: any) => (m.redAthlete?.id === m.winnerId ? m.redAthlete : m.blueAthlete))
+          .filter((m: TMatch) => m.winnerId)
+          .map((m: TMatch) => (m.redAthlete?.id === m.winnerId ? m.redAthlete : m.blueAthlete))
           .filter(Boolean);
 
         const semis = catMatches.filter(
-          (m: any) => m.bracketSection === "main" && finalMatch && m.round === finalMatch.round - 1,
+          (m: TMatch) =>
+            m.bracketSection === "main" &&
+            finalMatch &&
+            m.round === (finalMatch as TMatch).round! - 1,
         );
         const semifinalLosers =
           bronzeWinners.length === 0
             ? semis
-                .filter((m: any) => m.winnerId)
-                .map((m: any) => (m.redAthlete?.id === m.winnerId ? m.blueAthlete : m.redAthlete))
+                .filter((m: TMatch) => m.winnerId)
+                .map((m: TMatch) =>
+                  m.redAthlete?.id === m.winnerId ? m.blueAthlete : m.redAthlete,
+                )
                 .filter(Boolean)
             : [];
 
@@ -1095,101 +1087,164 @@ function ResultsTab({
       })
       .filter(Boolean);
   }, [categories, brackets, matches]);
+  const completedCount = matches.filter((match) => match.status === "COMPLETED").length;
+  const medalistsCount = results.reduce(
+    (total, result) =>
+      total + (result?.gold ? 1 : 0) + (result?.silver ? 1 : 0) + (result?.bronze.length ?? 0),
+    0,
+  );
 
   return (
-    <section id="natijeler" className="container mx-auto px-4 py-12">
-      <div className="mb-8">
-        <div className="text-xs uppercase tracking-[0.3em] text-gold">
-          {t("tournament.results_header")}
+    <section id="natijeler" className="relative overflow-hidden py-12">
+      <div className="absolute inset-0 grid-bg opacity-20" />
+      <div className="container relative mx-auto px-4">
+        <div className="mb-8 overflow-hidden rounded-3xl border border-gold/25 bg-card/65 p-6 shadow-elegant backdrop-blur sm:p-8">
+          <div className="absolute right-10 top-0 h-44 w-44 rounded-full bg-gold/15 blur-3xl" />
+          <div className="relative flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-gold">
+                <Trophy className="h-3.5 w-3.5" />
+                {t("tournament.results_header")}
+              </div>
+              <h2 className="mt-4 font-display text-4xl font-black sm:text-5xl">
+                {t("tournament.medal_table")}
+              </h2>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                {t("tournament.medal_desc")}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <ResultSummary label="Санат" value={results.length} />
+              <ResultSummary label="Матч" value={completedCount} />
+              <ResultSummary label="Жүлдегер" value={medalistsCount} />
+            </div>
+          </div>
         </div>
-        <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-          {t("tournament.medal_table")}
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{t("tournament.medal_desc")}</p>
-      </div>
 
-      {results.length === 0 ? (
-        <Empty text={t("tournament.no_results")} />
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {results.map((r: any) => (
-            <div
-              key={r.category.id}
-              className="rounded-2xl border border-border/60 bg-card/60 shadow-elegant backdrop-blur overflow-hidden"
-            >
-              <div className="border-b border-border/40 px-5 py-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-display text-lg font-bold">
-                    {categoryTitle(r.category, t)}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {r.category.gender === "MALE"
-                      ? t("tournament.gender_male_abbr")
-                      : t("tournament.gender_female_abbr")}{" "}
-                    · {r.category.ageMin}-{r.category.ageMax} {t("common.years_short")}
+        {results.length === 0 ? (
+          <Empty text={t("tournament.no_results")} />
+        ) : (
+          <div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {(
+              results as Array<{
+                category: TCategory;
+                bracket: TBracket;
+                gold: TAthlete | null | undefined;
+                silver: TAthlete | null | undefined;
+                bronze: (TAthlete | null | undefined)[];
+              }>
+            ).map((r) => (
+              <article
+                key={r.category.id}
+                className="group overflow-hidden rounded-2xl border border-border/60 bg-card/65 shadow-elegant backdrop-blur transition hover:-translate-y-1 hover:border-gold/40"
+              >
+                <div className="relative overflow-hidden border-b border-gold/20 bg-gradient-to-br from-gold/15 via-card to-card px-5 py-5">
+                  <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gold/15 blur-2xl" />
+                  <div className="relative flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.25em] text-gold">
+                        Medal podium
+                      </div>
+                      <div className="mt-1 font-display text-xl font-bold">
+                        {categoryTitle(r.category, t)}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {r.category.gender === "MALE"
+                          ? t("tournament.gender_male_abbr")
+                          : t("tournament.gender_female_abbr")}{" "}
+                        · {r.category.ageMin}-{r.category.ageMax} {t("common.years_short")}
+                      </div>
+                    </div>
+                    <FormatBadge format={r.category.format} />
                   </div>
                 </div>
-                <FormatBadge format={r.category.format} />
-              </div>
 
-              <div className="p-5 space-y-2.5">
-                <PodiumRow
-                  place={1}
-                  athlete={r.gold}
-                  label={t("tournament.medal_gold")}
-                  color="text-yellow-400"
-                  bg="bg-yellow-400/10 border-yellow-400/25"
-                />
-                <PodiumRow
-                  place={2}
-                  athlete={r.silver}
-                  label={t("tournament.medal_silver")}
-                  color="text-zinc-400"
-                  bg="bg-zinc-400/10 border-zinc-400/20"
-                />
-                {r.bronze.map((a: any, i: number) => (
+                {r.gold && (
+                  <div className="border-b border-yellow-400/20 bg-yellow-400/8 px-5 py-5 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-yellow-400/45 bg-yellow-400/15 text-2xl shadow-[0_0_30px_rgba(250,204,21,0.15)]">
+                      🥇
+                    </div>
+                    <div className="mt-3 text-[9px] font-bold uppercase tracking-[0.28em] text-yellow-400">
+                      {t("tournament.medal_gold")}
+                    </div>
+                    <div className="mt-1 font-display text-xl font-black">
+                      {r.gold.surname} {r.gold.name}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      {r.gold.club ? localizeName(r.gold.club.name) : "—"}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2.5 p-4">
                   <PodiumRow
-                    key={a?.id ?? i}
-                    place={3}
-                    athlete={a}
-                    label={t("tournament.medal_bronze")}
-                    color="text-amber-600"
-                    bg="bg-amber-600/10 border-amber-600/20"
+                    place={2}
+                    athlete={r.silver ?? null}
+                    label={t("tournament.medal_silver")}
+                    color="text-zinc-300"
+                    bg="bg-zinc-400/8 border-zinc-400/20"
                   />
-                ))}
-              </div>
+                  {r.bronze.map((a: TAthlete | null | undefined, i: number) => (
+                    <PodiumRow
+                      key={a?.id ?? i}
+                      place={3}
+                      athlete={a ?? null}
+                      label={t("tournament.medal_bronze")}
+                      color="text-amber-500"
+                      bg="bg-amber-600/8 border-amber-600/20"
+                    />
+                  ))}
+                </div>
 
-              <div className="border-t border-border/30 px-5 py-3">
-                <a
-                  href={`/api/pdf/bracket?bracketId=${r.bracket.id}`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-1.5 text-xs text-gold hover:underline"
-                >
-                  <Download className="h-3.5 w-3.5" /> {t("tournament.bracket_pdf_link")}
-                </a>
-              </div>
+                <div className="border-t border-border/30 px-4 py-3">
+                  <a
+                    href={`/api/pdf/bracket?bracketId=${r.bracket.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold hover:underline"
+                  >
+                    <Download className="h-3.5 w-3.5" /> {t("tournament.bracket_pdf_link")}
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-gold/25 bg-gradient-to-r from-gold/10 via-card/75 to-card/55 p-6 shadow-elegant">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-gold shadow-gold">
+              <FileText className="h-6 w-6 text-gold-foreground" />
             </div>
-          ))}
+            <div>
+              <h3 className="font-display text-xl font-bold">
+                {t("tournament.official_protocol")}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("tournament.results_protocol_desc")}
+              </p>
+            </div>
+          </div>
+          <a
+            href={`/api/pdf/protocol?tournamentId=${tournamentId}`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-5 py-2.5 text-sm font-bold text-gold-foreground shadow-gold"
+          >
+            <Download className="h-4 w-4" /> {t("tournament.download_results")}
+          </a>
         </div>
-      )}
-
-      <div className="mt-10 rounded-2xl border border-gold/25 bg-gold/5 p-6 text-center">
-        <Trophy className="mx-auto mb-3 h-10 w-10 text-gold" />
-        <h3 className="font-display text-2xl font-bold">{t("tournament.official_protocol")}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("tournament.results_protocol_desc")}
-        </p>
-        <a
-          href={`/api/pdf/protocol?tournamentId=${tournamentId}`}
-          target="_blank"
-          rel="noopener"
-          className="mt-5 inline-flex items-center gap-2 rounded-md bg-gradient-gold px-6 py-3 font-bold text-gold-foreground shadow-gold"
-        >
-          <Download className="h-4 w-4" /> {t("tournament.download_results")}
-        </a>
       </div>
     </section>
+  );
+}
+
+function ResultSummary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-20 rounded-xl border border-gold/20 bg-background/45 px-3 py-3">
+      <div className="font-display text-2xl font-black text-gradient-gold">{value}</div>
+      <div className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground">{label}</div>
+    </div>
   );
 }
 
@@ -1201,13 +1256,13 @@ function PodiumRow({
   bg,
 }: {
   place: number;
-  athlete: any;
+  athlete: TAthlete | null;
   label: string;
   color: string;
   bg: string;
 }) {
   const { t } = useTranslation();
-  const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
+  const medal = place === 2 ? "🥈" : "🥉";
   return (
     <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${bg}`}>
       <div className="text-xl shrink-0">{medal}</div>
@@ -1235,7 +1290,15 @@ function PodiumRow({
   );
 }
 
-function Metric({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-xl border border-border/60 bg-card/55 p-4 backdrop-blur">
       <Icon className="mb-3 h-5 w-5 text-gold" />
@@ -1261,6 +1324,11 @@ function InfoCard({ label, value }: { label: string; value: string }) {
       <div className="mt-1 font-display text-lg font-semibold leading-tight">{value}</div>
     </div>
   );
+}
+
+function formatKzt(value: number): string {
+  if (value <= 0) return "0 ₸";
+  return `${new Intl.NumberFormat("ru-KZ").format(value)} ₸`;
 }
 
 function Empty({ text }: { text: string }) {
@@ -1302,8 +1370,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function FormatBadge({ format }: { format: string }) {
+function FormatBadge({ format }: { format: string | null | undefined }) {
   const { t } = useTranslation();
+  if (!format) return null;
   const key = `format.${format}`;
   return (
     <span className="rounded bg-gold/10 px-2 py-1 text-[10px] text-gold/90">
@@ -1312,24 +1381,36 @@ function FormatBadge({ format }: { format: string }) {
   );
 }
 
-function categoryTitle(category: any, t: any): string {
+function categoryTitle(category: TCategory | null | undefined, t: (key: string) => any): string {
   if (!category) return "";
   return (
     localizeName(category.name) ||
-    `${category.gender === "MALE" ? t("tournament.male_label") : t("tournament.female_label")} · ${category.weightMin}-${category.weightMax} ${t("common.kg")}`
+    `${category.gender === "MALE" ? t("tournament.male_label") : t("tournament.female_label")} · ${Number(category.weightMax) >= 999 ? `+${category.weightMin}` : `-${category.weightMax}`} ${t("common.kg")}`
   );
 }
 
-function athleteName(athlete: any): string {
+function categoryWeightLabel(
+  category: TCategory | null | undefined,
+  t: (key: string) => any,
+): string {
+  if (!category) return "—";
+  const weight =
+    Number(category.weightMax) >= 999
+      ? `+${category.weightMin ?? 0}`
+      : `−${category.weightMax ?? 0}`;
+  return `${weight} ${t("common.kg")}`;
+}
+
+function athleteName(athlete: TAthlete | null | undefined): string {
   return `${athlete?.name ?? ""} ${athlete?.surname ?? ""}`.trim() || "—";
 }
 
-function matchTitle(match: any): string {
+function matchTitle(match: TMatch): string {
   return `${athleteName(match.redAthlete)} vs ${athleteName(match.blueAthlete)}`;
 }
 
-function matchMeta(match: any): string {
-  const category = categoryTitle(match.bracket?.category, (key: string, fallback?: string) => {
+function matchMeta(match: TMatch): string {
+  const category = categoryTitle(match.bracket?.category, (key: string, fallback?: unknown) => {
     const labels: Record<string, string> = {
       "tournament.male_label": "Ер адамдар",
       "tournament.female_label": "Әйелдер",
@@ -1356,7 +1437,7 @@ function timeText(start: string | Date): string {
   );
 }
 
-function deadlineText(tourney: any): string {
+function deadlineText(tourney: TTournament): string {
   const value = tourney.applicationDeadline ?? tourney.startDate;
   return new Date(value).toLocaleString("kk-KZ", {
     day: "2-digit",
@@ -1366,7 +1447,7 @@ function deadlineText(tourney: any): string {
   });
 }
 
-function weighInText(tourney: any, tbdLabel: string): string {
+function weighInText(tourney: TTournament, tbdLabel: string): string {
   if (!tourney.weighInStart && !tourney.weighInEnd) return tbdLabel;
   const fmt = new Intl.DateTimeFormat("kk-KZ", {
     day: "2-digit",
@@ -1379,8 +1460,9 @@ function weighInText(tourney: any, tbdLabel: string): string {
   return start && end ? `${start} - ${end}` : start || end;
 }
 
-function localizeName(n: any): string {
+function localizeName(n: unknown): string {
   if (!n) return "";
   if (typeof n === "string") return n;
-  return n.kk || n.ru || n.en || "";
+  const obj = n as Record<string, string>;
+  return obj["kk"] || obj["ru"] || obj["en"] || "";
 }

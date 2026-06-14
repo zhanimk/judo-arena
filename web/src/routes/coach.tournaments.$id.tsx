@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { api, ApiError } from "@/lib/api";
+import type { Application, ApplicationEntry, Category, User, Match, Bracket } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
@@ -37,6 +39,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс санаттары — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachTournamentDetail />
@@ -99,7 +102,7 @@ function CoachTournamentDetail() {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
       navigate({ to: "/coach/applications/$id", params: { id: app.id } });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach.application_open_error")),
   });
 
@@ -115,12 +118,12 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach.athlete_add_error")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach.athlete_add_error")),
     onSettled: () => setAdding(null),
   });
 
   const addEligible = useMutation({
-    mutationFn: async ({ athletes, categoryId }: { athletes: any[]; categoryId: string }) => {
+    mutationFn: async ({ athletes, categoryId }: { athletes: User[]; categoryId: string }) => {
       const app = ownApplication ?? (await api.tournaments.createApplication(id));
       for (const athlete of athletes) {
         await api.applications.addEntry(app.id, athlete.id, categoryId);
@@ -134,7 +137,7 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach.athletes_add_error")),
     onSettled: () => setAdding(null),
   });
@@ -148,7 +151,7 @@ function CoachTournamentDetail() {
       setError("");
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach.application_submit_error")),
   });
   const payKaspi = useMutation({
@@ -156,20 +159,20 @@ function CoachTournamentDetail() {
       if (!ownApplication) throw new Error("NO_APPLICATION");
       return api.applications.payKaspi(ownApplication.id);
     },
-    onSuccess: (updated: any) => {
+    onSuccess: (updated: Application) => {
       setError("");
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
       if (updated?.paymentUrl) {
         window.location.assign(updated.paymentUrl);
       }
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const ownApplication = appsQuery.data?.[0] ?? null;
   const entries = useMemo(() => ownApplication?.entries ?? [], [ownApplication]);
   const enteredByCategory = useMemo(() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, ApplicationEntry[]>();
     for (const entry of entries) {
       const list = map.get(entry.categoryId) ?? [];
       list.push(entry);
@@ -179,14 +182,14 @@ function CoachTournamentDetail() {
   }, [entries]);
   const entryIssues = useMemo(
     () =>
-      entries.map((entry: any) => ({
+      entries.map((entry: ApplicationEntry) => ({
         entry,
         issues: validateApplicationEntry(entry, t),
       })),
     [entries, t],
   );
   const invalidEntryCount = entryIssues.filter(
-    (item: { entry: any; issues: string[] }) => item.issues.length > 0,
+    (item: { entry: ApplicationEntry; issues: string[] }) => item.issues.length > 0,
   ).length;
   const enteredCategoryCount = enteredByCategory.size;
   const entryFeeKzt = Number(tQuery.data?.entryFeeKzt ?? 0);
@@ -219,14 +222,14 @@ function CoachTournamentDetail() {
   }
 
   const categories = (tournament.categories ?? [])
-    .filter((category: any) => filter === "ALL" || category.gender === filter)
+    .filter((category: Category) => filter === "ALL" || category.gender === filter)
     .sort(sortCategoriesByAgeWeight);
   const categoryCount = tournament.categories?.length ?? 0;
   const deadline = tournament.applicationDeadline ?? tournament.startDate;
   const deadlinePassed = new Date(deadline).getTime() < Date.now();
-  const myAthleteIds = new Set((membersQuery.data ?? []).map((athlete: any) => athlete.id));
+  const myAthleteIds = new Set((membersQuery.data ?? []).map((athlete: User) => athlete.id));
   const clubMatches = (matchesQuery.data ?? []).filter(
-    (match: any) =>
+    (match: Match) =>
       (match.redAthlete?.id && myAthleteIds.has(match.redAthlete.id)) ||
       (match.blueAthlete?.id && myAthleteIds.has(match.blueAthlete.id)),
   );
@@ -383,11 +386,11 @@ function CoachTournamentDetail() {
         />
         <MiniStat
           label={t("coach.male_count")}
-          value={(tournament.categories ?? []).filter((c: any) => c.gender === "MALE").length}
+          value={(tournament.categories ?? []).filter((c: Category) => c.gender === "MALE").length}
         />
         <MiniStat
           label={t("coach.female_count")}
-          value={(tournament.categories ?? []).filter((c: any) => c.gender === "FEMALE").length}
+          value={(tournament.categories ?? []).filter((c: Category) => c.gender === "FEMALE").length}
         />
         <MiniStat label={t("dashboard.matches")} value={clubMatches.length} />
       </div>
@@ -493,19 +496,19 @@ function CoachTournamentDetail() {
           <EmptyState title={t("tournament.no_categories")} />
         ) : (
           <div className="space-y-4">
-            {categories.map((category: any) => {
-              const bracket = bracketsQuery.data?.find((b: any) => b.categoryId === category.id);
+            {categories.map((category: Category) => {
+              const bracket = bracketsQuery.data?.find((b: Bracket) => b.categoryId === category.id);
               const categoryEntries = enteredByCategory.get(category.id) ?? [];
-              const eligible = (membersQuery.data ?? []).filter((athlete: any) =>
+              const eligible = (membersQuery.data ?? []).filter((athlete: User) =>
                 fitsCategory(athlete, category),
               );
               const ineligiblePreview = (membersQuery.data ?? [])
-                .filter((athlete: any) => !fitsCategory(athlete, category))
+                .filter((athlete: User) => !fitsCategory(athlete, category))
                 .slice(0, 4);
-              const enteredIds = new Set(categoryEntries.map((entry: any) => entry.athleteId));
-              const eligibleToAdd = eligible.filter((athlete: any) => !enteredIds.has(athlete.id));
+              const enteredIds = new Set(categoryEntries.map((entry: ApplicationEntry) => entry.athleteId));
+              const eligibleToAdd = eligible.filter((athlete: User) => !enteredIds.has(athlete.id));
               const categoryMatches = clubMatches.filter(
-                (match: any) => match.bracket?.categoryId === category.id,
+                (match: Match) => match.bracket?.categoryId === category.id,
               );
               const isOpenDraft =
                 canManageApplications &&
@@ -596,7 +599,7 @@ function CoachTournamentDetail() {
                           <div>{t("coach.no_eligible_athletes")}</div>
                           {ineligiblePreview.length > 0 && (
                             <div className="mt-3 space-y-1 text-xs">
-                              {ineligiblePreview.map((athlete: any) => (
+                              {ineligiblePreview.map((athlete: User) => (
                                 <div key={athlete.id}>
                                   {athlete.name} {athlete.surname}:{" "}
                                   {categoryMismatchReason(athlete, category, t)}
@@ -607,7 +610,7 @@ function CoachTournamentDetail() {
                         </div>
                       ) : (
                         <div className="grid gap-2 md:grid-cols-2">
-                          {eligible.map((athlete: any) => {
+                          {eligible.map((athlete: User) => {
                             const alreadyIn = enteredIds.has(athlete.id);
                             const isAdding = adding === `${athlete.id}:${category.id}`;
                             return (
@@ -621,7 +624,7 @@ function CoachTournamentDetail() {
                                       {athlete.name} {athlete.surname}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                      {getAge(athlete.dateOfBirth)} {t("common.years_short")} ·{" "}
+                                      {athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : "—"} {t("common.years_short")} ·{" "}
                                       {athlete.weightKg} {t("common.kg")} ·{" "}
                                       {athlete.beltRank ?? "—"}
                                     </div>
@@ -630,8 +633,8 @@ function CoachTournamentDetail() {
                                     <EntryCheckBadge
                                       issues={validateApplicationEntry(
                                         categoryEntries.find(
-                                          (entry: any) => entry.athleteId === athlete.id,
-                                        ) ?? { athlete, category },
+                                          (entry: ApplicationEntry) => entry.athleteId === athlete.id,
+                                        ) ?? ({ athlete, category } as ApplicationEntry),
                                         t,
                                       )}
                                     />
@@ -672,7 +675,7 @@ function CoachTournamentDetail() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {categoryMatches.map((match: any) => (
+                          {categoryMatches.map((match: Match) => (
                             <div
                               key={match.id}
                               className="rounded-md border border-border/50 p-3 text-xs"
@@ -687,7 +690,7 @@ function CoachTournamentDetail() {
                               <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
                                 <span
                                   className={
-                                    myAthleteIds.has(match.redAthlete?.id)
+                                    myAthleteIds.has(match.redAthlete?.id ?? "")
                                       ? "font-medium text-gold"
                                       : ""
                                   }
@@ -697,7 +700,7 @@ function CoachTournamentDetail() {
                                 <span className="text-muted-foreground">vs</span>
                                 <span
                                   className={
-                                    myAthleteIds.has(match.blueAthlete?.id)
+                                    myAthleteIds.has(match.blueAthlete?.id ?? "")
                                       ? "font-medium text-gold"
                                       : ""
                                   }
@@ -738,7 +741,7 @@ function CoachTournamentDetail() {
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
             {entries.length > 0 && (
               <div className="mb-4 space-y-2">
-                {entryIssues.map(({ entry, issues }: { entry: any; issues: string[] }) => (
+                {entryIssues.map(({ entry, issues }: { entry: ApplicationEntry; issues: string[] }) => (
                   <div
                     key={entry.id}
                     className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}
@@ -906,7 +909,7 @@ function ApplyUnavailable({ reason, danger }: { reason: string; danger?: boolean
   );
 }
 
-function Info({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
+function Info({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2">
       <Icon className="h-4 w-4 text-gold/70" /> {children}
@@ -1044,21 +1047,21 @@ function FormatBadge({ format }: { format: string }) {
   );
 }
 
-function categoryTitle(category: any): string {
+function categoryTitle(category: Category | null | undefined): string {
   if (!category) return "";
   const custom = localizeName(category.name);
   if (custom) return custom;
   return `${category.gender === "MALE" ? "M" : "F"} ${category.ageMin}-${category.ageMax} ${category.weightMin}-${category.weightMax}kg`;
 }
 
-function sortCategoriesByAgeWeight(a: any, b: any): number {
+function sortCategoriesByAgeWeight(a: Category, b: Category): number {
   if (a.gender !== b.gender) return String(a.gender).localeCompare(String(b.gender));
   if (a.ageMin !== b.ageMin) return Number(a.ageMin) - Number(b.ageMin);
   if (a.weightMin !== b.weightMin) return Number(a.weightMin) - Number(b.weightMin);
   return Number(a.weightMax) - Number(b.weightMax);
 }
 
-function fitsCategory(athlete: any, category: any): boolean {
+function fitsCategory(athlete: User, category: Category): boolean {
   if (!athlete.dateOfBirth || !athlete.weightKg) return false;
   const age = getAge(athlete.dateOfBirth);
   return (
@@ -1070,7 +1073,7 @@ function fitsCategory(athlete: any, category: any): boolean {
   );
 }
 
-function validateApplicationEntry(entry: any, t: any): string[] {
+function validateApplicationEntry(entry: ApplicationEntry, t: (k: string) => string): string[] {
   const athlete = entry.athlete;
   const category = entry.category;
   if (!athlete || !category) return [t("coach.entry_incomplete")];
@@ -1078,7 +1081,7 @@ function validateApplicationEntry(entry: any, t: any): string[] {
   return reason === "OK" ? [] : [reason];
 }
 
-function categoryMismatchReason(athlete: any, category: any, t: any): string {
+function categoryMismatchReason(athlete: User, category: Category, t: (k: string, opts?: Record<string, unknown>) => string): string {
   if (!athlete.gender) return t("coach.mismatch_no_gender");
   if (athlete.gender !== category.gender) return t("coach.mismatch_gender");
   if (!athlete.dateOfBirth) return t("coach.mismatch_no_dob");
@@ -1100,7 +1103,7 @@ function getAge(dob: string): number {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000));
 }
 
-function athleteName(athlete: any): string {
+function athleteName(athlete: User | null | undefined): string {
   if (!athlete) return "TBD";
   return `${athlete.name ?? ""} ${athlete.surname ?? ""}`.trim() || "TBD";
 }
@@ -1113,7 +1116,7 @@ function formatKzt(value: number): string {
   return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
 }
 
-function formatWeighIn(tournament: any, t: any): string {
+function formatWeighIn(tournament: import("@/lib/api-types").Tournament, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const place = tournament.weighInLocation || tournament.location;
   const start = tournament.weighInStart
     ? new Date(tournament.weighInStart).toLocaleString("kk-KZ")
@@ -1123,11 +1126,11 @@ function formatWeighIn(tournament: any, t: any): string {
   return t("coach.weigh_in_format", { place, time });
 }
 
-function mapEmbedUrl(tournament: any): string {
+function mapEmbedUrl(tournament: import("@/lib/api-types").Tournament): string {
   return `https://maps.google.com/maps?q=${encodeURIComponent(`${tournament.location}, ${tournament.city}`)}&output=embed`;
 }
 
-function localizeName(value: any): string {
+function localizeName(value: import("@/lib/api-types").LocalizedName): string {
   if (!value) return "";
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || "";

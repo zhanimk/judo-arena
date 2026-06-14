@@ -6,7 +6,7 @@ import { Panel, EmptyState, LoadingState } from "@/components/dashboard/Dashboar
 import { api, ApiError } from "@/lib/api";
 import {
   StatusBadge, ApplicationMetric, EntryCheckBadge, FormatBadge,
-  categoryTitle, validateApplicationEntry, athleteAge, localizeName,
+  categoryTitle, validateApplicationEntry, athleteAge, localizeName, weightLabel,
 } from "./shared";
 
 function ApplicationReviewDetail({
@@ -170,7 +170,7 @@ function ApplicationReviewDetail({
                                   className="text-xs px-2 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 inline-flex items-center gap-1"
                                 >
                                   <ArrowRightLeft className="h-3 w-3" />
-                                  {c.gender === "MALE" ? t("common.male") : t("tatami.female_short")} {c.weightMin}-{c.weightMax} {t("common.kg")}
+                                  {c.gender === "MALE" ? t("common.male") : t("tatami.female_short")} {weightLabel(c, t)}
                                   <span className="text-gold/70">{c.ageMin}-{c.ageMax} {t("common.years_short")}</span>
                                 </button>
                               ))}

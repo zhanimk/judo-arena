@@ -1,37 +1,70 @@
 {
-  "name": "Judo-Arena",
+  "name": "Judo-Arena — Соревнования",
   "short_name": "Judo-Arena",
-  "description": "Дзюдо жарыстарын басқару платформасы",
+  "description": "Дзюдо жарыстарын басқару платформасы / Управление соревнованиями по дзюдо",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "background_color": "#0F1117",
   "theme_color": "#C9A84C",
   "orientation": "any",
   "lang": "kk",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Татами",
+      "name": "Татами панелі",
+      "short_name": "Татами",
       "url": "/tatami",
-      "description": "Судьялық панель"
+      "description": "Судьялық панель — матч басқару",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Турнирлер",
+      "short_name": "Турнирлер",
       "url": "/tournaments",
-      "description": "Барлық турнирлер"
+      "description": "Барлық турнирлер тізімі",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Live Wall",
+      "short_name": "Live",
+      "url": "/tournaments",
+      "description": "Нәтижелер тақтасы",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "categories": ["sports", "productivity"],

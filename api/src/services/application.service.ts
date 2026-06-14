@@ -125,7 +125,7 @@ export async function listApplicationsForTournament(
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      club: { select: { id: true, name: true, shortName: true, city: true } },
+      club: { select: { id: true, name: true, shortName: true, city: true, logoUrl: true } },
       entries: {
         select: {
           id: true,
@@ -185,7 +185,7 @@ export async function listAllApplicationsAdmin(
       tournament: {
         select: { id: true, name: true, startDate: true, entryFeeKzt: true },
       },
-      club: { select: { id: true, name: true, shortName: true, city: true } },
+      club: { select: { id: true, name: true, shortName: true, city: true, logoUrl: true } },
       _count: { select: { entries: true } },
     },
   });

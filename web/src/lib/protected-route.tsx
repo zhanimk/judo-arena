@@ -13,7 +13,7 @@ export function ProtectedRoute({
   allowedRoles,
 }: {
   children: ReactNode;
-  allowedRoles?: Exclude<UserRole, "JUDGE">[];
+  allowedRoles?: UserRole[];
 }) {
   const { user, status } = useAuth();
   const navigate = useNavigate();

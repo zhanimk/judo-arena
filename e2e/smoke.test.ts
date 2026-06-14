@@ -323,7 +323,7 @@ test.describe("API health", () => {
     expect(body.status).toMatch(/ok|degraded/);
     expect(body.service).toBe("judo-arena-api");
     expect(body.version).toBeTruthy();
-    expect(body.db).toBe("connected");
+    expect(body.checks?.db).toBe("ok");
   });
 
   test("GET /api/auth/me without token returns 401", async ({ request }) => {

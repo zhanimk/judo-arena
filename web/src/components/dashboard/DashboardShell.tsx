@@ -427,13 +427,15 @@ export function Panel({
   title,
   children,
   action,
+  className,
 }: {
   title: string | ReactNode;
   children: ReactNode;
   action?: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="glass rounded-xl p-4 sm:p-6">
+    <section className={`glass rounded-xl p-4 sm:p-6${className ? ` ${className}` : ""}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold">{title}</h2>
         {action && <div className="shrink-0">{action}</div>}

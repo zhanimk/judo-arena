@@ -5,6 +5,7 @@
  *   /live-wall/:tournamentId?tatami=N  — IJF табло для TV через HDMI
  */
 
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Maximize2, Trophy } from "lucide-react";
@@ -13,11 +14,11 @@ import { useTranslation } from "react-i18next";
 import { api, mediaUrl } from "@/lib/api";
 import { useRealtime } from "@/lib/socket";
 import { buildTatamiState, hasPendingResult, type TatamiState } from "@/lib/tatami-state";
-
-type Match = any;
+import type { Match, User, MatchScoreSnapshot } from "@/lib/api-types";
 
 export const Route = createFileRoute("/live-wall/$tournamentId")({
   head: () => ({ meta: [{ title: "Live Wall — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { tatami?: number } => {
     const tv = Number(search.tatami);
     return { tatami: Number.isFinite(tv) && tv > 0 ? tv : undefined };
@@ -66,34 +67,41 @@ function LiveWall() {
       document.documentElement.requestFullscreen();
     }
   };
+  const showCompletedResultsScreen: boolean = false;
 
   /* ════════════════════════════════════════════
      COMPLETED — Final results screen
      ════════════════════════════════════════════ */
-  if (tournament?.status === "COMPLETED") {
+  if (tournament?.status === "COMPLETED" && showCompletedResultsScreen) {
     const bracketMap = new Map<
       string,
-      { catLabel: string; gender: string; winner: any; second: any; bronze: any[] }
+      {
+        catLabel: string;
+        gender: string;
+        winner: User | null;
+        second: User | null;
+        bronze: (User | null)[];
+      }
     >();
     for (const m of matches) {
       const catId = m.bracket?.categoryId ?? m.bracket?.category?.id;
       if (!catId) continue;
       const cat = m.bracket?.category;
       const gender = cat?.gender === "MALE" ? t("common.male") : t("tatami.female_short");
-      const wMax = cat?.weightMax >= 200 ? `+${cat?.weightMin}` : `-${cat?.weightMax}`;
+      const wMax = (cat?.weightMax ?? 0) >= 200 ? `+${cat?.weightMin}` : `-${cat?.weightMax}`;
       const catLabel = `${gender} ${wMax} ${t("common.kg")}`;
       if (!bracketMap.has(catId))
         bracketMap.set(catId, {
           catLabel,
-          gender: cat?.gender,
+          gender: cat?.gender ?? "",
           winner: null,
           second: null,
           bronze: [],
         });
       const entry = bracketMap.get(catId)!;
       if (m.bracketSection === "final" && m.status === "COMPLETED" && m.winnerId) {
-        entry.winner = m.winnerId === m.redAthlete?.id ? m.redAthlete : m.blueAthlete;
-        entry.second = m.winnerId === m.redAthlete?.id ? m.blueAthlete : m.redAthlete;
+        entry.winner = (m.winnerId === m.redAthlete?.id ? m.redAthlete : m.blueAthlete) ?? null;
+        entry.second = (m.winnerId === m.redAthlete?.id ? m.blueAthlete : m.redAthlete) ?? null;
       }
       if (
         (m.bracketSection === "bronze1" || m.bracketSection === "bronze2") &&
@@ -101,15 +109,17 @@ function LiveWall() {
         m.winnerId
       ) {
         const b = m.winnerId === m.redAthlete?.id ? m.redAthlete : m.blueAthlete;
-        if (b && !entry.bronze.find((x: any) => x?.id === b?.id)) entry.bronze.push(b);
+        if (b && !entry.bronze.find((x: User | null) => x?.id === b?.id)) entry.bronze.push(b);
       }
     }
     const categories = Array.from(bracketMap.values()).filter((c) => c.winner);
-    const surnameOnly = (a: any) =>
+    const surnameOnly = (a: User | null | undefined) =>
       a ? `${a.surname ?? ""} ${(a.name ?? "")[0] ?? ""}.`.trim() : "—";
     const tName =
-      typeof tournament.name === "object"
-        ? ((tournament.name as any)?.kk ?? (tournament.name as any)?.ru ?? "")
+      typeof tournament.name === "object" && tournament.name !== null
+        ? ((tournament.name as Record<string, string>)?.kk ??
+          (tournament.name as Record<string, string>)?.ru ??
+          "")
         : (tournament.name ?? "");
 
     return (
@@ -238,14 +248,12 @@ function LiveWall() {
                       bg: "rgba(255,255,255,0.05)",
                       color: "#9CA3AF",
                     },
-                    ...(cat.bronze ?? [])
-                      .slice(0, 2)
-                      .map((b: any) => ({
-                        label: t("live_wall.place_3"),
-                        athlete: b,
-                        bg: "rgba(180,120,60,0.1)",
-                        color: "#CD7F32",
-                      })),
+                    ...(cat.bronze ?? []).slice(0, 2).map((b: User | null) => ({
+                      label: t("live_wall.place_3"),
+                      athlete: b,
+                      bg: "rgba(180,120,60,0.1)",
+                      color: "#CD7F32",
+                    })),
                   ].map((row, ri) =>
                     row.athlete ? (
                       <div
@@ -276,8 +284,8 @@ function LiveWall() {
                             }}
                           >
                             {typeof row.athlete.club.name === "object"
-                              ? ((row.athlete.club.name as any)?.kk ??
-                                (row.athlete.club.name as any)?.ru)
+                              ? ((row.athlete.club.name as Record<string, string>)?.kk ??
+                                (row.athlete.club.name as Record<string, string>)?.ru)
                               : row.athlete.club.name}
                           </span>
                         )}
@@ -300,6 +308,7 @@ function LiveWall() {
     const tatami = tatamis[0];
     const current = tatami?.current;
     const queue = tatami?.queue ?? [];
+    const streamUrl = (tournament?.youtubeUrls as string[] | null | undefined)?.[singleTatami - 1];
 
     return (
       <main
@@ -310,20 +319,66 @@ function LiveWall() {
         }}
         onDoubleClick={goFull}
       >
-        {current ? (
+        {streamUrl ? (
+          <div className="flex min-h-0 flex-1 flex-col bg-[#111827]">
+            <div className="flex items-center justify-between border-b border-white/10 bg-[#1a1a2e] px-6 py-4 text-white">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-400">
+                  YouTube live
+                </div>
+                <div className="mt-1 text-2xl font-black">TATAMI {singleTatami}</div>
+              </div>
+              <button
+                onClick={goFull}
+                className="flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+              >
+                <Maximize2 className="h-4 w-4" /> {t("live_wall.fullscreen")}
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+              <div className="w-full max-w-6xl">
+                <YouTubeEmbed url={streamUrl} title={`Tatami ${singleTatami} live`} />
+              </div>
+            </div>
+            <div className="border-t border-white/10 bg-[#1a1a2e] px-6 py-4 text-white">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.24em] text-red-400">
+                    {t("tatami.now")}
+                  </div>
+                  <div className="mt-1 truncate font-bold">
+                    {current
+                      ? `${surnameShort(current.redAthlete)} vs ${surnameShort(current.blueAthlete)}`
+                      : t("live_wall.no_match")}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-4 py-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">
+                    {t("live_wall.next")}
+                  </div>
+                  <div className="mt-1 truncate font-bold">
+                    {queue[0]
+                      ? `${surnameShort(queue[0].redAthlete)} vs ${surnameShort(queue[0].blueAthlete)}`
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : current ? (
           <IjfBoard match={current} queue={queue} tatamiNumber={singleTatami} />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
             <div style={{ fontSize: 80, fontWeight: 900, color: "#ccc", letterSpacing: 4 }}>
               TATAMI {singleTatami}
             </div>
-            <div style={{ fontSize: 28, color: "#999", marginTop: 16 }}>
+            <div style={{ fontSize: 28, color: "#999" }}>
               {queue.length > 0
                 ? `${t("live_wall.next")}: ${surnameShort(queue[0]?.redAthlete)} vs ${surnameShort(queue[0]?.blueAthlete)}`
                 : t("live_wall.no_match")}
             </div>
             {queue.length > 0 && (
-              <div style={{ fontSize: 20, color: "#bbb", marginTop: 8 }}>
+              <div style={{ fontSize: 20, color: "#bbb" }}>
                 {weightCat(queue[0]?.bracket?.category, t)}
               </div>
             )}
@@ -357,6 +412,31 @@ function LiveWall() {
           <Maximize2 className="h-4 w-4" /> {t("live_wall.fullscreen")}
         </button>
       </header>
+      {/* YouTube live streams grid — показываем если у турнира есть ссылки */}
+      {(tournament?.youtubeUrls as string[] | null | undefined)?.some(Boolean) && (
+        <section className="grid gap-5 px-5 pb-0 pt-5 lg:grid-cols-2">
+          {((tournament?.youtubeUrls as string[]) ?? []).map((url, i) =>
+            url ? (
+              <div
+                key={i}
+                className="overflow-hidden rounded-xl border border-[#c8ccd4] bg-white shadow-sm"
+              >
+                <div className="flex items-center justify-between bg-[#1a1a2e] px-4 py-3 text-white">
+                  <div className="text-xs font-black uppercase tracking-[0.22em]">
+                    {t("live_wall.stream")} — TATAMI {i + 1}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                    ● Live
+                  </span>
+                </div>
+                <div className="p-3">
+                  <YouTubeEmbed url={url} title={`Tatami ${i + 1}`} />
+                </div>
+              </div>
+            ) : null,
+          )}
+        </section>
+      )}
       <section className="grid gap-5 p-5 xl:grid-cols-3">
         {tatamis.map((ts) => (
           <CompactTatami key={ts.number} tatami={ts} tournamentId={tournamentId} />
@@ -382,8 +462,8 @@ function IjfBoard({
   const { t } = useTranslation();
   const whiteA = match.redAthlete;
   const blueA = match.blueAthlete;
-  const whiteS = match.scoreSnapshot?.red ?? {};
-  const blueS = match.scoreSnapshot?.blue ?? {};
+  const whiteS = match.scoreSnapshot?.red;
+  const blueS = match.scoreSnapshot?.blue;
   const isGS = match.scoreSnapshot?.isGoldenScore || match.isGoldenScore;
   const isFinished = match.status === "COMPLETED";
   const isLive = match.status === "IN_PROGRESS";
@@ -542,7 +622,7 @@ function IjfBoard({
           >
             {t("tatami.queue")}
           </span>
-          {queue.slice(0, 6).map((m: any, i: number) => (
+          {queue.slice(0, 6).map((m: Match, i: number) => (
             <span
               key={m.id}
               style={{
@@ -578,8 +658,8 @@ function AthleteRow({
   isLoser,
 }: {
   side: "white" | "blue";
-  athlete: any;
-  score: any;
+  athlete: User | null | undefined;
+  score: MatchScoreSnapshot["red"] | null | undefined;
   isWinner: boolean;
   isLoser: boolean;
 }) {
@@ -840,12 +920,12 @@ function TimerBar({
   isFinished,
   osaekomi,
 }: {
-  scoreSnapshot?: any;
+  scoreSnapshot?: MatchScoreSnapshot | null;
   durationSec: number;
   isRunning: boolean;
   isGoldenScore: boolean;
   isFinished: boolean;
-  osaekomi: any;
+  osaekomi: MatchScoreSnapshot["osaekomi"];
 }) {
   const [now, setNow] = useState(Date.now());
   const clock = scoreSnapshot?.clock;
@@ -922,7 +1002,10 @@ function TimerBar({
   );
 }
 
-function getClockElapsedSec(score: any, now = Date.now()): number {
+function getClockElapsedSec(
+  score: MatchScoreSnapshot | null | undefined,
+  now = Date.now(),
+): number {
   const clock = score?.clock;
   const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
   if (!clock?.running || !clock.runningStartedAt) return base;
@@ -1096,8 +1179,8 @@ function CompactScoreRow({
   score,
 }: {
   side: "white" | "blue";
-  athlete: any;
-  score: any;
+  athlete: User | null | undefined;
+  score: MatchScoreSnapshot["red"] | null | undefined;
 }) {
   const { t } = useTranslation();
   const isWhite = side === "white";
@@ -1171,7 +1254,13 @@ function MiniScore({
   );
 }
 
-function AthletePortrait({ athlete, size }: { athlete: any; size: "large" | "compact" }) {
+function AthletePortrait({
+  athlete,
+  size,
+}: {
+  athlete: User | null | undefined;
+  size: "large" | "compact";
+}) {
   const src = athlete?.avatarUrl ? mediaUrl(athlete.avatarUrl) : "";
   const large = size === "large";
   return (
@@ -1218,10 +1307,10 @@ function AthletePortrait({ athlete, size }: { athlete: any; size: "large" | "com
    Helpers
    ═══════════════════════════════════════════ */
 
-function surname(a: any): string {
+function surname(a: User | null | undefined): string {
   return a?.surname ?? "TBD";
 }
-function surnameShort(a: any): string {
+function surnameShort(a: User | null | undefined): string {
   return a?.surname || a?.name || "TBD";
 }
 
@@ -1240,12 +1329,12 @@ const COUNTRY_FLAGS: Record<string, string> = {
   UA: "🇺🇦",
 };
 
-function athleteFlag(athlete: any): string {
+function athleteFlag(athlete: (User & { country?: string }) | null | undefined): string {
   const code = String(athlete?.country ?? athlete?.club?.country ?? "KZ").toUpperCase();
   return COUNTRY_FLAGS[code] ?? COUNTRY_FLAGS.KZ;
 }
 
-function clubStr(club: any): string {
+function clubStr(club: import("@/lib/api-types").Club | null | undefined): string {
   if (!club) return "";
   if (club.shortName) return club.shortName;
   const n = club.name;
@@ -1254,26 +1343,32 @@ function clubStr(club: any): string {
   return n.kk ?? n.ru ?? n.en ?? "";
 }
 
-function localizeName(v: any, t: any) {
+function localizeName(v: import("@/lib/api-types").LocalizedName, t: (k: string) => string) {
   if (!v) return t("common.tournament");
   if (typeof v === "string") return v;
   return v.kk ?? v.ru ?? v.en ?? "";
 }
 
-function weightCat(c: any, t: any): string {
+function weightCat(
+  c: import("@/lib/api-types").Category | null | undefined,
+  t: (k: string) => string,
+): string {
   if (!c) return "";
   const g = c.gender === "MALE" ? t("common.male") : t("tatami.female_short");
   return `${g} ${c.weightMin}-${c.weightMax} ${t("common.kg")}`;
 }
 
-function wShort(c: any, t: any): string {
+function wShort(
+  c: import("@/lib/api-types").Category | null | undefined,
+  t: (k: string) => string,
+): string {
   if (!c) return "";
   const g = c.gender === "MALE" ? t("common.male") : t("tatami.female_short");
   const w = c.weightMax >= 200 ? `+${c.weightMin}` : `-${c.weightMax}`;
   return `${g} ${w}${t("common.kg")}`;
 }
 
-function secLabel(s: string | null | undefined, t: any): string {
+function secLabel(s: string | null | undefined, t: (k: string) => string): string {
   const m: Record<string, string> = {
     main: t("live_wall.sec_main"),
     repechage: t("live_wall.sec_repechage"),
@@ -1288,4 +1383,55 @@ function fmtTimer(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// ── YouTube embed helpers ─────────────────────────────────────────────────
+
+function youtubeEmbedId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    // youtu.be/<id>
+    if (u.hostname === "youtu.be") return u.pathname.slice(1).split("?")[0];
+    // youtube.com/watch?v=<id>
+    if (u.searchParams.has("v")) return u.searchParams.get("v");
+    // youtube.com/live/<id> or /embed/<id>
+    const parts = u.pathname.split("/").filter(Boolean);
+    const idx = parts.findIndex((p) => p === "live" || p === "embed");
+    if (idx !== -1 && parts[idx + 1]) return parts[idx + 1].split("?")[0];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function YouTubeEmbed({ url, title }: { url: string; title?: string }) {
+  const id = youtubeEmbedId(url);
+  if (!id) return null;
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        paddingBottom: "56.25%",
+        background: "#000",
+        borderRadius: 8,
+        overflow: "hidden",
+      }}
+    >
+      <iframe
+        src={`https://www.youtube.com/embed/${id}?autoplay=1&mute=1&rel=0`}
+        title={title ?? "Live stream"}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          border: "none",
+        }}
+      />
+    </div>
+  );
 }

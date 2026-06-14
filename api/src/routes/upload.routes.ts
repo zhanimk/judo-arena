@@ -1,8 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type {} from "@fastify/multipart";
 import crypto from "node:crypto";
-import { authenticate } from "../middlewares/authenticate.js";
-import { storeFile } from "../lib/storage.js";
+import {
+  withRateLimit,
+  authenticated,
+  adminOnly,
+} from "../lib/route-guards.js";
+import { storeFile, storePrivateFile } from "../lib/storage.js";
 import { redis } from "../lib/redis.js";
 
 // ── Per-user daily upload limits ──────────────────────────────────────────────
@@ -68,15 +72,15 @@ function hasValidMagicBytes(buf: Buffer, mime: string): boolean {
   if (mime === "image/webp")
     return (
       buf.length >= 12 &&
-      buf.slice(0, 4).toString() === "RIFF" &&
-      buf.slice(8, 12).toString() === "WEBP"
+      buf.slice(0, 4).equals(Buffer.from("RIFF")) &&
+      buf.slice(8, 12).equals(Buffer.from("WEBP"))
     );
   return false;
 }
 
 function hasValidDocumentMagicBytes(buf: Buffer, mime: string): boolean {
   if (mime === "application/pdf") {
-    return buf.length >= 5 && buf.slice(0, 5).toString() === "%PDF-";
+    return buf.length >= 5 && buf.slice(0, 5).equals(Buffer.from("%PDF-"));
   }
   return hasValidMagicBytes(buf, mime);
 }
@@ -105,76 +109,8 @@ async function convertToWebP(
   }
 }
 
-class AvatarValidationError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AvatarValidationError";
-  }
-}
-
 async function convertAvatarToPortraitWebP(buffer: Buffer): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
-  const image = sharp(buffer, { animated: false }).rotate();
-  const metadata = await image.metadata();
-  const width = metadata.width ?? 0;
-  const height = metadata.height ?? 0;
-
-  if (width < 300 || height < 400) {
-    throw new AvatarValidationError(
-      "AVATAR_TOO_SMALL",
-      "Фото тым кішкентай. Кемінде 300×400 px, 3:4 форматта жүктеңіз.",
-    );
-  }
-
-  const ratio = width / height;
-  if (ratio < 0.68 || ratio > 0.82) {
-    throw new AvatarValidationError(
-      "AVATAR_BAD_RATIO",
-      "Профиль фотосы 3:4 форматта болуы керек.",
-    );
-  }
-
-  const sample = await sharp(buffer, { animated: false })
-    .rotate()
-    .resize(60, 80, { fit: "fill" })
-    .flatten({ background: "#ffffff" })
-    .removeAlpha()
-    .raw()
-    .toBuffer();
-
-  let checked = 0;
-  let light = 0;
-  const sampleWidth = 60;
-  const sampleHeight = 80;
-  for (let y = 0; y < sampleHeight; y += 1) {
-    for (let x = 0; x < sampleWidth; x += 1) {
-      const upperHalf = y < sampleHeight * 0.55;
-      const inTopBand = y < sampleHeight * 0.16;
-      const inSideBand =
-        upperHalf && (x < sampleWidth * 0.12 || x >= sampleWidth * 0.88);
-      if (!inTopBand && !inSideBand) continue;
-
-      const i = (y * sampleWidth + x) * 3;
-      const r = sample[i] ?? 0;
-      const g = sample[i + 1] ?? 0;
-      const b = sample[i + 2] ?? 0;
-      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      const spread = Math.max(r, g, b) - Math.min(r, g, b);
-      checked += 1;
-      if (luma >= 215 && spread <= 55) light += 1;
-    }
-  }
-
-  if (checked === 0 || light / checked < 0.68) {
-    throw new AvatarValidationError(
-      "AVATAR_BAD_BACKGROUND",
-      "Фото ақ немесе өте ашық фонда болуы керек.",
-    );
-  }
-
   return sharp(buffer, { animated: false })
     .rotate()
     .resize(AVATAR_WIDTH, AVATAR_HEIGHT, {
@@ -195,10 +131,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
    */
   app.post(
     "/image",
-    {
-      preHandler: [authenticate],
-      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
-    },
+    withRateLimit(authenticated, { max: 20, timeWindow: "1 minute" }),
     async (request, reply) => {
       // Per-user daily upload limit (protects storage from compromised accounts)
       const userId = request.user?.sub;
@@ -238,7 +171,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       if (!hasValidMagicBytes(raw, file.mimetype)) {
         return reply.code(400).send({
           error: "INVALID_FILE_CONTENT",
-          message: "Файл мазмұны деklarацияланған типке сәйкес келмейді",
+          message: "Файл мазмұны көрсетілген файл түріне сәйкес келмейді",
         });
       }
 
@@ -274,10 +207,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
    */
   app.post(
     "/avatar",
-    {
-      preHandler: [authenticate],
-      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
-    },
+    withRateLimit(authenticated, { max: 10, timeWindow: "1 minute" }),
     async (request, reply) => {
       // Per-user daily avatar upload limit
       const userId = request.user?.sub;
@@ -317,7 +247,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       if (!hasValidMagicBytes(raw, file.mimetype)) {
         return reply.code(400).send({
           error: "INVALID_FILE_CONTENT",
-          message: "Файл мазмұны деklarацияланған типке сәйкес келмейді",
+          message: "Файл мазмұны көрсетілген файл түріне сәйкес келмейді",
         });
       }
 
@@ -325,12 +255,6 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       try {
         converted = await convertAvatarToPortraitWebP(raw);
       } catch (error) {
-        if (error instanceof AvatarValidationError) {
-          return reply.code(400).send({
-            error: error.code,
-            message: error.message,
-          });
-        }
         request.log.warn({ err: error }, "avatar validation failed");
         return reply.code(400).send({
           error: "INVALID_AVATAR",
@@ -347,32 +271,86 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
   );
 
   /**
+   * POST /api/upload/regulation
+   * Public tournament regulation uploaded by an administrator.
+   */
+  app.post(
+    "/regulation",
+    withRateLimit(adminOnly, { max: 10, timeWindow: "1 minute" }),
+    async (request, reply) => {
+      const file = await request.file({
+        limits: { fileSize: 20 * 1024 * 1024 },
+      });
+      if (!file)
+        return reply
+          .code(400)
+          .send({ error: "NO_FILE", message: "Файл жіберілмеді" });
+
+      if (!allowedDocumentTypes.has(file.mimetype)) {
+        return reply.code(400).send({
+          error: "INVALID_FILE_TYPE",
+          message: "Тек PDF, JPG, PNG немесе WEBP жүктеуге болады",
+        });
+      }
+
+      const raw = await file.toBuffer();
+      if (!hasValidDocumentMagicBytes(raw, file.mimetype)) {
+        return reply.code(400).send({
+          error: "INVALID_FILE_CONTENT",
+          message: "Файл мазмұны декларацияланған типке сәйкес келмейді",
+        });
+      }
+
+      let content = raw;
+      let mimeOut = file.mimetype;
+      let ext = ".pdf";
+      if (file.mimetype !== "application/pdf") {
+        content = await convertToWebP(raw, MAX_WIDTH);
+        mimeOut = "image/webp";
+        ext = ".webp";
+      }
+
+      const originalName = (file.filename || "regulation.pdf")
+        .replace(/[^\p{L}\p{N}._ -]+/gu, "_")
+        .slice(0, 180);
+      const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`;
+      const url = await storeFile(
+        `documents/regulations/${filename}`,
+        content,
+        mimeOut,
+      );
+
+      return reply.code(201).send({
+        url,
+        fileName: originalName,
+        mimeType: mimeOut,
+        size: content.length,
+      });
+    },
+  );
+
+  /**
    * POST /api/upload/document
    * Accepts PDF/JPG/PNG/WEBP profile documents.
    * Returns { url, fileName, mimeType, size }
    */
   app.post(
     "/document",
-    {
-      preHandler: [authenticate],
-      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
-    },
+    withRateLimit(authenticated, { max: 10, timeWindow: "1 minute" }),
     async (request, reply) => {
-      const userId = request.user?.sub;
-      if (userId) {
-        const { allowed, current } = await checkAndIncrementDailyLimit(
-          userId,
-          "document",
-          DAILY_DOCUMENT_LIMIT,
-        );
-        if (!allowed) {
-          return reply.code(429).send({
-            error: "DAILY_UPLOAD_LIMIT",
-            message: `Құжат жүктеу лимиті (${DAILY_DOCUMENT_LIMIT}/күн) асты. Ертең қайталаңыз.`,
-            current,
-            limit: DAILY_DOCUMENT_LIMIT,
-          });
-        }
+      const userId = request.user!.sub;
+      const { allowed, current } = await checkAndIncrementDailyLimit(
+        userId,
+        "document",
+        DAILY_DOCUMENT_LIMIT,
+      );
+      if (!allowed) {
+        return reply.code(429).send({
+          error: "DAILY_UPLOAD_LIMIT",
+          message: `Құжат жүктеу лимиті (${DAILY_DOCUMENT_LIMIT}/күн) асты. Ертең қайталаңыз.`,
+          current,
+          limit: DAILY_DOCUMENT_LIMIT,
+        });
       }
 
       const file = await request.file({
@@ -411,7 +389,11 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
         .replace(/[^\w.-]+/g, "_")
         .slice(0, 120);
       const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`;
-      const url = await storeFile(`documents/${filename}`, content, mimeOut);
+      const url = await storePrivateFile(
+        `documents/${userId}/${filename}`,
+        content,
+        mimeOut,
+      );
 
       return reply.code(201).send({
         url,

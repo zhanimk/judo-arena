@@ -9,6 +9,7 @@ import { memo, useState } from "react";
 import { Play, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { mediaUrl } from "@/lib/api";
+import type { MatchScoreSnapshot, MatchStatus } from "@/lib/api-types";
 
 const COUNTRY_FLAGS: Record<string, string> = {
   KZ: "🇰🇿",
@@ -38,14 +39,14 @@ interface BracketMatch {
   id: string;
   round: number;
   position: number;
-  bracketSection: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  bracketSection?: string | null;
+  status: MatchStatus;
   redAthleteId?: string | null;
   blueAthleteId?: string | null;
   redAthlete?: BracketAthlete | null;
   blueAthlete?: BracketAthlete | null;
   winnerId?: string | null;
-  scoreSnapshot?: any;
+  scoreSnapshot?: MatchScoreSnapshot | null;
 }
 
 interface Props {
@@ -128,6 +129,7 @@ function PooledSEView({
   totalRounds: number;
   quartersRound: number;
 }) {
+  const [viewMode, setViewMode] = useState<"grid" | "detail">("grid");
   const [activePool, setActivePool] = useState(0);
 
   const semisRound = totalRounds - 1;
@@ -143,134 +145,195 @@ function PooledSEView({
     .sort((a, b) => a.position - b.position);
   const bronze = matches
     .filter((m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2")
-    .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
+    .sort((a, b) => (a.bracketSection ?? "").localeCompare(b.bracketSection ?? ""));
 
-  // Build round arrays for the active pool
-  const poolRounds: BracketMatch[][] = [];
-  for (let r = 1; r <= quartersRound; r++) {
-    const row = poolMatchesAll
-      .filter((m) => m.round === r && matchPoolIndex(m.position, r, size) === activePool)
-      .sort((a, b) => a.position - b.position);
-    poolRounds.push(row);
+  // Build rounds for a given pool index
+  function buildPoolRounds(poolIdx: number): BracketMatch[][] {
+    const rounds: BracketMatch[][] = [];
+    for (let r = 1; r <= quartersRound; r++) {
+      const row = poolMatchesAll
+        .filter((m) => m.round === r && matchPoolIndex(m.position, r, size) === poolIdx)
+        .sort((a, b) => a.position - b.position);
+      rounds.push(row);
+    }
+    return rounds;
   }
 
-  const layout = getMainBracketLayout(poolRounds);
+  const activePoolRounds = buildPoolRounds(activePool);
+  const detailLayout = getMainBracketLayout(activePoolRounds);
 
   return (
-    <div className="space-y-8">
-      {/* Pool tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground mr-1">
-          Pool
-        </span>
-        {POOL_LABELS.map((label, i) => (
+    <div className="space-y-6">
+      {/* View mode toggle */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex rounded-lg border border-border/50 overflow-hidden">
           <button
-            key={label}
-            onClick={() => setActivePool(i)}
-            className={[
-              "px-4 py-1.5 rounded-full text-sm font-bold border-2 transition-all",
-              activePool === i
-                ? "bg-gold/90 text-gold-foreground border-gold shadow-md shadow-gold/30"
-                : "border-border/50 text-muted-foreground hover:border-gold/40 hover:text-foreground",
-            ].join(" ")}
+            onClick={() => setViewMode("grid")}
+            className={`px-4 py-1.5 text-xs font-semibold transition-all ${
+              viewMode === "grid"
+                ? "bg-gold/90 text-gold-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            {label}
+            ⊞ Барлық пулдар
           </button>
-        ))}
+          <button
+            onClick={() => setViewMode("detail")}
+            className={`px-4 py-1.5 text-xs font-semibold border-l border-border/50 transition-all ${
+              viewMode === "detail"
+                ? "bg-gold/90 text-gold-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            ⊡ Толық көрініс
+          </button>
+        </div>
+
+        {viewMode === "detail" && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+              Pool
+            </span>
+            {POOL_LABELS.map((label, i) => (
+              <button
+                key={label}
+                onClick={() => setActivePool(i)}
+                className={[
+                  "px-3 py-1 rounded-full text-xs font-bold border-2 transition-all",
+                  activePool === i
+                    ? "bg-gold/90 text-gold-foreground border-gold shadow-gold/30"
+                    : "border-border/50 text-muted-foreground hover:border-gold/40 hover:text-foreground",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Pool bracket */}
-      <div className="overflow-x-auto pb-4">
-        <div
-          className="relative min-w-max rounded-2xl bg-gradient-to-br from-gold/5 via-background to-sky-100/10"
-          style={{ width: layout.width, height: layout.height }}
-        >
-          <svg
-            className="pointer-events-none absolute inset-0 z-0"
-            width={layout.width}
-            height={layout.height}
-            aria-hidden
-            focusable="false"
-          >
-            <defs>
-              <linearGradient id="poolLine" x1="0" x2="1">
-                <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.55)" />
-                <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.38)" />
-              </linearGradient>
-            </defs>
-            {poolRounds.slice(0, -1).flatMap((roundMatches, ri) =>
-              roundMatches.map((_, mi) => {
-                const from = layout.positions[ri]?.[mi];
-                const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
-                if (!from || !to) return null;
-                const x1 = from.x + CARD_W;
-                const y1 = from.y + CARD_H / 2;
-                const x2 = to.x;
-                const y2 = to.y + CARD_H / 2;
-                const mid = x1 + ROUND_GAP / 2;
-                return (
-                  <path
-                    key={`${ri}-${mi}`}
-                    d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
-                    fill="none"
-                    stroke="url(#poolLine)"
-                    strokeWidth="2"
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              }),
-            )}
-          </svg>
-
-          {poolRounds.map((roundMatches, ri) => {
-            const label = poolRoundLabel(quartersRound - (ri + 1));
+      {viewMode === "grid" ? (
+        /* ── All-pools 2×2 grid (PDF-like) ── */
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {POOL_LABELS.map((label, poolIdx) => {
+            const poolRounds = buildPoolRounds(poolIdx);
+            const layout = getMainBracketLayout(poolRounds);
+            const poolColor = ["text-sky-400", "text-emerald-400", "text-violet-400", "text-orange-400"][poolIdx] ?? "text-gold";
+            const poolBorder = ["border-sky-400/30", "border-emerald-400/30", "border-violet-400/30", "border-orange-400/30"][poolIdx] ?? "border-gold/30";
             return (
               <div
-                key={`pool-r${ri}`}
-                className="absolute z-10"
-                style={{
-                  left: layout.positions[ri]?.[0]?.x ?? PAD,
-                  top: 0,
-                  width: CARD_W,
-                }}
+                key={label}
+                className={`rounded-xl border ${poolBorder} bg-card/60 p-3`}
               >
-                <div className="mb-2 flex h-8 items-center justify-center">
-                  <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
-                    {label}
+                <div className={`mb-3 flex items-center gap-2`}>
+                  <span className={`text-xs font-black uppercase tracking-widest ${poolColor}`}>
+                    Pool {label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {poolRounds[0]?.length ?? 0} матч
                   </span>
                 </div>
-                {roundMatches.map((match, mi) => {
-                  const pos = layout.positions[ri]?.[mi];
-                  if (!pos) return null;
-                  const isEmpty = !match.redAthleteId && !match.blueAthleteId;
-                  const isBye = match.scoreSnapshot?.bye === true;
-                  return (
-                    <div
-                      key={match.id}
-                      className="absolute"
-                      style={{
-                        left: 0,
-                        top: pos.y - HEADER_H,
-                        width: CARD_W,
-                        height: CARD_H,
-                      }}
-                    >
-                      <MatchCard
-                        match={match}
-                        dim={isEmpty}
-                        bye={isBye}
-                        final={ri === poolRounds.length - 1}
-                      />
-                    </div>
-                  );
-                })}
+                <div className="overflow-x-auto">
+                  <PoolMiniGrid
+                    poolRounds={poolRounds}
+                    poolIdx={poolIdx}
+                    quartersRound={quartersRound}
+                    layout={layout}
+                  />
+                </div>
               </div>
             );
           })}
         </div>
-      </div>
+      ) : (
+        /* ── Single pool detail view ── */
+        <div className="overflow-x-auto pb-4">
+          <div
+            className="relative min-w-max rounded-2xl bg-gradient-to-br from-gold/5 via-background to-sky-100/10"
+            style={{ width: detailLayout.width, height: detailLayout.height }}
+          >
+            <svg
+              className="pointer-events-none absolute inset-0 z-0"
+              width={detailLayout.width}
+              height={detailLayout.height}
+              aria-hidden
+              focusable="false"
+            >
+              <defs>
+                <linearGradient id="poolLine" x1="0" x2="1">
+                  <stop offset="0%" stopColor="oklch(0.72 0.13 78 / 0.55)" />
+                  <stop offset="100%" stopColor="oklch(0.55 0.07 250 / 0.38)" />
+                </linearGradient>
+              </defs>
+              {activePoolRounds.slice(0, -1).flatMap((roundMatches, ri) =>
+                roundMatches.map((_, mi) => {
+                  const from = detailLayout.positions[ri]?.[mi];
+                  const to = detailLayout.positions[ri + 1]?.[Math.floor(mi / 2)];
+                  if (!from || !to) return null;
+                  const x1 = from.x + CARD_W;
+                  const y1 = from.y + CARD_H / 2;
+                  const x2 = to.x;
+                  const y2 = to.y + CARD_H / 2;
+                  const mid = x1 + ROUND_GAP / 2;
+                  return (
+                    <path
+                      key={`${ri}-${mi}`}
+                      d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
+                      fill="none"
+                      stroke="url(#poolLine)"
+                      strokeWidth="2"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  );
+                }),
+              )}
+            </svg>
+
+            {activePoolRounds.map((roundMatches, ri) => {
+              const label = poolRoundLabel(quartersRound - (ri + 1));
+              return (
+                <div
+                  key={`pool-r${ri}`}
+                  className="absolute z-10"
+                  style={{
+                    left: detailLayout.positions[ri]?.[0]?.x ?? PAD,
+                    top: 0,
+                    width: CARD_W,
+                  }}
+                >
+                  <div className="mb-2 flex h-8 items-center justify-center">
+                    <span className="rounded-full border border-gold/30 bg-background/90 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold shadow-sm backdrop-blur">
+                      {label}
+                    </span>
+                  </div>
+                  {roundMatches.map((match, mi) => {
+                    const pos = detailLayout.positions[ri]?.[mi];
+                    if (!pos) return null;
+                    const isEmpty = !match.redAthleteId && !match.blueAthleteId;
+                    const isBye = match.scoreSnapshot?.bye === true;
+                    return (
+                      <div
+                        key={match.id}
+                        className="absolute"
+                        style={{ left: 0, top: pos.y - HEADER_H, width: CARD_W, height: CARD_H }}
+                      >
+                        <MatchCard
+                          match={match}
+                          dim={isEmpty}
+                          bye={isBye}
+                          final={ri === activePoolRounds.length - 1}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Finals + Repechage + Bronze */}
       <FinalsSection
@@ -280,6 +343,190 @@ function PooledSEView({
         totalRounds={totalRounds}
         semisRound={semisRound}
       />
+    </div>
+  );
+}
+
+/* ─── Compact pool grid (for all-pools view) ─────────────────────────────── */
+
+const MINI_W = 160;
+const MINI_H = 52;
+const MINI_GAP = 36;
+const MINI_BASE_GAP = 10;
+const MINI_PAD = 8;
+const MINI_HEADER = 32;
+
+function getPoolMiniLayout(rounds: BracketMatch[][]) {
+  const positions = rounds.map((roundMatches, roundIndex) => {
+    const top = MINI_HEADER + ((MINI_H + MINI_BASE_GAP) * (Math.pow(2, roundIndex) - 1)) / 2;
+    const gap = (MINI_H + MINI_BASE_GAP) * Math.pow(2, roundIndex) - MINI_H;
+    return roundMatches.map((_, matchIndex) => ({
+      x: MINI_PAD + roundIndex * (MINI_W + MINI_GAP),
+      y: top + matchIndex * (MINI_H + gap),
+    }));
+  });
+  const width = MINI_PAD * 2 + rounds.length * MINI_W + Math.max(0, rounds.length - 1) * MINI_GAP;
+  const height = Math.max(
+    220,
+    ...positions.flatMap((round) => round.map((pos) => pos.y + MINI_H + MINI_PAD)),
+  );
+  return { positions, width, height };
+}
+
+function PoolMiniGrid({
+  poolRounds,
+  poolIdx,
+  quartersRound,
+  layout: _layout,
+}: {
+  poolRounds: BracketMatch[][];
+  poolIdx: number;
+  quartersRound: number;
+  layout: ReturnType<typeof getMainBracketLayout>;
+}) {
+  const layout = getPoolMiniLayout(poolRounds);
+  const gradId = `miniLine-${poolIdx}`;
+  const gradColors = [
+    ["oklch(0.65 0.12 220 / 0.60)", "oklch(0.55 0.07 250 / 0.40)"],
+    ["oklch(0.65 0.14 158 / 0.60)", "oklch(0.55 0.09 180 / 0.40)"],
+    ["oklch(0.60 0.12 290 / 0.60)", "oklch(0.50 0.07 300 / 0.40)"],
+    ["oklch(0.72 0.13 55 / 0.60)", "oklch(0.60 0.10 40 / 0.40)"],
+  ];
+  const [c1, c2] = gradColors[poolIdx] ?? gradColors[0]!;
+
+  return (
+    <div className="relative min-w-max" style={{ width: layout.width, height: layout.height }}>
+      <svg
+        className="pointer-events-none absolute inset-0 z-0"
+        width={layout.width}
+        height={layout.height}
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" x2="1">
+            <stop offset="0%" stopColor={c1} />
+            <stop offset="100%" stopColor={c2} />
+          </linearGradient>
+        </defs>
+        {poolRounds.slice(0, -1).flatMap((roundMatches, ri) =>
+          roundMatches.map((_, mi) => {
+            const from = layout.positions[ri]?.[mi];
+            const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
+            if (!from || !to) return null;
+            const x1 = from.x + MINI_W;
+            const y1 = from.y + MINI_H / 2;
+            const x2 = to.x;
+            const y2 = to.y + MINI_H / 2;
+            const mid = x1 + MINI_GAP / 2;
+            return (
+              <path
+                key={`p${poolIdx}-r${ri}-m${mi}`}
+                d={`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`}
+                fill="none"
+                stroke={`url(#${gradId})`}
+                strokeWidth="1.5"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+              />
+            );
+          }),
+        )}
+      </svg>
+
+      {poolRounds.map((roundMatches, ri) => {
+        const label = poolRoundLabel(quartersRound - (ri + 1));
+        return (
+          <div
+            key={`p${poolIdx}-mini-r${ri}`}
+            className="absolute z-10"
+            style={{ left: layout.positions[ri]?.[0]?.x ?? MINI_PAD, top: 0, width: MINI_W }}
+          >
+            <div className="mb-1.5 flex h-7 items-center justify-center">
+              <span className="rounded-full border border-gold/25 bg-background/80 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-widest text-gold/80">
+                {label}
+              </span>
+            </div>
+            {roundMatches.map((match, mi) => {
+              const pos = layout.positions[ri]?.[mi];
+              if (!pos) return null;
+              const isBye = match.scoreSnapshot?.bye === true;
+              const isEmpty = !match.redAthleteId && !match.blueAthleteId;
+              return (
+                <div
+                  key={match.id}
+                  className="absolute"
+                  style={{ left: 0, top: pos.y - MINI_HEADER, width: MINI_W, height: MINI_H }}
+                >
+                  <MiniMatchCard match={match} bye={isBye} dim={isEmpty} isFinal={ri === poolRounds.length - 1} />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniMatchCard({
+  match,
+  bye,
+  dim,
+  isFinal,
+}: {
+  match: BracketMatch;
+  bye?: boolean;
+  dim?: boolean;
+  isFinal?: boolean;
+}) {
+  if (dim) {
+    return (
+      <div className="h-full rounded border border-border/10 bg-background/10 opacity-20 flex items-center justify-center">
+        <span className="text-[9px] text-muted-foreground/30">—</span>
+      </div>
+    );
+  }
+  const red = match.redAthlete;
+  const blue = match.blueAthlete;
+  const live = match.status === "IN_PROGRESS";
+  const done = match.status === "COMPLETED";
+
+  function miniName(a: BracketAthlete | null | undefined) {
+    if (!a) return <span className="text-muted-foreground/50 italic text-[9px]">TBD</span>;
+    return (
+      <span className="truncate text-[10px] font-semibold leading-tight">
+        {a.name[0]}. <span className="uppercase">{a.surname}</span>
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className={`relative h-full flex flex-col rounded border overflow-hidden shadow-sm transition-all
+        ${live ? "border-destructive/60 shadow-destructive/20" : isFinal ? "border-gold/40" : done ? "border-gold/20" : "border-border/40"}
+        bg-white/95 dark:bg-card`}
+    >
+      {live && (
+        <div className="absolute right-1 top-0.5 z-10 rounded bg-destructive px-0.5 text-[7px] font-bold uppercase text-white">
+          LIVE
+        </div>
+      )}
+      <div className={`flex flex-1 items-center gap-1.5 px-1.5 border-b border-border/20
+        ${done && match.winnerId === red?.id ? "bg-gold/8" : ""}`}>
+        <div className="w-1 self-stretch rounded-full bg-rose-500/70 shrink-0 my-0.5" />
+        {miniName(red)}
+        {bye && done && match.winnerId === red?.id && (
+          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">BYE</span>
+        )}
+      </div>
+      <div className={`flex flex-1 items-center gap-1.5 px-1.5
+        ${done && match.winnerId === blue?.id ? "bg-gold/8" : ""}`}>
+        <div className="w-1 self-stretch rounded-full bg-sky-500/70 shrink-0 my-0.5" />
+        {miniName(blue)}
+        {bye && done && match.winnerId === blue?.id && (
+          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">BYE</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -439,7 +686,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
     .sort((a, b) => a.position - b.position);
   const bronze = matches
     .filter((m) => m.bracketSection === "bronze1" || m.bracketSection === "bronze2")
-    .sort((a, b) => a.bracketSection.localeCompare(b.bracketSection));
+    .sort((a, b) => (a.bracketSection ?? "").localeCompare(b.bracketSection ?? ""));
 
   const finalMatch = matches.find((m) => m.bracketSection === "final" && m.status === "COMPLETED");
   const champion = finalMatch?.winnerId
@@ -663,7 +910,7 @@ function MatchCard({
   const blue = match.blueAthlete;
   const live = match.status === "IN_PROGRESS";
   const done = match.status === "COMPLETED";
-  const score = match.scoreSnapshot ?? {};
+  const score = match.scoreSnapshot;
 
   return (
     <div
@@ -694,7 +941,7 @@ function MatchCard({
       )}
       <AthleteRow
         athlete={red}
-        score={formatScore(score.red)}
+        score={formatScore(score?.red)}
         isWinner={done && match.winnerId === red?.id}
         isLoser={done && !!match.winnerId && match.winnerId !== red?.id}
         side="red"
@@ -702,7 +949,7 @@ function MatchCard({
       <div className="h-px bg-border/30" />
       <AthleteRow
         athlete={blue}
-        score={formatScore(score.blue)}
+        score={formatScore(score?.blue)}
         isWinner={done && match.winnerId === blue?.id}
         isLoser={done && !!match.winnerId && match.winnerId !== blue?.id}
         side="blue"

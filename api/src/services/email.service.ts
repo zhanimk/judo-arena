@@ -17,11 +17,18 @@ export interface EmailPayload {
 // Отправка
 // ============================================================
 
+const EMAIL_TIMEOUT_MS = 10_000;
+
 export async function sendEmail(payload: EmailPayload): Promise<void> {
-  if (env.RESEND_API_KEY) {
-    await sendViaResend(payload);
-  } else {
-    await sendViaSMTP(payload);
+  const send = env.RESEND_API_KEY ? sendViaResend(payload) : sendViaSMTP(payload);
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Email timeout")), EMAIL_TIMEOUT_MS),
+  );
+  try {
+    await Promise.race([send, timeout]);
+  } catch (err) {
+    // Не роняем запрос из-за email — только логируем
+    process.stderr.write(`[email] Таймаут или ошибка для ${payload.to}: ${(err as Error).message}\n`);
   }
 }
 

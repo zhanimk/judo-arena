@@ -11,14 +11,17 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { attachErrorHandler } from "../lib/error-handler.js";
-import { authenticate } from "../middlewares/authenticate.js";
-import { authorize } from "../middlewares/authorize.js";
+import { authenticated, adminOnly } from "../lib/route-guards.js";
 import {
   broadcast,
   listForUser,
   markAsRead,
   markAllAsRead,
   unreadCount,
+  listBroadcasts,
+  updateBroadcast,
+  deleteBroadcast,
+  type BroadcastInput,
 } from "../services/notification.service.js";
 
 const broadcastSchema = z.discriminatedUnion("kind", [
@@ -58,10 +61,17 @@ const broadcastSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const updateBroadcastSchema = z
+  .object({
+    title: z.string().min(1).max(100),
+    body: z.string().min(1).max(2000),
+  })
+  .strict();
+
 export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.get("/", { preHandler: [authenticate] }, async (request) => {
+  app.get("/", authenticated, async (request) => {
     const qs = request.query as Record<string, string>;
     return listForUser(request.user!.sub, {
       type: qs.type,
@@ -70,35 +80,59 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  app.get("/unread-count", { preHandler: [authenticate] }, async (request) => {
+  app.get("/unread-count", authenticated, async (request) => {
     return { count: await unreadCount(request.user!.sub) };
   });
 
-  app.post("/mark-read", { preHandler: [authenticate] }, async (request, reply) => {
+  app.post("/mark-read", authenticated, async (request, reply) => {
     await markAllAsRead(request.user!.sub);
     return reply.code(204).send();
   });
 
   app.post<{ Params: { id: string } }>(
     "/:id/read",
-    { preHandler: [authenticate] },
+    authenticated,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return markAsRead(request.user!.sub, request.params.id);
     },
   );
 
-  app.post(
-    "/broadcast",
-    { preHandler: [authenticate, authorize("ADMIN")] },
-    async (request, reply) => {
-      const parsed = broadcastSchema.parse(request.body);
-      const result = await broadcast(request.user!.sub, {
-        type: parsed.type,
-        titleKey: parsed.title,
-        bodyKey: parsed.body,
-        target: parsed as any,
-      });
-      return reply.code(201).send(result);
+  app.post("/broadcast", adminOnly, async (request, reply) => {
+    const parsed = broadcastSchema.parse(request.body);
+    const result = await broadcast(request.user!.sub, {
+      type: parsed.type,
+      titleKey: parsed.title,
+      bodyKey: parsed.body,
+      target: parsed as BroadcastInput["target"],
+    });
+    return reply.code(201).send(result);
+  });
+
+  app.get("/broadcasts", adminOnly, async (request) => {
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(200).default(50) })
+      .parse(request.query);
+    return listBroadcasts(request.user!.sub, query.limit);
+  });
+
+  app.patch<{ Params: { id: string } }>(
+    "/broadcasts/:id",
+    adminOnly,
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      const input = updateBroadcastSchema.parse(request.body);
+      return updateBroadcast(request.user!.sub, request.params.id, input);
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/broadcasts/:id",
+    adminOnly,
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+      const result = await deleteBroadcast(
+        request.user!.sub,
+        request.params.id,
+      );
+      return reply.send(result);
     },
   );
 }

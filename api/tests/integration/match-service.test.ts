@@ -88,6 +88,12 @@ function makePendingMatch(overrides: Record<string, any> = {}) {
     isGoldenScore: false,
     isReplay: false,
     replayReason: null,
+    bracket: {
+      category: {
+        goldenScoreSec: 0,
+        allowYuko: true, // разрешаем Юко в тестовых фикстурах
+      },
+    },
     ...overrides,
   };
 }
@@ -548,8 +554,8 @@ describe("confirmMatchResult()", () => {
   it("confirms result → sets status=COMPLETED, winnerId, clears pendingResult", async () => {
     const matchWithPending = makeMatchWithPending("RED");
     vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithPending as any);
-    // Return a COMPLETED match with bracketSection=null → propagateWinner returns early
-    vi.mocked(prisma.match.update).mockResolvedValue(
+    // Atomic confirmation returns the refreshed row after updateMany.
+    vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(
       makePendingMatch({
         status: "COMPLETED",
         bracketSection: null,
@@ -563,7 +569,7 @@ describe("confirmMatchResult()", () => {
     expect(updated.status).toBe("COMPLETED");
     expect(updated.winnerId).toBe("red-id");
 
-    const updateCall = vi.mocked(prisma.match.update).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
     expect(updateCall.data.status).toBe("COMPLETED");
     expect(updateCall.data.winnerId).toBe("red-id");
     expect(updateCall.data.scoreSnapshot.pendingResult).toBeNull();
@@ -894,10 +900,14 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
       .mockResolvedValueOnce(makeMatchWithPending("RED") as any); // confirmMatchResult lookup
 
     vi.mocked(prisma.match.update)
-      .mockResolvedValueOnce(makeUpdatedMatch({ status: "IN_PROGRESS" }) as any) // startMatch
-      .mockResolvedValueOnce(                                                      // confirmMatchResult
-        makePendingMatch({ status: "COMPLETED", bracketSection: null, winnerId: "red-id" }) as any,
-      );
+      .mockResolvedValueOnce(makeUpdatedMatch({ status: "IN_PROGRESS" }) as any);
+    vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(
+      makePendingMatch({
+        status: "COMPLETED",
+        bracketSection: null,
+        winnerId: "red-id",
+      }) as any,
+    );
 
     const started = await startMatch("match-1", "judge-1");
     expect(started.match.status).toBe("IN_PROGRESS");
@@ -909,6 +919,51 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
     const confirmed = await confirmMatchResult("match-1", "judge-1");
     expect(confirmed.status).toBe("COMPLETED");
     expect(confirmed.winnerId).toBe("red-id");
+  });
+
+  it("IJF rule: SHIDO in Golden Score → opponent wins immediately (не ждём 3 штрафа)", async () => {
+    // Матч в Golden Score, у RED 0 штрафов — первое же SHIDO для RED → BLUE выигрывает
+    const gsMatch = makeRunningMatch({
+      isGoldenScore: true,
+      // scoreSnapshot.isGoldenScore тоже должен быть true — именно его читает normalizeScore()
+      scoreSnapshot: {
+        red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        isGoldenScore: true,
+        osaekomi: null,
+        clock: { running: true, elapsedSec: 240, runningStartedAt: new Date().toISOString() },
+        pendingResult: null,
+      },
+    });
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(gsMatch as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+      fn({
+        match: {
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue(
+            makeUpdatedMatch({ status: "IN_PROGRESS", isGoldenScore: true }) as any,
+          ),
+        },
+        matchEvent: { create: vi.fn().mockResolvedValue({ id: "ev-gs" }) },
+      } as any),
+    );
+
+    const result = await addScoreEvent("match-1", "SHIDO", "RED");
+    // SHIDO дан RED → BLUE должен победить немедленно
+    expect(result.autoFinished).toBe(true);
+    expect(result.winnerId).toBe("blue-id");
+  });
+
+  it("IJF rule: YUKO недопустимо когда allowYuko=false", async () => {
+    const strictMatch = makeRunningMatch({
+      bracket: { category: { goldenScoreSec: 0, allowYuko: false } },
+    });
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(strictMatch as any);
+
+    // MatchError.message содержит русский текст; проверяем по коду через свойство
+    await expect(addScoreEvent("match-1", "YUKO", "RED")).rejects.toThrow(
+      "Оценка Юко не разрешена в этой категории",
+    );
   });
 
   it("start → addScoreEvent(IPPON) → cancelPendingResult → addScoreEvent(IPPON)", async () => {

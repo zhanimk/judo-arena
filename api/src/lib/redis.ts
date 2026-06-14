@@ -8,7 +8,9 @@ import { env } from "./env.js";
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
-  lazyConnect: false,
+  // Unit tests mock Redis behavior and must not open background sockets merely
+  // because a service module imports this singleton.
+  lazyConnect: env.NODE_ENV === "test",
   retryStrategy: (times) => {
     // Exponential backoff: 100ms, 200ms, 400ms … up to 30s
     const delay = Math.min(100 * Math.pow(2, times - 1), 30_000);

@@ -81,6 +81,15 @@ export const finishMatchSchema = z
   .strict();
 export type FinishMatchInput = z.infer<typeof finishMatchSchema>;
 
+// Forfeit / No-show
+export const forfeitSchema = z
+  .object({
+    forfeitSide: z.enum(["RED", "BLUE"]),
+    reason: z.enum(["NO_SHOW", "INJURY", "DISQUALIFIED", "WITHDREW"]).default("NO_SHOW"),
+  })
+  .strict();
+export type ForfeitInput = z.infer<typeof forfeitSchema>;
+
 // Список матчей с фильтрами
 export const listMatchesQuerySchema = z.object({
   tournamentId: z.string().optional(),

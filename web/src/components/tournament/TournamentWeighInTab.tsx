@@ -4,7 +4,7 @@ import { Loader2, Scale, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Panel, EmptyState, LoadingState } from "@/components/dashboard/DashboardShell";
 import { api, ApiError } from "@/lib/api";
-import { ApplicationMetric, WeighInStatusBadge, localizeName } from "./shared";
+import { ApplicationMetric, WeighInStatusBadge, localizeName, weightLabel } from "./shared";
 
 export function TournamentWeighInTab({ tournamentId }: { tournamentId: string }) {
   const { t } = useTranslation();
@@ -232,7 +232,7 @@ export function TournamentWeighInTab({ tournamentId }: { tournamentId: string })
                               <WeighInStatusBadge status={entry.weighInStatus} />
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              {entry.category?.gender === "MALE" ? t("common.male") : t("tatami.female_short")} · {entry.category?.ageMin}-{entry.category?.ageMax} {t("common.years_short")} · ({entry.category?.weightMin}, {entry.category?.weightMax}] {t("common.kg")} · {t("weigh_in.app_weight")} {entry.athlete?.weightKg ?? "—"} {t("common.kg")}
+                              {entry.category?.gender === "MALE" ? t("common.male") : t("tatami.female_short")} · {entry.category?.ageMin}-{entry.category?.ageMax} {t("common.years_short")} · {weightLabel(entry.category, t)} · {t("weigh_in.app_weight")} {entry.athlete?.weightKg ?? "—"} {t("common.kg")}
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">

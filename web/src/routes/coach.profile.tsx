@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { ExternalLink, FileText, Loader2, Save, Upload } from "lucide-react";
@@ -5,7 +6,9 @@ import { useState, type InputHTMLAttributes } from "react";
 import { DashboardShell, Panel } from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import type { UserDocument } from "@/lib/api-types";
 import { ProfilePhoto } from "@/components/ui/profile-photo";
+import { AvatarCropDialog } from "@/components/ui/avatar-crop-dialog";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { toast } from "sonner";
@@ -15,6 +18,7 @@ type UserDocumentType = "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
 
 export const Route = createFileRoute("/coach/profile")({
   head: () => ({ meta: [{ title: "Профиль — Жаттықтырушы" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachProfile />
@@ -26,6 +30,7 @@ function CoachProfile() {
   const { t } = useTranslation();
   const { user, refreshMe } = useAuth();
   const [error, setError] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [form, setForm] = useState(() => ({
     name: user?.name ?? "",
     surname: user?.surname ?? "",
@@ -52,7 +57,7 @@ function CoachProfile() {
       await refreshMe();
       toast.success(t("profile.saved"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("profile.save_error");
       setError(msg);
       toast.error(msg);
@@ -66,11 +71,12 @@ function CoachProfile() {
       return { url };
     },
     onSuccess: async ({ url }) => {
+      setAvatarFile(null);
       setForm((current) => ({ ...current, avatarUrl: url }));
       await refreshMe();
       toast.success(t("profile.photo_uploaded"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("profile.photo_error");
       setError(msg);
       toast.error(msg);
@@ -162,7 +168,7 @@ function CoachProfile() {
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) uploadAvatar.mutate(file);
+                      if (file) setAvatarFile(file);
                       e.currentTarget.value = "";
                     }}
                   />
@@ -213,6 +219,12 @@ function CoachProfile() {
           />
         </Panel>
       </div>
+      <AvatarCropDialog
+        file={avatarFile}
+        busy={uploadAvatar.isPending}
+        onCancel={() => setAvatarFile(null)}
+        onConfirm={(file) => uploadAvatar.mutate(file)}
+      />
     </DashboardShell>
   );
 }
@@ -227,7 +239,7 @@ function DocumentUploadRow({
   type: UserDocumentType;
   label: string;
   hint: string;
-  document?: any;
+  document?: UserDocument;
   refreshMe: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -249,7 +261,7 @@ function DocumentUploadRow({
       await refreshMe();
       toast.success(t("documents.saved"));
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("documents.upload_error");
       setError(msg);
       toast.error(msg);
@@ -266,15 +278,14 @@ function DocumentUploadRow({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
           {document ? (
-            <a
-              href={mediaUrl(document.url)}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => api.auth.downloadDocument(document).catch(() => undefined)}
               className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
             >
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{document.originalName || t("documents.open_file")}</span>
-            </a>
+            </button>
           ) : (
             <div className="mt-2 text-xs text-muted-foreground">{t("documents.not_uploaded")}</div>
           )}
@@ -303,7 +314,7 @@ function DocumentUploadRow({
   );
 }
 
-function findDocument(documents: any[] | undefined, type: UserDocumentType) {
+function findDocument(documents: UserDocument[] | undefined, type: UserDocumentType) {
   return documents?.find((document) => document.type === type);
 }
 

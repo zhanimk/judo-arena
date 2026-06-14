@@ -3,41 +3,45 @@
 ## Architecture
 
 ```
-Browser → Vercel (web) → Render (API) → Render PostgreSQL + Redis
-                                         ↓
-                                    Resend (email)
-                                    Sentry (errors)
-                                    S3/R2 (file storage, optional)
+Browser → Cloudflare Worker (web) → Render (API) → PostgreSQL + Key Value
+                                             ↓
+                                        Resend (email)
+                                        Sentry (errors)
+                                        S3/R2 (files and backups)
 ```
 
 ---
 
 ## First Deploy
 
+Required runtime: Node.js 22.22.1 or newer (see `.nvmrc`).
+
 ### Step 1 — Backend on Render
 
 1. Open [render.com](https://render.com) → Sign in with GitHub
 2. **New +** → **Blueprint** → select repo `judo-arena`
-3. Render reads `render.yaml` → creates: API + PostgreSQL + Redis automatically
-4. Review the free resources and click **Apply**
+3. Render reads `render.yaml` and creates API, backup cron, PostgreSQL and Key Value
+4. Fill every variable marked `sync: false`, then apply the Blueprint
 
 > `DATABASE_URL` and `REDIS_URL` are auto-injected — do NOT set manually.
-> JWT secrets are generated automatically. `CORS_ORIGIN` and `APP_URL` default
-> to `https://judo-arena.vercel.app`.
+> JWT secrets are generated automatically. `CORS_ORIGIN` and `APP_URL` must
+> match the final Cloudflare Worker/custom-domain URL.
 
 API URL after deploy: `https://judo-arena-api.onrender.com`
 
 ---
 
-### Step 2 — Frontend on Vercel
+### Step 2 — Frontend on Cloudflare Workers
 
-1. Import the GitHub repository in [vercel.com](https://vercel.com)
-2. Environment variables:
+1. Create a Cloudflare API token with Workers Scripts edit permission
+2. Add GitHub Actions secrets:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
    - `VITE_API_URL` = `https://judo-arena-api.onrender.com`
    - `VITE_WS_URL` = `https://judo-arena-api.onrender.com`
-3. **Save and Deploy**
+3. Push to `main`; successful CI triggers `wrangler deploy`
 
-Frontend URL: `https://judo-arena.vercel.app`
+The Worker name is configured as `judo-arena` in `web/wrangler.jsonc`.
 
 ---
 
@@ -45,8 +49,8 @@ Frontend URL: `https://judo-arena.vercel.app`
 
 Render → API service → Environment:
 
-- `CORS_ORIGIN` = `https://judo-arena.vercel.app`
-- `APP_URL` = `https://judo-arena.vercel.app`
+- `CORS_ORIGIN` = exact Worker or custom-domain origin
+- `APP_URL` = the same public frontend origin
 
 → **Save Changes** (auto-restart)
 
@@ -59,7 +63,7 @@ git push origin main
   → CI (lint + typecheck + test + build)
   → If ALL pass → deploy.yml triggers
   → Render redeployed via webhook
-  → Cloudflare Pages redeployed
+  → Cloudflare Worker redeployed
 ```
 
 Broken code cannot reach production — deploy is blocked if CI fails.
@@ -89,12 +93,15 @@ Broken code cannot reach production — deploy is blocked if CI fails.
 | `SOCKET_CONNECTION_LIMIT_WINDOW_SEC` | —        | `60`                                 | Socket.IO connection limit window           |
 | `SENTRY_DSN`                         | —        | —                                    | Error tracking (optional)                   |
 | `S3_BUCKET`                          | —        | —                                    | File storage (optional, local if blank)     |
+| `S3_PRIVATE_BUCKET`                  | ✅ prod  | —                                    | Private documents and database backups      |
 | `S3_ENDPOINT`                        | —        | —                                    | R2/MinIO endpoint                           |
 | `S3_PUBLIC_URL`                      | —        | —                                    | CDN base URL                                |
 | `AWS_ACCESS_KEY_ID`                  | —        | —                                    | S3 credentials                              |
 | `AWS_SECRET_ACCESS_KEY`              | —        | —                                    | S3 credentials                              |
+| `BACKUP_TRIGGER_SECRET`              | ✅ prod  | —                                    | Manual fallback trigger, at least 32 chars  |
+| `BACKUP_SCHEDULER_ENABLED`           | —        | `true`                               | `false` on Render; cron job is primary      |
 
-### Frontend (Cloudflare Pages)
+### Frontend (Cloudflare Workers)
 
 | Variable          | Required | Description                 |
 | ----------------- | -------- | --------------------------- |
@@ -142,13 +149,15 @@ docker compose --profile backup run --rm backup
 
 ### Automated (S3)
 
-Set `BACKUP_S3_BUCKET` + AWS credentials → backup.sh uploads to S3 after each run.
+The Render cron uses `api/Dockerfile.backup`, which includes `pg_dump`, and
+stores backups in `S3_PRIVATE_BUCKET`. The GitHub workflow is a manual fallback
+and uses `BACKUP_TRIGGER_SECRET`, never a short-lived user JWT.
 
 ---
 
 ## Rollback
 
-**Frontend:** Cloudflare Pages → Deployments → find previous → Rollback
+**Frontend:** Cloudflare Workers & Pages → `judo-arena` → Deployments → Rollback
 
 **Backend:**
 
@@ -161,12 +170,8 @@ Or Render dashboard → Deploys → previous deploy → **Redeploy**
 
 ---
 
-## Free Tier Limits (Render)
+## Production plans
 
-| Resource    | Limit                                           |
-| ----------- | ----------------------------------------------- |
-| Web service | Spins down after 15 min idle; 30-60s cold start |
-| PostgreSQL  | 1 GB storage, 30-day auto-expiry                |
-| Redis       | 25 MB, no persistence                           |
-
-For production: upgrade to Render Starter (~$7/month/service).
+Render cron jobs do not support the free plan. The Blueprint uses `starter` for
+the backup job. Before a real tournament, use paid API/database/Key Value plans
+with enough capacity and retention for the expected load.

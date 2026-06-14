@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -6,15 +7,19 @@ import {
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { ArrowLeft, Edit2, Lock, Mail, Phone, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
+import { ArrowLeft, ChevronDown, Edit2, FileText, Lock, Mail, Phone, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, mediaUrl } from "@/lib/api";
+import type { Club, User, ClubGroup, Application, UserDocument } from "@/lib/api-types";
+import { Avatar } from "@/components/ui/avatar-image";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import React from "react";
 
 export const Route = createFileRoute("/admin/clubs/$id")({
   head: () => ({ meta: [{ title: "Клуб — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
       <AdminClubDetail />
@@ -72,10 +77,11 @@ function AdminClubDetail() {
   });
 
   // Sync edit form когда данные загрузились
-  const initEditForm = (c: any) => {
+  const initEditForm = (c: Club) => {
+    const localizedName = typeof c.name === "object" && c.name ? c.name : null;
     setEform({
-      nameRu: c.name?.ru ?? localizeName(c.name),
-      nameKk: c.name?.kk ?? "",
+      nameRu: localizedName?.ru ?? localizeName(c.name),
+      nameKk: localizedName?.kk ?? "",
       city: c.city ?? "",
       country: c.country ?? "KZ",
       shortName: c.shortName ?? "",
@@ -94,19 +100,19 @@ function AdminClubDetail() {
       qc.invalidateQueries({ queryKey: ["admin-club", id] });
       setShowEdit(false);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteMut = useMutation({
     mutationFn: () => api.admin.deleteClub(id),
     onSuccess: () => navigate({ to: "/admin/clubs" }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const blockMut = useMutation({
     mutationFn: (blocked: boolean) => api.admin.blockClub(id, blocked),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-club", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const addMemberMut = useMutation({
@@ -132,7 +138,7 @@ function AdminClubDetail() {
       setShowAddMember(false);
       setMform(EMPTY_MEMBER_FORM);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const addGroupMut = useMutation({
@@ -147,7 +153,7 @@ function AdminClubDetail() {
       setShowAddGroup(false);
       setGform({ name: "", ageMin: "", ageMax: "" });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const editGroupMut = useMutation({
@@ -162,7 +168,7 @@ function AdminClubDetail() {
       setEditGroup(null);
       setGform({ name: "", ageMin: "", ageMax: "" });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const deleteGroupMut = useMutation({
@@ -171,7 +177,7 @@ function AdminClubDetail() {
       qc.invalidateQueries({ queryKey: ["admin-club", id] });
       setDeleteGroup(null);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   if (query.isLoading)
@@ -186,7 +192,7 @@ function AdminClubDetail() {
         <div className="glass rounded-xl p-6 text-sm text-destructive border border-destructive/30">
           <div className="font-medium mb-1">{t("error.api")}</div>
           <div className="text-muted-foreground">
-            {(query.error as any)?.message ?? t("admin.club_load_error")}
+            {((query.error as Error))?.message ?? t("admin.club_load_error")}
           </div>
           <button
             onClick={() => query.refetch()}
@@ -204,8 +210,8 @@ function AdminClubDetail() {
         <EmptyState title={t("admin.club_not_found")} />
       </DashboardShell>
     );
-  const coaches = (c.members ?? []).filter((m: any) => m.role === "COACH");
-  const athletes = (c.members ?? []).filter((m: any) => m.role === "ATHLETE");
+  const coaches = (c.members ?? []).filter((m: User) => m.role === "COACH");
+  const athletes = (c.members ?? []).filter((m: User) => m.role === "ATHLETE");
 
   const fi = (f: keyof typeof eform) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setEform((p) => ({ ...p, [f]: e.target.value }));
@@ -285,8 +291,8 @@ function AdminClubDetail() {
         {/* Club info */}
         <Panel title={t("admin.club_about")}>
           <div className="space-y-2 text-sm">
-            <Field label={t("admin.club_name_ru")} value={c.name?.ru ?? localizeName(c.name)} />
-            <Field label={t("admin.club_name_kk")} value={c.name?.kk ?? "—"} />
+            <Field label={t("admin.club_name_ru")} value={(typeof c.name === "object" && c.name !== null ? c.name.ru : undefined) ?? localizeName(c.name)} />
+            <Field label={t("admin.club_name_kk")} value={(typeof c.name === "object" && c.name !== null ? c.name.kk : undefined) ?? "—"} />
             <Field label={t("admin.club_short_name")} value={c.shortName ?? "—"} />
             <Field label={t("admin.club_city")} value={`${c.city}, ${c.country}`} />
             <Field
@@ -330,42 +336,7 @@ function AdminClubDetail() {
             <EmptyState title={t("admin.no_coaches")} hint={t("admin.add_btn_hint")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {coaches.map((m: any) => (
-                <li key={m.id} className="glass rounded p-3">
-                  <div className="flex justify-between items-start">
-                    <Link
-                      to="/admin/users/$id"
-                      params={{ id: m.id }}
-                      className="hover:text-gold font-medium"
-                    >
-                      {m.name} {m.surname}
-                    </Link>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}
-                    >
-                      {m.isActive ? t("admin.active") : t("admin.blocked_status")}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex flex-col gap-0.5">
-                    {m.email && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <Mail className="h-3 w-3" /> {m.email}
-                      </span>
-                    )}
-                    {m.phone && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" /> {m.phone}
-                      </span>
-                    )}
-                    {m.dateOfBirth && (
-                      <span className="text-xs text-muted-foreground">
-                        {t("admin.born_label")}:{" "}
-                        {new Date(m.dateOfBirth).toLocaleDateString("kk-KZ")}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {coaches.map((m: User) => <MemberCard key={m.id} member={m} t={t} />)}
             </ul>
           )}
         </Panel>
@@ -389,59 +360,8 @@ function AdminClubDetail() {
           {athletes.length === 0 ? (
             <EmptyState title={t("admin.no_athletes")} hint={t("admin.add_btn_hint")} />
           ) : (
-            <ul className="space-y-2 text-sm max-h-[480px] overflow-y-auto">
-              {athletes.map((m: any) => (
-                <li key={m.id} className="glass rounded p-3">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div>
-                      <Link
-                        to="/admin/users/$id"
-                        params={{ id: m.id }}
-                        className="font-medium hover:text-gold"
-                      >
-                        {m.name} {m.surname}
-                      </Link>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {m.gender === "MALE"
-                          ? t("common.male")
-                          : m.gender === "FEMALE"
-                            ? t("common.female")
-                            : "—"}{" "}
-                        · {m.weightKg ? `${m.weightKg} ${t("common.kg")}` : t("admin.no_weight")} ·{" "}
-                        {m.beltRank ?? t("admin.no_belt")}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 ml-2">
-                      <div className="font-display text-gold font-bold">
-                        {Math.round(m.totalPoints ?? 0)}
-                      </div>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}
-                      >
-                        {m.isActive ? t("admin.active") : t("admin.blocked_status")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                    {m.email && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <Mail className="h-3 w-3" /> {m.email}
-                      </span>
-                    )}
-                    {m.phone && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" /> {m.phone}
-                      </span>
-                    )}
-                    {m.dateOfBirth && (
-                      <span className="text-xs text-muted-foreground">
-                        {t("admin.born_label")}:{" "}
-                        {new Date(m.dateOfBirth).toLocaleDateString("kk-KZ")}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
+            <ul className="space-y-2 text-sm max-h-[600px] overflow-y-auto">
+              {athletes.map((m: User) => <MemberCard key={m.id} member={m} t={t} />)}
             </ul>
           )}
         </Panel>
@@ -466,7 +386,7 @@ function AdminClubDetail() {
             <EmptyState title={t("admin.no_groups")} />
           ) : (
             <div className="space-y-2 text-sm">
-              {c.groups.map((g: any) => (
+              {(c.groups ?? []).map((g: ClubGroup) => (
                 <div
                   key={g.id}
                   className="flex justify-between items-center rounded-md border border-border/60 bg-background/30 p-3"
@@ -516,7 +436,7 @@ function AdminClubDetail() {
             <EmptyState title={t("admin.applications_no")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {c.applications.map((a: any) => (
+              {(c.applications ?? []).map((a: Application) => (
                 <li key={a.id} className="flex justify-between glass rounded p-3">
                   <div>
                     <div className="font-medium">{localizeName(a.tournament?.name)}</div>
@@ -550,7 +470,7 @@ function AdminClubDetail() {
       {/* Edit club */}
       {showEdit && (
         <Modal title={t("admin.edit_club")} onClose={() => setShowEdit(false)}>
-          {editMut.error && <ErrBox msg={(editMut.error as any)?.message} />}
+          {Boolean(editMut.error) && <ErrBox msg={(editMut.error as Error)?.message} />}
           <div className="space-y-3">
             <Field2 label={`${t("admin.club_name_ru")} *`}>
               <input
@@ -613,7 +533,7 @@ function AdminClubDetail() {
           title={mform.role === "COACH" ? t("admin.add_coach") : t("admin.add_athlete")}
           onClose={() => setShowAddMember(false)}
         >
-          {addMemberMut.error && <ErrBox msg={(addMemberMut.error as any)?.message} />}
+          {Boolean(addMemberMut.error) && <ErrBox msg={(addMemberMut.error as Error)?.message} />}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field2 label={`${t("profile.first_name")} *`}>
@@ -748,8 +668,8 @@ function AdminClubDetail() {
             setEditGroup(null);
           }}
         >
-          {(addGroupMut.error || editGroupMut.error) && (
-            <ErrBox msg={((addGroupMut.error || editGroupMut.error) as any)?.message} />
+          {Boolean(addGroupMut.error || editGroupMut.error) && (
+            <ErrBox msg={((addGroupMut.error || editGroupMut.error) as Error)?.message} />
           )}
           <div className="space-y-3">
             <Field2 label={`${t("admin.group_name")} *`}>
@@ -801,7 +721,7 @@ function AdminClubDetail() {
           <p className="text-sm text-muted-foreground">
             {t("admin.delete_group_confirm", { name: deleteGroup.name })}
           </p>
-          {deleteGroupMut.error && <ErrBox msg={(deleteGroupMut.error as any)?.message} />}
+          {Boolean(deleteGroupMut.error) && <ErrBox msg={(deleteGroupMut.error as Error)?.message} />}
           <ModalFooter
             onCancel={() => setDeleteGroup(null)}
             onConfirm={() => deleteGroupMut.mutate()}
@@ -819,7 +739,7 @@ function AdminClubDetail() {
             {t("admin.delete_club_confirm", { name: localizeName(c.name) })}
           </p>
           <p className="text-xs text-destructive/80">{t("admin.delete_club_warning")}</p>
-          {deleteMut.error && <ErrBox msg={(deleteMut.error as any)?.message} />}
+          {Boolean(deleteMut.error) && <ErrBox msg={(deleteMut.error as Error)?.message} />}
           <ModalFooter
             onCancel={() => setShowDeleteClub(false)}
             onConfirm={() => deleteMut.mutate()}
@@ -864,7 +784,14 @@ function Modal({
   );
 }
 
-function ModalFooter({ onCancel, onConfirm, loading, disabled, label, danger }: any) {
+function ModalFooter({ onCancel, onConfirm, loading, disabled, label, danger }: {
+  onCancel: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+  disabled?: boolean;
+  label: string;
+  danger?: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <div className="mt-5 flex justify-end gap-2">
@@ -903,7 +830,7 @@ function Field2({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-function StatCard({ label, value, hint, accent }: any) {
+function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint?: string; accent?: boolean }) {
   return (
     <div className={`glass rounded-xl p-5 ${accent ? "border-gold/40" : ""}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -924,8 +851,124 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
+}
+
+function docTypeLabel(type: string): string {
+  if (type === "BIRTH_CERTIFICATE") return "Туу туралы";
+  if (type === "STUDY_CERTIFICATE") return "Оқу куәлігі";
+  if (type === "COACH_ID") return "Тренер куәлігі";
+  return "Құжат";
+}
+
+function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const docs: UserDocument[] = (m as any).documents ?? [];
+
+  return (
+    <li className={`glass rounded-lg overflow-hidden transition-colors ${open ? "border border-gold/30" : ""}`}>
+      {/* Header row — always visible */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 p-3 hover:bg-gold/5 transition-colors text-left"
+      >
+        <Avatar
+          src={(m as any).avatarUrl ? mediaUrl((m as any).avatarUrl) : null}
+          name={`${m.name} ${m.surname}`}
+          size={36}
+          className="shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">{m.name} {m.surname}</div>
+          <div className="text-xs text-muted-foreground truncate flex items-center gap-2">
+            {m.gender === "MALE" ? t("common.male") : m.gender === "FEMALE" ? t("common.female") : null}
+            {(m as any).weightKg ? <span>· {(m as any).weightKg} {t("common.kg")}</span> : null}
+            {(m as any).beltRank ? <span>· {(m as any).beltRank}</span> : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {(m as any).totalPoints ? (
+            <span className="font-display font-bold text-gold text-sm">{Math.round((m as any).totalPoints)}</span>
+          ) : null}
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+            {m.isActive ? t("admin.active") : t("admin.blocked_status")}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180 text-gold" : ""}`} />
+        </div>
+      </button>
+
+      {/* Expanded details */}
+      {open && (
+        <div className="border-t border-border/30 bg-gold/5 px-4 py-3 space-y-3">
+          {/* Contact + personal info */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            {m.email && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Mail className="h-3 w-3 shrink-0" /> {m.email}
+              </div>
+            )}
+            {(m as any).phone && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Phone className="h-3 w-3 shrink-0" /> {(m as any).phone}
+              </div>
+            )}
+            {(m as any).dateOfBirth && (
+              <div className="text-muted-foreground">
+                {t("admin.born_label")}: {new Date((m as any).dateOfBirth).toLocaleDateString("kk-KZ")}
+              </div>
+            )}
+            {(m as any).nameLatin && (m as any).surnameLatin && (
+              <div className="text-muted-foreground">
+                {(m as any).nameLatin} {(m as any).surnameLatin}
+              </div>
+            )}
+          </div>
+
+          {/* Documents */}
+          {docs.length > 0 ? (
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                {t("documents.title")}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {docs.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={mediaUrl(doc.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="group block overflow-hidden rounded-lg border border-border/60 hover:border-gold/50 transition-colors"
+                    title={docTypeLabel(doc.type)}
+                  >
+                    {doc.mimeType?.startsWith("image/") ? (
+                      <img
+                        src={mediaUrl(doc.url)}
+                        alt={docTypeLabel(doc.type)}
+                        className="h-24 w-24 object-cover group-hover:opacity-90 transition-opacity"
+                      />
+                    ) : (
+                      <div className="flex h-24 w-24 flex-col items-center justify-center gap-1 bg-card/60 text-muted-foreground">
+                        <FileText className="h-6 w-6" />
+                        <span className="text-[9px] text-center px-1 leading-tight">{docTypeLabel(doc.type)}</span>
+                      </div>
+                    )}
+                    <div className="bg-card/80 px-1.5 py-1 text-[9px] text-center text-muted-foreground truncate w-24">
+                      {docTypeLabel(doc.type)}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground italic">{t("documents.no_documents")}</div>
+          )}
+        </div>
+      )}
+    </li>
+  );
 }

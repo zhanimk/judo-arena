@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -19,6 +20,7 @@ import {
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import type { User } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useMemo, useState, type InputHTMLAttributes } from "react";
@@ -28,6 +30,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/athletes")({
   head: () => ({ meta: [{ title: "Спортшылар — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachAthletes />
@@ -71,21 +74,21 @@ function CoachAthletes() {
 
   const pendingRequests = requestsQuery.data ?? [];
   const athletes = useMemo(
-    () => (membersQuery.data ?? []).filter((m: any) => m.role === "ATHLETE"),
+    () => (membersQuery.data ?? []).filter((m: User) => m.role === "ATHLETE"),
     [membersQuery.data],
   );
 
   const visibleAthletes = useMemo(() => {
     const q = search.trim().toLowerCase();
     return athletes
-      .filter((a: any) => {
+      .filter((a: User) => {
         if (gender !== "ALL" && a.gender !== gender) return false;
         if (!q) return true;
         const haystack =
           `${a.name ?? ""} ${a.surname ?? ""} ${a.email ?? ""} ${a.beltRank ?? ""}`.toLowerCase();
         return haystack.includes(q);
       })
-      .sort((a: any, b: any) => compareAthletes(a, b, sortBy));
+      .sort((a: User, b: User) => compareAthletes(a, b, sortBy));
   }, [athletes, gender, search, sortBy]);
 
   const stats = useMemo(() => getAthleteStats(athletes), [athletes]);
@@ -106,7 +109,7 @@ function CoachAthletes() {
             }
           >
             <div className="mt-2 space-y-2">
-              {pendingRequests.map((r: any) => (
+              {pendingRequests.map((r) => (
                 <div
                   key={r.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-gold/15 bg-gold/5 p-3"
@@ -207,7 +210,7 @@ function AthletesBoard({
   onGender,
   onSort,
 }: {
-  athletes: any[];
+  athletes: User[];
   total: number;
   stats: ReturnType<typeof getAthleteStats>;
   search: string;
@@ -306,7 +309,7 @@ function AthletesBoard({
               </div>
 
               <div className="divide-y divide-border/35">
-                {group.items.map((a: any) => (
+                {group.items.map((a: User) => (
                   <AthleteRow key={a.id} athlete={a} />
                 ))}
               </div>
@@ -318,7 +321,7 @@ function AthletesBoard({
   );
 }
 
-function AthleteRow({ athlete }: { athlete: any }) {
+function AthleteRow({ athlete }: { athlete: User }) {
   const { t } = useTranslation();
   const age = athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : null;
   return (
@@ -371,7 +374,7 @@ function Cell({
   );
 }
 
-function MiniMetric({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function MiniMetric({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background/30 p-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -435,7 +438,7 @@ function AddAthleteForm({ clubId, onDone }: { clubId: string; onDone: () => void
       toast.success(t("coach.athlete_added"));
       onDone();
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : t("error.generic");
       setError(msg);
       toast.error(msg);
@@ -551,7 +554,7 @@ function getAge(dob: string): number {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000));
 }
 
-function compareAthletes(a: any, b: any, sortBy: "ageWeight" | "weight" | "name") {
+function compareAthletes(a: User, b: User, sortBy: "ageWeight" | "weight" | "name") {
   const ageA = a.dateOfBirth ? getAge(a.dateOfBirth) : 999;
   const ageB = b.dateOfBirth ? getAge(b.dateOfBirth) : 999;
   const weightA = Number(a.weightKg ?? 999);
@@ -565,7 +568,7 @@ function compareAthletes(a: any, b: any, sortBy: "ageWeight" | "weight" | "name"
   return ageA - ageB || weightA - weightB || nameA.localeCompare(nameB, "kk");
 }
 
-function getAthleteStats(athletes: any[]) {
+function getAthleteStats(athletes: User[]) {
   const ages = athletes
     .map((a) => (a.dateOfBirth ? getAge(a.dateOfBirth) : null))
     .filter((v): v is number => v !== null);
@@ -582,7 +585,7 @@ function getAthleteStats(athletes: any[]) {
   };
 }
 
-function groupByAgeBand(athletes: any[], t: (key: string) => string) {
+function groupByAgeBand(athletes: User[], t: (key: string) => string) {
   const bands = [
     { key: "u8", label: t("coach.age_band_u8"), min: 0, max: 7 },
     { key: "u10", label: t("coach.age_band_u10"), min: 8, max: 9 },
@@ -610,13 +613,13 @@ function groupByAgeBand(athletes: any[], t: (key: string) => string) {
     .filter((band) => band.items.length > 0);
 }
 
-function getWeightRange(items: any[]) {
+function getWeightRange(items: User[]) {
   const weights = items.map((a) => Number(a.weightKg)).filter((v) => Number.isFinite(v) && v > 0);
   if (weights.length === 0) return "—";
   return `${Math.min(...weights)}-${Math.max(...weights)} кг`;
 }
 
-function getWeightBuckets(items: any[]) {
+function getWeightBuckets(items: User[]) {
   const buckets = [
     { label: "-30 кг", test: (w: number) => w > 0 && w <= 30 },
     { label: "31-45 кг", test: (w: number) => w > 30 && w <= 45 },

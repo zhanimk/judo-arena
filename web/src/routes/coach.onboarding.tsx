@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,11 +18,13 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import emblem from "@/assets/jcl-logo.jpeg";
 import { api, ApiError } from "@/lib/api";
+import type { Club, ClubJoinRequest } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 export const Route = createFileRoute("/coach/onboarding")({
   head: () => ({ meta: [{ title: "Бастау — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachOnboarding />
@@ -80,7 +83,7 @@ function CoachOnboarding() {
     queryFn: () => api.coachClubRequests.myList(),
     enabled: !!user,
     refetchInterval: (q) =>
-      (q.state.data ?? []).some((r: any) => r.status === "PENDING") ? 15_000 : false,
+      (q.state.data ?? []).some((r: { status: string }) => r.status === "PENDING") ? 15_000 : false,
   });
 
   const clubsQuery = useQuery({
@@ -90,7 +93,7 @@ function CoachOnboarding() {
   });
 
   const activeRequest = (requestsQuery.data ?? []).find(
-    (r: any) => r.status === "PENDING" || r.status === "APPROVED",
+    (r: { status: string }) => r.status === "PENDING" || r.status === "APPROVED",
   );
 
   const hasClubStep = Boolean(user?.clubId || activeRequest);
@@ -102,7 +105,7 @@ function CoachOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["coach-join-requests-onboarding"] });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_onboarding.request_error")),
   });
 
@@ -112,7 +115,7 @@ function CoachOnboarding() {
       setError("");
       await qc.invalidateQueries({ queryKey: ["coach-join-requests-onboarding"] });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_onboarding.cancel_error")),
   });
 
@@ -122,7 +125,7 @@ function CoachOnboarding() {
       await logout();
       navigate({ to: "/login" });
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("onboarding.cancel_registration_error")),
   });
 
@@ -154,16 +157,16 @@ function CoachOnboarding() {
       await savePhoneAndProceed();
     }
     setDone(true);
-    setTimeout(() => navigate({ to: "/coach" }), 1200);
+    setTimeout(() => navigate({ to: "/coach" }), 3500);
   }
 
-  // Auto-redirect when already fully set up
+  // Auto-redirect: if coach already belongs to a club (e.g. seeded demo account), skip agreement step
   useEffect(() => {
-    if (user?.clubId && agreed && !done) {
+    if (user?.clubId && !done) {
       setDone(true);
       setTimeout(() => navigate({ to: "/coach" }), 500);
     }
-  }, [user?.clubId, agreed, done, navigate]);
+  }, [user?.clubId, done, navigate]);
 
   if (!user) {
     return (
@@ -174,15 +177,7 @@ function CoachOnboarding() {
   }
 
   if (done) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 ring-4 ring-emerald-500/30 animate-scale-in">
-          <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-        </div>
-        <div className="text-xl font-bold text-foreground">{t("coach_onboarding.setup_done")}</div>
-        <div className="text-sm text-muted-foreground animate-pulse">{t("common.loading")}</div>
-      </div>
-    );
+    return <OnboardingSuccessScreen name={user.name} />;
   }
 
   const canFinish = hasClubStep && agreed;
@@ -509,9 +504,9 @@ function ClubStep({
   busy,
   onClubCreated,
 }: {
-  userClub: { id: string; name: any; city: string } | null;
-  activeRequest?: any;
-  clubs: any[];
+  userClub: { id: string; name: import("@/lib/api-types").LocalizedName | string; city: string } | null;
+  activeRequest?: ClubJoinRequest | null;
+  clubs: Club[];
   loading: boolean;
   search: string;
   setSearch: (v: string) => void;
@@ -539,7 +534,7 @@ function ClubStep({
       await refreshMe();
       onClubCreated();
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setCreateError(e instanceof ApiError ? e.message : t("coach_onboarding.create_club_error")),
   });
 
@@ -785,8 +780,56 @@ function StepRow({
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
 }
+
+function OnboardingSuccessScreen({ name }: { name: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="relative min-h-screen bg-background overflow-hidden flex flex-col items-center justify-center">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="h-[420px] w-[420px] rounded-full border border-emerald-500/10 animate-ping-slow" />
+        <div className="absolute h-[300px] w-[300px] rounded-full border border-emerald-500/15" />
+        <div className="absolute h-[500px] w-[500px] rounded-full bg-emerald-500/4 blur-3xl" />
+        <div className="absolute h-[300px] w-[300px] rounded-full bg-gold/4 blur-2xl" />
+      </div>
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+      <div className="relative z-10 flex flex-col items-center gap-6 px-8 text-center">
+        <div className="relative flex h-28 w-28 items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-emerald-500/15 animate-pulse" />
+          <div className="absolute inset-2 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/30" />
+          <CheckCircle2 className="relative h-14 w-14 text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.6)]" />
+        </div>
+        <div className="space-y-2">
+          <div className="font-display text-3xl font-black tracking-tight">
+            {t("coach_onboarding.setup_done")}
+          </div>
+          <div className="text-base text-muted-foreground">
+            {t("coach_onboarding.welcome")}, <span className="font-semibold text-foreground">{name}</span>!
+          </div>
+        </div>
+        <div className="w-48 h-1 rounded-full bg-border/40 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-gold"
+            style={{ animation: "grow-bar 3.3s ease-in-out forwards" }}
+          />
+        </div>
+        <div className="text-xs text-muted-foreground animate-pulse">{t("common.loading")}</div>
+      </div>
+      <div className="absolute bottom-8 flex gap-2 opacity-30">
+        {["bg-zinc-300","bg-yellow-400","bg-orange-500","bg-green-600","bg-sky-500","bg-amber-800","bg-gray-900"].map((c, i) => (
+          <div key={i} className={`h-1.5 w-8 rounded-full ${c}`} />
+        ))}
+      </div>
+      <style>{`
+        @keyframes grow-bar { from { width: 0% } to { width: 100% } }
+        @keyframes ping-slow { 0%,100%{transform:scale(1);opacity:.3} 50%{transform:scale(1.08);opacity:.1} }
+        .animate-ping-slow { animation: ping-slow 2.5s ease-in-out infinite; }
+      `}</style>
+    </div>
+  );
+}
+

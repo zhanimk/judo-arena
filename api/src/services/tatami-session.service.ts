@@ -278,6 +278,32 @@ export async function getValidTatamiSession(token: string) {
   };
 }
 
+/**
+ * Продлить сессию судьи на +2 часа (sliding expiry).
+ * Вызывается каждые 30 минут с фронтенда пока панель открыта.
+ * Не продлевает уже отозванные или истёкшие сессии.
+ */
+export async function heartbeatTatamiSession(token: string): Promise<{ expiresAt: Date }> {
+  const session = await prisma.tatamiSession.findUnique({ where: { token } });
+  if (!session) throw new TatamiSessionError("INVALID_TOKEN", "Невалидный токен", 401);
+  if (session.isRevoked) throw new TatamiSessionError("REVOKED", "Сессия отозвана", 403);
+  if (session.expiresAt < new Date()) {
+    throw new TatamiSessionError("EXPIRED", "Срок действия сессии истёк", 403);
+  }
+
+  // Продлеваем на 2 часа от текущего момента, но не более 12 часов в будущем
+  const maxExpiry = new Date(Date.now() + 12 * 60 * 60 * 1000);
+  const newExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const expiresAt = newExpiry > maxExpiry ? maxExpiry : newExpiry;
+
+  const updated = await prisma.tatamiSession.update({
+    where: { id: session.id },
+    data: { expiresAt },
+    select: { expiresAt: true },
+  });
+  return { expiresAt: updated.expiresAt };
+}
+
 /** Отозвать сессию (ADMIN). */
 export async function revokeTatamiSession(
   actorUserId: string,

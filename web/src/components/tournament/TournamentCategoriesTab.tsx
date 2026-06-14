@@ -252,6 +252,7 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showBulk, setShowBulk] = useState(false);
   const [bulkGroup, setBulkGroup] = useState(AGE_GROUPS[3].key);
   const [bulkGenders, setBulkGenders] = useState<("MALE" | "FEMALE")[]>(["MALE", "FEMALE"]);
@@ -294,23 +295,30 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
     if (!preset) return;
     setBulkAdding(true);
     setError("");
-    let added = 0;
-    for (const gender of bulkGenders) {
-      const cats = buildWeightCategories(preset, gender, tournamentYear);
-      for (const cat of cats) {
-        const { _birthRange: _br, ...payload } = cat as any;
-        try {
-          await api.tournaments.addCategory(tourney.id, payload);
-          added++;
-        } catch {
-          // skip duplicate/error, continue
-        }
-      }
+    setSuccess("");
+    const categories = bulkGenders.flatMap((gender) =>
+      buildWeightCategories(preset, gender, tournamentYear).map(
+        ({ _birthRange: _ignored, ...category }) => category,
+      ),
+    );
+
+    try {
+      const result = await api.tournaments.addCategoriesBulk(tourney.id, categories);
+      qc.setQueryData(["admin-tournament", tourney.id], (current: any) =>
+        current ? { ...current, categories: result.categories } : current,
+      );
+      await qc.invalidateQueries({ queryKey: ["tournament", "detail", tourney.id] });
+      setShowBulk(false);
+      setSuccess(
+        result.added > 0
+          ? t("categories.bulk_success", { count: result.added })
+          : t("categories.bulk_already_exists"),
+      );
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("categories.bulk_error"));
+    } finally {
+      setBulkAdding(false);
     }
-    await qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
-    setBulkAdding(false);
-    setShowBulk(false);
-    if (added === 0) setError(t("categories.bulk_error"));
   }
 
   const selectedPreset = AGE_GROUPS.find((g) => g.key === bulkGroup);
@@ -358,6 +366,11 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+          {success}
         </div>
       )}
 

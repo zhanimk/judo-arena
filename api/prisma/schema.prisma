@@ -135,13 +135,13 @@ model User {
   isActive        Boolean   @default(true)
 
   // Email verification
-  emailVerified          Boolean   @default(false)
-  emailVerificationToken String?   // one-time token (expires in 24h)
+  emailVerified           Boolean   @default(false)
+  emailVerificationToken  String? // one-time token (expires in 24h)
   emailVerificationSentAt DateTime? // when last token was sent (rate-limit)
 
   // 2FA (TOTP — Google Authenticator / Authy)
-  totpSecret      String?   // зашифрованный base32-секрет; null = 2FA не настроен
-  totpEnabled     Boolean   @default(false)
+  totpSecret  String? // зашифрованный base32-секрет; null = 2FA не настроен
+  totpEnabled Boolean @default(false)
 
   clubId   String?
   club     Club?     @relation(fields: [clubId], references: [id])
@@ -172,7 +172,7 @@ model User {
   @@index([clubId])
   @@index([role])
   @@index([role, isActive])
-  @@index([emailVerificationToken])  // быстрый поиск при верификации
+  @@index([emailVerificationToken]) // быстрый поиск при верификации
   @@index([deletedAt])
 }
 
@@ -207,8 +207,8 @@ model Club {
   isBlocked     Boolean @default(false)
   blockedReason String?
 
-  createdById String
-  createdBy   User   @relation("ClubCreator", fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?   @relation("ClubCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   members           User[]
   groups            ClubGroup[]
@@ -261,14 +261,16 @@ model Tournament {
   tatamiCount         Int              @default(1)
   primaryLocale       Locale           @default(kk)
   posterUrl           String?
+  regulationUrl       String?
+  regulationFileName  String?
   entryFeeKzt         Int              @default(0)
   kaspiPaymentUrl     String?
-  youtubeUrls         Json?            // string[] — one URL per tatami (index 0 = tatami 1)
+  youtubeUrls         Json? // string[] — one URL per tatami (index 0 = tatami 1)
   isFeatured          Boolean          @default(false)
   isArchived          Boolean          @default(false)
 
-  createdById String
-  createdBy   User   @relation("TournamentCreator", fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?   @relation("TournamentCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   categories     Category[]
   applications   Application[]
@@ -319,22 +321,22 @@ model Category {
 // ============================================================
 
 model Application {
-  id            String            @id @default(cuid())
-  tournamentId  String
-  tournament    Tournament        @relation(fields: [tournamentId], references: [id])
-  clubId        String
-  club          Club              @relation(fields: [clubId], references: [id])
-  status        ApplicationStatus @default(DRAFT)
-  notes         String?
-  submittedAt   DateTime?
-  reviewedAt    DateTime?
-  reviewerNotes String?
-  paymentStatus PaymentStatus @default(NOT_REQUIRED)
-  paymentAmountKzt Int        @default(0)
-  paymentProvider String?
+  id               String            @id @default(cuid())
+  tournamentId     String
+  tournament       Tournament        @relation(fields: [tournamentId], references: [id])
+  clubId           String
+  club             Club              @relation(fields: [clubId], references: [id])
+  status           ApplicationStatus @default(DRAFT)
+  notes            String?
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewerNotes    String?
+  paymentStatus    PaymentStatus     @default(NOT_REQUIRED)
+  paymentAmountKzt Int               @default(0)
+  paymentProvider  String?
   paymentReference String?
-  paymentUrl String?
-  paidAt DateTime?
+  paymentUrl       String?
+  paidAt           DateTime?
 
   entries ApplicationEntry[]
 
@@ -463,7 +465,7 @@ model MatchEvent {
   occurredAt DateTime @default(now())
 
   @@index([matchId, occurredAt])
-  @@index([matchId, type])        // undoLastScoreEvent фильтрует по matchId + type IN [...]
+  @@index([matchId, type]) // undoLastScoreEvent фильтрует по matchId + type IN [...]
 }
 
 model JudgeSession {
@@ -490,8 +492,8 @@ model TatamiSession {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   tatamiNumber Int
   judgeName    String?
-  createdById  String
-  createdBy    User       @relation("TatamiSessionCreator", fields: [createdById], references: [id])
+  createdById  String?
+  createdBy    User?      @relation("TatamiSessionCreator", fields: [createdById], references: [id], onDelete: SetNull)
   expiresAt    DateTime // default: +14 часов
   isRevoked    Boolean    @default(false)
 
@@ -523,7 +525,7 @@ model RatingEntry {
   @@index([tournamentId])
   @@index([categoryId])
   @@index([points])
-  @@index([athleteId, points])    // Leaderboard groupBy athleteId с суммой points
+  @@index([athleteId, points]) // Leaderboard groupBy athleteId с суммой points
 }
 
 model Notification {
@@ -574,8 +576,8 @@ model PushSubscription {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoint  String   @unique
-  p256dh    String   // публичный ключ браузера
-  auth      String   // auth secret
+  p256dh    String // публичный ключ браузера
+  auth      String // auth secret
   userAgent String?
   createdAt DateTime @default(now())
 

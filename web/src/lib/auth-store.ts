@@ -11,40 +11,11 @@
 
 import { useSyncExternalStore } from "react";
 import { api, setAccessToken, setOnUnauthorized } from "./api";
+import { setOnAuthRevoked } from "./socket";
 import { Sentry } from "./sentry";
+import type { User, UserRole } from "./api-types";
 
-export type UserRole = "ATHLETE" | "COACH" | "ADMIN" | "JUDGE";
-
-export interface User {
-  id: string;
-  email: string;
-  role: Exclude<UserRole, "JUDGE">;
-  name: string;
-  surname: string;
-  nameLatin?: string | null;
-  surnameLatin?: string | null;
-  preferredLocale: "ru" | "kk" | "en";
-  dateOfBirth?: string | null;
-  gender?: "MALE" | "FEMALE" | null;
-  weightKg?: number | null;
-  beltRank?: string | null;
-  avatarUrl?: string | null;
-  phone?: string | null;
-  clubId?: string | null;
-  clubRole?: "OWNER" | "COACH" | null;
-  club?: { id: string; name: any; shortName?: string; city: string } | null;
-  documents?: Array<{
-    id: string;
-    type: "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
-    url: string;
-    originalName?: string | null;
-    mimeType?: string | null;
-    sizeBytes?: number | null;
-    updatedAt: string;
-  }>;
-  isActive: boolean;
-  createdAt: string;
-}
+export type { User, UserRole };
 
 type Status = "idle" | "loading" | "authenticated" | "unauthenticated";
 
@@ -95,7 +66,7 @@ function getSnapshot(): AuthState {
 // ============================================================
 
 export function useAuth(): AuthState & {
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User | { totpRequired: true; challengeToken: string }>;
   register: (data: Parameters<typeof api.auth.register>[0]) => Promise<User>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
@@ -112,10 +83,18 @@ export function useAuth(): AuthState & {
   };
 }
 
-export async function login(email: string, password: string): Promise<User> {
+export async function login(
+  email: string,
+  password: string,
+): Promise<User | { totpRequired: true; challengeToken: string }> {
   setState({ status: "loading" });
   try {
-    const { user, accessToken } = await api.auth.login(email, password);
+    const result = await api.auth.login(email, password);
+    if ("totpRequired" in result && result.totpRequired) {
+      setState({ status: "unauthenticated" });
+      return result as { totpRequired: true; challengeToken: string };
+    }
+    const { user, accessToken } = result as { user: User; accessToken: string };
     setAccessToken(accessToken);
     setState({ user, status: "authenticated" });
     return user;
@@ -152,6 +131,14 @@ export async function logout(): Promise<void> {
 export async function bootstrap(): Promise<void> {
   if (state.status === "loading" || state.status === "authenticated") return;
   setState({ status: "loading" });
+
+  // Таймаут 8 сек на случай офлайн/долгого старта
+  const timeoutId = setTimeout(() => {
+    if (state.status === "loading") {
+      setState({ user: null, status: "unauthenticated" });
+    }
+  }, 8000);
+
   try {
     const newToken = await api.auth.refresh();
     if (!newToken) {
@@ -163,6 +150,8 @@ export async function bootstrap(): Promise<void> {
     setState({ user, status: "authenticated" });
   } catch {
     setState({ user: null, status: "unauthenticated" });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -177,6 +166,12 @@ export async function refreshMe(): Promise<void> {
 
 // Когда API увидит 401 и не сможет refresh — снести юзера
 setOnUnauthorized(() => {
+  setAccessToken(null);
+  setState({ user: null, status: "unauthenticated" });
+});
+
+// Когда сервер принудительно отзывает сессию через Socket.IO (logout-all, деактивация, смена пароля)
+setOnAuthRevoked(() => {
   setAccessToken(null);
   setState({ user: null, status: "unauthenticated" });
 });

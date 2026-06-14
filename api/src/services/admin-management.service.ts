@@ -7,7 +7,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { redis } from "../lib/redis.js";
-import { ClubRole, UserRole, Gender, Locale } from "@prisma/client";
+import { Prisma, ClubRole, UserRole, Gender, Locale, MatchStatus, TournamentStatus } from "@prisma/client";
 import { logAudit } from "./audit.service.js";
 import { env } from "../lib/env.js";
 
@@ -83,7 +83,10 @@ export async function getClubFullDetails(clubId: string) {
           role: true,
           isActive: true,
           email: true,
+          phone: true,
+          avatarUrl: true,
           ratingEntries: { select: { points: true } },
+          documents: { orderBy: { updatedAt: "desc" as const } },
         },
       },
       applications: {
@@ -139,7 +142,7 @@ export async function listAllUsers(query: {
   limit?: number;
   offset?: number;
 }) {
-  const where: any = {};
+  const where: Prisma.UserWhereInput = { deletedAt: null };
   if (query.role) where.role = query.role;
   if (query.clubId) where.clubId = query.clubId;
   if (query.isActive !== undefined) where.isActive = query.isActive;
@@ -165,6 +168,7 @@ export async function listAllUsers(query: {
         role: true,
         name: true,
         surname: true,
+        avatarUrl: true,
         gender: true,
         weightKg: true,
         beltRank: true,
@@ -174,6 +178,7 @@ export async function listAllUsers(query: {
         clubId: true,
         preferredLocale: true,
         club: { select: { id: true, name: true, city: true } },
+        documents: { orderBy: { updatedAt: "desc" as const } },
       },
     }),
     prisma.user.count({ where }),
@@ -236,7 +241,7 @@ export async function toggleUserBlock(
     data: { isActive: active },
   });
 
-  // Немедленно инвалидируем кэш в authenticate — заблокированный не должен ждать 60 сек
+  // Немедленно инвалидируем кэш в authenticate — заблокированный не должен ждать 300 сек
   await redis.del(`user-cache:${userId}`);
 
   await logAudit({
@@ -335,8 +340,8 @@ export async function updateSystemConfig(
 
   const updated = await prisma.systemConfig.upsert({
     where: { key },
-    update: { value: value as any, updatedBy: actorId },
-    create: { key, value: value as any, updatedBy: actorId },
+    update: { value: value as Prisma.InputJsonValue, updatedBy: actorId },
+    create: { key, value: value as Prisma.InputJsonValue, updatedBy: actorId },
   });
 
   await logAudit({
@@ -462,22 +467,19 @@ export async function updateUserByAdmin(
       throw new AdminManagementError("EMAIL_TAKEN", "Бұл email тіркелген", 409);
   }
 
-  const data: any = {};
-  if (input.name !== undefined) data.name = input.name.trim();
-  if (input.surname !== undefined) data.surname = input.surname.trim();
-  if (input.nameLatin !== undefined)
-    data.nameLatin = input.nameLatin?.trim() || null;
-  if (input.surnameLatin !== undefined)
-    data.surnameLatin = input.surnameLatin?.trim() || null;
-  if (input.email !== undefined) data.email = input.email.toLowerCase().trim();
-  if (input.dateOfBirth !== undefined)
-    data.dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
-  if (input.gender !== undefined) data.gender = input.gender;
-  if (input.weightKg !== undefined) data.weightKg = input.weightKg;
-  if (input.beltRank !== undefined) data.beltRank = input.beltRank;
-  if (input.phone !== undefined) data.phone = input.phone;
-  if (input.preferredLocale !== undefined)
-    data.preferredLocale = input.preferredLocale;
+  const data: Prisma.UserUpdateInput = {
+    ...(input.name !== undefined && { name: input.name.trim() }),
+    ...(input.surname !== undefined && { surname: input.surname.trim() }),
+    ...(input.nameLatin !== undefined && { nameLatin: input.nameLatin?.trim() || null }),
+    ...(input.surnameLatin !== undefined && { surnameLatin: input.surnameLatin?.trim() || null }),
+    ...(input.email !== undefined && { email: input.email.toLowerCase().trim() }),
+    ...(input.dateOfBirth !== undefined && { dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null }),
+    ...(input.gender !== undefined && { gender: input.gender }),
+    ...(input.weightKg !== undefined && { weightKg: input.weightKg }),
+    ...(input.beltRank !== undefined && { beltRank: input.beltRank }),
+    ...(input.phone !== undefined && { phone: input.phone }),
+    ...(input.preferredLocale !== undefined && { preferredLocale: input.preferredLocale }),
+  };
 
   const updated = await prisma.user.update({ where: { id: userId }, data });
   // Инвалидируем кэш аутентификации (role/email/name могли измениться)
@@ -588,7 +590,7 @@ export async function createClubByAdmin(
       city: input.city.trim(),
       country: input.country ?? "KZ",
       shortName: input.shortName?.trim() || null,
-      description: input.description ? (input.description as any) : undefined,
+      description: input.description ? (input.description as Prisma.InputJsonValue) : undefined,
       createdById: actorId,
     },
   });
@@ -620,12 +622,17 @@ export async function updateClubByAdmin(
   if (!club)
     throw new AdminManagementError("CLUB_NOT_FOUND", "Клуб табылмады", 404);
 
-  const data: any = {};
-  if (input.name !== undefined) data.name = input.name;
-  if (input.city !== undefined) data.city = input.city.trim();
-  if (input.country !== undefined) data.country = input.country;
-  if (input.shortName !== undefined) data.shortName = input.shortName;
-  if (input.description !== undefined) data.description = input.description;
+  const data: Prisma.ClubUpdateInput = {
+    ...(input.name !== undefined && { name: input.name }),
+    ...(input.city !== undefined && { city: input.city.trim() }),
+    ...(input.country !== undefined && { country: input.country }),
+    ...(input.shortName !== undefined && { shortName: input.shortName }),
+    ...(input.description !== undefined && {
+      description: input.description !== null
+        ? (input.description as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
+    }),
+  };
 
   const updated = await prisma.club.update({ where: { id: clubId }, data });
 
@@ -658,7 +665,12 @@ export async function deleteClubByAdmin(actorId: string, clubId: string) {
     );
   }
 
-  await prisma.club.delete({ where: { id: clubId } });
+  // Soft delete: помечаем deletedAt, деактивируем.
+  // Hard delete не используем — клуб может числиться в истории турниров.
+  await prisma.club.update({
+    where: { id: clubId },
+    data: { isActive: false, deletedAt: new Date() },
+  });
 
   await logAudit({
     actorUserId: actorId,
@@ -666,6 +678,7 @@ export async function deleteClubByAdmin(actorId: string, clubId: string) {
     targetEntity: "Club",
     targetId: clubId,
     before: { name: club.name, city: club.city },
+    after: { deletedAt: new Date().toISOString(), isActive: false },
   });
 
   return { ok: true };
@@ -728,10 +741,11 @@ export async function updateGroupByAdmin(
   if (!group)
     throw new AdminManagementError("GROUP_NOT_FOUND", "Топ табылмады", 404);
 
-  const data: any = {};
-  if (input.name !== undefined) data.name = input.name.trim();
-  if (input.ageMin !== undefined) data.ageMin = input.ageMin;
-  if (input.ageMax !== undefined) data.ageMax = input.ageMax;
+  const data: Prisma.ClubGroupUpdateInput = {
+    ...(input.name !== undefined && { name: input.name.trim() }),
+    ...(input.ageMin !== undefined && { ageMin: input.ageMin }),
+    ...(input.ageMax !== undefined && { ageMax: input.ageMax }),
+  };
 
   const updated = await prisma.clubGroup.update({
     where: { id: groupId },
@@ -792,7 +806,13 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
       404,
     );
 
-  await prisma.user.delete({ where: { id: userId } });
+  // Soft delete: деактивируем аккаунт и помечаем deletedAt.
+  // Hard delete не используем — данные нужны для истории турниров и аудита.
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: false, deletedAt: new Date() },
+  });
+  await redis.del(`user-cache:${userId}`);
 
   await logAudit({
     actorUserId: actorId,
@@ -805,6 +825,7 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
       name: user.name,
       surname: user.surname,
     },
+    after: { deletedAt: new Date().toISOString(), isActive: false },
   });
 
   return { ok: true };
@@ -813,6 +834,133 @@ export async function deleteUserByAdmin(actorId: string, userId: string) {
 // ============================================================
 // REPORTS / STATS
 // ============================================================
+
+/**
+ * Операционные бизнес-метрики для admin dashboard.
+ * Отвечает на вопрос "что происходит прямо сейчас и за последние 24 часа".
+ */
+export async function getBusinessMetrics() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+  const [
+    matchesToday,
+    matchesCompleted24h,
+    matchDurations,
+    activeTatamis,
+    activeTournaments,
+    peakHourData,
+    _categoryLoad,
+    liveMatches,
+  ] = await Promise.all([
+    // Матчи начатые сегодня
+    prisma.match.count({
+      where: { startedAt: { gte: today } },
+    }),
+
+    // Завершённых матчей за 24 часа
+    prisma.match.count({
+      where: { status: MatchStatus.COMPLETED, finishedAt: { gte: yesterday } },
+    }),
+
+    // Длительность завершённых матчей (для среднего)
+    prisma.match.findMany({
+      where: {
+        status: MatchStatus.COMPLETED,
+        finishedAt: { gte: yesterday, not: null },
+        startedAt: { not: null },
+      },
+      select: { startedAt: true, finishedAt: true },
+      take: 200,
+    }),
+
+    // Активных татами прямо сейчас
+    prisma.match.groupBy({
+      by: ["tatamiNumber"],
+      where: { status: MatchStatus.IN_PROGRESS, tatamiNumber: { not: null } },
+      _count: { id: true },
+    }),
+
+    // Турниры в процессе
+    prisma.tournament.findMany({
+      where: { status: { in: [TournamentStatus.IN_PROGRESS, TournamentStatus.REGISTRATION_OPEN] } },
+      select: { id: true, name: true, status: true, startDate: true, tatamiCount: true },
+      orderBy: { startDate: "desc" },
+      take: 5,
+    }),
+
+    // Почасовое распределение матчей за 7 дней (пиковый час)
+    prisma.match.findMany({
+      where: {
+        status: MatchStatus.COMPLETED,
+        startedAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      select: { startedAt: true },
+      take: 1000,
+    }),
+
+    // Топ категория по нагрузке (больше всего матчей)
+    prisma.match.groupBy({
+      by: ["bracketId"],
+      where: { status: MatchStatus.COMPLETED, finishedAt: { gte: yesterday } },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 5,
+    }),
+
+    // Текущие матчи IN_PROGRESS
+    prisma.match.count({ where: { status: MatchStatus.IN_PROGRESS } }),
+  ]);
+
+  // Среднее время матча в секундах
+  const durations = matchDurations
+    .filter((m) => m.startedAt && m.finishedAt)
+    .map((m) => Math.floor((m.finishedAt!.getTime() - m.startedAt!.getTime()) / 1000));
+  const avgDurationSec: number | null = durations.length > 0
+    ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+    : null;
+
+  // Пиковый час дня (0-23)
+  const hourCounts: Record<number, number> = {};
+  for (const m of peakHourData) {
+    if (!m.startedAt) continue;
+    const h = m.startedAt.getHours();
+    hourCounts[h] = (hourCounts[h] ?? 0) + 1;
+  }
+  const peakHour = Object.entries(hourCounts).sort(([, a], [, b]) => b - a)[0];
+
+  // Матчей в очереди (PENDING с татами)
+  const matchesInQueue = await prisma.match.count({
+    where: { status: MatchStatus.PENDING, tatamiNumber: { not: null } },
+  });
+
+  return {
+    realtime: {
+      liveMatches,
+      activeTatamis: activeTatamis.length,
+      matchesInQueue,
+    },
+    today: {
+      matchesStarted: matchesToday,
+      matchesCompleted: matchesCompleted24h,
+      avgMatchDurationSec: avgDurationSec,
+      avgMatchDurationMin: avgDurationSec ? Math.round(avgDurationSec / 60 * 10) / 10 : null,
+    },
+    activeTournaments: activeTournaments.map((t) => ({
+      id: t.id,
+      name: t.name,
+      status: t.status,
+      startDate: t.startDate,
+      tatamiCount: t.tatamiCount,
+    })),
+    insights: {
+      peakHour: peakHour ? { hour: Number(peakHour[0]), matchCount: peakHour[1] } : null,
+      hourlyDistribution: hourCounts,
+    },
+    generatedAt: now.toISOString(),
+  };
+}
 
 export async function getStats() {
   const [tournaments, users, clubs, matches, ratingEntries] = await Promise.all(
@@ -830,5 +978,203 @@ export async function getStats() {
     clubsCount: clubs,
     matches,
     ratingEntriesCount: ratingEntries,
+  };
+}
+
+// ============================================================
+// FEDERATION ANALYTICS — для отчётов Министерству спорта
+// ============================================================
+
+export async function getFederationAnalytics() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // 24 месяца назад для трендов
+  const since24m = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+
+  const [
+    athletesByMonth,
+    tournamentsByMonth,
+    matchesByMonth,
+    genderBreakdown,
+    athletesByCity,
+    topClubs,
+    allAthletes,
+    weightCategories,
+    completedTournaments,
+    ratingTopAthletes,
+  ] = await Promise.all([
+    // Регистрации спортсменов по месяцам (createdAt)
+    prisma.$queryRaw<Array<{ year: number; month: number; count: bigint }>>`
+      SELECT EXTRACT(YEAR FROM "createdAt")::int AS year,
+             EXTRACT(MONTH FROM "createdAt")::int AS month,
+             COUNT(*) AS count
+      FROM "User"
+      WHERE role = 'ATHLETE' AND "createdAt" >= ${since24m}
+      GROUP BY year, month
+      ORDER BY year, month
+    `,
+
+    // Турниры по месяцам (startDate)
+    prisma.$queryRaw<Array<{ year: number; month: number; count: bigint; status: string }>>`
+      SELECT EXTRACT(YEAR FROM "startDate")::int AS year,
+             EXTRACT(MONTH FROM "startDate")::int AS month,
+             COUNT(*) AS count,
+             status
+      FROM "Tournament"
+      WHERE "startDate" >= ${since24m}
+      GROUP BY year, month, status
+      ORDER BY year, month
+    `,
+
+    // Матчи по месяцам (завершённые)
+    prisma.$queryRaw<Array<{ year: number; month: number; count: bigint }>>`
+      SELECT EXTRACT(YEAR FROM "finishedAt")::int AS year,
+             EXTRACT(MONTH FROM "finishedAt")::int AS month,
+             COUNT(*) AS count
+      FROM "Match"
+      WHERE status = 'COMPLETED' AND "finishedAt" >= ${since24m}
+      GROUP BY year, month
+      ORDER BY year, month
+    `,
+
+    // Пол спортсменов
+    prisma.user.groupBy({
+      by: ["gender"],
+      where: { role: "ATHLETE", isActive: true },
+      _count: { id: true },
+    }),
+
+    // Спортсмены по городам клубов
+    prisma.$queryRaw<Array<{ city: string; count: bigint }>>`
+      SELECT c.city, COUNT(u.id) AS count
+      FROM "User" u
+      JOIN "Club" c ON u."clubId" = c.id
+      WHERE u.role = 'ATHLETE' AND u."isActive" = true AND c."isActive" = true
+      GROUP BY c.city
+      ORDER BY count DESC
+      LIMIT 15
+    `,
+
+    // Топ клубов по количеству спортсменов
+    prisma.$queryRaw<Array<{ clubId: string; name: unknown; city: string; count: bigint }>>`
+      SELECT c.id AS "clubId", c.name, c.city, COUNT(u.id) AS count
+      FROM "User" u
+      JOIN "Club" c ON u."clubId" = c.id
+      WHERE u.role = 'ATHLETE' AND u."isActive" = true
+      GROUP BY c.id, c.name, c.city
+      ORDER BY count DESC
+      LIMIT 10
+    `,
+
+    // Все спортсмены с dateOfBirth для расчёта возраста
+    prisma.user.findMany({
+      where: { role: "ATHLETE", isActive: true, dateOfBirth: { not: null } },
+      select: { dateOfBirth: true, gender: true },
+    }),
+
+    // Популярность весовых категорий
+    prisma.$queryRaw<Array<{ gender: string; weightMax: number; count: bigint }>>`
+      SELECT c.gender, c."weightMax", COUNT(ae.id) AS count
+      FROM "ApplicationEntry" ae
+      JOIN "Category" c ON ae."categoryId" = c.id
+      GROUP BY c.gender, c."weightMax"
+      ORDER BY count DESC
+      LIMIT 20
+    `,
+
+    // Завершённые турниры за текущий год
+    prisma.tournament.findMany({
+      where: {
+        status: "COMPLETED",
+        startDate: { gte: new Date(currentYear, 0, 1) },
+      },
+      select: { id: true, name: true, city: true, startDate: true, _count: { select: { categories: true } } },
+      orderBy: { startDate: "desc" },
+    }),
+
+    // Топ-10 спортсменов по рейтингу в текущем году
+    prisma.$queryRaw<Array<{ athleteId: string; name: string; surname: string; total: number; clubCity: string | null }>>`
+      SELECT re."athleteId",
+             u.name,
+             u.surname,
+             SUM(re.points)::float AS total,
+             c.city AS "clubCity"
+      FROM "RatingEntry" re
+      JOIN "User" u ON re."athleteId" = u.id
+      LEFT JOIN "Club" c ON u."clubId" = c.id
+      JOIN "Tournament" t ON re."tournamentId" = t.id
+      WHERE EXTRACT(YEAR FROM t."startDate") = ${currentYear}
+      GROUP BY re."athleteId", u.name, u.surname, c.city
+      ORDER BY total DESC
+      LIMIT 10
+    `,
+  ]);
+
+  // Средний возраст по полу
+  const ageByGender: Record<string, { count: number; totalAge: number }> = {};
+  const nowMs = now.getTime();
+  for (const a of allAthletes) {
+    if (!a.dateOfBirth) continue;
+    const ageYears = (nowMs - new Date(a.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    const g = a.gender ?? "UNKNOWN";
+    if (!ageByGender[g]) ageByGender[g] = { count: 0, totalAge: 0 };
+    ageByGender[g].count++;
+    ageByGender[g].totalAge += ageYears;
+  }
+  const avgAgeByGender = Object.entries(ageByGender).map(([gender, d]) => ({
+    gender,
+    avgAge: Math.round((d.totalAge / d.count) * 10) / 10,
+    count: d.count,
+  }));
+
+  return {
+    period: { from: since24m.toISOString(), to: now.toISOString() },
+    athletes: {
+      byMonth: athletesByMonth.map((r) => ({ year: r.year, month: r.month, count: Number(r.count) })),
+      byCity: athletesByCity.map((r) => ({ city: r.city, count: Number(r.count) })),
+      byGender: genderBreakdown.map((r) => ({ gender: r.gender ?? "UNKNOWN", count: r._count.id })),
+      avgAgeByGender,
+      topClubs: topClubs.map((r) => ({
+        clubId: r.clubId,
+        name: r.name,
+        city: r.city,
+        count: Number(r.count),
+      })),
+    },
+    tournaments: {
+      byMonth: tournamentsByMonth.map((r) => ({
+        year: r.year,
+        month: r.month,
+        count: Number(r.count),
+        status: r.status,
+      })),
+      completedThisYear: completedTournaments.map((t) => ({
+        id: t.id,
+        name: t.name,
+        city: t.city,
+        startDate: t.startDate,
+        categoriesCount: t._count.categories,
+      })),
+    },
+    matches: {
+      byMonth: matchesByMonth.map((r) => ({ year: r.year, month: r.month, count: Number(r.count) })),
+    },
+    categories: {
+      popularWeightClasses: weightCategories.map((r) => ({
+        gender: r.gender,
+        weightMax: r.weightMax,
+        count: Number(r.count),
+      })),
+    },
+    ratings: {
+      topAthletesThisYear: ratingTopAthletes.map((r) => ({
+        athleteId: r.athleteId,
+        name: r.name,
+        surname: r.surname,
+        total: r.total,
+        clubCity: r.clubCity,
+      })),
+    },
+    generatedAt: now.toISOString(),
   };
 }

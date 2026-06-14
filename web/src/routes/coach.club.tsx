@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -25,6 +26,7 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { api, ApiError, mediaUrl } from "@/lib/api";
+import type { AddAthleteInput, Club, ClubGroup, ClubJoinRequest, User } from "@/lib/api-types";
 import { Avatar, LazyImage } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -32,6 +34,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/club")({
   head: () => ({ meta: [{ title: "Клуб — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
       <CoachClub />
@@ -110,7 +113,7 @@ function CoachClub() {
         qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
       ]);
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
   });
 
   return (
@@ -247,13 +250,13 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
-  const [result, setResult] = useState<{ created: number; skipped: number; errors: any[] } | null>(
+  const [result, setResult] = useState<{ created: number; skipped: number; errors: { row: number; email: string; reason: string }[] } | null>(
     null,
   );
   //   const _qc = useQueryClient();
 
   const importMut = useMutation({
-    mutationFn: (rows: any[]) => api.clubs.bulkImportAthletes(clubId, rows),
+    mutationFn: (rows: AddAthleteInput[]) => api.clubs.bulkImportAthletes(clubId, rows),
     onSuccess: (r) => {
       setResult(r);
       onImported();
@@ -261,14 +264,14 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
         toast.success(t("coach_club.import_success", { count: r.created })),
       );
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       import("sonner").then(({ toast }) =>
-        toast.error(e instanceof ApiError ? e.message : t("error.generic")),
+        toast.error(e instanceof ApiError ? (e as ApiError).message : t("error.generic")),
       );
     },
   });
 
-  function parseCsv(text: string): any[] {
+  function parseCsv(text: string): AddAthleteInput[] {
     const lines = text.trim().split("\n").filter(Boolean);
     if (lines.length < 2) return [];
     const headers = lines[0]!.split(",").map((h) => h.trim().toLowerCase());
@@ -278,6 +281,11 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
       headers.forEach((h, i) => {
         obj[h] = vals[i] ?? "";
       });
+      const normalizedGender = obj.gender?.toUpperCase();
+      const gender =
+        normalizedGender === "MALE" || normalizedGender === "FEMALE"
+          ? normalizedGender
+          : undefined;
       return {
         email: obj.email,
         password: obj.password,
@@ -286,10 +294,7 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
         nameLatin: obj.namelatin || obj.name_latin || undefined,
         surnameLatin: obj.surnamelatin || obj.surname_latin || undefined,
         dateOfBirth: obj.dateofbirth || obj.date_of_birth || undefined,
-        gender:
-          obj.gender?.toUpperCase() === "MALE" || obj.gender?.toUpperCase() === "FEMALE"
-            ? obj.gender.toUpperCase()
-            : undefined,
+        gender,
         weightKg: obj.weightkg || obj.weight ? parseFloat(obj.weightkg || obj.weight) : undefined,
         beltRank: obj.beltrank || obj.belt_rank || undefined,
         phone: obj.phone || undefined,
@@ -556,7 +561,7 @@ function GroupsManager({
   onChanged,
 }: {
   clubId: string;
-  groups: any[];
+  groups: ClubGroup[];
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -571,25 +576,26 @@ function GroupsManager({
       setError("");
       onChanged();
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_club.group_add_error")),
   });
 
   const updateGroup = useMutation({
-    mutationFn: (group: any) => api.clubs.updateGroup(group.id, toGroupPayload(group)),
+    mutationFn: (group: EditableClubGroup) =>
+      api.clubs.updateGroup(group.id, toGroupPayload(group)),
     onSuccess: () => {
       setEditingId(null);
       setError("");
       onChanged();
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_club.group_save_error")),
   });
 
   const deleteGroup = useMutation({
     mutationFn: (id: string) => api.clubs.deleteGroup(id),
     onSuccess: onChanged,
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_club.group_delete_error")),
   });
 
@@ -668,12 +674,12 @@ function GroupCard({
   onSave,
   onDelete,
 }: {
-  group: any;
+  group: ClubGroup;
   isEditing: boolean;
   isBusy: boolean;
   onEdit: () => void;
   onCancel: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: EditableClubGroup) => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
@@ -766,7 +772,12 @@ function GroupCard({
   );
 }
 
-function ClubPreview({ club, fallback }: { club: any; fallback: ClubForm }) {
+type EditableClubGroup = Omit<ClubGroup, "ageMin" | "ageMax"> & {
+  ageMin: string;
+  ageMax: string;
+};
+
+function ClubPreview({ club, fallback }: { club: Club | null | undefined; fallback: ClubForm }) {
   const { t } = useTranslation();
   const logo = club?.logoUrl || fallback.logoUrl;
   const name =
@@ -808,7 +819,7 @@ function CoachJoinClubPanel({
   isLoading,
   onChanged,
 }: {
-  requests: any[];
+  requests: ClubJoinRequest[];
   isLoading: boolean;
   onChanged: () => void | Promise<void>;
 }) {
@@ -828,7 +839,7 @@ function CoachJoinClubPanel({
       setError("");
       await onChanged();
     },
-    onError: (e: any) =>
+    onError: (e: unknown) =>
       setError(e instanceof ApiError ? e.message : t("coach_club.request_error")),
   });
   const cancelRequest = useMutation({
@@ -837,7 +848,7 @@ function CoachJoinClubPanel({
       setError("");
       await onChanged();
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
   });
 
   return (
@@ -876,7 +887,7 @@ function CoachJoinClubPanel({
         <LoadingState />
       ) : (
         <div className="space-y-2">
-          {(clubsQuery.data?.items ?? []).map((club: any) => {
+          {(clubsQuery.data?.items ?? []).map((club: Club) => {
             const isCurrentPending = pending?.clubId === club.id;
             return (
               <div
@@ -919,7 +930,7 @@ function IncomingCoachRequests({
   isLoading,
   onChanged,
 }: {
-  requests: any[];
+  requests: ClubJoinRequest[];
   isLoading: boolean;
   onChanged: () => void | Promise<void>;
 }) {
@@ -988,7 +999,7 @@ function ClubCoaches({
   clubId: string;
   currentUserId?: string;
   canManage: boolean;
-  coaches: any[];
+  coaches: User[];
   onChanged: () => void | Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -1081,7 +1092,7 @@ function Field({ label, value, onChange, className = "", ...rest }: FieldProps) 
   );
 }
 
-function toClubForm(club: any): ClubForm {
+function toClubForm(club: Club | null | undefined): ClubForm {
   if (!club) return emptyForm;
   return {
     name: normalizeI18n(club.name),
@@ -1104,7 +1115,7 @@ function fromClubForm(form: ClubForm) {
   };
 }
 
-function normalizeI18n(value: any): Record<Locale, string> {
+function normalizeI18n(value: import("@/lib/api-types").LocalizedName): Record<Locale, string> {
   if (!value) return { kk: "", ru: "", en: "" };
   if (typeof value === "string") return { kk: value, ru: "", en: "" };
   return { kk: value.kk ?? "", ru: value.ru ?? "", en: value.en ?? "" };
@@ -1118,7 +1129,7 @@ function compactI18n(value: Record<Locale, string>) {
   };
 }
 
-function toGroupPayload(group: any) {
+function toGroupPayload(group: { name: string; ageMin: string | number; ageMax: string | number }) {
   return {
     name: group.name.trim(),
     ageMin: Number(group.ageMin),
@@ -1126,7 +1137,7 @@ function toGroupPayload(group: any) {
   };
 }
 
-function localizeName(value: any): string {
+function localizeName(value: import("@/lib/api-types").LocalizedName): string {
   if (!value) return "";
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || "";

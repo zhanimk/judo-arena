@@ -15,6 +15,8 @@ import { Route as RankingsRouteImport } from './routes/rankings'
 import { Route as ProtocolRouteImport } from './routes/protocol'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JudgeRouteImport } from './routes/judge'
+import { Route as Index3RouteImport } from './routes/index 3'
+import { Route as Index2RouteImport } from './routes/index 2'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AthleteRouteImport } from './routes/athlete'
@@ -28,6 +30,7 @@ import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as TatamiTokenRouteImport } from './routes/tatami.$token'
 import { Route as LiveWallTournamentIdRouteImport } from './routes/live-wall.$tournamentId'
 import { Route as JudgeTokenRouteImport } from './routes/judge.$token'
+import { Route as DisplayTournamentIdRouteImport } from './routes/display.$tournamentId'
 import { Route as CoachTournamentsRouteImport } from './routes/coach.tournaments'
 import { Route as CoachProfileRouteImport } from './routes/coach.profile'
 import { Route as CoachOnboardingRouteImport } from './routes/coach.onboarding'
@@ -52,6 +55,7 @@ import { Route as AdminMatchesRouteImport } from './routes/admin.matches'
 import { Route as AdminClubsRouteImport } from './routes/admin.clubs'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminApplicationsRouteImport } from './routes/admin.applications'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as CoachTournamentsIdRouteImport } from './routes/coach.tournaments.$id'
 import { Route as CoachAthletesIdRouteImport } from './routes/coach.athletes.$id'
 import { Route as CoachApplicationsIdRouteImport } from './routes/coach.applications.$id'
@@ -88,6 +92,16 @@ const LoginRoute = LoginRouteImport.update({
 const JudgeRoute = JudgeRouteImport.update({
   id: '/judge',
   path: '/judge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Index3Route = Index3RouteImport.update({
+  id: '/index 3',
+  path: '/index 3',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Index2Route = Index2RouteImport.update({
+  id: '/index 2',
+  path: '/index 2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -154,6 +168,11 @@ const JudgeTokenRoute = JudgeTokenRouteImport.update({
   id: '/$token',
   path: '/$token',
   getParentRoute: () => JudgeRoute,
+} as any)
+const DisplayTournamentIdRoute = DisplayTournamentIdRouteImport.update({
+  id: '/display/$tournamentId',
+  path: '/display/$tournamentId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CoachTournamentsRoute = CoachTournamentsRouteImport.update({
   id: '/tournaments',
@@ -275,6 +294,11 @@ const AdminApplicationsRoute = AdminApplicationsRouteImport.update({
   path: '/applications',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
 const CoachTournamentsIdRoute = CoachTournamentsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -318,12 +342,15 @@ export interface FileRoutesByFullPath {
   '/athlete': typeof AthleteRouteWithChildren
   '/coach': typeof CoachRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index 2': typeof Index2Route
+  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
   '/rankings': typeof RankingsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
@@ -348,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/coach/onboarding': typeof CoachOnboardingRoute
   '/coach/profile': typeof CoachProfileRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
+  '/display/$tournamentId': typeof DisplayTournamentIdRoute
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
   '/tatami/$token': typeof TatamiTokenRoute
@@ -367,12 +395,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index 2': typeof Index2Route
+  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
   '/rankings': typeof RankingsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
@@ -397,6 +428,7 @@ export interface FileRoutesByTo {
   '/coach/onboarding': typeof CoachOnboardingRoute
   '/coach/profile': typeof CoachProfileRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
+  '/display/$tournamentId': typeof DisplayTournamentIdRoute
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
   '/tatami/$token': typeof TatamiTokenRoute
@@ -420,12 +452,15 @@ export interface FileRoutesById {
   '/athlete': typeof AthleteRouteWithChildren
   '/coach': typeof CoachRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index 2': typeof Index2Route
+  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
   '/rankings': typeof RankingsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/clubs': typeof AdminClubsRouteWithChildren
@@ -450,6 +485,7 @@ export interface FileRoutesById {
   '/coach/onboarding': typeof CoachOnboardingRoute
   '/coach/profile': typeof CoachProfileRoute
   '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
+  '/display/$tournamentId': typeof DisplayTournamentIdRoute
   '/judge/$token': typeof JudgeTokenRoute
   '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
   '/tatami/$token': typeof TatamiTokenRoute
@@ -474,12 +510,15 @@ export interface FileRouteTypes {
     | '/athlete'
     | '/coach'
     | '/forgot-password'
+    | '/index 2'
+    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
     | '/rankings'
     | '/reset-password'
     | '/tournaments'
+    | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
     | '/admin/clubs'
@@ -504,6 +543,7 @@ export interface FileRouteTypes {
     | '/coach/onboarding'
     | '/coach/profile'
     | '/coach/tournaments'
+    | '/display/$tournamentId'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
     | '/tatami/$token'
@@ -523,12 +563,15 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/forgot-password'
+    | '/index 2'
+    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
     | '/rankings'
     | '/reset-password'
     | '/tournaments'
+    | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
     | '/admin/clubs'
@@ -553,6 +596,7 @@ export interface FileRouteTypes {
     | '/coach/onboarding'
     | '/coach/profile'
     | '/coach/tournaments'
+    | '/display/$tournamentId'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
     | '/tatami/$token'
@@ -575,12 +619,15 @@ export interface FileRouteTypes {
     | '/athlete'
     | '/coach'
     | '/forgot-password'
+    | '/index 2'
+    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
     | '/rankings'
     | '/reset-password'
     | '/tournaments'
+    | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
     | '/admin/clubs'
@@ -605,6 +652,7 @@ export interface FileRouteTypes {
     | '/coach/onboarding'
     | '/coach/profile'
     | '/coach/tournaments'
+    | '/display/$tournamentId'
     | '/judge/$token'
     | '/live-wall/$tournamentId'
     | '/tatami/$token'
@@ -628,12 +676,15 @@ export interface RootRouteChildren {
   AthleteRoute: typeof AthleteRouteWithChildren
   CoachRoute: typeof CoachRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  Index2Route: typeof Index2Route
+  Index3Route: typeof Index3Route
   JudgeRoute: typeof JudgeRouteWithChildren
   LoginRoute: typeof LoginRoute
   ProtocolRoute: typeof ProtocolRoute
   RankingsRoute: typeof RankingsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TournamentsRoute: typeof TournamentsRouteWithChildren
+  DisplayTournamentIdRoute: typeof DisplayTournamentIdRoute
   LiveWallTournamentIdRoute: typeof LiveWallTournamentIdRoute
   TatamiTokenRoute: typeof TatamiTokenRoute
 }
@@ -680,6 +731,20 @@ declare module '@tanstack/react-router' {
       path: '/judge'
       fullPath: '/judge'
       preLoaderRoute: typeof JudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/index 3': {
+      id: '/index 3'
+      path: '/index 3'
+      fullPath: '/index 3'
+      preLoaderRoute: typeof Index3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/index 2': {
+      id: '/index 2'
+      path: '/index 2'
+      fullPath: '/index 2'
+      preLoaderRoute: typeof Index2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -772,6 +837,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/judge/$token'
       preLoaderRoute: typeof JudgeTokenRouteImport
       parentRoute: typeof JudgeRoute
+    }
+    '/display/$tournamentId': {
+      id: '/display/$tournamentId'
+      path: '/display/$tournamentId'
+      fullPath: '/display/$tournamentId'
+      preLoaderRoute: typeof DisplayTournamentIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/coach/tournaments': {
       id: '/coach/tournaments'
@@ -941,6 +1013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/coach/tournaments/$id': {
       id: '/coach/tournaments/$id'
       path: '/$id'
@@ -1029,6 +1108,7 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApplicationsRoute: typeof AdminApplicationsRoute
   AdminAuditRoute: typeof AdminAuditRoute
   AdminClubsRoute: typeof AdminClubsRouteWithChildren
@@ -1044,6 +1124,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApplicationsRoute: AdminApplicationsRoute,
   AdminAuditRoute: AdminAuditRoute,
   AdminClubsRoute: AdminClubsRouteWithChildren,
@@ -1182,12 +1263,15 @@ const rootRouteChildren: RootRouteChildren = {
   AthleteRoute: AthleteRouteWithChildren,
   CoachRoute: CoachRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  Index2Route: Index2Route,
+  Index3Route: Index3Route,
   JudgeRoute: JudgeRouteWithChildren,
   LoginRoute: LoginRoute,
   ProtocolRoute: ProtocolRoute,
   RankingsRoute: RankingsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TournamentsRoute: TournamentsRouteWithChildren,
+  DisplayTournamentIdRoute: DisplayTournamentIdRoute,
   LiveWallTournamentIdRoute: LiveWallTournamentIdRoute,
   TatamiTokenRoute: TatamiTokenRoute,
 }

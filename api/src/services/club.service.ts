@@ -9,6 +9,7 @@
  */
 
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../lib/env.js";
 import type {
@@ -34,7 +35,7 @@ export class ClubError extends Error {
 // ============================================================
 
 export async function listClubs(q: ListClubsQuery) {
-  const where: any = {};
+  const where: Prisma.ClubWhereInput = { deletedAt: null };
   if (q.city) where.city = { contains: q.city, mode: "insensitive" };
   if (q.search) {
     where.OR = [
@@ -215,6 +216,8 @@ export async function listClubMembers(clubId: string) {
       nameLatin: true, surnameLatin: true, dateOfBirth: true,
       gender: true, weightKg: true, beltRank: true,
       isActive: true, preferredLocale: true, avatarUrl: true,
+      role: true, phone: true, clubId: true,
+      documents: { orderBy: { updatedAt: "desc" as const } },
     },
   });
   return members;
@@ -354,11 +357,13 @@ export async function updateAthlete(
 
   // Только админ и тренер могут менять clubId и isActive
   const canChangePrivileged = isAdmin || isHisCoach;
-  const data: any = { ...input };
-  if (!canChangePrivileged) {
-    delete data.clubId;
-    delete data.isActive;
-  }
+  const { clubId: _clubId, isActive: _isActive, ...rest } = input as typeof input & {
+    clubId?: string;
+    isActive?: boolean;
+  };
+  const data: Prisma.UserUpdateInput = canChangePrivileged
+    ? { ...input }
+    : rest;
 
   return prisma.user.update({
     where: { id: athleteId },

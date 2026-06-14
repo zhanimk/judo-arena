@@ -1,3 +1,4 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   DashboardShell,
@@ -19,6 +20,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "@/lib/api";
+import type { Tournament, ApplicationEntry } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
@@ -26,6 +28,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
       <AthleteTournaments />
@@ -65,10 +68,10 @@ function AthleteTournaments() {
     return map;
   }, [entriesQuery.data]);
   const approvedEntries = (entriesQuery.data ?? []).filter(
-    (entry: any) => entry.application?.status === "APPROVED",
+    (entry: ApplicationEntry) => entry.application?.status === "APPROVED",
   );
   const pendingEntries = (entriesQuery.data ?? []).filter(
-    (entry: any) => entry.application?.status === "SUBMITTED",
+    (entry: ApplicationEntry) => entry.application?.status === "SUBMITTED",
   );
 
   return (
@@ -131,7 +134,7 @@ function AthleteTournaments() {
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tournamentsQuery.data!.items.map((tournament: any) => {
+            {tournamentsQuery.data!.items.map((tournament: Tournament) => {
               const myEntries = entriesByTournament.get(tournament.id) ?? [];
               const primaryEntry = myEntries[0];
               const app = primaryEntry?.application;
@@ -169,7 +172,7 @@ function AthleteTournaments() {
                         </span>
                       </div>
                       <div className="mt-2 space-y-1">
-                        {myEntries.map((entry: any) => (
+                        {myEntries.map((entry: ApplicationEntry) => (
                           <div key={entry.id} className="flex items-center justify-between gap-2">
                             <span className="truncate">{categoryTitle(entry.category, t)}</span>
                             {(app?.status === "DRAFT" || app?.status === "SUBMITTED") && (
@@ -285,7 +288,7 @@ function applicationTone(status?: string): string {
   return "border-border/50 bg-muted/20 text-muted-foreground";
 }
 
-function categoryTitle(c: any, t: (key: string, opts?: any) => string): string {
+function categoryTitle(c: import("@/lib/api-types").Category | null | undefined, t: (key: string, opts?: Record<string, unknown>) => string): string {
   if (!c) return t("common.category");
   const custom = localizeName(c.name);
   if (custom !== "—") return custom;
@@ -293,7 +296,7 @@ function categoryTitle(c: any, t: (key: string, opts?: any) => string): string {
   return `${genderLabel} ${c.ageMin}-${c.ageMax} ${t("common.years_short")} ${c.weightMin}-${c.weightMax} кг`;
 }
 
-function localizeName(name: any): string {
+function localizeName(name: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";

@@ -1,8 +1,10 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
 import { Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { Category, MatchSideScore } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
@@ -11,6 +13,7 @@ import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches/$id")({
   head: () => ({ meta: [{ title: "Жекпе-жек — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
       <AthleteMatchDetails />
@@ -104,7 +107,7 @@ function AthleteMatchDetails() {
                 <EmptyState title={t("matches.no_events")} hint={t("matches.no_events_hint")} />
               ) : (
                 <ol className="space-y-2 text-sm">
-                  {(match.events ?? []).map((event: any) => (
+                  {(match.events ?? []).map((event) => (
                     <li key={event.id} className="glass flex items-center justify-between gap-3 rounded-md p-3">
                       <div className="min-w-0">
                         <div className="font-medium">{eventLabel(event.type, event.side, t)}</div>
@@ -128,7 +131,7 @@ function AthleteMatchDetails() {
   );
 }
 
-function ScoreBox({ title, score, active = false }: { title: string; score: any; active?: boolean }) {
+function ScoreBox({ title, score, active = false }: { title: string; score: MatchSideScore | null | undefined; active?: boolean }) {
   return (
     <div className={`rounded-md border p-3 ${active ? "border-gold/40 bg-gold/10" : "border-border/50 bg-muted/20"}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
@@ -160,13 +163,13 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function categoryTitle(category: any, t: (key: string) => string): string {
+function categoryTitle(category: Category | null | undefined, t: (key: string) => string): string {
   if (!category) return t("common.category");
   const gender = category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
   return `${gender} ${category.ageMin}-${category.ageMax}, ${category.weightMin}-${category.weightMax} кг`;
 }
 
-function localizeName(value: any): string {
+function localizeName(value: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!value) return "—";
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || "—";

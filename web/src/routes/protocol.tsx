@@ -2,6 +2,7 @@
  * Страница протокола — список завершённых турниров с PDF-протоколами.
  */
 
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -9,9 +10,11 @@ import { FileText, Loader2, Calendar, MapPin, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import type { Tournament } from "@/lib/api-types";
 
 export const Route = createFileRoute("/protocol")({
   head: () => ({ meta: [{ title: "Хаттамалар — Judo-Arena" }] }),
+  errorComponent: RouteErrorUI,
   component: Protocol,
 });
 
@@ -52,7 +55,7 @@ function Protocol() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {query.data!.items.map((tournament: any) => (
+            {query.data!.items.map((tournament: Tournament) => (
               <div key={tournament.id} className="glass rounded-xl p-5">
                 <div className="font-display text-lg font-semibold mb-2">
                   {localizeName(tournament.name)}
@@ -88,7 +91,7 @@ function Protocol() {
   );
 }
 
-function localizeName(n: any): string {
+function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

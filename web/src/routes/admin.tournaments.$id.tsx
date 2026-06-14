@@ -1,7 +1,8 @@
+import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { DashboardShell, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { AlertTriangle, ArrowLeft, FileText, GitBranch } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, GitBranch, MapPin } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, downloadWithAuth } from "@/lib/api";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -20,6 +21,7 @@ export { AGE_GROUPS } from "@/components/tournament/age-groups";
 
 export const Route = createFileRoute("/admin/tournaments/$id")({
   head: () => ({ meta: [{ title: "Жарыс басқару — Әкімші" }] }),
+  errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } => {
     const tab =
       typeof search.tab === "string" && isTournamentTab(search.tab) ? search.tab : undefined;
@@ -91,14 +93,14 @@ function AdminTournamentDetail() {
     mutationFn: (status: string) => api.tournaments.setStatus(id, status),
     onMutate: () => setError(""),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tournament", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   const finalize = useMutation({
     mutationFn: () => api.admin.finalize(id),
     onMutate: () => setError(""),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-tournament", id] }),
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("error.generic")),
   });
 
   useEffect(() => {
@@ -234,6 +236,12 @@ function AdminTournamentDetail() {
           >
             {t("tournament.public_page")} →
           </Link>
+          <button
+            onClick={() => selectTab("overview")}
+            className="text-sm px-4 py-1.5 rounded glass border border-border hover:border-gold/40 inline-flex items-center gap-1"
+          >
+            <MapPin className="h-4 w-4" /> Карта / Регламент
+          </button>
         </div>
       </div>
 
