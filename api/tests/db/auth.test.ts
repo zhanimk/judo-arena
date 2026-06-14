@@ -8,7 +8,15 @@
  * Run:  npm run test:db -w @judo-arena/api
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from "vitest";
 import { db, cleanup, makeAdmin, makeClub, requireDb } from "../helpers/db.js";
 
 // ── External side-effects that don't belong in unit tests ─────────────────
@@ -25,8 +33,8 @@ import {
   login,
   refresh,
   logout,
-  AuthError,
 } from "../../src/services/auth.service.js";
+import { verifyRefreshToken } from "../../src/lib/jwt.js";
 // ── Setup / teardown ──────────────────────────────────────────────────────
 
 beforeAll(async () => {
@@ -62,17 +70,16 @@ describe("register", () => {
       gender: "MALE",
     });
 
-    const row = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+    const row = await db.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
     expect(row).not.toBeNull();
     expect(row!.role).toBe("ATHLETE");
     expect(row!.emailVerified).toBe(false);
     // password is never stored in plaintext
     expect(row!.passwordHash).not.toBe("Password123!");
 
-    if (row) prismaDb.user.delete({ where: { id: row.id } }).catch(() => {});
-    // cleanup() handles it via makeAdmin/makeClub tracking — register goes through service
-    // so we manually track
-    // Actually cleanup won't know about this user — delete manually
+    if (row) await db.user.delete({ where: { id: row.id } }).catch(() => {});
   });
 
   it("normalises email to lowercase", async () => {
@@ -262,7 +269,8 @@ describe("logout", () => {
       gender: "MALE",
     });
     const { tokens } = await login({ email, password: "Password123!" });
-    await logout(user.id, tokens.refreshToken);
+    const payload = verifyRefreshToken(tokens.refreshToken);
+    await logout(user.id, payload.jti);
 
     await expect(refresh(tokens.refreshToken)).rejects.toThrow();
 

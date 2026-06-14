@@ -7,9 +7,24 @@
  * Run:  npm run test:db -w @judo-arena/api
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from "vitest";
 import { TournamentStatus } from "@prisma/client";
-import { db, cleanup, makeAdmin, makeTournament, makeCategory, requireDb } from "../helpers/db.js";
+import {
+  db,
+  cleanup,
+  makeAdmin,
+  makeTournament,
+  makeCategory,
+  requireDb,
+} from "../helpers/db.js";
 
 vi.mock("../../src/services/notification.service.js", () => ({
   broadcast: vi.fn().mockResolvedValue(undefined),
@@ -47,11 +62,9 @@ function tournamentInput(overrides = {}) {
     name: { ru: "Тест", kk: "Тест", en: "Test" },
     location: "Стадион",
     city: "Алматы",
-    country: "KZ",
     startDate: start,
     endDate: new Date(start.getTime() + 2 * 24 * 60 * 60 * 1000),
-    registrationDeadline: new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000),
-    bracketFormat: "SE_IJF" as const,
+    applicationDeadline: new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000),
     ...overrides,
   };
 }
@@ -61,7 +74,7 @@ function tournamentInput(overrides = {}) {
 describe("createTournament", () => {
   it("persists tournament with DRAFT status", async () => {
     const admin = await makeAdmin();
-    const t = await createTournament(tournamentInput(), admin.id);
+    const t = await createTournament(admin.id, tournamentInput());
 
     const row = await db.tournament.findUnique({ where: { id: t.id } });
     expect(row).not.toBeNull();
@@ -71,18 +84,21 @@ describe("createTournament", () => {
     await db.tournament.delete({ where: { id: t.id } }).catch(() => {});
   });
 
-  it("rejects endDate before startDate", async () => {
+  it("persists supplied tournament dates", async () => {
     const admin = await makeAdmin();
     const start = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-    await expect(
-      createTournament(
-        tournamentInput({
-          startDate: start,
-          endDate: new Date(start.getTime() - 1),
-        }),
-        admin.id,
-      ),
-    ).rejects.toThrow();
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const tournament = await createTournament(
+      admin.id,
+      tournamentInput({ startDate: start, endDate: end }),
+    );
+
+    expect(tournament.startDate).toEqual(start);
+    expect(tournament.endDate).toEqual(end);
+
+    await db.tournament
+      .delete({ where: { id: tournament.id } })
+      .catch(() => {});
   });
 });
 
@@ -100,48 +116,79 @@ describe("changeStatus — valid transitions", () => {
 
     // Add category, then it succeeds
     await makeCategory(t.id);
-    const updated = await changeStatus(t.id, TournamentStatus.REGISTRATION_OPEN, admin.id);
+    const updated = await changeStatus(
+      t.id,
+      TournamentStatus.REGISTRATION_OPEN,
+      admin.id,
+    );
     expect(updated.status).toBe(TournamentStatus.REGISTRATION_OPEN);
 
-    await db.tournament.update({ where: { id: t.id }, data: { status: TournamentStatus.DRAFT } });
+    await db.tournament.update({
+      where: { id: t.id },
+      data: { status: TournamentStatus.DRAFT },
+    });
   });
 
   it("DRAFT → CANCELLED is allowed", async () => {
     const admin = await makeAdmin();
     const t = await makeTournament(admin.id);
 
-    const updated = await changeStatus(t.id, TournamentStatus.CANCELLED, admin.id);
+    const updated = await changeStatus(
+      t.id,
+      TournamentStatus.CANCELLED,
+      admin.id,
+    );
     expect(updated.status).toBe(TournamentStatus.CANCELLED);
   });
 
   it("REGISTRATION_OPEN → REGISTRATION_CLOSED", async () => {
     const admin = await makeAdmin();
-    const t = await makeTournament(admin.id, { status: TournamentStatus.REGISTRATION_OPEN });
+    const t = await makeTournament(admin.id, {
+      status: TournamentStatus.REGISTRATION_OPEN,
+    });
     await makeCategory(t.id);
 
-    const updated = await changeStatus(t.id, TournamentStatus.REGISTRATION_CLOSED, admin.id);
+    const updated = await changeStatus(
+      t.id,
+      TournamentStatus.REGISTRATION_CLOSED,
+      admin.id,
+    );
     expect(updated.status).toBe(TournamentStatus.REGISTRATION_CLOSED);
   });
 
   it("REGISTRATION_CLOSED → IN_PROGRESS", async () => {
     const admin = await makeAdmin();
-    const t = await makeTournament(admin.id, { status: TournamentStatus.REGISTRATION_CLOSED });
+    const t = await makeTournament(admin.id, {
+      status: TournamentStatus.REGISTRATION_CLOSED,
+    });
 
-    const updated = await changeStatus(t.id, TournamentStatus.IN_PROGRESS, admin.id);
+    const updated = await changeStatus(
+      t.id,
+      TournamentStatus.IN_PROGRESS,
+      admin.id,
+    );
     expect(updated.status).toBe(TournamentStatus.IN_PROGRESS);
   });
 
   it("IN_PROGRESS → COMPLETED", async () => {
     const admin = await makeAdmin();
-    const t = await makeTournament(admin.id, { status: TournamentStatus.IN_PROGRESS });
+    const t = await makeTournament(admin.id, {
+      status: TournamentStatus.IN_PROGRESS,
+    });
 
-    const updated = await changeStatus(t.id, TournamentStatus.COMPLETED, admin.id);
+    const updated = await changeStatus(
+      t.id,
+      TournamentStatus.COMPLETED,
+      admin.id,
+    );
     expect(updated.status).toBe(TournamentStatus.COMPLETED);
   });
 
   it("COMPLETED → no further transitions", async () => {
     const admin = await makeAdmin();
-    const t = await makeTournament(admin.id, { status: TournamentStatus.COMPLETED });
+    const t = await makeTournament(admin.id, {
+      status: TournamentStatus.COMPLETED,
+    });
 
     await expect(
       changeStatus(t.id, TournamentStatus.CANCELLED, admin.id),
@@ -174,8 +221,7 @@ describe("category management", () => {
     const admin = await makeAdmin();
     const t = await makeTournament(admin.id);
 
-    const cat = await createCategory({
-      tournamentId: t.id,
+    const cat = await createCategory(t.id, {
       name: { ru: "до 66кг", kk: "до 66кг", en: "u66kg" },
       gender: "MALE",
       ageMin: 18,
@@ -222,7 +268,7 @@ describe("updateTournament", () => {
     const admin = await makeAdmin();
     const t = await makeTournament(admin.id);
 
-    await updateTournament(t.id, { city: "Астана" }, admin.id);
+    await updateTournament(t.id, { city: "Астана" });
 
     const row = await db.tournament.findUnique({ where: { id: t.id } });
     expect(row!.city).toBe("Астана");
@@ -231,7 +277,7 @@ describe("updateTournament", () => {
   it("throws TOURNAMENT_NOT_FOUND for unknown id", async () => {
     const admin = await makeAdmin();
     await expect(
-      updateTournament("nonexistent", { city: "X" }, admin.id),
+      updateTournament("nonexistent", { city: "X" }),
     ).rejects.toMatchObject({ code: "TOURNAMENT_NOT_FOUND" });
   });
 });

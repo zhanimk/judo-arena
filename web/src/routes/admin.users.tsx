@@ -7,7 +7,21 @@ import {
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { Bell, ChevronLeft, ChevronRight, Download, FileText, Loader2, Lock, Search, Send, Star, Unlock, X, ZoomIn } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Loader2,
+  Lock,
+  Search,
+  Send,
+  Star,
+  Unlock,
+  X,
+  ZoomIn,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError, mediaUrl } from "@/lib/api";
@@ -162,6 +176,7 @@ function AdminUsers() {
             <select
               value={clubFilter}
               onChange={(e) => setClubFilter(e.target.value)}
+              aria-label={t("common.all_clubs")}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("common.all_clubs")}</option>
@@ -174,6 +189,7 @@ function AdminUsers() {
             <select
               value={activeOnly}
               onChange={(e) => setActiveOnly(e.target.value)}
+              aria-label={t("common.status")}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("common.all")}</option>
@@ -188,7 +204,7 @@ function AdminUsers() {
         ) : query.isError ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={((query.error as Error))?.message ?? t("error.api")}
+            hint={(query.error as Error)?.message ?? t("error.api")}
           />
         ) : (query.data?.items ?? []).length === 0 ? (
           <div className="py-8 text-center">
@@ -305,7 +321,7 @@ function AdminUsers() {
           ) : leaderboard.isError ? (
             <EmptyState
               title={t("admin.ratings_load_error")}
-              hint={((leaderboard.error as Error))?.message ?? t("error.api")}
+              hint={(leaderboard.error as Error)?.message ?? t("error.api")}
             />
           ) : (leaderboard.data ?? []).length === 0 ? (
             <EmptyState title={t("admin.ratings_empty")} hint={t("admin.ratings_empty_hint")} />
@@ -381,15 +397,15 @@ function AdminUsers() {
           fetching={selectedUserQuery.isFetching}
           error={selectedUserQuery.error}
           onClose={() => setSelectedUserId(null)}
-          onNotify={(u) => { setSelectedUserId(null); setNotifyUser(u); }}
+          onNotify={(u) => {
+            setSelectedUserId(null);
+            setNotifyUser(u);
+          }}
         />
       )}
 
       {notifyUser && (
-        <SendNotificationModal
-          user={notifyUser}
-          onClose={() => setNotifyUser(null)}
-        />
+        <SendNotificationModal user={notifyUser} onClose={() => setNotifyUser(null)} />
       )}
     </DashboardShell>
   );
@@ -414,7 +430,9 @@ function UserDetailsModal({
 
   // Закрытие по Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
@@ -460,13 +478,13 @@ function UserDetailsModal({
                 {t("admin.send_notification")}
               </button>
             )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
@@ -475,7 +493,7 @@ function UserDetailsModal({
         ) : error ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={((error as Error))?.message ?? t("error.api")}
+            hint={(error as Error)?.message ?? t("error.api")}
           />
         ) : user ? (
           <div className="space-y-5">
@@ -723,22 +741,24 @@ function DocumentViewer({
 
     return () => {
       ctrl.abort();
-      setObjectUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+      setObjectUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
     };
   }, [document.id]);
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur" onClick={onClose}>
       {/* Header */}
       <div
         className="flex items-center justify-between gap-3 p-3 bg-black/60"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-widest text-white/50">{documentTypeLabel(document.type, t)}</div>
+          <div className="text-xs uppercase tracking-widest text-white/50">
+            {documentTypeLabel(document.type, t)}
+          </div>
           <div className="truncate text-sm font-medium text-white">
             {document.originalName || t("documents.open_file")}
           </div>
@@ -750,16 +770,24 @@ function DocumentViewer({
               <button
                 type="button"
                 disabled={idx === 0}
-                onClick={(e) => { e.stopPropagation(); onNavigate(documents[idx - 1]); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate(documents[idx - 1]);
+                }}
                 className="p-1 text-white/70 hover:text-white disabled:opacity-30"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs text-white/60">{idx + 1}/{documents.length}</span>
+              <span className="text-xs text-white/60">
+                {idx + 1}/{documents.length}
+              </span>
               <button
                 type="button"
                 disabled={idx === documents.length - 1}
-                onClick={(e) => { e.stopPropagation(); onNavigate(documents[idx + 1]); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate(documents[idx + 1]);
+                }}
                 className="p-1 text-white/70 hover:text-white disabled:opacity-30"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -784,7 +812,10 @@ function DocumentViewer({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -884,7 +915,10 @@ function roleCount(data: Record<string, number> | null | undefined, role: string
   return `(${data[key] ?? 0})`;
 }
 
-function placeLabel(place: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function placeLabel(
+  place: number,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   const label = t("admin.place_n", { n: place });
   if (place === 1) return `🥇 ${label}`;
   if (place === 2) return `🥈 ${label}`;
@@ -933,18 +967,29 @@ function SendNotificationModal({ user, onClose }: { user: User; onClose: () => v
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">{t("admin.send_notification")}</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("admin.send_notification")}
+            </p>
             <h3 className="mt-0.5 font-display text-base font-semibold">
               {user.name} {user.surname}
             </h3>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="space-y-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send.mutate();
+          }}
+          className="space-y-3"
+        >
           <div>
             <label className="text-xs uppercase tracking-widest text-muted-foreground">
               {t("admin.notification_subject")}
@@ -975,7 +1020,11 @@ function SendNotificationModal({ user, onClose }: { user: User; onClose: () => v
             disabled={send.isPending}
             className="w-full bg-gradient-gold text-gold-foreground py-2.5 rounded font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {send.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             {t("admin.notification_send")}
           </button>
         </form>
@@ -991,7 +1040,9 @@ function localeLabel(locale: string): string {
   return locale || "—";
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

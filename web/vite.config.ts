@@ -12,9 +12,21 @@ import { VitePWA } from "vite-plugin-pwa";
 const isVercel = process.env.VERCEL === "1";
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-// @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
 export default defineConfig({
-  cloudflare: !isVercel as false | undefined,
+  nitro: isVercel
+    ? false
+    : {
+        preset: "cloudflare-module",
+        output: {
+          dir: "dist",
+          serverDir: "dist/server",
+          publicDir: "dist/client",
+        },
+        cloudflare: {
+          nodeCompat: true,
+          deployConfig: true,
+        },
+      },
   tanstackStart: {
     server: { entry: "server" },
   },

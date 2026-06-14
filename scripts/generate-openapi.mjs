@@ -18,8 +18,8 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outputPath = process.argv[2] ?? resolve(__dirname, "../api/openapi.json");
 
-// Force non-production so swagger registers its routes
-process.env.NODE_ENV = "development";
+// Keep infrastructure clients lazy; Swagger is registered explicitly below.
+process.env.NODE_ENV = "test";
 
 // Minimal env required to boot the Fastify app without external connections
 process.env.DATABASE_URL ??= "postgresql://noop:noop@localhost:5432/noop";

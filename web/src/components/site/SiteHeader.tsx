@@ -103,7 +103,7 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
                   to={n.to}
                   className={`rounded-full px-4 py-2 text-sm font-medium leading-none transition-all ${
                     active
-                      ? "bg-gold text-gold-foreground shadow-gold"
+                      ? "bg-gold text-[#111827] shadow-gold"
                       : "text-muted-foreground hover:bg-gold/10 hover:text-foreground"
                   }`}
                 >

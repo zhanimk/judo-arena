@@ -7,11 +7,7 @@ import { Avatar } from "@/components/ui/avatar-image";
 import { mediaUrl } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type {
-  AthleteLeaderboardEntry,
-  Club,
-  ClubLeaderboardEntry,
-} from "@/lib/api-types";
+import type { AthleteLeaderboardEntry, Club, ClubLeaderboardEntry } from "@/lib/api-types";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/rankings")({
@@ -25,7 +21,9 @@ export const Route = createFileRoute("/rankings")({
   component: Rankings,
 });
 
-function localizeName(name: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  name: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";
@@ -38,11 +36,7 @@ function athleteName(a: { name?: string; surname?: string } | null | undefined) 
 type Tab = "athletes" | "clubs" | "weight";
 type Gender = "ALL" | "MALE" | "FEMALE";
 
-const MEDAL_COLORS = [
-  "text-yellow-400",
-  "text-slate-400",
-  "text-amber-600",
-];
+const MEDAL_COLORS = ["text-yellow-400", "text-slate-400", "text-amber-600"];
 const MEDAL_BG = [
   "border-yellow-400/30 bg-yellow-400/5",
   "border-slate-400/20 bg-slate-400/5",
@@ -82,7 +76,8 @@ function Rankings() {
   });
   const wcLeaderboardQuery = useQuery({
     queryKey: ["weight-class-leaderboard", wcGender, wcWeightMax],
-    queryFn: () => api.ratings.weightClassLeaderboard({ gender: wcGender, weightMax: wcWeightMax! }),
+    queryFn: () =>
+      api.ratings.weightClassLeaderboard({ gender: wcGender, weightMax: wcWeightMax! }),
     staleTime: 60_000,
     enabled: tab === "weight" && wcWeightMax !== null,
   });
@@ -92,13 +87,16 @@ function Rankings() {
 
   const filteredRows = useMemo(() => {
     let list = rows;
-    if (gender !== "ALL") list = list.filter((r: AthleteLeaderboardEntry) => r.athlete.gender === gender);
+    if (gender !== "ALL")
+      list = list.filter((r: AthleteLeaderboardEntry) => r.athlete.gender === gender);
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter((r: AthleteLeaderboardEntry) => {
       const a = r.athlete;
       return [athleteName(a), localizeName(a?.club?.name), a?.club?.city ?? ""]
-        .join(" ").toLowerCase().includes(q);
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
     });
   }, [rows, gender, search]);
 
@@ -106,7 +104,7 @@ function Rankings() {
     const q = search.trim().toLowerCase();
     if (!q) return clubRows;
     return clubRows.filter((r: ClubLeaderboardEntry) =>
-      [localizeName(r.club?.name), r.club?.city ?? ""].join(" ").toLowerCase().includes(q)
+      [localizeName(r.club?.name), r.club?.city ?? ""].join(" ").toLowerCase().includes(q),
     );
   }, [clubRows, search]);
 
@@ -115,16 +113,16 @@ function Rankings() {
 
   const POINTS_SCALE = [
     { place: "1", pts: 100, cls: "bg-yellow-400/15 text-yellow-400 border-yellow-400/30" },
-    { place: "2", pts: 80,  cls: "bg-slate-300/10 text-slate-400 border-slate-300/20" },
-    { place: "3", pts: 50,  cls: "bg-amber-600/15 text-amber-500 border-amber-600/25" },
-    { place: "5", pts: 30,  cls: "bg-muted/50 text-muted-foreground border-border/40" },
-    { place: "7", pts: 15,  cls: "bg-muted/50 text-muted-foreground border-border/40" },
+    { place: "2", pts: 80, cls: "bg-slate-300/10 text-slate-400 border-slate-300/20" },
+    { place: "3", pts: 50, cls: "bg-amber-600/15 text-amber-500 border-amber-600/25" },
+    { place: "5", pts: 30, cls: "bg-muted/50 text-muted-foreground border-border/40" },
+    { place: "7", pts: 15, cls: "bg-muted/50 text-muted-foreground border-border/40" },
   ];
 
   const tabs = [
     { id: "athletes" as Tab, label: t("rankings.tab_athletes"), icon: Users },
-    { id: "clubs"   as Tab, label: t("rankings.tab_clubs"),    icon: Building2 },
-    { id: "weight"  as Tab, label: t("rankings.tab_weight"),   icon: Weight },
+    { id: "clubs" as Tab, label: t("rankings.tab_clubs"), icon: Building2 },
+    { id: "weight" as Tab, label: t("rankings.tab_weight"), icon: Weight },
   ];
 
   return (
@@ -146,7 +144,10 @@ function Rankings() {
               {t("rankings.points_label")}:
             </span>
             {POINTS_SCALE.map((s) => (
-              <div key={s.place} className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${s.cls}`}>
+              <div
+                key={s.place}
+                className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${s.cls}`}
+              >
                 <span className="opacity-70 font-normal">{s.place}·</span>
                 <span className="font-display tabular-nums">{s.pts}</span>
               </div>
@@ -162,7 +163,11 @@ function Rankings() {
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => { setTab(id); setSearch(""); setGender("ALL"); }}
+                onClick={() => {
+                  setTab(id);
+                  setSearch("");
+                  setGender("ALL");
+                }}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
                   tab === id
                     ? "bg-gradient-gold text-gold-foreground shadow-sm"
@@ -177,19 +182,21 @@ function Rankings() {
 
           {tab === "athletes" && (
             <div className="flex gap-1">
-              {([
-                { id: "ALL"    as Gender, label: t("rankings.filter_all") },
-                { id: "MALE"   as Gender, label: t("rankings.filter_male") },
+              {[
+                { id: "ALL" as Gender, label: t("rankings.filter_all") },
+                { id: "MALE" as Gender, label: t("rankings.filter_male") },
                 { id: "FEMALE" as Gender, label: t("rankings.filter_female") },
-              ]).map(({ id, label }) => (
+              ].map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => setGender(id)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all ${
                     gender === id
-                      ? id === "MALE"   ? "bg-sky-500/15 text-sky-400 border border-sky-500/20"
-                      : id === "FEMALE" ? "bg-rose-500/15 text-rose-400 border border-rose-500/20"
-                      :                   "bg-gold/15 text-gold border border-gold/20"
+                      ? id === "MALE"
+                        ? "bg-sky-500/15 text-sky-400 border border-sky-500/20"
+                        : id === "FEMALE"
+                          ? "bg-rose-500/15 text-rose-400 border border-rose-500/20"
+                          : "bg-gold/15 text-gold border border-gold/20"
                       : "text-muted-foreground hover:text-foreground border border-transparent hover:border-border/40"
                   }`}
                 >
@@ -209,19 +216,25 @@ function Rankings() {
                 {topThree.map((row: AthleteLeaderboardEntry, i: number) => {
                   const a = row.athlete;
                   return (
-                    <div key={a.id} className={`flex items-center gap-3 rounded-xl border p-4 ${MEDAL_BG[i]}`}>
+                    <div
+                      key={a.id}
+                      className={`flex items-center gap-3 rounded-xl border p-4 ${MEDAL_BG[i]}`}
+                    >
                       <div className="relative shrink-0">
                         <Avatar
                           src={a.avatarUrl ? mediaUrl(a.avatarUrl) : null}
                           name={athleteName(a)}
                           size={40}
                         />
-                        <span className="absolute -bottom-1 -right-1 text-base leading-none">{MEDAL_EMOJI[i]}</span>
+                        <span className="absolute -bottom-1 -right-1 text-base leading-none">
+                          {MEDAL_EMOJI[i]}
+                        </span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm truncate">{athleteName(a)}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {localizeName(a.club?.name)}{a.weightKg ? ` · ${a.weightKg} кг` : ""}
+                          {localizeName(a.club?.name)}
+                          {a.weightKg ? ` · ${a.weightKg} кг` : ""}
                         </p>
                       </div>
                       <span className="shrink-0 font-display text-xl font-bold text-gradient-gold tabular-nums">
@@ -247,17 +260,22 @@ function Rankings() {
               <select
                 value={clubId}
                 onChange={(e) => setClubId(e.target.value)}
+                aria-label={t("common.all_clubs")}
                 className="rounded-xl border border-border/60 bg-card/60 px-3 py-2.5 text-sm focus:outline-none focus:border-gold/60 transition-colors min-w-[180px]"
               >
                 <option value="">{t("common.all_clubs")}</option>
                 {(clubsQuery.data?.items ?? []).map((c: Club) => (
-                  <option key={c.id} value={c.id}>{localizeName(c.name)}</option>
+                  <option key={c.id} value={c.id}>
+                    {localizeName(c.name)}
+                  </option>
                 ))}
               </select>
             </div>
 
             {leaderboardQuery.isLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-gold" /></div>
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-7 w-7 animate-spin text-gold" />
+              </div>
             ) : filteredRows.length === 0 ? (
               <Empty icon={Award} text={t("rankings.no_data")} hint={t("rankings.no_data_hint")} />
             ) : (
@@ -265,14 +283,24 @@ function Rankings() {
                 {/* Desktop table */}
                 <div className="hidden sm:block">
                   <RankTable
-                    cols={["#", t("rankings.col_athlete"), t("rankings.col_club"), t("rankings.col_weight"), t("rankings.col_points")]}
+                    cols={[
+                      "#",
+                      t("rankings.col_athlete"),
+                      t("rankings.col_club"),
+                      t("rankings.col_weight"),
+                      t("rankings.col_points"),
+                    ]}
                     colWidths="grid-cols-[48px_1fr_1fr_80px_90px]"
                   >
                     {filteredRows.map((row: AthleteLeaderboardEntry, idx: number) => {
                       const a = row.athlete;
                       const rank = row.rank ?? idx + 1;
                       return (
-                        <RankRow key={a.id} rank={rank} colWidths="grid-cols-[48px_1fr_1fr_80px_90px]">
+                        <RankRow
+                          key={a.id}
+                          rank={rank}
+                          colWidths="grid-cols-[48px_1fr_1fr_80px_90px]"
+                        >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Avatar
                               src={a.avatarUrl ? mediaUrl(a.avatarUrl) : null}
@@ -284,7 +312,7 @@ function Rankings() {
                           </div>
                           <div className="text-sm text-muted-foreground truncate">
                             {localizeName(a.club?.name)}
-                            {a.club?.city && <span className="text-xs opacity-60"> · {a.club.city}</span>}
+                            {a.club?.city && <span className="text-xs"> · {a.club.city}</span>}
                           </div>
                           <div className="text-sm text-muted-foreground tabular-nums">
                             {a.weightKg ? `${a.weightKg} кг` : "—"}
@@ -303,16 +331,30 @@ function Rankings() {
                     {filteredRows.map((row: AthleteLeaderboardEntry, idx: number) => {
                       const a = row.athlete;
                       const rank = row.rank ?? idx + 1;
-                      const medal = rank === 1 ? MEDAL_COLORS[0] : rank === 2 ? MEDAL_COLORS[1] : rank === 3 ? MEDAL_COLORS[2] : "text-muted-foreground";
+                      const medal =
+                        rank === 1
+                          ? MEDAL_COLORS[0]
+                          : rank === 2
+                            ? MEDAL_COLORS[1]
+                            : rank === 3
+                              ? MEDAL_COLORS[2]
+                              : "text-muted-foreground";
                       return (
-                        <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]">
-                          <span className={`w-7 shrink-0 font-display text-sm font-bold tabular-nums ${medal} flex items-center gap-0.5`}>
-                            {rank <= 3 && <Star className="h-3 w-3 fill-current" />}{rank}
+                        <div
+                          key={a.id}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]"
+                        >
+                          <span
+                            className={`w-7 shrink-0 font-display text-sm font-bold tabular-nums ${medal} flex items-center gap-0.5`}
+                          >
+                            {rank <= 3 && <Star className="h-3 w-3 fill-current" />}
+                            {rank}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{athleteName(a)}</p>
                             <p className="text-[11px] text-muted-foreground truncate">
-                              {localizeName(a.club?.name)}{a.weightKg ? ` · ${a.weightKg} кг` : ""}
+                              {localizeName(a.club?.name)}
+                              {a.weightKg ? ` · ${a.weightKg} кг` : ""}
                             </p>
                           </div>
                           <span className="shrink-0 font-display font-bold text-gradient-gold tabular-nums text-sm">
@@ -324,7 +366,6 @@ function Rankings() {
                   </div>
                 </div>
               </>
-
             )}
             <p className="mt-2 text-xs text-right text-muted-foreground tabular-nums">
               {filteredRows.length} / {rows.length} {t("rankings.tab_athletes").toLowerCase()}
@@ -338,12 +379,18 @@ function Rankings() {
             {topThreeClubs.length > 0 && (
               <div className="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {topThreeClubs.map((row: ClubLeaderboardEntry, i: number) => (
-                  <div key={row.club.id} className={`flex items-center gap-3 rounded-xl border p-4 ${MEDAL_BG[i]}`}>
+                  <div
+                    key={row.club.id}
+                    className={`flex items-center gap-3 rounded-xl border p-4 ${MEDAL_BG[i]}`}
+                  >
                     <span className="text-2xl shrink-0">{MEDAL_EMOJI[i]}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">{localizeName(row.club.name)}</p>
+                      <p className="font-semibold text-sm truncate">
+                        {localizeName(row.club.name)}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {row.club.city || "—"} · {row.athleteCount} {t("rankings.col_athletes").toLowerCase()}
+                        {row.club.city || "—"} · {row.athleteCount}{" "}
+                        {t("rankings.col_athletes").toLowerCase()}
                       </p>
                     </div>
                     <span className="shrink-0 font-display text-xl font-bold text-gradient-gold tabular-nums">
@@ -367,26 +414,48 @@ function Rankings() {
             </div>
 
             {clubLeaderboardQuery.isLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-gold" /></div>
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-7 w-7 animate-spin text-gold" />
+              </div>
             ) : filteredClubRows.length === 0 ? (
-              <Empty icon={Building2} text={t("rankings.no_clubs")} hint={t("rankings.no_clubs_hint")} />
+              <Empty
+                icon={Building2}
+                text={t("rankings.no_clubs")}
+                hint={t("rankings.no_clubs_hint")}
+              />
             ) : (
               <RankTable
-                cols={["#", t("rankings.col_club"), t("rankings.col_city"), t("rankings.col_athletes"), t("rankings.col_points")]}
+                cols={[
+                  "#",
+                  t("rankings.col_club"),
+                  t("rankings.col_city"),
+                  t("rankings.col_athletes"),
+                  t("rankings.col_points"),
+                ]}
                 colWidths="grid-cols-[48px_1fr_140px_80px_90px]"
               >
                 {filteredClubRows.map((row: ClubLeaderboardEntry) => (
-                  <RankRow key={row.club.id} rank={row.rank} colWidths="grid-cols-[48px_1fr_140px_80px_90px]">
+                  <RankRow
+                    key={row.club.id}
+                    rank={row.rank}
+                    colWidths="grid-cols-[48px_1fr_140px_80px_90px]"
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="h-8 w-8 rounded-full bg-gradient-gold/20 border border-gold/20 flex items-center justify-center shrink-0">
                         <Building2 className="h-3.5 w-3.5 text-gold/70" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{localizeName(row.club.name)}</p>
-                        <p className="text-[11px] text-muted-foreground sm:hidden">{row.club.city || "—"}</p>
+                        <p className="font-medium text-sm truncate">
+                          {localizeName(row.club.name)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground sm:hidden">
+                          {row.club.city || "—"}
+                        </p>
                       </div>
                     </div>
-                    <div className="hidden sm:block text-sm text-muted-foreground">{row.club.city || "—"}</div>
+                    <div className="hidden sm:block text-sm text-muted-foreground">
+                      {row.club.city || "—"}
+                    </div>
                     <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground">
                       <Users className="h-3.5 w-3.5 shrink-0" />
                       {row.athleteCount}
@@ -411,7 +480,10 @@ function Rankings() {
                 {(["MALE", "FEMALE"] as const).map((g) => (
                   <button
                     key={g}
-                    onClick={() => { setWcGender(g); setWcWeightMax(null); }}
+                    onClick={() => {
+                      setWcGender(g);
+                      setWcWeightMax(null);
+                    }}
                     className={`rounded-xl px-5 py-2 text-sm font-semibold transition-all ${
                       wcGender === g
                         ? "bg-gradient-gold text-gold-foreground shadow-sm"
@@ -449,27 +521,48 @@ function Rankings() {
             </div>
 
             {wcWeightMax === null ? (
-              <Empty icon={Weight} text={t("rankings.tab_weight")} hint={t("rankings.no_data_hint")} />
+              <Empty
+                icon={Weight}
+                text={t("rankings.tab_weight")}
+                hint={t("rankings.no_data_hint")}
+              />
             ) : wcLeaderboardQuery.isLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gold" /></div>
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
+              </div>
             ) : (wcLeaderboardQuery.data ?? []).length === 0 ? (
               <Empty icon={Award} text={t("rankings.no_data")} hint={t("rankings.no_data_hint")} />
             ) : (
               <RankTable
-                cols={["#", t("rankings.col_athlete"), t("rankings.best_place"), t("rankings.tournaments"), t("rankings.col_points")]}
+                cols={[
+                  "#",
+                  t("rankings.col_athlete"),
+                  t("rankings.best_place"),
+                  t("rankings.tournaments"),
+                  t("rankings.col_points"),
+                ]}
                 colWidths="grid-cols-[48px_1fr_100px_100px_90px]"
               >
                 {(wcLeaderboardQuery.data ?? []).map((row) => {
                   const a = row.athlete;
                   return (
-                    <RankRow key={a.id} rank={row.rank} colWidths="grid-cols-[48px_1fr_100px_100px_90px]">
+                    <RankRow
+                      key={a.id}
+                      rank={row.rank}
+                      colWidths="grid-cols-[48px_1fr_100px_100px_90px]"
+                    >
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{a.surname} {a.name}</p>
+                        <p className="font-semibold text-sm truncate">
+                          {a.surname} {a.name}
+                        </p>
                         {(a.surnameLatin || a.nameLatin) && (
-                          <p className="text-[11px] text-muted-foreground truncate">{a.surnameLatin} {a.nameLatin}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {a.surnameLatin} {a.nameLatin}
+                          </p>
                         )}
                         <p className="text-[11px] text-muted-foreground truncate">
-                          {localizeName(a.club?.name)}{a.club?.city ? ` · ${a.club.city}` : ""}
+                          {localizeName(a.club?.name)}
+                          {a.club?.city ? ` · ${a.club.city}` : ""}
                         </p>
                       </div>
                       <div className="text-sm text-right text-muted-foreground tabular-nums">
@@ -499,7 +592,15 @@ function Rankings() {
 
 // ── Shared sub-components ──────────────────────────────────────────────────
 
-function Empty({ icon: Icon, text, hint }: { icon: React.ElementType; text: string; hint?: string }) {
+function Empty({
+  icon: Icon,
+  text,
+  hint,
+}: {
+  icon: React.ElementType;
+  text: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-2xl border border-border/40 py-16 text-center text-muted-foreground">
       <Icon className="h-10 w-10 mx-auto mb-3 opacity-20" />
@@ -520,9 +621,13 @@ function RankTable({
 }) {
   return (
     <div className="rounded-2xl border border-border/50 overflow-hidden">
-      <div className={`hidden sm:grid ${colWidths} gap-4 px-5 py-3 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground bg-muted/20 border-b border-border/40`}>
+      <div
+        className={`hidden sm:grid ${colWidths} gap-4 px-5 py-3 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground bg-muted/20 border-b border-border/40`}
+      >
         {cols.map((c, i) => (
-          <div key={i} className={i === cols.length - 1 ? "text-right" : ""}>{c}</div>
+          <div key={i} className={i === cols.length - 1 ? "text-right" : ""}>
+            {c}
+          </div>
         ))}
       </div>
       <div className="divide-y divide-border/25">{children}</div>
@@ -539,10 +644,21 @@ function RankRow({
   colWidths: string;
   children: React.ReactNode;
 }) {
-  const medal = rank === 1 ? MEDAL_COLORS[0] : rank === 2 ? MEDAL_COLORS[1] : rank === 3 ? MEDAL_COLORS[2] : "text-muted-foreground";
+  const medal =
+    rank === 1
+      ? MEDAL_COLORS[0]
+      : rank === 2
+        ? MEDAL_COLORS[1]
+        : rank === 3
+          ? MEDAL_COLORS[2]
+          : "text-muted-foreground";
   return (
-    <div className={`grid ${colWidths} gap-3 px-4 py-3.5 items-center hover:bg-white/[0.03] transition-colors sm:px-5`}>
-      <div className={`flex items-center gap-1 font-display text-base font-bold tabular-nums ${medal}`}>
+    <div
+      className={`grid ${colWidths} gap-3 px-4 py-3.5 items-center hover:bg-white/[0.03] transition-colors sm:px-5`}
+    >
+      <div
+        className={`flex items-center gap-1 font-display text-base font-bold tabular-nums ${medal}`}
+      >
         {rank <= 3 && <Star className="h-3 w-3 fill-current shrink-0" />}
         {rank}
       </div>

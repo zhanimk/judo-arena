@@ -33,9 +33,11 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
           key={locale.code}
           type="button"
           onClick={() => changeLocale(locale.code)}
+          aria-pressed={current === locale.code}
+          style={current === locale.code ? { color: "#111827" } : undefined}
           className={`rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors ${
             current === locale.code
-              ? "bg-gold text-gold-foreground shadow-gold"
+              ? "bg-gold text-[#111827] shadow-gold"
               : "text-muted-foreground hover:bg-gold/10 hover:text-foreground dark:hover:bg-white/5"
           }`}
         >

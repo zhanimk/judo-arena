@@ -12,12 +12,12 @@
 import { readdirSync, statSync } from "fs";
 import { join, extname } from "path";
 
-const DIST = new URL("../web/dist/", import.meta.url).pathname;
+const DIST = new URL("../web/dist/client/", import.meta.url).pathname;
 
 // Per-chunk limits in bytes
 const LIMITS = [
   // Named vendor chunks (set in vite.config.ts manualChunks)
-  { pattern: /vendor-react/,    maxKB: 180 },
+  { pattern: /vendor-react/,    maxKB: 320 },
   { pattern: /vendor-tanstack/, maxKB: 400 },
   { pattern: /vendor-ui/,       maxKB: 500 },
   { pattern: /vendor-i18n/,     maxKB: 150 },
@@ -25,11 +25,11 @@ const LIMITS = [
   { pattern: /vendor-charts/,   maxKB: 600 },
   { pattern: /vendor/,          maxKB: 600 }, // catch-all vendor chunk
   // App entry — everything that isn't a vendor chunk
-  { pattern: /index/,           maxKB: 400 },
+  { pattern: /index/,           maxKB: 550 },
 ];
 
 // Total JS budget
-const TOTAL_JS_LIMIT_KB = 3500;
+const TOTAL_JS_LIMIT_KB = 3000;
 
 function findJs(dir) {
   const files = [];

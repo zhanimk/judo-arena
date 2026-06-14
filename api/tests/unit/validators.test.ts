@@ -4,6 +4,7 @@ import {
   createCategorySchema,
   createCategoriesBulkSchema,
   listTournamentsQuerySchema,
+  updateCategorySchema,
   updateTournamentSchema,
 } from "../../src/validators/tournament.schema.js";
 import {
@@ -211,6 +212,28 @@ describe("createCategoriesBulkSchema", () => {
   });
 });
 
+describe("updateCategorySchema", () => {
+  it("rejects ageMin greater than ageMax", () => {
+    const result = updateCategorySchema.safeParse({
+      ageMin: 18,
+      ageMax: 15,
+    });
+
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error)).toContain("ageMin");
+  });
+
+  it("rejects weightMin greater than or equal to weightMax", () => {
+    const result = updateCategorySchema.safeParse({
+      weightMin: 66,
+      weightMax: 66,
+    });
+
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error)).toContain("weightMin");
+  });
+});
+
 // ─── listTournamentsQuerySchema ────────────────────────────────────────────────
 
 describe("listTournamentsQuerySchema", () => {
@@ -289,6 +312,16 @@ describe("registerSchema", () => {
   it("defaults preferredLocale to kk", () => {
     const result = registerSchema.safeParse(base);
     expect(result.success && result.data.preferredLocale).toBe("kk");
+  });
+
+  it("rejects date of birth outside the allowed age range", () => {
+    const result = registerSchema.safeParse({
+      ...base,
+      dateOfBirth: new Date(),
+    });
+
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error)).toContain("Возраст");
   });
 });
 

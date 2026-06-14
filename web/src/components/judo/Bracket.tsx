@@ -87,7 +87,7 @@ function MatchCard({ match }: { match: Match }) {
       className={`relative h-[108px] overflow-hidden rounded-2xl border bg-card/92 shadow-sm backdrop-blur ${border}`}
     >
       {live && (
-        <span className="absolute -top-px left-4 z-10 rounded-b-md bg-destructive px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-destructive-foreground">
+        <span className="absolute -top-px left-4 z-10 rounded-b-md bg-red-700 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
           live
         </span>
       )}

@@ -30,9 +30,12 @@ import type {
   SocketData,
 } from "./socket-types.js";
 
-type EmitEvent = keyof ServerToClientEvents;
-
-type TypedIO = SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type TypedIO = SocketIOServer<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 let io: TypedIO | null = null;
 
@@ -49,7 +52,12 @@ export function getIO(): TypedIO {
 
 export async function attachSocketIO(app: FastifyInstance): Promise<void> {
   const server = app.server as HTTPServer;
-  io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(server, {
+  io = new SocketIOServer<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >(server, {
     cors: {
       origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
       credentials: true,
@@ -101,97 +109,105 @@ export async function attachSocketIO(app: FastifyInstance): Promise<void> {
 
     // Глобальный rate limit на все входящие события от этого сокета
     socket.onAny(async (_event: string) => {
-      const total = await incrementSocketCounter(socket.id, "events").catch(() => 1);
+      const total = await incrementSocketCounter(socket.id, "events").catch(
+        () => 1,
+      );
       if (total > MAX_EVENTS_PER_MINUTE) {
-        app.log.warn({ socketId: socket.id }, "Socket event flood — disconnecting");
+        app.log.warn(
+          { socketId: socket.id },
+          "Socket event flood — disconnecting",
+        );
         socket.emit("error", { reason: "RATE_LIMITED" });
         socket.disconnect(true);
       }
     });
 
     // Клиент подписывается на комнаты; поддерживает ack-callback для подтверждения
-    socket.on("subscribe", async (rooms: string[] | string, ack?: (err: string | null) => void) => {
-      const subscribeCount = await incrementSocketCounter(
-        socket.id,
-        "subscribe",
-      ).catch(() => 1);
-      if (subscribeCount > MAX_SUBSCRIBE_EVENTS_PER_MINUTE) {
-        socket.emit("subscribe:error", { reason: "RATE_LIMITED" });
-        ack?.("RATE_LIMITED");
-        return;
-      }
-
-      const list = (Array.isArray(rooms) ? rooms : [rooms]).slice(
-        0,
-        MAX_ROOMS_PER_SUBSCRIBE,
-      );
-      for (const room of list) {
-        if (socket.rooms.size >= MAX_ROOMS_PER_SOCKET) {
-          socket.emit("subscribe:error", { room, reason: "ROOM_LIMIT" });
-          ack?.("ROOM_LIMIT");
-          break;
+    socket.on(
+      "subscribe",
+      async (rooms: string[] | string, ack?: (err: string | null) => void) => {
+        const subscribeCount = await incrementSocketCounter(
+          socket.id,
+          "subscribe",
+        ).catch(() => 1);
+        if (subscribeCount > MAX_SUBSCRIBE_EVENTS_PER_MINUTE) {
+          socket.emit("subscribe:error", { reason: "RATE_LIMITED" });
+          ack?.("RATE_LIMITED");
+          return;
         }
 
-        if (!isValidRoom(room)) {
-          app.log.warn(
-            { socketId: socket.id, room },
-            "Blocked subscribe: invalid room name",
-          );
-          continue;
-        }
+        const list = (Array.isArray(rooms) ? rooms : [rooms]).slice(
+          0,
+          MAX_ROOMS_PER_SUBSCRIBE,
+        );
+        for (const room of list) {
+          if (socket.rooms.size >= MAX_ROOMS_PER_SOCKET) {
+            socket.emit("subscribe:error", { room, reason: "ROOM_LIMIT" });
+            ack?.("ROOM_LIMIT");
+            break;
+          }
 
-        // user:* — только владелец токена
-        if (room.startsWith("user:")) {
-          const targetUserId = room.split(":")[1];
-          if (!socket.data.userId || socket.data.userId !== targetUserId) {
+          if (!isValidRoom(room)) {
             app.log.warn(
               { socketId: socket.id, room },
-              "Blocked subscribe to foreign user room",
+              "Blocked subscribe: invalid room name",
             );
-            socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
-            ack?.("FORBIDDEN");
             continue;
           }
-        }
 
-        // tatami:* — только ADMIN.
-        // Зрители и тренеры используют публичное tournament:* табло.
-        // Судьи работают через /tatami/:token (REST + tournament:* комната).
-        // tatami:N комната содержит приватные события до публичного объявления —
-        // поэтому доступ строго ограничен ролью ADMIN.
-        if (room.startsWith("tatami:")) {
-          if (!socket.data.userId || socket.data.role !== "ADMIN") {
-            app.log.warn(
-              { socketId: socket.id, room, role: socket.data.role ?? "anon" },
-              "Blocked non-admin subscribe to tatami room",
-            );
-            socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
-            ack?.("FORBIDDEN");
-            continue;
+          // user:* — только владелец токена
+          if (room.startsWith("user:")) {
+            const targetUserId = room.split(":")[1];
+            if (!socket.data.userId || socket.data.userId !== targetUserId) {
+              app.log.warn(
+                { socketId: socket.id, room },
+                "Blocked subscribe to foreign user room",
+              );
+              socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
+              ack?.("FORBIDDEN");
+              continue;
+            }
           }
-          // Re-validate: проверяем активность пользователя при каждой подписке на татами
-          const active = await isUserActive(socket.data.userId);
-          if (!active) {
-            socket.emit("auth:revoked");
-            socket.disconnect(true);
-            return;
-          }
-        }
 
-        // user:* — дополнительно проверяем активность при подписке
-        if (room.startsWith("user:")) {
-          const active = await isUserActive(socket.data.userId!);
-          if (!active) {
-            socket.emit("auth:revoked");
-            socket.disconnect(true);
-            return;
+          // tatami:* — только ADMIN.
+          // Зрители и тренеры используют публичное tournament:* табло.
+          // Судьи работают через /tatami/:token (REST + tournament:* комната).
+          // tatami:N комната содержит приватные события до публичного объявления —
+          // поэтому доступ строго ограничен ролью ADMIN.
+          if (room.startsWith("tatami:")) {
+            if (!socket.data.userId || socket.data.role !== "ADMIN") {
+              app.log.warn(
+                { socketId: socket.id, room, role: socket.data.role ?? "anon" },
+                "Blocked non-admin subscribe to tatami room",
+              );
+              socket.emit("subscribe:error", { room, reason: "FORBIDDEN" });
+              ack?.("FORBIDDEN");
+              continue;
+            }
+            // Re-validate: проверяем активность пользователя при каждой подписке на татами
+            const active = await isUserActive(socket.data.userId);
+            if (!active) {
+              socket.emit("auth:revoked");
+              socket.disconnect(true);
+              return;
+            }
           }
-        }
 
-        socket.join(room);
-      }
-      ack?.(null);
-    });
+          // user:* — дополнительно проверяем активность при подписке
+          if (room.startsWith("user:")) {
+            const active = await isUserActive(socket.data.userId!);
+            if (!active) {
+              socket.emit("auth:revoked");
+              socket.disconnect(true);
+              return;
+            }
+          }
+
+          socket.join(room);
+        }
+        ack?.(null);
+      },
+    );
 
     socket.on("unsubscribe", (rooms: string[] | string) => {
       const list = Array.isArray(rooms) ? rooms : [rooms];
@@ -234,7 +250,6 @@ async function incrementSocketCounter(
 // Утилиты для emit из сервисов
 // ============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyEmit = (event: string, ...args: any[]) => void;
 
 export function emitMatchEvent(

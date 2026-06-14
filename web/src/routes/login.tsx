@@ -187,19 +187,24 @@ function Login() {
       {/* floating gold dots */}
       <div className="lp-dots">
         {[
-          { left:"8%",  top:"20%", dur:"7s",  delay:"0s" },
-          { left:"18%", top:"65%", dur:"9s",  delay:"1.2s" },
-          { left:"32%", top:"35%", dur:"11s", delay:"0.5s" },
-          { left:"55%", top:"80%", dur:"8s",  delay:"2s" },
-          { left:"70%", top:"15%", dur:"10s", delay:"0.8s" },
-          { left:"82%", top:"55%", dur:"7s",  delay:"1.8s" },
-          { left:"92%", top:"30%", dur:"12s", delay:"0.3s" },
-          { left:"45%", top:"10%", dur:"9s",  delay:"3s" },
+          { left: "8%", top: "20%", dur: "7s", delay: "0s" },
+          { left: "18%", top: "65%", dur: "9s", delay: "1.2s" },
+          { left: "32%", top: "35%", dur: "11s", delay: "0.5s" },
+          { left: "55%", top: "80%", dur: "8s", delay: "2s" },
+          { left: "70%", top: "15%", dur: "10s", delay: "0.8s" },
+          { left: "82%", top: "55%", dur: "7s", delay: "1.8s" },
+          { left: "92%", top: "30%", dur: "12s", delay: "0.3s" },
+          { left: "45%", top: "10%", dur: "9s", delay: "3s" },
         ].map((d, i) => (
           <div
             key={i}
             className="lp-dot"
-            style={{ left:d.left, top:d.top, ["--dur" as string]:d.dur, ["--delay" as string]:d.delay }}
+            style={{
+              left: d.left,
+              top: d.top,
+              ["--dur" as string]: d.dur,
+              ["--delay" as string]: d.delay,
+            }}
           />
         ))}
       </div>
@@ -629,8 +634,13 @@ function Login() {
               {totpChallenge && (
                 <div className="rounded-xl border border-gold/30 bg-gold/5 p-5 text-center space-y-3">
                   <div className="text-gold text-2xl">🔐</div>
-                  <div className="font-semibold text-sm">{t("auth.2fa_title") ?? "Аутентификатор коды"}</div>
-                  <div className="text-xs text-muted-foreground">{t("auth.2fa_hint") ?? "Google Authenticator немесе Authy қолданбасынан 6 санды кодты енгізіңіз"}</div>
+                  <div className="font-semibold text-sm">
+                    {t("auth.2fa_title") ?? "Аутентификатор коды"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("auth.2fa_hint") ??
+                      "Google Authenticator немесе Authy қолданбасынан 6 санды кодты енгізіңіз"}
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -646,7 +656,10 @@ function Login() {
                   <button
                     type="button"
                     className="text-xs text-muted-foreground underline underline-offset-2"
-                    onClick={() => { setTotpChallenge(null); setTotpCode(""); }}
+                    onClick={() => {
+                      setTotpChallenge(null);
+                      setTotpCode("");
+                    }}
                   >
                     {t("auth.back_to_login") ?? "← Артқа"}
                   </button>
@@ -671,6 +684,7 @@ function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPwd(!showPwd)}
+                    aria-label={showPwd ? "Hide password" : "Show password"}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 lp-eye-btn transition-colors"
                   >
                     {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -714,6 +728,7 @@ function Login() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
+                    aria-label={showConfirm ? "Hide password" : "Show password"}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 lp-eye-btn transition-colors"
                   >
                     {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -988,6 +1003,7 @@ function Login() {
           border-color: rgba(200,146,42,0.15) !important;
         }
         html.dark .lp-nav-bar *, :root .lp-nav-bar * { color: rgba(255,255,255,0.85) !important; }
+        html.dark .lp-nav-bar button[aria-pressed="true"], :root .lp-nav-bar button[aria-pressed="true"] { color: #111827 !important; }
         html.dark .lp-nav-bar a:hover *, :root .lp-nav-bar a:hover * { color: #c8922a !important; }
         html.light .lp-nav-bar {
           background: rgba(245,247,255,0.92) !important;

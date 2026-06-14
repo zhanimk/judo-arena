@@ -147,6 +147,7 @@ function AdminTournaments() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label={t("common.status")}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("admin.users_all")}</option>
@@ -191,178 +192,183 @@ function AdminTournaments() {
             {(query.data!.items as Tournament[])
               .filter((tr) => {
                 const q = search.toLowerCase();
-                const nameMatch = !q || localizeName(tr.name).toLowerCase().includes(q) || (tr.city ?? "").toLowerCase().includes(q);
+                const nameMatch =
+                  !q ||
+                  localizeName(tr.name).toLowerCase().includes(q) ||
+                  (tr.city ?? "").toLowerCase().includes(q);
                 const statusMatch = !statusFilter || tr.status === statusFilter;
                 return nameMatch && statusMatch;
               })
               .map((tournament: Tournament) => {
-              const trans = transitions[tournament.status] ?? [];
-              return (
-                <div key={tournament.id} className="glass rounded-xl p-4 md:p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate({
-                              to: "/admin/tournaments/$id",
-                              params: { id: tournament.id },
-                            })
-                          }
-                          className="text-left text-lg font-semibold leading-tight hover:text-gold"
-                        >
-                          {localizeName(tournament.name)} →
-                        </button>
-                        <StatusBadge status={tournament.status} />
-                        {tournament.isArchived && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                            {t("common.archived")}
+                const trans = transitions[tournament.status] ?? [];
+                return (
+                  <div key={tournament.id} className="glass rounded-xl p-4 md:p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate({
+                                to: "/admin/tournaments/$id",
+                                params: { id: tournament.id },
+                              })
+                            }
+                            className="text-left text-lg font-semibold leading-tight hover:text-gold"
+                          >
+                            {localizeName(tournament.name)} →
+                          </button>
+                          <StatusBadge status={tournament.status} />
+                          {tournament.isArchived && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                              {t("common.archived")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span>{tournament.city}</span>
+                          <span>·</span>
+                          <span>{new Date(tournament.startDate).toLocaleDateString("kk-KZ")}</span>
+                          <span>·</span>
+                          <span>
+                            {t("common.categories_count", {
+                              count: tournament._count?.categories ?? 0,
+                            })}
                           </span>
-                        )}
+                          <span>·</span>
+                          <span>
+                            {t("common.applications_count", {
+                              count: tournament._count?.applications ?? 0,
+                            })}
+                          </span>
+                          <span>·</span>
+                          <span>
+                            {t("common.tatami_count", { count: tournament.tatamiCount ?? 0 })}
+                          </span>
+                          <span>·</span>
+                          <span>
+                            {t("payments.entry_fee")}: {formatKzt(tournament.entryFeeKzt ?? 0)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        <span>{tournament.city}</span>
-                        <span>·</span>
-                        <span>{new Date(tournament.startDate).toLocaleDateString("kk-KZ")}</span>
-                        <span>·</span>
-                        <span>
-                          {t("common.categories_count", {
-                            count: tournament._count?.categories ?? 0,
-                          })}
-                        </span>
-                        <span>·</span>
-                        <span>
-                          {t("common.applications_count", {
-                            count: tournament._count?.applications ?? 0,
-                          })}
-                        </span>
-                        <span>·</span>
-                        <span>
-                          {t("common.tatami_count", { count: tournament.tatamiCount ?? 0 })}
-                        </span>
-                        <span>·</span>
-                        <span>
-                          {t("payments.entry_fee")}: {formatKzt(tournament.entryFeeKzt ?? 0)}
-                        </span>
-                      </div>
+
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold"
+                      >
+                        {t("admin.tournament_manage")}
+                      </Link>
                     </div>
 
-                    <Link
-                      to="/admin/tournaments/$id"
-                      params={{ id: tournament.id }}
-                      className="inline-flex min-h-11 items-center justify-center rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold"
-                    >
-                      {t("admin.tournament_manage")}
-                    </Link>
-                  </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        search={{ tab: "scoreboard" }}
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm font-medium text-gold hover:bg-gold/15"
+                      >
+                        <Monitor className="h-4 w-4" /> {t("tournament.scoreboard")}
+                      </Link>
+                      <Link
+                        to="/live-wall/$tournamentId"
+                        params={{ tournamentId: tournament.id }}
+                        target="_blank"
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
+                      >
+                        <ExternalLink className="h-4 w-4" /> {t("tournament.projector")}
+                      </Link>
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        search={{ tab: "protocol" }}
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
+                      >
+                        <FileText className="h-4 w-4" /> {t("tournament.protocol")}
+                      </Link>
+                      <Link
+                        to="/admin/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        search={{ tab: "categories" }}
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
+                      >
+                        <GitBranch className="h-4 w-4" /> {t("tournament.categories")}
+                      </Link>
+                    </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    <Link
-                      to="/admin/tournaments/$id"
-                      params={{ id: tournament.id }}
-                      search={{ tab: "scoreboard" }}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm font-medium text-gold hover:bg-gold/15"
-                    >
-                      <Monitor className="h-4 w-4" /> {t("tournament.scoreboard")}
-                    </Link>
-                    <Link
-                      to="/live-wall/$tournamentId"
-                      params={{ tournamentId: tournament.id }}
-                      target="_blank"
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
-                    >
-                      <ExternalLink className="h-4 w-4" /> {t("tournament.projector")}
-                    </Link>
-                    <Link
-                      to="/admin/tournaments/$id"
-                      params={{ id: tournament.id }}
-                      search={{ tab: "protocol" }}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
-                    >
-                      <FileText className="h-4 w-4" /> {t("tournament.protocol")}
-                    </Link>
-                    <Link
-                      to="/admin/tournaments/$id"
-                      params={{ id: tournament.id }}
-                      search={{ tab: "categories" }}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border bg-card/50 px-3 py-2 text-sm font-medium hover:border-gold/50"
-                    >
-                      <GitBranch className="h-4 w-4" /> {t("tournament.categories")}
-                    </Link>
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/30 pt-3">
+                      {trans.map((tr) => (
+                        <button
+                          key={tr.next}
+                          onClick={() => change.mutate({ id: tournament.id, status: tr.next })}
+                          disabled={busy === tournament.id}
+                          className="inline-flex min-h-9 items-center rounded-md bg-gradient-gold px-3 py-1.5 text-xs font-medium text-gold-foreground shadow-gold disabled:opacity-50"
+                        >
+                          {tr.label}
+                        </button>
+                      ))}
+                      {tournament.status === "IN_PROGRESS" && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(t("admin.tournament_finalize_confirm")))
+                              finalize.mutate(tournament.id);
+                          }}
+                          disabled={busy === tournament.id}
+                          className="inline-flex min-h-9 items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 disabled:opacity-50"
+                        >
+                          {t("admin.tournament_finalize")}
+                        </button>
+                      )}
+                      <Link
+                        to="/tournaments/$id"
+                        params={{ id: tournament.id }}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs hover:border-gold/40"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" /> {t("tournament.public_page")}
+                      </Link>
+                      <button
+                        onClick={() =>
+                          archive.mutate({ id: tournament.id, archive: !tournament.isArchived })
+                        }
+                        disabled={busy === tournament.id}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs hover:border-gold/40 disabled:opacity-50"
+                      >
+                        <Archive className="h-3.5 w-3.5" />{" "}
+                        {tournament.isArchived
+                          ? t("admin.tournament_unarchive")
+                          : t("admin.tournament_archive")}
+                      </button>
+                      {tournament.status !== "CANCELLED" && tournament.status !== "COMPLETED" && (
+                        <button
+                          onClick={() => change.mutate({ id: tournament.id, status: "CANCELLED" })}
+                          disabled={busy === tournament.id}
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          <Power className="h-3.5 w-3.5" /> {t("tournament.cancel")}
+                        </button>
+                      )}
+                      {tournament.status !== "COMPLETED" && (
+                        <button
+                          onClick={() => {
+                            const needsCancel =
+                              tournament.status !== "DRAFT" && tournament.status !== "CANCELLED";
+                            const msg = needsCancel
+                              ? t("admin.tournament_delete_confirm") +
+                                "\n\n(Сначала будет отменён, затем удалён)"
+                              : t("admin.tournament_delete_confirm");
+                            if (window.confirm(msg))
+                              remove.mutate({ id: tournament.id, status: tournament.status });
+                          }}
+                          disabled={busy === tournament.id}
+                          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/30 pt-3">
-                    {trans.map((tr) => (
-                      <button
-                        key={tr.next}
-                        onClick={() => change.mutate({ id: tournament.id, status: tr.next })}
-                        disabled={busy === tournament.id}
-                        className="inline-flex min-h-9 items-center rounded-md bg-gradient-gold px-3 py-1.5 text-xs font-medium text-gold-foreground shadow-gold disabled:opacity-50"
-                      >
-                        {tr.label}
-                      </button>
-                    ))}
-                    {tournament.status === "IN_PROGRESS" && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(t("admin.tournament_finalize_confirm")))
-                            finalize.mutate(tournament.id);
-                        }}
-                        disabled={busy === tournament.id}
-                        className="inline-flex min-h-9 items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 disabled:opacity-50"
-                      >
-                        {t("admin.tournament_finalize")}
-                      </button>
-                    )}
-                    <Link
-                      to="/tournaments/$id"
-                      params={{ id: tournament.id }}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs hover:border-gold/40"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" /> {t("tournament.public_page")}
-                    </Link>
-                    <button
-                      onClick={() =>
-                        archive.mutate({ id: tournament.id, archive: !tournament.isArchived })
-                      }
-                      disabled={busy === tournament.id}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card/40 px-3 py-1.5 text-xs hover:border-gold/40 disabled:opacity-50"
-                    >
-                      <Archive className="h-3.5 w-3.5" />{" "}
-                      {tournament.isArchived
-                        ? t("admin.tournament_unarchive")
-                        : t("admin.tournament_archive")}
-                    </button>
-                    {tournament.status !== "CANCELLED" && tournament.status !== "COMPLETED" && (
-                      <button
-                        onClick={() => change.mutate({ id: tournament.id, status: "CANCELLED" })}
-                        disabled={busy === tournament.id}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        <Power className="h-3.5 w-3.5" /> {t("tournament.cancel")}
-                      </button>
-                    )}
-                    {tournament.status !== "COMPLETED" && (
-                      <button
-                        onClick={() => {
-                          const needsCancel = tournament.status !== "DRAFT" && tournament.status !== "CANCELLED";
-                          const msg = needsCancel
-                            ? t("admin.tournament_delete_confirm") + "\n\n(Сначала будет отменён, затем удалён)"
-                            : t("admin.tournament_delete_confirm");
-                          if (window.confirm(msg))
-                            remove.mutate({ id: tournament.id, status: tournament.status });
-                        }}
-                        disabled={busy === tournament.id}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </Panel>
@@ -537,7 +543,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

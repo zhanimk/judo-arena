@@ -9,7 +9,14 @@
  * reverse dependency order so FK constraints don't fire.
  */
 
-import { PrismaClient, UserRole, TournamentStatus, BracketFormat, type User, type Club, type Tournament } from "@prisma/client";
+import {
+  PrismaClient,
+  UserRole,
+  TournamentStatus,
+  type User,
+  type Club,
+  type Tournament,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 export const db = new PrismaClient();
@@ -24,7 +31,9 @@ export async function requireDb(): Promise<void> {
     await db.$connect();
     await db.$queryRaw`SELECT 1`;
   } catch {
-    console.warn("\n[test:db] Database unreachable — skipping DB integration suite.\nRun: docker compose up postgres redis\n");
+    console.warn(
+      "\n[test:db] Database unreachable — skipping DB integration suite.\nRun: docker compose up postgres redis\n",
+    );
     // Re-throw so vitest marks the suite as skipped, not failed
     throw new Error("DATABASE_UNAVAILABLE");
   }
@@ -47,8 +56,12 @@ export async function cleanup(): Promise<void> {
   await db.matchEvent.deleteMany({ where: { id: { in: created.matchEvent } } });
   await db.match.deleteMany({ where: { id: { in: created.match } } });
   await db.bracket.deleteMany({ where: { id: { in: created.bracket } } });
-  await db.applicationEntry.deleteMany({ where: { id: { in: created.applicationEntry } } });
-  await db.application.deleteMany({ where: { id: { in: created.application } } });
+  await db.applicationEntry.deleteMany({
+    where: { id: { in: created.applicationEntry } },
+  });
+  await db.application.deleteMany({
+    where: { id: { in: created.application } },
+  });
   await db.category.deleteMany({ where: { id: { in: created.category } } });
   await db.tournament.deleteMany({ where: { id: { in: created.tournament } } });
   // users before clubs — members reference clubs
@@ -99,11 +112,15 @@ export async function makeAdmin(overrides = {}) {
   return createUser({ role: UserRole.ADMIN, ...overrides });
 }
 
-export async function makeCoach(overrides: Parameters<typeof createUser>[0] = {}) {
+export async function makeCoach(
+  overrides: Parameters<typeof createUser>[0] = {},
+) {
   return createUser({ role: UserRole.COACH, ...overrides });
 }
 
-export async function makeAthlete(overrides: Parameters<typeof createUser>[0] = {}) {
+export async function makeAthlete(
+  overrides: Parameters<typeof createUser>[0] = {},
+) {
   return createUser({ role: UserRole.ATHLETE, ...overrides });
 }
 
@@ -116,7 +133,11 @@ export async function makeClub(
   const suffix = Math.random().toString(36).slice(2, 6);
   const club = await db.club.create({
     data: {
-      name: overrides.name ?? { ru: `Клуб ${suffix}`, kk: `Клуб ${suffix}`, en: `Club ${suffix}` },
+      name: overrides.name ?? {
+        ru: `Клуб ${suffix}`,
+        kk: `Клуб ${suffix}`,
+        en: `Club ${suffix}`,
+      },
       city: overrides.city ?? "Алматы",
       createdById,
     },
@@ -136,19 +157,23 @@ export async function makeTournament(
   }> = {},
 ): Promise<Tournament> {
   const suffix = Math.random().toString(36).slice(2, 6);
-  const start = overrides.startDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  const end = overrides.endDate ?? new Date(start.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const start =
+    overrides.startDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const end =
+    overrides.endDate ?? new Date(start.getTime() + 2 * 24 * 60 * 60 * 1000);
   const tournament = await db.tournament.create({
     data: {
-      name: { ru: `Турнир ${suffix}`, kk: `Турнир ${suffix}`, en: `Tournament ${suffix}` },
+      name: {
+        ru: `Турнир ${suffix}`,
+        kk: `Турнир ${suffix}`,
+        en: `Tournament ${suffix}`,
+      },
       location: "Спорткомплекс «Балуан Шолак»",
       city: "Алматы",
-      country: "KZ",
       startDate: start,
       endDate: end,
-      registrationDeadline: new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000),
+      applicationDeadline: new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000),
       status: overrides.status ?? TournamentStatus.DRAFT,
-      bracketFormat: BracketFormat.SE_IJF,
       createdById,
     },
   });
@@ -166,7 +191,11 @@ export async function makeCategory(
   const category = await db.category.create({
     data: {
       tournamentId,
-      name: { ru: `до 66кг ${suffix}`, kk: `до 66кг ${suffix}`, en: `u66kg ${suffix}` },
+      name: {
+        ru: `до 66кг ${suffix}`,
+        kk: `до 66кг ${suffix}`,
+        en: `u66kg ${suffix}`,
+      },
       gender: overrides.gender ?? "MALE",
       ageMin: 18,
       ageMax: 35,
