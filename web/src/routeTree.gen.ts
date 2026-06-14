@@ -15,8 +15,6 @@ import { Route as RankingsRouteImport } from './routes/rankings'
 import { Route as ProtocolRouteImport } from './routes/protocol'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JudgeRouteImport } from './routes/judge'
-import { Route as Index3RouteImport } from './routes/index 3'
-import { Route as Index2RouteImport } from './routes/index 2'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AthleteRouteImport } from './routes/athlete'
@@ -92,16 +90,6 @@ const LoginRoute = LoginRouteImport.update({
 const JudgeRoute = JudgeRouteImport.update({
   id: '/judge',
   path: '/judge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Index3Route = Index3RouteImport.update({
-  id: '/index 3',
-  path: '/index 3',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Index2Route = Index2RouteImport.update({
-  id: '/index 2',
-  path: '/index 2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -342,8 +330,6 @@ export interface FileRoutesByFullPath {
   '/athlete': typeof AthleteRouteWithChildren
   '/coach': typeof CoachRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
-  '/index 2': typeof Index2Route
-  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
@@ -395,8 +381,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/index 2': typeof Index2Route
-  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
@@ -452,8 +436,6 @@ export interface FileRoutesById {
   '/athlete': typeof AthleteRouteWithChildren
   '/coach': typeof CoachRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
-  '/index 2': typeof Index2Route
-  '/index 3': typeof Index3Route
   '/judge': typeof JudgeRouteWithChildren
   '/login': typeof LoginRoute
   '/protocol': typeof ProtocolRoute
@@ -510,8 +492,6 @@ export interface FileRouteTypes {
     | '/athlete'
     | '/coach'
     | '/forgot-password'
-    | '/index 2'
-    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
@@ -563,8 +543,6 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/forgot-password'
-    | '/index 2'
-    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
@@ -619,8 +597,6 @@ export interface FileRouteTypes {
     | '/athlete'
     | '/coach'
     | '/forgot-password'
-    | '/index 2'
-    | '/index 3'
     | '/judge'
     | '/login'
     | '/protocol'
@@ -676,8 +652,6 @@ export interface RootRouteChildren {
   AthleteRoute: typeof AthleteRouteWithChildren
   CoachRoute: typeof CoachRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  Index2Route: typeof Index2Route
-  Index3Route: typeof Index3Route
   JudgeRoute: typeof JudgeRouteWithChildren
   LoginRoute: typeof LoginRoute
   ProtocolRoute: typeof ProtocolRoute
@@ -731,20 +705,6 @@ declare module '@tanstack/react-router' {
       path: '/judge'
       fullPath: '/judge'
       preLoaderRoute: typeof JudgeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/index 3': {
-      id: '/index 3'
-      path: '/index 3'
-      fullPath: '/index 3'
-      preLoaderRoute: typeof Index3RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/index 2': {
-      id: '/index 2'
-      path: '/index 2'
-      fullPath: '/index 2'
-      preLoaderRoute: typeof Index2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -1263,8 +1223,6 @@ const rootRouteChildren: RootRouteChildren = {
   AthleteRoute: AthleteRouteWithChildren,
   CoachRoute: CoachRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  Index2Route: Index2Route,
-  Index3Route: Index3Route,
   JudgeRoute: JudgeRouteWithChildren,
   LoginRoute: LoginRoute,
   ProtocolRoute: ProtocolRoute,
