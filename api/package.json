@@ -46,7 +46,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
     "otplib": "^13.4.1",
-    "pdfkit": "^0.15.0",
+    "pdfkit": "^0.19.1",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2",
     "qrcode": "^1.5.4",
