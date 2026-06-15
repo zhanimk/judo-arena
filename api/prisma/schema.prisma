@@ -261,6 +261,7 @@ model Tournament {
   tatamiCount         Int              @default(1)
   primaryLocale       Locale           @default(kk)
   posterUrl           String?
+  galleryUrls         Json? // string[] — public tournament gallery, max 6 images
   regulationUrl       String?
   regulationFileName  String?
   entryFeeKzt         Int              @default(0)

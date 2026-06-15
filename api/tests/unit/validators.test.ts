@@ -92,6 +92,31 @@ describe("createTournamentSchema", () => {
       createTournamentSchema.safeParse({ ...base, tatamiCount: 10 }).success,
     ).toBe(true);
   });
+
+  it("accepts uploaded poster and gallery URLs", () => {
+    const result = createTournamentSchema.safeParse({
+      ...base,
+      posterUrl: "/uploads/images/poster.webp",
+      galleryUrls: [
+        "/uploads/images/tatami.webp",
+        "https://cdn.example.com/medals.webp",
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("limits the public gallery to six images", () => {
+    const result = createTournamentSchema.safeParse({
+      ...base,
+      galleryUrls: Array.from(
+        { length: 7 },
+        (_, index) => `https://cdn.example.com/photo-${index}.webp`,
+      ),
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("updateTournamentSchema", () => {
@@ -135,6 +160,26 @@ describe("createCategorySchema", () => {
         weightMax: 46,
       }).success,
     ).toBe(true);
+  });
+
+  it("accepts 999 as the upper bound for an open weight category", () => {
+    expect(
+      createCategorySchema.safeParse({
+        ...base,
+        weightMin: 90,
+        weightMax: 999,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unsupported weight bounds above 300", () => {
+    expect(
+      createCategorySchema.safeParse({
+        ...base,
+        weightMin: 90,
+        weightMax: 301,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects ageMin > ageMax", () => {
@@ -188,21 +233,28 @@ describe("createCategorySchema", () => {
 });
 
 describe("createCategoriesBulkSchema", () => {
-  it("accepts a complete age-group template in one payload", () => {
-    const categories = [46, 50, 55].map((weightMax, index, weights) => ({
-      gender: "MALE",
-      ageMin: 15,
-      ageMax: 17,
-      weightMin: index === 0 ? 0 : weights[index - 1],
-      weightMax,
-      matchDurationSec: 180,
-      goldenScoreSec: 90,
-      format: "SE_IJF",
-    }));
+  it("accepts the complete U17 template with open male and female categories", () => {
+    const categories = (
+      [
+        ["MALE", [46, 50, 55, 60, 66, 73, 81, 90, 999]],
+        ["FEMALE", [40, 44, 48, 52, 57, 63, 70, 999]],
+      ] as const
+    ).flatMap(([gender, weights]) =>
+      weights.map((weightMax, index) => ({
+        gender,
+        ageMin: 15,
+        ageMax: 17,
+        weightMin: index === 0 ? 0 : weights[index - 1],
+        weightMax,
+        matchDurationSec: 180,
+        goldenScoreSec: 90,
+        format: "SE_IJF",
+      })),
+    );
 
     const result = createCategoriesBulkSchema.safeParse({ categories });
     expect(result.success).toBe(true);
-    expect(result.success && result.data.categories).toHaveLength(3);
+    expect(result.success && result.data.categories).toHaveLength(17);
   });
 
   it("rejects an empty template", () => {

@@ -466,7 +466,7 @@ async function main() {
       startDate: new Date("2026-06-10T04:00:00.000Z"),
       endDate: new Date("2026-06-10T14:00:00.000Z"),
       applicationDeadline: new Date("2026-06-09T18:00:00.000Z"),
-      mapUrl: "https://2gis.kz/almaty/search/Judo%20Arena",
+      mapUrl: "https://www.google.com/maps?q=43.238949,76.889709",
       weighInLocation: "Зал взвешивания A",
       weighInStart: new Date("2026-06-10T02:00:00.000Z"),
       weighInEnd: new Date("2026-06-10T03:30:00.000Z"),

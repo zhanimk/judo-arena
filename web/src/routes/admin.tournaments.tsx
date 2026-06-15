@@ -25,6 +25,7 @@ import type { Tournament } from "@/lib/api-types";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, type InputHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
+import { MapLocationPicker } from "@/components/tournament/MapLocationPicker";
 
 export const Route = createFileRoute("/admin/tournaments")({
   head: () => ({ meta: [{ title: "Жарыстар — Әкімші" }] }),
@@ -441,11 +442,12 @@ function CreateTournamentForm({ onDone }: { onDone: () => void }) {
             required
           />
           <Input
-            label="2GIS / карта"
+            label="2GIS / Google Maps / карта *"
             type="url"
             value={form.mapUrl}
             onChange={(v) => setForm({ ...form, mapUrl: v })}
             placeholder="https://2gis.kz/..."
+            required
             className="md:col-span-2"
           />
           <Input
@@ -477,7 +479,19 @@ function CreateTournamentForm({ onDone }: { onDone: () => void }) {
             onChange={(v) => setForm({ ...form, tatamiCount: Number(v) })}
           />
         </div>
-        <div className="grid content-start gap-3 rounded-md border border-border/50 bg-background/25 p-4">
+        <div className="grid content-start gap-4 rounded-md border border-gold/25 bg-background/25 p-4">
+          <div>
+            <div className="text-sm font-semibold">Турнир өтетін орынды картадан белгілеңіз</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Нүктені басыңыз немесе ағымдағы орынды қолданыңыз. Бұл карта бірден жария бетте
+              көрінеді.
+            </div>
+          </div>
+          <MapLocationPicker
+            city={form.city}
+            mapUrl={form.mapUrl}
+            onChange={(mapUrl) => setForm((current) => ({ ...current, mapUrl }))}
+          />
           <Input
             label={t("payments.entry_fee")}
             type="number"

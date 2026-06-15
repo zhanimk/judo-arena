@@ -605,7 +605,7 @@ function Empty({
     <div className="rounded-2xl border border-border/40 py-16 text-center text-muted-foreground">
       <Icon className="h-10 w-10 mx-auto mb-3 opacity-20" />
       <p className="font-medium">{text}</p>
-      {hint && <p className="text-sm mt-1 opacity-70">{hint}</p>}
+      {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
     </div>
   );
 }

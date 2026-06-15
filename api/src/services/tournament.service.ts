@@ -166,6 +166,7 @@ export async function createTournament(
       tatamiCount: input.tatamiCount,
       primaryLocale: input.primaryLocale,
       posterUrl: input.posterUrl,
+      galleryUrls: input.galleryUrls,
       regulationUrl: input.regulationUrl,
       regulationFileName: input.regulationFileName,
       entryFeeKzt: input.entryFeeKzt,
@@ -256,6 +257,9 @@ export async function updateTournament(
       }),
       ...(input.primaryLocale && { primaryLocale: input.primaryLocale }),
       ...(input.posterUrl !== undefined && { posterUrl: input.posterUrl }),
+      ...(input.galleryUrls !== undefined && {
+        galleryUrls: input.galleryUrls ?? Prisma.JsonNull,
+      }),
       ...(input.regulationUrl !== undefined && {
         regulationUrl: input.regulationUrl,
       }),

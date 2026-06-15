@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { LazyImage, Avatar } from "@/components/ui/avatar-image";
 import { TatamiScene } from "@/components/home/TatamiScene";
-import { mediaUrl } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import emblem from "@/assets/jcl-logo.jpeg";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
@@ -35,7 +35,6 @@ import {
   GitBranch,
   BookOpen,
 } from "lucide-react";
-import { api } from "@/lib/api";
 import { Bracket, sampleRounds } from "@/components/judo/Bracket";
 import { useTranslation } from "react-i18next";
 import type { AthleteLeaderboardEntry, Tournament, Match, Club } from "@/lib/api-types";
@@ -143,7 +142,6 @@ const clubs = [
     image: heroKazakhstan,
   },
 ];
-
 
 function localizeName(name: unknown): string {
   if (!name) return "—";
@@ -1191,8 +1189,13 @@ function Home() {
           {/* 3-D perspective bracket frame */}
           <div className="relative [perspective:1200px]">
             {/* outer glow ring */}
-            <div className="absolute -inset-px rounded-2xl pointer-events-none"
-              style={{ background: "linear-gradient(135deg, rgba(200,146,42,0.4) 0%, transparent 40%, rgba(200,146,42,0.15) 100%)", filter: "blur(1px)" }}
+            <div
+              className="absolute -inset-px rounded-2xl pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(200,146,42,0.4) 0%, transparent 40%, rgba(200,146,42,0.15) 100%)",
+                filter: "blur(1px)",
+              }}
             />
             {/* corner accent lines */}
             <div className="absolute top-0 left-0 w-16 h-16 pointer-events-none">
@@ -1282,7 +1285,9 @@ function Home() {
               className="group relative min-h-[29rem] overflow-hidden rounded-2xl border border-gold/20 bg-card shadow-elegant transition-all hover:-translate-y-1 hover:border-gold/50"
             >
               <LazyImage
-                src={featuredTournament.posterUrl || teamLineup}
+                src={
+                  featuredTournament.posterUrl ? mediaUrl(featuredTournament.posterUrl) : teamLineup
+                }
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-105"
               />
@@ -1498,7 +1503,10 @@ function Home() {
 
             <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
               {/* 3-D TATAMI — always visible */}
-              <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-background/30 backdrop-blur flex flex-col" style={{ minHeight: 340 }}>
+              <div
+                className="relative overflow-hidden rounded-2xl border border-gold/20 bg-background/30 backdrop-blur flex flex-col"
+                style={{ minHeight: 340 }}
+              >
                 <style>{`
                   @keyframes tatamiPulse { 0%,100%{opacity:0.18} 50%{opacity:0.38} }
                   @keyframes tatamiGlow  { 0%,100%{filter:drop-shadow(0 0 18px rgba(200,146,42,0.25))} 50%{filter:drop-shadow(0 0 38px rgba(200,146,42,0.55))} }
@@ -1506,7 +1514,10 @@ function Home() {
                   @keyframes fighterBlue { 0%,100%{transform:translateY(0)} 60%{transform:translateY(-6px)} }
                   @keyframes scanLine    { 0%{transform:translateY(-100%)} 100%{transform:translateY(400%)} }
                 `}</style>
-                <div className="pointer-events-none absolute inset-x-0 h-12 opacity-5 bg-gradient-to-b from-transparent via-gold to-transparent" style={{ animation: "scanLine 3.5s linear infinite", top: 0 }} />
+                <div
+                  className="pointer-events-none absolute inset-x-0 h-12 opacity-5 bg-gradient-to-b from-transparent via-gold to-transparent"
+                  style={{ animation: "scanLine 3.5s linear infinite", top: 0 }}
+                />
 
                 <div className="flex-1 flex items-center justify-center py-4 px-2">
                   <TatamiScene />
@@ -1516,15 +1527,29 @@ function Home() {
                 {liveMatches.length > 0 && (
                   <div className="grid grid-cols-3 gap-3 px-4 pb-4">
                     {liveMatches.map((item, i) => (
-                      <div key={`tatami-${item.tatami}-${i}`} className="rounded-xl border border-border/60 bg-background/60 p-3 backdrop-blur">
+                      <div
+                        key={`tatami-${item.tatami}-${i}`}
+                        className="rounded-xl border border-border/60 bg-background/60 p-3 backdrop-blur"
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2 py-0.5 text-[9px] uppercase tracking-widest text-destructive">LIVE</span>
-                          <span className="font-display text-lg font-bold text-gold/40">#{item.tatami}</span>
+                          <span className="rounded-full border border-destructive/40 bg-destructive/15 px-2 py-0.5 text-[9px] uppercase tracking-widest text-destructive">
+                            LIVE
+                          </span>
+                          <span className="font-display text-lg font-bold text-gold/40">
+                            #{item.tatami}
+                          </span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{item.category}</p>
-                        <p className="text-xs font-semibold mt-1 leading-tight line-clamp-2">{item.current}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">
+                          {item.category}
+                        </p>
+                        <p className="text-xs font-semibold mt-1 leading-tight line-clamp-2">
+                          {item.current}
+                        </p>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background/50">
-                          <div className="h-full rounded-full bg-gradient-gold" style={{ width: `${item.progress}%` }} />
+                          <div
+                            className="h-full rounded-full bg-gradient-gold"
+                            style={{ width: `${item.progress}%` }}
+                          />
                         </div>
                       </div>
                     ))}

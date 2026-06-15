@@ -7,10 +7,13 @@ import {
   Clock,
   CreditCard,
   FileText,
+  ImageIcon,
   Loader2,
   MapPin,
+  Plus,
   Trash2,
   Upload,
+  X,
   Youtube,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -58,6 +61,9 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
 
   // Form state
   const [posterUrl, setPosterUrl] = useState(tourney.posterUrl ?? "");
+  const [galleryUrls, setGalleryUrls] = useState<string[]>(
+    Array.isArray(tourney.galleryUrls) ? tourney.galleryUrls : [],
+  );
   const [mapUrl, setMapUrl] = useState(tourney.mapUrl ?? "");
   const [weighInLocation, setWeighInLocation] = useState(tourney.weighInLocation ?? "");
   const [weighInStart, setWeighInStart] = useState(toDateTimeLocal(tourney.weighInStart ?? ""));
@@ -86,6 +92,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
     mutationFn: () =>
       api.tournaments.update(tourney.id, {
         posterUrl: posterUrl || null,
+        galleryUrls: galleryUrls.length > 0 ? galleryUrls : null,
         regulationUrl: regulationUrl || null,
         regulationFileName: regulationFileName || null,
         mapUrl: mapUrl || null,
@@ -129,12 +136,30 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
     },
     onError: (e: unknown) => {
       const msg =
-        e instanceof ApiError
-          ? e.message
-          : e instanceof Error
-            ? e.message
-            : t("error.generic");
+        e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("error.generic");
       setUploadError(msg);
+    },
+  });
+
+  const uploadPoster = useMutation({
+    mutationFn: (file: File) => api.uploads.image(file),
+    onSuccess: ({ url }) => {
+      setPosterUrl(url);
+      setUploadError("");
+    },
+    onError: (e: unknown) => {
+      setUploadError(e instanceof ApiError ? e.message : t("error.generic"));
+    },
+  });
+
+  const uploadGalleryImage = useMutation({
+    mutationFn: (file: File) => api.uploads.image(file),
+    onSuccess: ({ url }) => {
+      setGalleryUrls((current) => [...current, url].slice(0, 6));
+      setUploadError("");
+    },
+    onError: (e: unknown) => {
+      setUploadError(e instanceof ApiError ? e.message : t("error.generic"));
     },
   });
 
@@ -283,60 +308,161 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
           </div>
         </div>
 
-        {/* ── Section 4: Media (poster + YouTube) ── */}
+        {/* ── Section 4: Media (poster + gallery + YouTube) ── */}
         <div className="rounded-xl border border-border/50 bg-card/30 p-4">
-          <SectionHeader icon={<Youtube className="h-4 w-4" />} title="Медиа" />
+          <SectionHeader
+            icon={<ImageIcon className="h-4 w-4" />}
+            title="Афиша және турнир галереясы"
+          />
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 items-end">
-              <Input
-                label="Постер URL"
-                type="url"
-                value={posterUrl}
-                onChange={setPosterUrl}
-                placeholder="https://..."
-              />
-              {posterUrl && (
-                <a
-                  href={posterUrl}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gold/30 bg-gold/10 px-3 text-sm text-gold hover:bg-gold/15"
-                >
-                  {t("common.open")}
-                </a>
-              )}
-            </div>
-            {tatamiCount > 0 && (
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
               <div>
-                <div className="mb-2 text-xs text-muted-foreground">
-                  YouTube трансляция (татамиге байланысты)
+                <div className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                  Негізгі афиша
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {Array.from({ length: tatamiCount }, (_, i) => (
-                    <Input
-                      key={i}
-                      label={`Татами #${i + 1} — YouTube URL`}
-                      type="url"
-                      value={youtubeUrls[i] ?? ""}
-                      onChange={(v: string) =>
-                        setYoutubeUrls((prev) => {
-                          const next = [...prev];
-                          next[i] = v;
-                          return next;
-                        })
-                      }
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
+                <div className="relative overflow-hidden rounded-xl border border-border/60 bg-background/40 aspect-[16/10]">
+                  {posterUrl ? (
+                    <img src={mediaUrl(posterUrl)} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full place-items-center text-center text-muted-foreground">
+                      <div>
+                        <ImageIcon className="mx-auto h-9 w-9 text-gold/40" />
+                        <div className="mt-2 text-xs">Карточка мен турнир бетінің мұқабасы</div>
+                      </div>
+                    </div>
+                  )}
+                  {posterUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setPosterUrl("")}
+                      className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-background/85 text-muted-foreground shadow hover:text-destructive"
+                      aria-label="Постерді жою"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-gold px-3 py-2 text-sm font-semibold text-gold-foreground shadow-gold">
+                  {uploadPoster.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {posterUrl ? "Афишаны ауыстыру" : "Афиша жүктеу"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={uploadPoster.isPending}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) uploadPoster.mutate(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                      Галерея
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Марапаттау, татами, зал немесе өткен жарыстан 6 фотоға дейін
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{galleryUrls.length}/6</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {galleryUrls.map((url, index) => (
+                    <div
+                      key={`${url}-${index}`}
+                      className="group relative overflow-hidden rounded-lg border border-border/60 bg-background/40 aspect-[4/3]"
+                    >
+                      <img src={mediaUrl(url)} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGalleryUrls((current) =>
+                            current.filter((_, currentIndex) => currentIndex !== index),
+                          )
+                        }
+                        className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow transition group-hover:opacity-100 hover:text-destructive"
+                        aria-label="Суретті жою"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   ))}
+                  {galleryUrls.length < 6 && (
+                    <label className="grid cursor-pointer place-items-center rounded-lg border border-dashed border-gold/40 bg-gold/5 text-center text-gold transition hover:bg-gold/10 aspect-[4/3]">
+                      <div>
+                        {uploadGalleryImage.isPending ? (
+                          <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                        ) : (
+                          <Plus className="mx-auto h-5 w-5" />
+                        )}
+                        <div className="mt-1 text-xs">Фото қосу</div>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={uploadGalleryImage.isPending}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) uploadGalleryImage.mutate(file);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="border-t border-border/40 pt-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                <Youtube className="h-4 w-4 text-gold" />
+                Тікелей трансляция
+              </div>
+              {tatamiCount > 0 && (
+                <div>
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    YouTube трансляция (татамиге байланысты)
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {Array.from({ length: tatamiCount }, (_, i) => (
+                      <Input
+                        key={i}
+                        label={`Татами #${i + 1} — YouTube URL`}
+                        type="url"
+                        value={youtubeUrls[i] ?? ""}
+                        onChange={(v: string) =>
+                          setYoutubeUrls((prev) => {
+                            const next = [...prev];
+                            next[i] = v;
+                            return next;
+                          })
+                        }
+                        placeholder="https://www.youtube.com/watch?v=..."
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ── Section 5: Regulation ── */}
         <div className="rounded-xl border border-border/50 bg-card/30 p-4">
-          <SectionHeader icon={<FileText className="h-4 w-4" />} title={t("tournament.regulation_title")} />
+          <SectionHeader
+            icon={<FileText className="h-4 w-4" />}
+            title={t("tournament.regulation_title")}
+          />
 
           {uploadError && (
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -361,7 +487,9 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
                 ) : (
                   <>
                     <div className="font-medium text-sm">{t("tournament.regulation_hint")}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">PDF, JPG, PNG, WEBP · макс 20 МБ</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      PDF, JPG, PNG, WEBP · макс 20 МБ
+                    </div>
                   </>
                 )}
               </div>
@@ -421,7 +549,10 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
         {/* ── Description (read-only) ── */}
         {tourney.description && (
           <div className="rounded-xl border border-border/50 bg-card/30 p-4">
-            <SectionHeader icon={<FileText className="h-4 w-4" />} title={t("tournament.description")} />
+            <SectionHeader
+              icon={<FileText className="h-4 w-4" />}
+              title={t("tournament.description")}
+            />
             <p className="text-sm leading-relaxed">{localizeName(tourney.description)}</p>
           </div>
         )}

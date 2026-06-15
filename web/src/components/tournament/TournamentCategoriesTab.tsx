@@ -7,6 +7,18 @@ import { api, ApiError } from "@/lib/api";
 import { Input, Select, FormatBadge, categoryTitle, compactI18n } from "./shared";
 import { AGE_GROUPS, buildWeightCategories, wLabel } from "./age-groups";
 
+function apiErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) return fallback;
+  const firstIssue = Array.isArray(error.details) ? error.details[0] : null;
+  if (!firstIssue || typeof firstIssue !== "object") return error.message;
+
+  const issue = firstIssue as { path?: unknown; message?: unknown };
+  const path = typeof issue.path === "string" ? issue.path : "";
+  const message = typeof issue.message === "string" ? issue.message : "";
+  if (!message) return error.message;
+  return `${error.message}: ${path ? `${path} — ` : ""}${message}`;
+}
+
 function CategoryForm({
   initial,
   busy,
@@ -269,7 +281,7 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
       setError("");
       qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.create_error")),
+    onError: (e: unknown) => setError(apiErrorMessage(e, t("categories.create_error"))),
   });
   const update = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
@@ -279,7 +291,7 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
       setError("");
       qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.update_error")),
+    onError: (e: unknown) => setError(apiErrorMessage(e, t("categories.update_error"))),
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.tournaments.deleteCategory(id),
@@ -287,7 +299,7 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
       setError("");
       qc.invalidateQueries({ queryKey: ["admin-tournament", tourney.id] });
     },
-    onError: (e: any) => setError(e instanceof ApiError ? e.message : t("categories.delete_error")),
+    onError: (e: unknown) => setError(apiErrorMessage(e, t("categories.delete_error"))),
   });
 
   async function handleBulkAdd() {
@@ -315,7 +327,7 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
           : t("categories.bulk_already_exists"),
       );
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("categories.bulk_error"));
+      setError(apiErrorMessage(e, t("categories.bulk_error")));
     } finally {
       setBulkAdding(false);
     }

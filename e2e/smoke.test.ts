@@ -61,6 +61,22 @@ test.describe("Public pages", () => {
     );
   });
 
+  test("tournament page shows venue map and event presentation", async ({
+    page,
+  }) => {
+    const response = await page.goto(
+      `${BASE}/tournaments/demo-complete-flow-2026`,
+    );
+    await expect(
+      page.getByRole("heading", { name: /демо турнир/i }),
+    ).toBeVisible();
+    const map = page.locator('iframe[src*="maps.google.com"]');
+    await expect(map).toBeVisible();
+    expect(response?.headers()["content-security-policy"]).toContain(
+      "frame-src",
+    );
+  });
+
   test("rankings page loads", async ({ page }) => {
     await page.goto(`${BASE}/rankings`);
     await expect(page.locator("body")).toContainText(
@@ -148,6 +164,18 @@ test.describe("Admin dashboard", () => {
   test("admin can navigate to tournaments", async ({ page }) => {
     await page.goto(`${BASE}/admin/tournaments`);
     await expect(page.locator("body")).toContainText(/жарыс|турнир/i);
+  });
+
+  test("admin can configure tournament map, media and regulation", async ({
+    page,
+  }) => {
+    await page.goto(
+      `${BASE}/admin/tournaments/demo-complete-flow-2026?tab=overview`,
+    );
+    await expect(page.getByText("Афиша және турнир галереясы")).toBeVisible();
+    await expect(page.getByText("Турнир регламенті")).toBeVisible();
+    await expect(page.locator('iframe[src*="maps.google.com"]')).toBeVisible();
+    await expect(page.locator('input[type="file"]')).toHaveCount(3);
   });
 
   test("admin can navigate to clubs", async ({ page }) => {

@@ -146,6 +146,7 @@ export interface Tournament {
   tatamiCount: number;
   primaryLocale: Locale;
   posterUrl?: string | null;
+  galleryUrls?: string[] | null;
   regulationUrl?: string | null;
   regulationFileName?: string | null;
   entryFeeKzt: number;
@@ -496,6 +497,7 @@ export interface CreateTournamentInput {
   entryFeeKzt?: number;
   kaspiPaymentUrl?: string | null;
   posterUrl?: string | null;
+  galleryUrls?: string[] | null;
   regulationUrl?: string | null;
   regulationFileName?: string | null;
   youtubeUrls?: string[] | null;

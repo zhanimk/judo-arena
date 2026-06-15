@@ -12,7 +12,9 @@ import {
   Clock,
   FileText,
   GitBranch,
+  Images,
   MapPin,
+  Medal,
   Radio,
   Search,
   Trophy,
@@ -21,7 +23,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { api, mediaUrl } from "@/lib/api";
 import type { Tournament } from "@/lib/api-types";
 import { useTranslation } from "react-i18next";
 
@@ -139,7 +141,7 @@ function Tournaments() {
             >
               <div className="relative h-44">
                 <LazyImage
-                  src={featured.posterUrl || teamLineup}
+                  src={featured.posterUrl ? mediaUrl(featured.posterUrl) : teamLineup}
                   alt=""
                   className="h-full w-full object-cover"
                   priority
@@ -150,6 +152,17 @@ function Tournaments() {
                 >
                   {String(t(`status.${featured.status}`, featured.status))}
                 </span>
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/45 text-gold backdrop-blur">
+                    <Medal className="h-4 w-4" />
+                  </span>
+                  {(featured.galleryUrls?.length ?? 0) > 0 && (
+                    <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 text-xs text-white backdrop-blur">
+                      <Images className="h-3.5 w-3.5 text-gold" />
+                      {featured.galleryUrls?.length}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="p-5">
                 <div className="text-xs uppercase tracking-widest text-gold">
@@ -247,7 +260,11 @@ function Tournaments() {
               >
                 <div className="relative h-40 overflow-hidden">
                   <LazyImage
-                    src={tournament.posterUrl || tournamentImages[index % tournamentImages.length]!}
+                    src={
+                      tournament.posterUrl
+                        ? mediaUrl(tournament.posterUrl)
+                        : tournamentImages[index % tournamentImages.length]!
+                    }
                     alt=""
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
@@ -257,6 +274,17 @@ function Tournaments() {
                   >
                     {String(t(`status.${tournament.status}`, tournament.status))}
                   </span>
+                  <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black/45 text-gold backdrop-blur">
+                      <Medal className="h-4 w-4" />
+                    </span>
+                    {(tournament.galleryUrls?.length ?? 0) > 0 && (
+                      <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-2.5 text-[11px] text-white backdrop-blur">
+                        <Images className="h-3.5 w-3.5 text-gold" />
+                        {tournament.galleryUrls?.length}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="relative p-5">
                   <div className="mb-3 flex items-start justify-between gap-3">

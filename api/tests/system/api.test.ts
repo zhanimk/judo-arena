@@ -18,6 +18,7 @@ import cookie from "@fastify/cookie";
 vi.mock("../../src/lib/prisma.js", () => ({
   prisma: {
     user: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    judgeSession: { findUnique: vi.fn() },
     $queryRaw: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
     $disconnect: vi.fn(),
   },
@@ -204,15 +205,6 @@ describe("Unknown routes", () => {
 // ─── Judge token security ──────────────────────────────────────────────────────
 // Tests the getValidSession service logic directly (expired / revoked / invalid).
 // These guard the X-Judge-Token path without requiring the full matchRoutes stack.
-
-vi.mock("../../src/lib/prisma.js", () => ({
-  prisma: {
-    user: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
-    $queryRaw: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
-    $disconnect: vi.fn(),
-    judgeSession: { findUnique: vi.fn() },
-  },
-}));
 
 describe("Judge token security — getValidSession()", () => {
   it("throws INVALID_TOKEN (401) for unknown token", async () => {

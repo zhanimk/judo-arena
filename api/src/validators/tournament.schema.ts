@@ -22,6 +22,19 @@ const i18nDescription = z
   })
   .optional();
 
+const mediaUrl = z.union([
+  z.string().url(),
+  z.string().startsWith("/uploads/"),
+]);
+const galleryUrls = z.array(mediaUrl).max(6);
+const categoryWeightMax = z.coerce
+  .number()
+  .positive()
+  .refine((value) => value <= 300 || value === 999, {
+    message:
+      "weightMax должен быть ≤ 300 или 999 для открытой весовой категории",
+  });
+
 // ============================================================
 // ТУРНИРЫ
 // ============================================================
@@ -41,7 +54,8 @@ export const createTournamentSchema = z
     weighInEnd: z.coerce.date().optional(),
     tatamiCount: z.coerce.number().int().min(1).max(20).default(1),
     primaryLocale: z.enum(["ru", "kk", "en"]).default("kk"),
-    posterUrl: z.string().url().optional(),
+    posterUrl: mediaUrl.optional(),
+    galleryUrls: galleryUrls.optional(),
     regulationUrl: z.string().url().optional(),
     regulationFileName: z.string().min(1).max(255).optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).default(0),
@@ -84,8 +98,9 @@ export const updateTournamentSchema = z
     weighInEnd: z.coerce.date().nullable().optional(),
     tatamiCount: z.coerce.number().int().min(1).max(20).optional(),
     primaryLocale: z.enum(["ru", "kk", "en"]).optional(),
-    posterUrl: z.string().url().nullable().optional(),
-    regulationUrl: z.union([z.string().url(), z.string().startsWith("/uploads/")]).nullable().optional(),
+    posterUrl: mediaUrl.nullable().optional(),
+    galleryUrls: galleryUrls.nullable().optional(),
+    regulationUrl: mediaUrl.nullable().optional(),
     regulationFileName: z.string().min(1).max(255).nullable().optional(),
     entryFeeKzt: z.coerce.number().int().min(0).max(10_000_000).optional(),
     kaspiPaymentUrl: z.string().url().nullable().optional(),
@@ -145,7 +160,7 @@ export const createCategorySchema = z
     ageMin: z.coerce.number().int().min(4).max(99),
     ageMax: z.coerce.number().int().min(4).max(99),
     weightMin: z.coerce.number().nonnegative().max(300),
-    weightMax: z.coerce.number().positive().max(300),
+    weightMax: categoryWeightMax,
     matchDurationSec: z.coerce.number().int().min(60).max(900).default(240),
     goldenScoreSec: z.coerce.number().int().min(0).max(900).default(0),
     format: z.enum(["SE_IJF", "ROUND_ROBIN", "MIXED"]).default("SE_IJF"),
@@ -180,7 +195,7 @@ export const updateCategorySchema = z
     ageMin: z.coerce.number().int().min(4).max(99).optional(),
     ageMax: z.coerce.number().int().min(4).max(99).optional(),
     weightMin: z.coerce.number().nonnegative().max(300).optional(),
-    weightMax: z.coerce.number().positive().max(300).optional(),
+    weightMax: categoryWeightMax.optional(),
     matchDurationSec: z.coerce.number().int().min(60).max(900).optional(),
     goldenScoreSec: z.coerce.number().int().min(0).max(900).optional(),
     format: z.enum(["SE_IJF", "ROUND_ROBIN", "MIXED"]).optional(),

@@ -88,6 +88,7 @@ const CSP =
   "img-src 'self' data: blob: https:; " +
   `connect-src ${[...connectSources].join(" ")}; ` +
   "font-src 'self' data: https://fonts.gstatic.com; " +
+  "frame-src 'self' https://maps.google.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com; " +
   "frame-ancestors 'none'; " +
   "object-src 'none'; " +
   "base-uri 'self'";

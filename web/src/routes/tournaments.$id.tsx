@@ -9,6 +9,7 @@ import {
   Download,
   FileDown,
   FileText,
+  Images,
   Loader2,
   MapPin,
   //   Medal,
@@ -16,6 +17,7 @@ import {
   Shield,
   Trophy,
   Users,
+  X,
   Youtube,
 } from "lucide-react";
 import { SiteHeader } from "@/components/site/SiteHeader";
@@ -25,6 +27,7 @@ import { LiveBracket } from "@/components/judo/LiveBracket";
 import { buildTatamiState } from "@/lib/tatami-state";
 import { useTranslation } from "react-i18next";
 import { mapEmbedUrl } from "@/components/tournament/shared";
+import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 
 // ── Local types ─────────────────────────────────────────────────────────────
 
@@ -105,6 +108,7 @@ interface TTournament {
   tatamiCount?: number | null;
   mapUrl?: string | null;
   posterUrl?: string | null;
+  galleryUrls?: string[] | null;
   regulationUrl?: string | null;
   regulationFileName?: string | null;
   videoUrls?: string[] | null;
@@ -138,6 +142,8 @@ function TournamentDetail() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "categories" | "wall" | "liveTop" | "results"
   >("overview");
+  const [regulationOpen, setRegulationOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   function setSelectedCategoryId(catId: string | null) {
     setSelectedCategoryIdRaw(catId);
@@ -236,9 +242,15 @@ function TournamentDetail() {
       <SiteHeader fixed />
 
       <section id="overview" className="relative overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-gradient-hero opacity-75" />
+        <img
+          src={tourney.posterUrl ? mediaUrl(tourney.posterUrl) : heroKazakhstan}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/55" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-transparent to-background/20" />
         <div className="absolute inset-0 grid-bg opacity-30" />
-        <div className="container relative mx-auto px-4 py-8 sm:py-10">
+        <div className="container relative mx-auto px-4 py-10 sm:py-14">
           <Link
             to="/tournaments"
             className="mb-5 inline-flex text-sm text-muted-foreground hover:text-gold"
@@ -251,7 +263,7 @@ function TournamentDetail() {
               {t("tournament.all_info_badge")}
             </span>
           </div>
-          <h1 className="mt-4 max-w-5xl font-display text-4xl font-bold leading-tight sm:text-5xl">
+          <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-tight drop-shadow-2xl sm:text-5xl lg:text-6xl">
             {name}
           </h1>
           {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
@@ -287,6 +299,27 @@ function TournamentDetail() {
               label={t("payments.entry_fee")}
               value={formatKzt(tourney.entryFeeKzt ?? 0)}
             />
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {tourney.mapUrl && (
+              <a
+                href={tourney.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-gold px-4 py-2.5 text-sm font-bold text-gold-foreground shadow-gold"
+              >
+                <MapPin className="h-4 w-4" /> {t("tournament.map_link")}
+              </a>
+            )}
+            {tourney.regulationUrl && (
+              <button
+                type="button"
+                onClick={() => setRegulationOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-background/70 px-4 py-2.5 text-sm font-semibold backdrop-blur hover:border-gold/60 hover:text-gold"
+              >
+                <FileText className="h-4 w-4" /> {t("tournament.regulation_title")}
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -327,20 +360,43 @@ function TournamentDetail() {
             <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
               {/* About */}
               <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.3em] text-gold">{t("tournament.full_info")}</div>
+                <div className="text-xs uppercase tracking-[0.3em] text-gold">
+                  {t("tournament.full_info")}
+                </div>
                 <h2 className="mt-3 font-display text-3xl font-bold">{t("tournament.about")}</h2>
                 {desc && (
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{desc}</p>
                 )}
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <InfoCard label={t("tournament.deadline")} value={deadlineText(tourney)} />
-                  <InfoCard label={t("tournament.weigh_in_time")} value={weighInText(tourney, t("tournament.tbd_later"))} />
-                  <InfoCard label={t("tournament.weigh_in_location")} value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")} />
-                  <InfoCard label={t("tournament.city_label")} value={tourney.city || t("tournament.not_specified")} />
-                  <InfoCard label={t("payments.entry_fee")} value={formatKzt(tourney.entryFeeKzt ?? 0)} />
-                  <InfoCard label={t("tournament.tatami_count")} value={String(tourney.tatamiCount ?? 1)} />
-                  <InfoCard label={t("tournament.metric_location")} value={[tourney.location, tourney.city].filter(Boolean).join(", ")} />
-                  <InfoCard label={t("tournament.stat_categories")} value={String(tourney.categories?.length ?? 0)} />
+                  <InfoCard
+                    label={t("tournament.weigh_in_time")}
+                    value={weighInText(tourney, t("tournament.tbd_later"))}
+                  />
+                  <InfoCard
+                    label={t("tournament.weigh_in_location")}
+                    value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")}
+                  />
+                  <InfoCard
+                    label={t("tournament.city_label")}
+                    value={tourney.city || t("tournament.not_specified")}
+                  />
+                  <InfoCard
+                    label={t("payments.entry_fee")}
+                    value={formatKzt(tourney.entryFeeKzt ?? 0)}
+                  />
+                  <InfoCard
+                    label={t("tournament.tatami_count")}
+                    value={String(tourney.tatamiCount ?? 1)}
+                  />
+                  <InfoCard
+                    label={t("tournament.metric_location")}
+                    value={[tourney.location, tourney.city].filter(Boolean).join(", ")}
+                  />
+                  <InfoCard
+                    label={t("tournament.stat_categories")}
+                    value={String(tourney.categories?.length ?? 0)}
+                  />
                 </div>
                 {/* Action buttons */}
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-border/40 pt-4">
@@ -404,7 +460,9 @@ function TournamentDetail() {
                         <Clock className="h-4 w-4" />
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground">{t("tournament.weigh_in_location")}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {t("tournament.weigh_in_location")}
+                        </div>
                         <div className="text-sm font-medium">{tourney.weighInLocation}</div>
                       </div>
                     </div>
@@ -427,7 +485,9 @@ function TournamentDetail() {
             <div className="grid gap-5 lg:grid-cols-2">
               {/* Regulation */}
               <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("tournament.regulation_title")}</div>
+                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
+                  {t("tournament.regulation_title")}
+                </div>
                 {tourney.regulationUrl ? (
                   <div className="flex items-start gap-4">
                     <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-gold shrink-0">
@@ -437,15 +497,23 @@ function TournamentDetail() {
                       <div className="font-semibold truncate">
                         {tourney.regulationFileName || t("tournament.regulation_title")}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">{t("tournament.regulation_hint")}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {t("tournament.regulation_hint")}
+                      </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <a
-                          href={mediaUrl(tourney.regulationUrl)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => setRegulationOpen(true)}
                           className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold hover:opacity-90"
                         >
-                          <FileDown className="h-4 w-4" /> {t("tournament.rules_file")}
+                          <FileText className="h-4 w-4" /> Регламентті көру
+                        </button>
+                        <a
+                          href={mediaUrl(tourney.regulationUrl)}
+                          download
+                          className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:bg-gold/20"
+                        >
+                          <FileDown className="h-4 w-4" /> Жүктеу
                         </a>
                       </div>
                     </div>
@@ -460,12 +528,25 @@ function TournamentDetail() {
 
               {/* Live stats */}
               <div className="rounded-2xl border border-border/60 bg-card/55 p-6 shadow-elegant backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("tournament.open_dashboard")}</div>
+                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
+                  {t("tournament.open_dashboard")}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <InfoCard label={t("tournament.metric_applications")} value={String(tourney._count?.applications ?? 0)} />
+                  <InfoCard
+                    label={t("tournament.metric_applications")}
+                    value={String(tourney._count?.applications ?? 0)}
+                  />
                   <InfoCard label={t("tournament.stat_matches")} value={String(matches.length)} />
-                  <InfoCard label={t("tournament.tab_live")} value={brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")} />
-                  <InfoCard label={t("tournament.tatami_count")} value={String(tourney.tatamiCount ?? 1)} />
+                  <InfoCard
+                    label={t("tournament.tab_live")}
+                    value={
+                      brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")
+                    }
+                  />
+                  <InfoCard
+                    label={t("tournament.tatami_count")}
+                    value={String(tourney.tatamiCount ?? 1)}
+                  />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -485,6 +566,44 @@ function TournamentDetail() {
                 </div>
               </div>
             </div>
+
+            {Array.isArray(tourney.galleryUrls) && tourney.galleryUrls.length > 0 && (
+              <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
+                <div className="mb-4 flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.3em] text-gold">
+                      Турнир атмосферасы
+                    </div>
+                    <h2 className="mt-2 font-display text-2xl font-bold">Фото галерея</h2>
+                  </div>
+                  <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                    <Images className="h-4 w-4 text-gold" />
+                    {tourney.galleryUrls.length} фото
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {tourney.galleryUrls.map((url, index) => (
+                    <button
+                      key={`${url}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedImage(url)}
+                      className={`group relative overflow-hidden rounded-xl border border-border/60 bg-background/40 ${
+                        index === 0 ? "sm:col-span-2 lg:row-span-2" : ""
+                      }`}
+                    >
+                      <img
+                        src={mediaUrl(url)}
+                        alt={`${name} — ${index + 1}`}
+                        className={`w-full object-cover transition duration-500 group-hover:scale-105 ${
+                          index === 0 ? "h-64 lg:h-full" : "h-44"
+                        }`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background/45 to-transparent opacity-0 transition group-hover:opacity-100" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -702,6 +821,105 @@ function TournamentDetail() {
           tournamentId={id}
         />
       )}
+
+      {regulationOpen && tourney.regulationUrl && (
+        <DocumentModal
+          url={mediaUrl(tourney.regulationUrl)}
+          fileName={tourney.regulationFileName || t("tournament.regulation_title")}
+          onClose={() => setRegulationOpen(false)}
+        />
+      )}
+      {selectedImage && (
+        <ImageModal
+          url={mediaUrl(selectedImage)}
+          title={name}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DocumentModal({
+  url,
+  fileName,
+  onClose,
+}: {
+  url: string;
+  fileName: string;
+  onClose: () => void;
+}) {
+  const isImage = /\.(jpe?g|png|webp|gif)(?:\?|$)/i.test(url);
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={fileName}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gold/30 bg-background shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.25em] text-gold">
+              Турнир регламенті
+            </div>
+            <div className="truncate font-semibold">{fileName}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={url}
+              download
+              className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold"
+            >
+              <FileDown className="h-4 w-4" /> Жүктеу
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid h-10 w-10 place-items-center rounded-md border border-border hover:border-gold/50"
+              aria-label="Жабу"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 bg-black/10">
+          {isImage ? (
+            <div className="grid h-full place-items-center overflow-auto p-4">
+              <img src={url} alt={fileName} className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : (
+            <iframe title={fileName} src={url} className="h-full w-full border-0" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImageModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[110] grid place-items-center bg-black/90 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white"
+        aria-label="Жабу"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <img src={url} alt={title} className="max-h-[90vh] max-w-[94vw] rounded-xl object-contain" />
     </div>
   );
 }
