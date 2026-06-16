@@ -315,11 +315,16 @@ export function DashboardShell({
                 return (
                   <Link
                     to={notifNav.to}
+                    aria-label={navLabel(notifNav.label)}
+                    title={navLabel(notifNav.label)}
                     className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
+                      >
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}

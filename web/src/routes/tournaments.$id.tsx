@@ -242,13 +242,9 @@ function TournamentDetail() {
       <SiteHeader fixed />
 
       <section id="overview" className="relative overflow-hidden border-b border-border/40">
-        <img
-          src={tourney.posterUrl ? mediaUrl(tourney.posterUrl) : heroKazakhstan}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/55" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-transparent to-background/20" />
+        <img src={heroKazakhstan} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/92 to-background/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/96 via-background/55 to-background/15" />
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="container relative mx-auto px-4 py-10 sm:py-14">
           <Link
@@ -257,67 +253,98 @@ function TournamentDetail() {
           >
             {t("tournaments_page.back_to_all")}
           </Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge status={tourney.status} />
-            <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs text-gold">
-              {t("tournament.all_info_badge")}
-            </span>
-          </div>
-          <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-tight drop-shadow-2xl sm:text-5xl lg:text-6xl">
-            {name}
-          </h1>
-          {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
 
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <Metric
-              icon={Calendar}
-              label={t("tournament.metric_date")}
-              value={dateRange(tourney.startDate, tourney.endDate)}
-            />
-            <Metric
-              icon={Clock}
-              label={t("tournament.metric_start")}
-              value={timeText(tourney.startDate)}
-            />
-            <Metric
-              icon={MapPin}
-              label={t("tournament.metric_location")}
-              value={`${tourney.location}, ${tourney.city}`}
-            />
-            <Metric
-              icon={Users}
-              label={t("tournament.metric_applications")}
-              value={String(tourney._count?.applications ?? 0)}
-            />
-            <Metric
-              icon={Radio}
-              label={t("tournament.metric_tatami")}
-              value={String(tourney.tatamiCount ?? 1)}
-            />
-            <Metric
-              icon={CircleDollarSign}
-              label={t("payments.entry_fee")}
-              value={formatKzt(tourney.entryFeeKzt ?? 0)}
-            />
-          </div>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {tourney.mapUrl && (
-              <a
-                href={tourney.mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-gold px-4 py-2.5 text-sm font-bold text-gold-foreground shadow-gold"
-              >
-                <MapPin className="h-4 w-4" /> {t("tournament.map_link")}
-              </a>
-            )}
-            {tourney.regulationUrl && (
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusBadge status={tourney.status} />
+                <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs text-gold">
+                  {t("tournament.all_info_badge")}
+                </span>
+              </div>
+              <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-tight drop-shadow-2xl sm:text-5xl lg:text-6xl">
+                {name}
+              </h1>
+              {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
+
+              <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <Metric
+                  icon={Calendar}
+                  label={t("tournament.metric_date")}
+                  value={dateRange(tourney.startDate, tourney.endDate)}
+                />
+                <Metric
+                  icon={Clock}
+                  label={t("tournament.metric_start")}
+                  value={timeText(tourney.startDate)}
+                />
+                <Metric
+                  icon={MapPin}
+                  label={t("tournament.metric_location")}
+                  value={`${tourney.location}, ${tourney.city}`}
+                />
+                <Metric
+                  icon={Users}
+                  label={t("tournament.metric_applications")}
+                  value={String(tourney._count?.applications ?? 0)}
+                />
+                <Metric
+                  icon={Radio}
+                  label={t("tournament.metric_tatami")}
+                  value={String(tourney.tatamiCount ?? 1)}
+                />
+                <Metric
+                  icon={CircleDollarSign}
+                  label={t("payments.entry_fee")}
+                  value={formatKzt(tourney.entryFeeKzt ?? 0)}
+                />
+              </div>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {tourney.mapUrl && (
+                  <a
+                    href={tourney.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-gold px-4 py-2.5 text-sm font-bold text-gold-foreground shadow-gold"
+                  >
+                    <MapPin className="h-4 w-4" /> {t("tournament.map_link")}
+                  </a>
+                )}
+                {tourney.regulationUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setRegulationOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-4 py-2.5 text-sm font-semibold backdrop-blur hover:border-gold/60 hover:text-gold"
+                  >
+                    <FileText className="h-4 w-4" /> {t("tournament.regulation_title")}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {tourney.posterUrl && (
               <button
                 type="button"
-                onClick={() => setRegulationOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-background/70 px-4 py-2.5 text-sm font-semibold backdrop-blur hover:border-gold/60 hover:text-gold"
+                onClick={() => setSelectedImage(tourney.posterUrl!)}
+                className="group hidden overflow-hidden rounded-3xl border border-gold/25 bg-card/80 p-3 text-left shadow-2xl shadow-black/10 backdrop-blur lg:block"
               >
-                <FileText className="h-4 w-4" /> {t("tournament.regulation_title")}
+                <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                  <div className="text-xs uppercase tracking-[0.28em] text-gold">
+                    Турнир афишасы
+                  </div>
+                  <Images className="h-4 w-4 text-gold" />
+                </div>
+                <div className="grid aspect-[4/5] place-items-center overflow-hidden rounded-2xl border border-border/60 bg-background/80">
+                  <img
+                    src={mediaUrl(tourney.posterUrl)}
+                    alt={name}
+                    className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-[1.02]"
+                  />
+                </div>
+                <div className="mt-3 px-1 text-sm font-semibold text-foreground">{name}</div>
+                <div className="mt-1 px-1 text-xs text-muted-foreground">
+                  Фотоны толық көру үшін басыңыз
+                </div>
               </button>
             )}
           </div>

@@ -152,6 +152,7 @@ async function buildServer() {
     // Если добавить SSR в будущем — включить CSP здесь с nonce.
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false, // разрешает embedding с доверенных origins
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     // HSTS: принудительный HTTPS на 1 год (includeSubDomains + preload)
     strictTransportSecurity:
