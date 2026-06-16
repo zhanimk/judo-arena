@@ -51,7 +51,33 @@
     "node": ">=22.22.1"
   },
   "overrides": {
-    "shell-quote": "1.8.4"
+    "@cloudflare/vite-plugin": {
+      "ws": "8.21.0"
+    },
+    "@fastify/websocket": {
+      "ws": "8.21.0"
+    },
+    "@babel/core": "7.29.7",
+    "@opentelemetry/core": "2.8.0",
+    "engine.io": {
+      "ws": "8.21.0"
+    },
+    "engine.io-client": {
+      "ws": "8.21.0"
+    },
+    "esbuild": "0.28.1",
+    "js-yaml": "4.2.0",
+    "miniflare": {
+      "ws": "8.21.0"
+    },
+    "shell-quote": "1.8.4",
+    "socket.io-adapter": {
+      "ws": "8.21.0"
+    },
+    "wrangler": {
+      "esbuild": "0.28.1"
+    },
+    "ws": "8.21.0"
   },
   "lint-staged": {
     "api/src/**/*.ts": [
