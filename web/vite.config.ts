@@ -30,7 +30,17 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
-  plugins: isVercel ? [nitro()] : [],
+  plugins: isVercel
+    ? [
+        nitro({
+          vercel: {
+            functions: {
+              runtime: "nodejs22.x",
+            },
+          },
+        }),
+      ]
+    : [],
   vite: {
     server: {
       proxy: {
