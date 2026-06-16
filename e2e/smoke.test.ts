@@ -24,15 +24,18 @@ const PASSWORD = "password123";
 // ============================================================
 
 async function login(page: Page, email: string, password = PASSWORD) {
-  // Clear any existing session before each login to avoid cross-test contamination
+  // Clear any existing session before each login to avoid cross-test contamination.
   await page.context().clearCookies();
   await page.goto(`${BASE}/login`);
-  // Wait for form to render
+  await page.evaluate(() =>
+    localStorage.setItem("judo-e2e-rate-limit-bypass", "1"),
+  );
+  // Wait for form to render.
   await page.waitForSelector('input[type="email"]', { timeout: 5000 });
   await page.getByPlaceholder("Email").fill(email);
   await page.getByPlaceholder(/құпиясөз|password/i).fill(password);
   await page.locator('button[type="submit"]').click();
-  // Wait for redirect away from /login
+  // Wait for redirect away from /login.
   await expect(page).not.toHaveURL(`${BASE}/login`, { timeout: 12000 });
 }
 

@@ -135,12 +135,12 @@ export function DashboardShell({
               className="group flex items-center justify-center"
             >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
-                <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
-                <span className="absolute inset-[2px] rounded-[10px] bg-card" />
+                <span className="absolute inset-0 rounded-full conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
+                <span className="absolute inset-[2px] rounded-full bg-card" />
                 <img
                   src={emblem}
                   alt=""
-                  className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:scale-105"
+                  className="relative h-7 w-7 rounded-full object-cover shadow-gold transition-transform group-hover:scale-105"
                 />
               </span>
             </Link>
@@ -150,12 +150,12 @@ export function DashboardShell({
               className="group flex flex-1 min-w-0 items-center gap-2.5"
             >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
-                <span className="absolute inset-0 rounded-xl conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
-                <span className="absolute inset-[2px] rounded-[10px] bg-card" />
+                <span className="absolute inset-0 rounded-full conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
+                <span className="absolute inset-[2px] rounded-full bg-card" />
                 <img
                   src={emblem}
                   alt=""
-                  className="relative h-7 w-7 rounded-lg object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105"
+                  className="relative h-7 w-7 rounded-full object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105"
                 />
               </span>
               <span className="min-w-0">

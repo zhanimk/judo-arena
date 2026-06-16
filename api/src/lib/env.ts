@@ -133,6 +133,12 @@ const parsed = parsedRaw.success
           message: "VAPID_PUBLIC_KEY обязателен если задан VAPID_PRIVATE_KEY",
         });
       }
+      if (d.JWT_ACCESS_SECRET === d.JWT_REFRESH_SECRET) {
+        issues.push({
+          path: ["JWT_REFRESH_SECRET"],
+          message: "JWT_REFRESH_SECRET должен отличаться от JWT_ACCESS_SECRET",
+        });
+      }
       const hasS3Bucket = Boolean(d.S3_BUCKET || d.S3_PRIVATE_BUCKET);
       if (hasS3Bucket && !d.AWS_ACCESS_KEY_ID) {
         issues.push({
@@ -156,6 +162,44 @@ const parsed = parsedRaw.success
           message:
             "S3_PRIVATE_BUCKET обязателен в production при публичном S3_PUBLIC_URL",
         });
+      }
+      if (d.NODE_ENV === "production") {
+        const isLocalUrl = (value: string) =>
+          /(^|\/\/)(localhost|127\.0\.0\.1)(:\d+)?($|[/?#])/.test(value);
+
+        if (isLocalUrl(d.CORS_ORIGIN)) {
+          issues.push({
+            path: ["CORS_ORIGIN"],
+            message: "CORS_ORIGIN в production должен быть публичным origin",
+          });
+        }
+        if (isLocalUrl(d.APP_URL)) {
+          issues.push({
+            path: ["APP_URL"],
+            message: "APP_URL в production должен быть публичным URL",
+          });
+        }
+        if (!d.RESEND_API_KEY && d.SMTP_HOST === "localhost") {
+          issues.push({
+            path: ["RESEND_API_KEY"],
+            message:
+              "В production настройте RESEND_API_KEY или внешний SMTP_HOST",
+          });
+        }
+        if (!d.S3_PRIVATE_BUCKET) {
+          issues.push({
+            path: ["S3_PRIVATE_BUCKET"],
+            message:
+              "S3_PRIVATE_BUCKET обязателен в production для документов и бэкапов",
+          });
+        }
+        if (!d.BACKUP_TRIGGER_SECRET) {
+          issues.push({
+            path: ["BACKUP_TRIGGER_SECRET"],
+            message:
+              "BACKUP_TRIGGER_SECRET обязателен в production (минимум 32 символа)",
+          });
+        }
       }
 
       if (issues.length > 0) {

@@ -21,22 +21,31 @@ const INPUT_CLS =
 
 function ResetPassword() {
   const { t } = useTranslation();
-  const { token }               = Route.useSearch();
-  const navigate                = useNavigate();
+  const { token } = Route.useSearch();
+  const navigate = useNavigate();
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm]   = useState("");
-  const [showPwd, setShowPwd]   = useState(false);
-  const [showCfm, setShowCfm]   = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [done, setDone]         = useState(false);
-  const [error, setError]       = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [showCfm, setShowCfm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!isPasswordStrong(password)) { setError(t("auth.pwd_strength_weak")); return; }
-    if (password !== confirm) { setError(t("auth.passwords_mismatch")); return; }
-    if (!token)               { setError(t("error.generic")); return; }
+    if (!isPasswordStrong(password)) {
+      setError(t("auth.pwd_strength_weak"));
+      return;
+    }
+    if (password !== confirm) {
+      setError(t("auth.passwords_mismatch"));
+      return;
+    }
+    if (!token) {
+      setError(t("error.generic"));
+      return;
+    }
     setLoading(true);
     try {
       await api.auth.resetPassword(token, password);
@@ -52,9 +61,8 @@ function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-navy-deep p-6">
       <div className="w-full max-w-sm">
-
         <Link to="/" className="inline-flex items-center gap-2.5 mb-10">
-          <img src={emblem} alt="" className="h-9 w-9 rounded-lg" />
+          <img src={emblem} alt="" className="h-9 w-9 rounded-full object-cover" />
           <span className="font-display text-xl font-bold">JUDO·ARENA</span>
         </Link>
 
@@ -64,9 +72,7 @@ function ResetPassword() {
               <span className="text-2xl">🔗</span>
             </div>
             <h2 className="font-display text-2xl font-bold mb-2">{t("error.generic")}</h2>
-            <p className="text-white/50 text-sm leading-relaxed mb-6">
-              {t("error.generic")}
-            </p>
+            <p className="text-white/50 text-sm leading-relaxed mb-6">{t("error.generic")}</p>
             <Link
               to="/forgot-password"
               className="inline-flex items-center justify-center gap-2 text-sm bg-gradient-gold text-[#1a1204] font-semibold px-6 py-2.5 rounded-xl hover:brightness-110 transition-all"
@@ -74,21 +80,20 @@ function ResetPassword() {
               {t("auth.send_reset_link")}
             </Link>
           </div>
-
         ) : done ? (
           <div className="rounded-2xl bg-white/4 border border-white/8 p-8 text-center">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/12 border border-emerald-500/20">
               <CheckCircle2 className="h-7 w-7 text-emerald-400" />
             </div>
             <h2 className="font-display text-2xl font-bold mb-2">{t("common.success")}</h2>
-            <p className="text-white/50 text-sm leading-relaxed">
-              {t("auth.reset_success")}
-            </p>
+            <p className="text-white/50 text-sm leading-relaxed">{t("auth.reset_success")}</p>
             <div className="mt-4 h-1 rounded-full bg-white/8 overflow-hidden">
-              <div className="h-full bg-gradient-gold animate-[shrink_3s_linear_forwards]" style={{ width: "100%" }} />
+              <div
+                className="h-full bg-gradient-gold animate-[shrink_3s_linear_forwards]"
+                style={{ width: "100%" }}
+              />
             </div>
           </div>
-
         ) : (
           <>
             <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/10 border border-gold/20">
@@ -105,14 +110,19 @@ function ResetPassword() {
                 </span>
                 <input
                   type={showPwd ? "text" : "password"}
-                  required minLength={8}
+                  required
+                  minLength={8}
                   placeholder={t("auth.new_password")}
-                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
                   className={`${INPUT_CLS} pr-11`}
                 />
-                <button type="button" onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                >
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -125,14 +135,19 @@ function ResetPassword() {
                 </span>
                 <input
                   type={showCfm ? "text" : "password"}
-                  required minLength={8}
+                  required
+                  minLength={8}
                   placeholder={t("auth.confirm_password")}
-                  value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
                   className={`${INPUT_CLS} pr-11 ${confirm && confirm !== password ? "border-red-500/50" : ""}`}
                 />
-                <button type="button" onClick={() => setShowCfm(!showCfm)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowCfm(!showCfm)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                >
                   {showCfm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -154,7 +169,10 @@ function ResetPassword() {
               </button>
             </form>
 
-            <Link to="/login" className="mt-6 inline-flex items-center gap-2 text-sm text-white/40 hover:text-white/80 transition-colors">
+            <Link
+              to="/login"
+              className="mt-6 inline-flex items-center gap-2 text-sm text-white/40 hover:text-white/80 transition-colors"
+            >
               <ArrowLeft className="h-3.5 w-3.5" /> {t("common.back")}
             </Link>
           </>

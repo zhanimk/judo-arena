@@ -191,6 +191,8 @@ async function buildServer() {
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_WINDOW,
+    allowList: (req) =>
+      env.NODE_ENV !== "production" && req.headers["x-e2e-test"] === "1",
     // Authenticated requests are keyed by userId — prevents compromised accounts
     // from bypassing IP-based limits by rotating proxies.
     keyGenerator: (req) =>
@@ -212,9 +214,12 @@ async function buildServer() {
       prefix: "/uploads/avatars/",
       decorateReply: false,
     });
+    // Only public tournament regulations are exposed as static files.
+    // User documents are stored under documents/{userId}/ and must be served
+    // exclusively through authenticated download routes.
     await app.register(fastifyStatic, {
-      root: path.resolve(env.UPLOADS_DIR, "documents"),
-      prefix: "/uploads/documents/",
+      root: path.resolve(env.UPLOADS_DIR, "documents", "regulations"),
+      prefix: "/uploads/documents/regulations/",
       decorateReply: false,
     });
   }

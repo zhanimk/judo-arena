@@ -62,11 +62,11 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
         <div className="relative mx-auto mb-7 h-28 w-28">
           <div className="absolute inset-0 rounded-full border border-gold/25 animate-ping" />
           <div className="absolute inset-3 rounded-full border border-gold/35" />
-          <div className="absolute inset-6 rounded-2xl bg-card shadow-elegant" />
+          <div className="absolute inset-6 rounded-full bg-card shadow-elegant" />
           <img
             src={emblem}
             alt=""
-            className="absolute inset-7 h-14 w-14 rounded-xl object-cover shadow-gold"
+            className="absolute inset-7 h-14 w-14 rounded-full object-cover shadow-gold"
           />
         </div>
         <div className="font-display text-3xl font-bold">
@@ -95,7 +95,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
       <div className="absolute inset-0 grid-bg opacity-25" />
       <div className="relative max-w-md rounded-2xl border border-gold/25 bg-card/70 p-8 text-center shadow-elegant backdrop-blur">
-        <img src={emblem} alt="" className="mx-auto mb-5 h-16 w-16 rounded-2xl object-cover" />
+        <img src={emblem} alt="" className="mx-auto mb-5 h-16 w-16 rounded-full object-cover" />
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {error.message || "Бетті қайта жүктеп көріңіз."}
@@ -166,8 +166,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       // PWA
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: emblem, type: "image/jpeg" },
-      { rel: "apple-touch-icon", href: emblem },
+      { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { rel: "apple-touch-icon", href: "/icon-192.png", sizes: "192x192" },
     ],
   }),
   shellComponent: RootShell,
@@ -262,12 +262,12 @@ function SplashScreen() {
         />
         {/* Logo */}
         <span className="relative inline-flex h-24 w-24 items-center justify-center">
-          <span className="absolute inset-0 rounded-[28px] conic-gold opacity-80 blur-[14px]" />
-          <span className="absolute inset-[3px] rounded-[26px] bg-card" />
+          <span className="absolute inset-0 rounded-full conic-gold opacity-80 blur-[14px]" />
+          <span className="absolute inset-[3px] rounded-full bg-card" />
           <img
             src={emblem}
             alt=""
-            className="relative h-20 w-20 rounded-[22px] object-cover shadow-gold"
+            className="relative h-20 w-20 rounded-full object-cover shadow-gold"
           />
         </span>
       </div>

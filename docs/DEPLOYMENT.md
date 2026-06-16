@@ -87,6 +87,7 @@ Broken code cannot reach production — deploy is blocked if CI fails.
 | `APP_URL`                            | ✅       | —                                    | Same as CORS_ORIGIN (used in email links)   |
 | `RESEND_API_KEY`                     | ✅       | —                                    | Email sending via Resend                    |
 | `EMAIL_FROM`                         | —        | `Judo-Arena <onboarding@resend.dev>` | Sender                                      |
+| `KASPI_CALLBACK_SECRET`              | ✅ prod  | —                                    | Kaspi callback shared secret, ≥32 chars     |
 | `BCRYPT_ROUNDS`                      | —        | `12`                                 | Password hashing rounds                     |
 | `RATE_LIMIT_MAX`                     | —        | `100`                                | Requests per window per IP                  |
 | `SOCKET_CONNECTION_LIMIT_MAX`        | —        | `120`                                | New Socket.IO connections per window per IP |
@@ -115,7 +116,7 @@ Broken code cannot reach production — deploy is blocked if CI fails.
 
 ```
 GET /health
-→ { "status": "ok", "db": "connected", "redis": "connected" }
+→ { "status": "ok", "checks": { "db": "ok", "redis": "ok", "s3": "ok", "email": "resend" } }
 ```
 
 If DB or Redis is down: `"status": "degraded"`.

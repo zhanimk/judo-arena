@@ -24,7 +24,11 @@ import { ProtectedRoute } from "@/lib/protected-route";
 const BELT_RANKS = [
   { value: "6 КЮ", label: "6 КЮ — Ақ (Белый)", gradient: "from-zinc-100 to-zinc-300" },
   { value: "5 КЮ", label: "5 КЮ — Сары (Жёлтый)", gradient: "from-yellow-300 to-yellow-500" },
-  { value: "4 КЮ", label: "4 КЮ — Қызғылт сары (Оранжевый)", gradient: "from-orange-400 to-orange-600" },
+  {
+    value: "4 КЮ",
+    label: "4 КЮ — Қызғылт сары (Оранжевый)",
+    gradient: "from-orange-400 to-orange-600",
+  },
   { value: "3 КЮ", label: "3 КЮ — Жасыл (Зелёный)", gradient: "from-green-500 to-emerald-700" },
   { value: "2 КЮ", label: "2 КЮ — Көк (Синий)", gradient: "from-sky-500 to-blue-700" },
   { value: "1 КЮ", label: "1 КЮ — Қоңыр (Коричневый)", gradient: "from-amber-700 to-amber-950" },
@@ -135,7 +139,7 @@ function AthleteOnboarding() {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={emblem} alt="" className="h-10 w-10 rounded-xl" />
+            <img src={emblem} alt="" className="h-10 w-10 rounded-full object-cover" />
             <div>
               <div className="font-display text-lg font-bold">JUDO·ARENA</div>
               <div className="text-xs text-muted-foreground">
@@ -278,7 +282,11 @@ function ClubStep({
   cancelRequest,
   busy,
 }: {
-  userClub?: { id: string; name: import("@/lib/api-types").LocalizedName | string; city: string } | null;
+  userClub?: {
+    id: string;
+    name: import("@/lib/api-types").LocalizedName | string;
+    city: string;
+  } | null;
   activeRequest?: ClubJoinRequest | null;
   clubs: Club[];
   loading: boolean;
@@ -511,7 +519,9 @@ function ProfileStep({
             >
               <option value="">{t("common.select")}</option>
               {BELT_RANKS.map((b) => (
-                <option key={b.value} value={b.value}>{b.label}</option>
+                <option key={b.value} value={b.value}>
+                  {b.label}
+                </option>
               ))}
             </select>
           </div>
@@ -611,7 +621,8 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
             {t("coach_onboarding.setup_done")}
           </div>
           <div className="text-base text-muted-foreground">
-            {t("coach_onboarding.welcome")}, <span className="font-semibold text-foreground">{name}</span>!
+            {t("coach_onboarding.welcome")},{" "}
+            <span className="font-semibold text-foreground">{name}</span>!
           </div>
         </div>
 
@@ -628,7 +639,15 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
 
       {/* Belt color stripes decoration */}
       <div className="absolute bottom-8 flex gap-2 opacity-30">
-        {["bg-zinc-300","bg-yellow-400","bg-orange-500","bg-green-600","bg-sky-500","bg-amber-800","bg-gray-900"].map((c, i) => (
+        {[
+          "bg-zinc-300",
+          "bg-yellow-400",
+          "bg-orange-500",
+          "bg-green-600",
+          "bg-sky-500",
+          "bg-amber-800",
+          "bg-gray-900",
+        ].map((c, i) => (
           <div key={i} className={`h-1.5 w-8 rounded-full ${c}`} />
         ))}
       </div>
@@ -642,7 +661,9 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

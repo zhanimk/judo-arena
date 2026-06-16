@@ -70,6 +70,17 @@ function getCsrfToken(): string | null {
   return csrfToken;
 }
 
+function shouldUseE2eRateLimitBypass(): boolean {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("judo-e2e-rate-limit-bypass") === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function setAccessToken(token: string | null) {
   accessToken = token;
   if (token) refreshFailCount = 0;
@@ -171,6 +182,7 @@ async function _doRequest<T = unknown>(path: string, opts: RequestOptions = {}):
     if (judgeToken) h["X-Judge-Token"] = judgeToken;
     else if (tatamiToken) h["X-Tatami-Token"] = tatamiToken;
     else if (token) h["Authorization"] = `Bearer ${token}`;
+    if (shouldUseE2eRateLimitBypass()) h["x-e2e-test"] = "1";
     // Добавляем CSRF токен на все state-changing запросы
     if (!CSRF_SAFE_METHODS.has(method)) {
       const csrf = getCsrfToken();
