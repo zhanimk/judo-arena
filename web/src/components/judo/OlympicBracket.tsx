@@ -218,13 +218,18 @@ function PooledSEView({
           {POOL_LABELS.map((label, poolIdx) => {
             const poolRounds = buildPoolRounds(poolIdx);
             const layout = getMainBracketLayout(poolRounds);
-            const poolColor = ["text-sky-400", "text-emerald-400", "text-violet-400", "text-orange-400"][poolIdx] ?? "text-gold";
-            const poolBorder = ["border-sky-400/30", "border-emerald-400/30", "border-violet-400/30", "border-orange-400/30"][poolIdx] ?? "border-gold/30";
+            const poolColor =
+              ["text-sky-400", "text-emerald-400", "text-violet-400", "text-orange-400"][poolIdx] ??
+              "text-gold";
+            const poolBorder =
+              [
+                "border-sky-400/30",
+                "border-emerald-400/30",
+                "border-violet-400/30",
+                "border-orange-400/30",
+              ][poolIdx] ?? "border-gold/30";
             return (
-              <div
-                key={label}
-                className={`rounded-xl border ${poolBorder} bg-card/60 p-3`}
-              >
+              <div key={label} className={`rounded-xl border ${poolBorder} bg-card/60 p-3`}>
                 <div className={`mb-3 flex items-center gap-2`}>
                   <span className={`text-xs font-black uppercase tracking-widest ${poolColor}`}>
                     Pool {label}
@@ -271,9 +276,9 @@ function PooledSEView({
                   const to = detailLayout.positions[ri + 1]?.[Math.floor(mi / 2)];
                   if (!from || !to) return null;
                   const x1 = from.x + CARD_W;
-                  const y1 = from.y + CARD_H / 2;
+                  const y1 = from.y - HEADER_H + CARD_H / 2;
                   const x2 = to.x;
-                  const y2 = to.y + CARD_H / 2;
+                  const y2 = to.y - HEADER_H + CARD_H / 2;
                   const mid = x1 + ROUND_GAP / 2;
                   return (
                     <path
@@ -414,9 +419,9 @@ function PoolMiniGrid({
             const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
             if (!from || !to) return null;
             const x1 = from.x + MINI_W;
-            const y1 = from.y + MINI_H / 2;
+            const y1 = from.y - MINI_HEADER + MINI_H / 2;
             const x2 = to.x;
-            const y2 = to.y + MINI_H / 2;
+            const y2 = to.y - MINI_HEADER + MINI_H / 2;
             const mid = x1 + MINI_GAP / 2;
             return (
               <path
@@ -457,7 +462,12 @@ function PoolMiniGrid({
                   className="absolute"
                   style={{ left: 0, top: pos.y - MINI_HEADER, width: MINI_W, height: MINI_H }}
                 >
-                  <MiniMatchCard match={match} bye={isBye} dim={isEmpty} isFinal={ri === poolRounds.length - 1} />
+                  <MiniMatchCard
+                    match={match}
+                    bye={isBye}
+                    dim={isEmpty}
+                    isFinal={ri === poolRounds.length - 1}
+                  />
                 </div>
               );
             })}
@@ -511,20 +521,28 @@ function MiniMatchCard({
           LIVE
         </div>
       )}
-      <div className={`flex flex-1 items-center gap-1.5 px-1.5 border-b border-border/20
-        ${done && match.winnerId === red?.id ? "bg-gold/8" : ""}`}>
+      <div
+        className={`flex flex-1 items-center gap-1.5 px-1.5 border-b border-border/20
+        ${done && match.winnerId === red?.id ? "bg-gold/8" : ""}`}
+      >
         <div className="w-1 self-stretch rounded-full bg-rose-500/70 shrink-0 my-0.5" />
         {miniName(red)}
         {bye && done && match.winnerId === red?.id && (
-          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">BYE</span>
+          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">
+            BYE
+          </span>
         )}
       </div>
-      <div className={`flex flex-1 items-center gap-1.5 px-1.5
-        ${done && match.winnerId === blue?.id ? "bg-gold/8" : ""}`}>
+      <div
+        className={`flex flex-1 items-center gap-1.5 px-1.5
+        ${done && match.winnerId === blue?.id ? "bg-gold/8" : ""}`}
+      >
         <div className="w-1 self-stretch rounded-full bg-sky-500/70 shrink-0 my-0.5" />
         {miniName(blue)}
         {bye && done && match.winnerId === blue?.id && (
-          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">BYE</span>
+          <span className="ml-auto shrink-0 text-[7px] text-muted-foreground bg-muted/60 rounded px-0.5">
+            BYE
+          </span>
         )}
       </div>
     </div>
@@ -727,9 +745,9 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
                 const to = layout.positions[ri + 1]?.[Math.floor(mi / 2)];
                 if (!from || !to) return null;
                 const x1 = from.x + CARD_W;
-                const y1 = from.y + CARD_H / 2;
+                const y1 = from.y - HEADER_H + CARD_H / 2;
                 const x2 = to.x;
-                const y2 = to.y + CARD_H / 2;
+                const y2 = to.y - HEADER_H + CARD_H / 2;
                 const mid = x1 + ROUND_GAP / 2;
                 return (
                   <path
@@ -747,7 +765,7 @@ function FlatSEView({ matches, size }: { matches: BracketMatch[]; size: number }
             )}
             {champion && layout.positions.at(-1)?.[0] && (
               <path
-                d={`M ${layout.positions.at(-1)![0].x + CARD_W} ${layout.positions.at(-1)![0].y + CARD_H / 2} H ${championX}`}
+                d={`M ${layout.positions.at(-1)![0].x + CARD_W} ${layout.positions.at(-1)![0].y - HEADER_H + CARD_H / 2} H ${championX}`}
                 fill="none"
                 stroke="url(#flatLine)"
                 strokeWidth="2"

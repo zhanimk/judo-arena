@@ -58,11 +58,14 @@ interface TMatch {
   id: string;
   status: string;
   round?: number | null;
+  position?: number | null;
   queuePosition?: number | null;
   bracketSection?: string | null;
   bracketId?: string | null;
   tatamiNumber?: number | null;
   winnerId?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
   redAthleteId?: string | null;
   blueAthleteId?: string | null;
   redAthlete?: TAthlete | null;
@@ -112,6 +115,7 @@ interface TTournament {
   regulationUrl?: string | null;
   regulationFileName?: string | null;
   videoUrls?: string[] | null;
+  youtubeUrls?: string[] | null;
   primaryLocale?: string | null;
   entryFeeKzt?: number | null;
   kaspiPaymentUrl?: string | null;
@@ -153,6 +157,16 @@ function TournamentDetail() {
     });
   }
 
+  function switchTab(tab: typeof activeTab) {
+    const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
+    }
+  }
+
   const tQuery = useQuery({ queryKey: ["tournament", id], queryFn: () => api.tournaments.get(id) });
   const bracketsQuery = useQuery({
     queryKey: ["tournament-brackets", id],
@@ -161,7 +175,7 @@ function TournamentDetail() {
   });
   const matchesQuery = useQuery({
     queryKey: ["public-tournament-matches", id],
-    queryFn: () => api.matches.list({ tournamentId: id, limit: 200 }),
+    queryFn: () => api.matches.list({ tournamentId: id, limit: 1000 }),
     enabled: Boolean(id),
   });
 
@@ -367,7 +381,7 @@ function TournamentDetail() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id as typeof activeTab)}
+              onClick={() => switchTab(item.id as typeof activeTab)}
               className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 ${
                 activeTab === item.id
                   ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
@@ -439,14 +453,14 @@ function TournamentDetail() {
                   )}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("categories")}
+                    onClick={() => switchTab("categories")}
                     className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                   >
                     <Users className="h-4 w-4" /> {t("tournament.view_categories")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("liveTop")}
+                    onClick={() => switchTab("liveTop")}
                     className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:border-gold/50 hover:text-gold"
                   >
                     <Radio className="h-4 w-4" /> {t("tournament.tab_live")}
@@ -578,14 +592,14 @@ function TournamentDetail() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("categories")}
+                    onClick={() => switchTab("categories")}
                     className="rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
                   >
                     {t("tournament.view_categories")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("wall")}
+                    onClick={() => switchTab("wall")}
                     className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold"
                   >
                     Татами live
@@ -993,7 +1007,8 @@ function TatamiLiveTab({
       <div className="grid items-start gap-5 lg:grid-cols-2">
         {tatamis.map((tatami) => {
           const current = tatami.current;
-          const next = tatami.queue[0];
+          const readyQueue = tatami.queue.filter((match) => match.redAthlete && match.blueAthlete);
+          const upcoming = readyQueue.slice(0, 3);
           const streamUrl = youtubeUrls[tatami.number - 1];
           const embedUrl = youtubeEmbedUrl(streamUrl);
           return (
@@ -1008,16 +1023,27 @@ function TatamiLiveTab({
                   </span>
                   <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/60">
                     <div>Tatami</div>
-                    <div>{tatami.queue.length} кезекте</div>
+                    <div>{readyQueue.length} кезекте</div>
                   </div>
                 </div>
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-widest ${
-                    current ? "text-red-400" : embedUrl ? "text-amber-300" : "text-white/45"
-                  }`}
-                >
-                  {current ? "● Live" : embedUrl ? "● Stream" : "Күтуде"}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-widest ${
+                      current ? "text-red-400" : embedUrl ? "text-amber-300" : "text-white/45"
+                    }`}
+                  >
+                    {current ? "● Live" : embedUrl ? "● Stream" : "Күтуде"}
+                  </span>
+                  <Link
+                    to="/live-wall/$tournamentId"
+                    params={{ tournamentId }}
+                    search={{ tatami: tatami.number }}
+                    target="_blank"
+                    className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white/80 transition hover:bg-white/20 hover:text-white"
+                  >
+                    Ашу ↗
+                  </Link>
+                </div>
               </div>
               <div className="p-4">
                 {embedUrl ? (
@@ -1083,16 +1109,53 @@ function TatamiLiveTab({
                     </div>
                   </div>
                 )}
-                <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-                  <span className="truncate text-[#7a8190]">
-                    {next ? `Келесі: ${matchTitle(next)}` : "Келесі матч жоспарланбаған"}
-                  </span>
+                <div className="mt-3 rounded-lg border border-[#d4d8df] bg-white">
+                  <div className="flex items-center justify-between border-b border-[#e6e8ec] px-3 py-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7a8190]">
+                      Келесі матчтар
+                    </div>
+                    <div className="rounded-md bg-[#fff7e8] px-2 py-0.5 text-[10px] font-black text-amber-700">
+                      {readyQueue.length} кезекте
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 p-2">
+                    {upcoming.map((match, index) => (
+                      <div
+                        key={match.id}
+                        className={`grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-2 rounded-md border px-2.5 py-2 text-xs ${
+                          index === 0
+                            ? "border-amber-300 bg-amber-50"
+                            : "border-[#e1e4e8] bg-[#fafafa]"
+                        }`}
+                      >
+                        <span className="grid h-6 w-6 place-items-center rounded-md bg-white font-black text-amber-700">
+                          {index + 1}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-black">{matchTitle(match)}</span>
+                          <span className="mt-0.5 block truncate text-[10px] text-[#7a8190]">
+                            {matchMeta(match)}
+                          </span>
+                        </span>
+                        <span className="text-right text-[10px] font-black text-amber-700">
+                          #{match.queuePosition ?? index + 1}
+                        </span>
+                      </div>
+                    ))}
+                    {upcoming.length === 0 && (
+                      <div className="rounded-md border border-dashed border-[#d7dbe2] px-3 py-3 text-center text-xs font-semibold text-[#9aa1ad]">
+                        Келесі матч жоспарланбаған
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
                   <Link
                     to="/live-wall/$tournamentId"
                     params={{ tournamentId }}
                     search={{ tatami: tatami.number }}
                     target="_blank"
-                    className="shrink-0 font-bold transition group-hover:text-amber-600"
+                    className="inline-flex items-center justify-center rounded-lg bg-[#17182c] px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-amber-500 hover:text-[#17182c]"
                   >
                     Толық экран ↗
                   </Link>

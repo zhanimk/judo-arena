@@ -10,6 +10,7 @@ import {
   GripVertical,
   MonitorPlay,
   RotateCcw,
+  Shuffle,
   Tv,
   Unlink,
   UserCheck,
@@ -225,7 +226,7 @@ export function TournamentScoreboardPanel({
   const matchesQuery = useQuery({
     queryKey: ["admin-scoreboard-matches", selectedTournamentId],
     enabled: Boolean(selectedTournamentId),
-    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 500 }),
+    queryFn: () => api.matches.list({ tournamentId: selectedTournamentId, limit: 1000 }),
     refetchInterval: 2500,
   });
 
@@ -325,6 +326,27 @@ export function TournamentScoreboardPanel({
   const tatamiSessions = useMemo(() => tatamiSessionsQuery.data ?? [], [tatamiSessionsQuery.data]);
   const board = useMemo(() => buildTatamiBoard(matches, tatamiCount), [matches, tatamiCount]);
   const unassigned = board.unassigned;
+  const distributeReadyMatches = useMutation({
+    mutationFn: async () => {
+      const loads = board.tatamis.map((tatami) => ({
+        tatamiNumber: tatami.number,
+        matches: tatami.live.length + tatami.queue.length,
+      }));
+
+      for (const match of unassigned) {
+        const target = [...loads].sort(
+          (a, b) => a.matches - b.matches || a.tatamiNumber - b.tatamiNumber,
+        )[0];
+        if (!target) return;
+        await api.matches.assignTatami(match.id, target.tatamiNumber);
+        target.matches += 1;
+      }
+    },
+    onMutate: () => setError(""),
+    onSuccess: invalidateBoard,
+    onError: (e: unknown) =>
+      setError(e instanceof ApiError ? e.message : t("matches_admin.assign_error")),
+  });
   const completed = matches
     .filter((m: Match) => m.status === "COMPLETED")
     .sort(
@@ -407,6 +429,14 @@ export function TournamentScoreboardPanel({
           selectedTournamentId && (
             <div className="flex flex-wrap gap-2">
               <button
+                onClick={() => distributeReadyMatches.mutate()}
+                disabled={unassigned.length === 0 || distributeReadyMatches.isPending}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-card/70 px-3 py-2 text-sm hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Shuffle className="h-4 w-4" />
+                {t("matches_admin.distribute_ready")}
+              </button>
+              <button
                 onClick={copyWall}
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-card/70 px-3 py-2 text-sm hover:bg-muted/60"
               >
@@ -470,7 +500,7 @@ export function TournamentScoreboardPanel({
             {matchesQuery.isLoading ? (
               <LoadingState />
             ) : unassigned.length === 0 ? (
-              <EmptyState title={t("matches_admin.all_assigned")} />
+              <EmptyState title={t("matches_admin.no_unassigned_ready")} />
             ) : (
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {unassigned.slice(0, 18).map((m) => (
@@ -644,6 +674,8 @@ export function TournamentScoreboardPanel({
                                     <SortableMatchCard
                                       match={m}
                                       queueIndex={index + 1}
+                                      onDragStart={() => setDraggedMatchId(m.id)}
+                                      onDragEnd={() => setDraggedMatchId(null)}
                                       onUnassign={() =>
                                         assignTatami.mutate({ matchId: m.id, tatamiNumber: null })
                                       }
@@ -1038,9 +1070,7 @@ function DropZone({
 }
 
 /** Sortable wrapper — добавляет DnD handle к MatchCard через @dnd-kit */
-function SortableMatchCard(
-  props: Omit<Parameters<typeof MatchCard>[0], "onDragStart" | "onDragEnd" | "dragging">,
-) {
+function SortableMatchCard(props: Parameters<typeof MatchCard>[0]) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.match.id,
   });
@@ -1054,12 +1084,7 @@ function SortableMatchCard(
 
   return (
     <div ref={setNodeRef} style={style}>
-      <MatchCard
-        {...props}
-        onDragStart={() => {}}
-        onDragEnd={() => {}}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
+      <MatchCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
     </div>
   );
 }
@@ -1306,12 +1331,16 @@ function Metric({ label, value, accent }: { label: string; value: string; accent
 
 function buildTatamiBoard(matches: Match[], tatamiCount: number) {
   const playable = matches.filter((m) => m.status === "PENDING" || m.status === "IN_PROGRESS");
-  const unassigned = playable.filter((m) => !m.tatamiNumber).sort(matchOrder);
+  const unassigned = playable.filter((m) => !m.tatamiNumber && isMatchReady(m)).sort(matchOrder);
   const tatamis = buildTatamiState(playable, tatamiCount).map((tatami) => ({
     ...tatami,
     live: tatami.current ? [tatami.current] : [],
   }));
   return { unassigned, tatamis };
+}
+
+function isMatchReady(match: Match) {
+  return Boolean(match.redAthleteId && match.blueAthleteId);
 }
 
 function athleteName(athlete: MatchAthlete | null | undefined) {

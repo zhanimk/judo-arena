@@ -39,7 +39,7 @@ function LiveWall() {
 
   const matchesQuery = useQuery({
     queryKey: ["live-wall-matches", tournamentId],
-    queryFn: () => api.matches.list({ tournamentId, limit: 200 }),
+    queryFn: () => api.matches.list({ tournamentId, limit: 1000 }),
     refetchInterval: 2000,
   });
 
@@ -437,7 +437,7 @@ function LiveWall() {
           )}
         </section>
       )}
-      <section className="grid gap-5 p-5 xl:grid-cols-3">
+      <section className="grid items-start gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {tatamis.map((ts) => (
           <CompactTatami key={ts.number} tatami={ts} tournamentId={tournamentId} />
         ))}
@@ -1070,17 +1070,19 @@ function CompactTatami({
 }) {
   const { t } = useTranslation();
   const c = tatami.current;
-  const q = tatami.queue;
+  const q = tatami.queue.filter((match) => match.redAthlete && match.blueAthlete);
   const pending = hasPendingResult(c);
   const score = c?.scoreSnapshot;
   const clockText = c ? boardClockText(c) : "4:00";
 
   return (
-    <section className="overflow-hidden rounded-xl border-4 border-[#c8ccd4] bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b-2 border-[#d8dce3] bg-[#1a1a2e] px-5 py-3 text-white">
+    <section className="min-w-0 overflow-hidden rounded-lg border-2 border-[#c8ccd4] bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b-2 border-[#d8dce3] bg-[#1a1a2e] px-4 py-2.5 text-white">
         <div className="flex items-center gap-2">
-          <span className="text-4xl font-black tracking-wider text-amber-400">{tatami.number}</span>
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">
+          <span className="text-4xl font-black leading-none tracking-wider text-amber-400">
+            {tatami.number}
+          </span>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
             <div>TATAMI</div>
             <div>{t("live_wall.in_queue", { count: q.length })}</div>
           </div>
@@ -1108,21 +1110,21 @@ function CompactTatami({
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-3">
         {c ? (
           <Link
             to="/live-wall/$tournamentId"
             params={{ tournamentId }}
             search={{ tatami: tatami.number }}
-            className={`block overflow-hidden rounded-lg border-2 ${pending ? "border-amber-400" : "border-[#d1d5db]"} transition hover:border-amber-400`}
+            className={`block min-w-0 overflow-hidden rounded-md border-2 ${pending ? "border-amber-400" : "border-[#d1d5db]"} transition hover:border-amber-400`}
           >
             <CompactScoreRow side="white" athlete={c.redAthlete} score={score?.red} />
-            <div className="flex items-center justify-between border-y-2 border-[#d8dce3] bg-[#f0f2f5] px-4 py-2">
+            <div className="flex items-center justify-between border-y-2 border-[#d8dce3] bg-[#f0f2f5] px-3 py-1.5">
               <span className="text-xs font-black uppercase tracking-[0.22em] text-[#6b7280]">
                 {wShort(c.bracket?.category, t)}
               </span>
               <span
-                className={`font-display text-4xl font-black tabular-nums ${pending ? "text-amber-500" : "text-[#6b7280]"}`}
+                className={`font-display text-3xl font-black tabular-nums ${pending ? "text-amber-500" : "text-[#6b7280]"}`}
               >
                 {clockText}
               </span>
@@ -1143,17 +1145,17 @@ function CompactTatami({
             <CompactScoreRow side="blue" athlete={c.blueAthlete} score={score?.blue} />
           </Link>
         ) : (
-          <div className="flex h-44 items-center justify-center rounded-lg border-2 border-dashed border-[#d1d5db] text-xl font-black uppercase tracking-[0.2em] text-[#c8ccd4]">
+          <div className="flex h-36 items-center justify-center rounded-md border-2 border-dashed border-[#d1d5db] text-lg font-black uppercase tracking-[0.2em] text-[#c8ccd4]">
             {t("live_wall.no_match")}
           </div>
         )}
 
         {q.length > 0 && (
-          <div className="mt-3 space-y-1.5">
-            {q.slice(0, 4).map((m, i) => (
+          <div className="mt-2 space-y-1">
+            {q.slice(0, 2).map((m, i) => (
               <div
                 key={m.id}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs ${
                   i === 0 ? "border border-amber-300 bg-amber-50 text-[#111827]" : "text-[#6b7280]"
                 }`}
               >
@@ -1161,7 +1163,7 @@ function CompactTatami({
                 <span className="truncate font-semibold">
                   {surname(m.redAthlete)} vs {surname(m.blueAthlete)}
                 </span>
-                <span className="ml-auto shrink-0 text-xs text-[#9ca3af]">
+                <span className="ml-auto shrink-0 text-[11px] text-[#9ca3af]">
                   {wShort(m.bracket?.category, t)}
                 </span>
               </div>
@@ -1189,27 +1191,30 @@ function CompactScoreRow({
       className={`flex items-center ${isWhite ? "bg-white text-[#111827]" : "bg-[#1e40af] text-white"}`}
     >
       <div
-        className={`flex h-20 w-16 items-center justify-center text-lg font-black tracking-widest ${isWhite ? "bg-[#d1d5db] text-[#444]" : "bg-[#2563eb] text-white"}`}
+        className={`flex h-14 w-12 items-center justify-center text-sm font-black tracking-widest ${isWhite ? "bg-[#d1d5db] text-[#444]" : "bg-[#2563eb] text-white"}`}
       >
         {isWhite ? t("judge.side_red") : t("judge.side_blue")}
       </div>
-      <div className="flex shrink-0 items-center pl-3">
-        <AthletePortrait athlete={athlete} size="compact" />
-      </div>
       <div className="min-w-0 flex-1 px-3">
-        <div className="truncate text-2xl font-black uppercase">{surname(athlete)}</div>
-        <div className={`text-sm font-bold ${isWhite ? "text-[#6b7280]" : "text-white/70"}`}>
-          {athleteFlag(athlete)}
+        <div className="truncate text-lg font-black uppercase leading-tight">
+          {surname(athlete)}
         </div>
+        {athlete?.club && (
+          <div
+            className={`truncate text-[11px] font-semibold ${isWhite ? "text-[#6b7280]" : "text-white/70"}`}
+          >
+            {clubStr(athlete.club)}
+          </div>
+        )}
       </div>
       <MiniScore label="I" value={score?.ippon ?? 0} dark={!isWhite} />
       <MiniScore label="W" value={score?.wazaari ?? 0} dark={!isWhite} />
       <MiniScore label="Y" value={score?.yuko ?? 0} dark={!isWhite} isYuko />
-      <div className="flex w-24 justify-center gap-1">
+      <div className="flex w-16 justify-center gap-1 pr-1">
         {[1, 2, 3].map((n) => (
           <span
             key={n}
-            className={`h-7 w-4 rounded-sm border-2 ${
+            className={`h-6 w-3 rounded-sm border-2 ${
               (score?.shido ?? 0) >= n
                 ? n === 3
                   ? "border-red-500 bg-red-500"
@@ -1238,7 +1243,7 @@ function MiniScore({
 }) {
   return (
     <div
-      className={`mx-1 flex h-14 w-14 flex-col items-center justify-center rounded border-2 ${
+      className={`mx-0.5 flex h-11 w-11 flex-col items-center justify-center rounded border-2 ${
         value > 0
           ? isYuko
             ? "border-green-600 bg-green-600 text-white"
@@ -1249,7 +1254,7 @@ function MiniScore({
       }`}
     >
       <span className="text-[9px] font-black tracking-widest">{label}</span>
-      <span className="font-display text-2xl font-black leading-none">{value}</span>
+      <span className="font-display text-xl font-black leading-none">{value}</span>
     </div>
   );
 }

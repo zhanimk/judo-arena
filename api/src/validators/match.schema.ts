@@ -32,13 +32,7 @@ export type ReorderTatamiQueueInput = z.infer<typeof reorderTatamiQueueSchema>;
 // Действие судьи на матче
 export const scoreEventSchema = z
   .object({
-    type: z.enum([
-      "IPPON",
-      "WAZA_ARI",
-      "YUKO",
-      "SHIDO",
-      "HANSOKU_MAKE",
-    ]),
+    type: z.enum(["IPPON", "WAZA_ARI", "YUKO", "SHIDO", "HANSOKU_MAKE"]),
     side: z.enum(["RED", "BLUE"]),
     version: z.number().int().nonnegative().optional(),
   })
@@ -85,7 +79,9 @@ export type FinishMatchInput = z.infer<typeof finishMatchSchema>;
 export const forfeitSchema = z
   .object({
     forfeitSide: z.enum(["RED", "BLUE"]),
-    reason: z.enum(["NO_SHOW", "INJURY", "DISQUALIFIED", "WITHDREW"]).default("NO_SHOW"),
+    reason: z
+      .enum(["NO_SHOW", "INJURY", "DISQUALIFIED", "WITHDREW"])
+      .default("NO_SHOW"),
   })
   .strict();
 export type ForfeitInput = z.infer<typeof forfeitSchema>;
@@ -96,8 +92,10 @@ export const listMatchesQuerySchema = z.object({
   bracketId: z.string().optional(),
   athleteId: z.string().optional(),
   tatamiNumber: z.coerce.number().int().optional(),
-  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(100),
+  status: z
+    .enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"])
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
   offset: z.coerce.number().int().min(0).default(0),
 });
 export type ListMatchesQuery = z.infer<typeof listMatchesQuerySchema>;

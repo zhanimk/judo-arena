@@ -1,4 +1,9 @@
-import { ApplicationStatus, UserRole, WeighInStatus } from "@prisma/client";
+import {
+  ApplicationStatus,
+  PaymentStatus,
+  UserRole,
+  WeighInStatus,
+} from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { logAudit } from "./audit.service.js";
 import { emitToUser } from "../sockets/io.js";
@@ -124,6 +129,8 @@ export async function updateEntryWeighIn(
           id: true,
           tournamentId: true,
           status: true,
+          paymentStatus: true,
+          paymentAmountKzt: true,
           tournament: { select: { name: true } },
         },
       },
@@ -143,6 +150,17 @@ export async function updateEntryWeighIn(
     throw new WeighInError(
       "APPLICATION_NOT_APPROVED",
       "Таразылау тек бекітілген өтінімдер үшін",
+      409,
+    );
+  }
+  const paymentCleared =
+    entry.application.paymentAmountKzt <= 0 ||
+    entry.application.paymentStatus === PaymentStatus.NOT_REQUIRED ||
+    entry.application.paymentStatus === PaymentStatus.PAID;
+  if (input.status === WeighInStatus.PASSED && !paymentCleared) {
+    throw new WeighInError(
+      "PAYMENT_REQUIRED",
+      "Алдымен клубтың төлемін растаңыз, содан кейін таразылаудан өткізуге болады",
       409,
     );
   }
