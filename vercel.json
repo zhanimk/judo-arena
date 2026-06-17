@@ -1,0 +1,4 @@
+{
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "npm run build -w tanstack_start_ts && rm -rf .vercel/output && mkdir -p .vercel && cp -R web/.vercel/output .vercel/output"
+}

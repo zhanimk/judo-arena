@@ -48,7 +48,7 @@
     "wait-on": "^8.0.1"
   },
   "engines": {
-    "node": ">=22.22.1"
+    "node": "22.x"
   },
   "overrides": {
     "@cloudflare/vite-plugin": {
