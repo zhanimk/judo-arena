@@ -13,8 +13,8 @@
 #   8. Показывает итог
 #
 # Запуск:
-#   chmod +x demo-match.sh
-#   ./demo-match.sh
+#   chmod +x scripts/dev/demo-match.sh
+#   ./scripts/dev/demo-match.sh
 # ============================================================
 
 set -e
@@ -53,7 +53,7 @@ for m in matches:
         print(f\"{m['id']}|{m['redAthlete']['name']} {m['redAthlete']['surname']}|{m['blueAthlete']['name']} {m['blueAthlete']['surname']}\")
         break
 ")
-[[ -n "$MATCH_INFO" ]] || fail "Нет матчей с двумя участниками. Сгенерируй сетку через ./demo-e2e.sh"
+[[ -n "$MATCH_INFO" ]] || fail "Нет матчей с двумя участниками. Сгенерируй сетку через ./scripts/dev/demo-e2e.sh"
 
 IFS='|' read -r MATCH_ID RED_NAME BLUE_NAME <<< "$MATCH_INFO"
 ok "Матч: $MATCH_ID"

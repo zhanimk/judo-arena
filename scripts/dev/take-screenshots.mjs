@@ -1,6 +1,6 @@
 /**
  * Скрипт для создания скриншотов README.
- * Запуск: node take-screenshots.mjs
+ * Запуск: node scripts/dev/take-screenshots.mjs
  * Требует: npx playwright install chromium (один раз)
  */
 

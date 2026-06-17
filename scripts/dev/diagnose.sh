@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Диагностика — проверяет что backend работает и что демо-аккаунты в БД
-# Запуск: ./diagnose.sh
+# Запуск: ./scripts/dev/diagnose.sh
 
 API="http://localhost:4000"
 G='\033[0;32m'; R='\033[0;31m'; Y='\033[1;33m'; B='\033[1;34m'; N='\033[0m'

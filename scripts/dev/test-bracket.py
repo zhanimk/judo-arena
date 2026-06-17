@@ -24,7 +24,7 @@ Judo-Arena — BRACKET & TATAMI DISTRIBUTION TEST
   ⑩ Прогон всех матчей (SE_IJF: IPPON+confirm; RR: winner+confirm)
   ⑪ Финальная проверка: champion каждой категории
 
-Usage:  python3 test-bracket.py
+Usage:  python3 scripts/dev/test-bracket.py
 Requires: API at http://localhost:4000
           Admin account: admin@judo-arena.kz / password123
 """

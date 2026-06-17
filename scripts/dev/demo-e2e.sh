@@ -13,8 +13,8 @@
 #   8. Красивый вывод сетки
 #
 # Запуск:
-#   chmod +x demo-e2e.sh  (один раз)
-#   ./demo-e2e.sh
+#   chmod +x scripts/dev/demo-e2e.sh  (один раз)
+#   ./scripts/dev/demo-e2e.sh
 # ============================================================
 
 set -e

@@ -25,6 +25,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Editor
+.claude/
 .vscode/*
 !.vscode/settings.json
 !.vscode/launch.json
