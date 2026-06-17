@@ -73,7 +73,10 @@ describe("Auth endpoints", () => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-csrf-token": "dummy" },
-      body: JSON.stringify({ email: "notexist@test.com", password: "wrongpass" }),
+      body: JSON.stringify({
+        email: "notexist@test.com",
+        password: "wrongpass",
+      }),
       signal: AbortSignal.timeout(TIMEOUT),
     });
     expect([400, 401, 403, 422, 429]).toContain(res.status);
@@ -126,8 +129,8 @@ describe("Clubs (public)", () => {
 // ============================================================
 
 describe("Ratings (public)", () => {
-  it("GET /api/ratings/athletes returns leaderboard", async () => {
-    const { status, body } = await get("/api/ratings/athletes");
+  it("GET /api/ratings/leaderboard returns leaderboard", async () => {
+    const { status, body } = await get("/api/ratings/leaderboard");
     expect([200, 401]).toContain(status);
     if (status === 200) {
       expect(Array.isArray(body)).toBe(true);
@@ -191,8 +194,8 @@ describe("Security headers", () => {
 
 describe("Protected endpoints return 401 without auth", () => {
   const protectedPaths = [
-    "/api/admin/tournaments",
     "/api/admin/users",
+    "/api/admin/applications",
     "/api/notifications",
   ];
 

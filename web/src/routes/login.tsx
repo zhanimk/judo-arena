@@ -478,7 +478,7 @@ function Login() {
                 <img
                   src={emblem}
                   alt=""
-                  className="h-7 w-7 rounded-lg object-cover"
+                  className="h-7 w-7 rounded-full object-cover"
                   style={{ boxShadow: "0 0 10px rgba(200,146,42,0.45)" }}
                 />
                 <span className="lp-brand-text text-xs font-black uppercase tracking-[0.12em]">

@@ -34,6 +34,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "check:bundle": "node scripts/check-bundle-size.mjs",
+    "verify:local": "npm run lint -w @judo-arena/api -- --max-warnings 0 && npm run lint -w tanstack_start_ts && npm run test -w @judo-arena/api && npm run build -w @judo-arena/api && npm run build -w tanstack_start_ts && npm run check:bundle",
     "gen:openapi": "node scripts/generate-openapi.mjs",
     "postinstall": "npm run prisma:generate -w api",
     "prepare": "husky"

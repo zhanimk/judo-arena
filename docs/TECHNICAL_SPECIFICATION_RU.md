@@ -1011,7 +1011,7 @@ API должен предоставлять группы маршрутов:
 
 Целевая схема:
 
-`Browser → Vercel/Cloudflare Pages → Render API → PostgreSQL + Redis`
+`Browser → Cloudflare Workers → Render API → PostgreSQL + Redis`
 
 Дополнительные сервисы: Resend, Sentry, S3/R2.
 

@@ -39,7 +39,7 @@ await check("API /health is ok", async () => {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   if (body.status !== "ok")
     throw new Error(
-      `health=${body.status}, db=${body.db}, redis=${body.redis}`,
+      `health=${body.status}, db=${body.checks?.db}, redis=${body.checks?.redis}, s3=${body.checks?.s3}, email=${body.checks?.email}`,
     );
 });
 

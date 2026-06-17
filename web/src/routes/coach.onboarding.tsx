@@ -198,7 +198,7 @@ function CoachOnboarding() {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={emblem} alt="" className="h-10 w-10 rounded-xl" />
+            <img src={emblem} alt="" className="h-10 w-10 rounded-full object-cover" />
             <div>
               <div className="font-display text-lg font-bold">JUDO·ARENA</div>
               <div className="text-xs text-muted-foreground">{t("coach_onboarding.subtitle")}</div>
@@ -504,7 +504,11 @@ function ClubStep({
   busy,
   onClubCreated,
 }: {
-  userClub: { id: string; name: import("@/lib/api-types").LocalizedName | string; city: string } | null;
+  userClub: {
+    id: string;
+    name: import("@/lib/api-types").LocalizedName | string;
+    city: string;
+  } | null;
   activeRequest?: ClubJoinRequest | null;
   clubs: Club[];
   loading: boolean;
@@ -780,7 +784,9 @@ function StepRow({
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
@@ -808,7 +814,8 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
             {t("coach_onboarding.setup_done")}
           </div>
           <div className="text-base text-muted-foreground">
-            {t("coach_onboarding.welcome")}, <span className="font-semibold text-foreground">{name}</span>!
+            {t("coach_onboarding.welcome")},{" "}
+            <span className="font-semibold text-foreground">{name}</span>!
           </div>
         </div>
         <div className="w-48 h-1 rounded-full bg-border/40 overflow-hidden">
@@ -820,7 +827,15 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
         <div className="text-xs text-muted-foreground animate-pulse">{t("common.loading")}</div>
       </div>
       <div className="absolute bottom-8 flex gap-2 opacity-30">
-        {["bg-zinc-300","bg-yellow-400","bg-orange-500","bg-green-600","bg-sky-500","bg-amber-800","bg-gray-900"].map((c, i) => (
+        {[
+          "bg-zinc-300",
+          "bg-yellow-400",
+          "bg-orange-500",
+          "bg-green-600",
+          "bg-sky-500",
+          "bg-amber-800",
+          "bg-gray-900",
+        ].map((c, i) => (
           <div key={i} className={`h-1.5 w-8 rounded-full ${c}`} />
         ))}
       </div>
@@ -832,4 +847,3 @@ function OnboardingSuccessScreen({ name }: { name: string }) {
     </div>
   );
 }
-

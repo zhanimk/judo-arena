@@ -122,7 +122,7 @@ During event day, keep open:
 - Render API logs
 - Render PostgreSQL metrics
 - Redis metrics
-- Cloudflare Pages deployment status
+- Cloudflare Workers deployment status
 - Sentry API and Web issues
 - `/health` endpoint
 

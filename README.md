@@ -32,7 +32,7 @@ Digital tournament platform for judo competitions: registration, brackets, judgi
 | API      | Fastify, TypeScript, Prisma, PostgreSQL, Redis                |
 | Realtime | Socket.IO                                                     |
 | Tests    | Vitest, Playwright                                            |
-| Deploy   | Cloudflare Pages, Render                                      |
+| Deploy   | Cloudflare Workers, Render                                    |
 
 ## Quick Start
 
@@ -47,6 +47,15 @@ npm run start:seed
 ```
 
 Adds demo data for local testing.
+
+## Pre-Deploy Check
+
+```bash
+nvm use
+npm run verify:local
+```
+
+For production, deploy the API to Render from `render.yaml`, deploy the web worker with GitHub Actions and Cloudflare Workers, then run `npm run prod:smoke` with `API_URL`, `WEB_URL` and production admin credentials.
 
 ## Demo Accounts
 
