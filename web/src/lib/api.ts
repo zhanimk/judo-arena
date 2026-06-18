@@ -14,10 +14,14 @@ import { updateSocketToken } from "./socket";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export function mediaUrl(url?: string | null): string {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
-  return `${API_BASE}${url.startsWith("/") ? url : `/${url}`}`;
+  return apiUrl(url);
 }
 
 function qs(params?: Record<string, string | number | boolean | null | undefined>): string {
