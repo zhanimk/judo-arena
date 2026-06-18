@@ -187,6 +187,7 @@ async function buildServer() {
       return cb(new Error("CORS blocked: " + origin), false);
     },
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
