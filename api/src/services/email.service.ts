@@ -20,7 +20,9 @@ export interface EmailPayload {
 const EMAIL_TIMEOUT_MS = 10_000;
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
-  const send = env.RESEND_API_KEY ? sendViaResend(payload) : sendViaSMTP(payload);
+  const send = env.RESEND_API_KEY
+    ? sendViaResend(payload)
+    : sendViaSMTP(payload);
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("Email timeout")), EMAIL_TIMEOUT_MS),
   );
@@ -28,7 +30,9 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
     await Promise.race([send, timeout]);
   } catch (err) {
     // Не роняем запрос из-за email — только логируем
-    process.stderr.write(`[email] Таймаут или ошибка для ${payload.to}: ${(err as Error).message}\n`);
+    process.stderr.write(
+      `[email] Таймаут или ошибка для ${payload.to}: ${(err as Error).message}\n`,
+    );
   }
 }
 
@@ -46,7 +50,9 @@ async function sendViaResend(payload: EmailPayload): Promise<void> {
       process.stderr.write(`[email/resend] Ошибка: ${JSON.stringify(error)}\n`);
     }
   } catch (err) {
-    process.stderr.write(`[email/resend] Не удалось отправить: ${(err as Error).message}\n`);
+    process.stderr.write(
+      `[email/resend] Не удалось отправить: ${(err as Error).message}\n`,
+    );
   }
 }
 
@@ -69,7 +75,9 @@ async function sendViaSMTP(payload: EmailPayload): Promise<void> {
       text: htmlToText(payload.html),
     });
   } catch (err) {
-    process.stderr.write(`[email/smtp] Не удалось отправить на ${payload.to}: ${(err as Error).message}\n`);
+    process.stderr.write(
+      `[email/smtp] Не удалось отправить на ${payload.to}: ${(err as Error).message}\n`,
+    );
   }
 }
 
@@ -79,7 +87,9 @@ async function sendViaSMTP(payload: EmailPayload): Promise<void> {
 
 export async function verifySmtpConnection(): Promise<void> {
   if (env.RESEND_API_KEY) {
-    process.stdout.write(`✅ Email provider: Resend (from: ${env.EMAIL_FROM})\n`);
+    process.stdout.write(
+      `✅ Email provider: Resend (from: ${env.EMAIL_FROM})\n`,
+    );
     return;
   }
   try {
@@ -88,12 +98,18 @@ export async function verifySmtpConnection(): Promise<void> {
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
-      auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      auth: env.SMTP_USER
+        ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
+        : undefined,
     });
     await t.verify();
-    process.stdout.write(`✅ Email provider: SMTP ${env.SMTP_HOST}:${env.SMTP_PORT}\n`);
+    process.stdout.write(
+      `✅ Email provider: SMTP ${env.SMTP_HOST}:${env.SMTP_PORT}\n`,
+    );
   } catch (err) {
-    process.stderr.write(`⚠️  Email недоступен (${env.SMTP_HOST}:${env.SMTP_PORT}): ${(err as Error).message}\n`);
+    process.stderr.write(
+      `⚠️  Email недоступен (${env.SMTP_HOST}:${env.SMTP_PORT}): ${(err as Error).message}\n`,
+    );
     process.stderr.write(`   → Задай RESEND_API_KEY в .env для production.\n`);
   }
 }
@@ -106,20 +122,30 @@ function htmlToText(html: string): string {
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // ============================================================
 // Шаблоны
 // ============================================================
 
-export function applicationApprovedHtml(tournamentName: string, reviewerNotes?: string): string {
+export function applicationApprovedHtml(
+  tournamentName: string,
+  reviewerNotes?: string,
+): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;border:1px solid #e5e7eb">
       <h2 style="color:#1a1a2e;margin-top:0">✅ Өтінім бекітілді</h2>
@@ -129,7 +155,10 @@ export function applicationApprovedHtml(tournamentName: string, reviewerNotes?: 
     </div>`;
 }
 
-export function applicationRejectedHtml(tournamentName: string, reviewerNotes?: string): string {
+export function applicationRejectedHtml(
+  tournamentName: string,
+  reviewerNotes?: string,
+): string {
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;border:1px solid #e5e7eb">
       <h2 style="color:#1a1a2e;margin-top:0">❌ Өтінімде түзету керек</h2>
@@ -140,7 +169,60 @@ export function applicationRejectedHtml(tournamentName: string, reviewerNotes?: 
     </div>`;
 }
 
-export function passwordResetHtml(resetUrl: string): string {
+type EmailLocale = "kk" | "ru" | "en";
+
+const passwordResetCopy: Record<
+  EmailLocale,
+  {
+    subject: string;
+    title: string;
+    description: string;
+    button: string;
+    expiry: string;
+    ignore: string;
+    tagline: string;
+  }
+> = {
+  kk: {
+    subject: "Judo-Arena — құпиясөзді қалпына келтіру",
+    title: "Құпиясөзді қалпына келтіру",
+    description: "Judo-Arena аккаунтыңыздың құпиясөзін өзгерту сұрауы түсті.",
+    button: "Құпиясөзді өзгерту →",
+    expiry: "Сілтеме 1 сағат бойы жарамды.",
+    ignore: "Егер сіз сұрамаған болсаңыз, бұл хатты елемеңіз.",
+    tagline: "Қазақстандық дзюдо турнирлер платформасы",
+  },
+  ru: {
+    subject: "Judo-Arena — восстановление пароля",
+    title: "Восстановление пароля",
+    description:
+      "Мы получили запрос на изменение пароля вашего аккаунта Judo-Arena.",
+    button: "Изменить пароль →",
+    expiry: "Ссылка действительна в течение 1 часа.",
+    ignore: "Если вы не отправляли запрос, просто проигнорируйте это письмо.",
+    tagline: "Платформа турниров по дзюдо в Казахстане",
+  },
+  en: {
+    subject: "Judo-Arena — reset your password",
+    title: "Reset your password",
+    description:
+      "We received a request to change the password for your Judo-Arena account.",
+    button: "Change password →",
+    expiry: "The link is valid for 1 hour.",
+    ignore: "If you did not request this, simply ignore this email.",
+    tagline: "Kazakhstan judo tournament platform",
+  },
+};
+
+export function passwordResetSubject(locale: EmailLocale): string {
+  return passwordResetCopy[locale].subject;
+}
+
+export function passwordResetHtml(
+  resetUrl: string,
+  locale: EmailLocale = "kk",
+): string {
+  const copy = passwordResetCopy[locale];
   return `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;border:1px solid #e5e7eb">
       <div style="text-align:center;margin-bottom:24px">
@@ -148,20 +230,20 @@ export function passwordResetHtml(resetUrl: string): string {
           <span style="font-size:28px">🔑</span>
         </div>
       </div>
-      <h2 style="color:#1a1a2e;margin-top:0;text-align:center">Құпиясөзді қалпына келтіру</h2>
-      <p style="color:#374151;text-align:center">Judo-Arena аккаунтыңыздың құпиясөзін өзгерту сұрауы түсті.</p>
+      <h2 style="color:#1a1a2e;margin-top:0;text-align:center">${copy.title}</h2>
+      <p style="color:#374151;text-align:center">${copy.description}</p>
       <div style="text-align:center;margin:28px 0">
         <a href="${resetUrl}"
           style="display:inline-block;background:linear-gradient(135deg,#c9a227,#f0c040);color:#1a1a2e;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.5px">
-          Құпиясөзді өзгерту →
+          ${copy.button}
         </a>
       </div>
       <p style="color:#6b7280;font-size:13px;text-align:center;border-top:1px solid #f3f4f6;padding-top:16px;margin-top:16px">
-        Сілтеме <b>1 сағат</b> бойы жарамды.<br>
-        Егер сіз сұрамаған болсаңыз — бұл хатты елемеңіз.
+        ${copy.expiry}<br>
+        ${copy.ignore}
       </p>
       <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px">
-        Judo-Arena — Қазақстандық дзюдо турнирлер платформасы
+        Judo-Arena — ${copy.tagline}
       </p>
     </div>`;
 }

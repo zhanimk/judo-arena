@@ -63,7 +63,11 @@ import { verifyCsrf } from "../middlewares/csrf.js";
 import { parseTTLToSeconds, verifyRefreshToken } from "../lib/jwt.js";
 import { env } from "../lib/env.js";
 import { redis } from "../lib/redis.js";
-import { sendEmail, passwordResetHtml } from "../services/email.service.js";
+import {
+  sendEmail,
+  passwordResetHtml,
+  passwordResetSubject,
+} from "../services/email.service.js";
 import { prisma } from "../lib/prisma.js";
 import { revokeAllUserTokens } from "../lib/refresh-store.js";
 import { disconnectUserSockets } from "../sockets/io.js";
@@ -194,28 +198,48 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, totpSecret: true, totpEnabled: true, email: true, role: true, clubId: true, isActive: true },
+        select: {
+          id: true,
+          totpSecret: true,
+          totpEnabled: true,
+          email: true,
+          role: true,
+          clubId: true,
+          isActive: true,
+        },
       });
       if (!user || !user.totpEnabled || !user.totpSecret) {
-        return reply.code(401).send({ error: "INVALID_STATE", message: "Ошибка состояния 2FA" });
+        return reply
+          .code(401)
+          .send({ error: "INVALID_STATE", message: "Ошибка состояния 2FA" });
       }
 
       const { verifyTotpCode } = await import("../services/totp.service.js");
       const valid = verifyTotpCode(user.totpSecret, code);
       if (!valid) {
-        return reply.code(401).send({ error: "INVALID_TOTP", message: "Неверный код" });
+        return reply
+          .code(401)
+          .send({ error: "INVALID_TOTP", message: "Неверный код" });
       }
 
       // Код верный — выдаём токены
       await redis.del(`totp_challenge:${challengeToken}`);
-      const { signAccessToken, signRefreshToken } = await import("../lib/jwt.js");
+      const { signAccessToken, signRefreshToken } =
+        await import("../lib/jwt.js");
       const { storeRefreshToken } = await import("../lib/refresh-store.js");
       const { jti, token: refreshToken } = signRefreshToken(user.id);
       await storeRefreshToken(user.id, jti);
-      const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role as Parameters<typeof signAccessToken>[0]["role"] });
+      const accessToken = signAccessToken({
+        sub: user.id,
+        email: user.email,
+        role: user.role as Parameters<typeof signAccessToken>[0]["role"],
+      });
 
       reply.setCookie(REFRESH_COOKIE, refreshToken, cookieOptions);
-      return reply.send({ accessToken, user: { id: user.id, email: user.email, role: user.role } });
+      return reply.send({
+        accessToken,
+        user: { id: user.id, email: user.email, role: user.role },
+      });
     },
   );
 
@@ -310,12 +334,17 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // ---- GET /verify-email?token=xxx — подтвердить email по токену ----
   app.get("/verify-email", async (request, reply) => {
-    const { verifyEmail } = await import("../services/email-verification.service.js");
+    const { verifyEmail } =
+      await import("../services/email-verification.service.js");
     const { z } = await import("zod");
-    const { token } = z.object({ token: z.string().min(1) }).parse(request.query);
+    const { token } = z
+      .object({ token: z.string().min(1) })
+      .parse(request.query);
     const result = await verifyEmail(token);
     // Редиректим на фронтенд с флагом успеха
-    return reply.redirect(`${env.APP_URL}/email-verified?email=${encodeURIComponent(result.email)}`);
+    return reply.redirect(
+      `${env.APP_URL}/email-verified?email=${encodeURIComponent(result.email)}`,
+    );
   });
 
   // ---- POST /resend-verification — повторно отправить письмо верификации ----
@@ -323,7 +352,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     "/resend-verification",
     withRateLimit(authenticated, { max: 3, timeWindow: "10 minutes" }),
     async (request, reply) => {
-      const { sendVerificationEmail } = await import("../services/email-verification.service.js");
+      const { sendVerificationEmail } =
+        await import("../services/email-verification.service.js");
       await sendVerificationEmail(request.user!.sub);
       return reply.code(204).send();
     },
@@ -348,26 +378,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ---- PATCH /me/locale ----
-  app.patch(
-    "/me/locale",
-    authenticated,
-    async (request, reply) => {
-      const { locale } = updateLocaleSchema.parse(request.body);
-      await updateLocale(request.user!.sub, locale);
-      return reply.send({ ok: true, locale });
-    },
-  );
+  app.patch("/me/locale", authenticated, async (request, reply) => {
+    const { locale } = updateLocaleSchema.parse(request.body);
+    await updateLocale(request.user!.sub, locale);
+    return reply.send({ ok: true, locale });
+  });
 
   // ---- PATCH /me/profile ----
-  app.patch(
-    "/me/profile",
-    authenticated,
-    async (request, reply) => {
-      const input = updateMeProfileSchema.parse(request.body);
-      const user = await updateMeProfile(request.user!.sub, input);
-      return reply.send({ user: publicUser(user) });
-    },
-  );
+  app.patch("/me/profile", authenticated, async (request, reply) => {
+    const input = updateMeProfileSchema.parse(request.body);
+    const user = await updateMeProfile(request.user!.sub, input);
+    return reply.send({ user: publicUser(user) });
+  });
 
   // ---- POST /me/change-password ----
   // Отдельный от profile endpoint — требует currentPassword для верификации.
@@ -411,15 +433,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ---- PUT /me/documents ----
-  app.put(
-    "/me/documents",
-    authenticated,
-    async (request, reply) => {
-      const input = upsertUserDocumentSchema.parse(request.body);
-      const document = await upsertMyDocument(request.user!.sub, input);
-      return reply.send({ document });
-    },
-  );
+  app.put("/me/documents", authenticated, async (request, reply) => {
+    const input = upsertUserDocumentSchema.parse(request.body);
+    const document = await upsertMyDocument(request.user!.sub, input);
+    return reply.send({ document });
+  });
 
   // ---- GET /documents/:id/download ----
   app.get<{ Params: { id: string } }>(
@@ -459,7 +477,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
         );
         return reply
-          .header("Content-Type", document.mimeType || "application/octet-stream")
+          .header(
+            "Content-Type",
+            document.mimeType || "application/octet-stream",
+          )
           .header(
             "Content-Disposition",
             `inline; filename="${asciiName}"; filename*=UTF-8''${encodedName}`,
@@ -485,7 +506,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const { email } = z
         .object({ email: z.string().email() })
         .parse(request.body);
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, preferredLocale: true },
+      });
       // Always return 200 to avoid user enumeration
       if (!user) return reply.send({ ok: true });
 
@@ -495,8 +519,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
       await sendEmail({
         to: email,
-        subject: "Judo-Arena: Құпиясөзді қалпына келтіру",
-        html: passwordResetHtml(resetUrl),
+        subject: passwordResetSubject(user.preferredLocale),
+        html: passwordResetHtml(resetUrl, user.preferredLocale),
       });
 
       return reply.send({ ok: true });

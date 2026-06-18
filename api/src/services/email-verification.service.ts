@@ -30,8 +30,8 @@ export class EmailVerificationError extends Error {
   }
 }
 
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;       // 24 часа
-const RESEND_COOLDOWN_MS = 2 * 60 * 1000;        // 2 минуты между повторными отправками
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 часа
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000; // 2 минуты между повторными отправками
 
 /** Генерирует токен верификации и отправляет письмо. */
 export async function sendVerificationEmail(userId: string): Promise<void> {
@@ -41,14 +41,24 @@ export async function sendVerificationEmail(userId: string): Promise<void> {
       id: true,
       email: true,
       name: true,
+      preferredLocale: true,
       emailVerified: true,
       emailVerificationSentAt: true,
     },
   });
 
-  if (!user) throw new EmailVerificationError("USER_NOT_FOUND", "Пользователь не найден", 404);
+  if (!user)
+    throw new EmailVerificationError(
+      "USER_NOT_FOUND",
+      "Пользователь не найден",
+      404,
+    );
   if (user.emailVerified) {
-    throw new EmailVerificationError("ALREADY_VERIFIED", "Email уже подтверждён", 409);
+    throw new EmailVerificationError(
+      "ALREADY_VERIFIED",
+      "Email уже подтверждён",
+      409,
+    );
   }
 
   // Rate limit: не чаще раза в 2 минуты
@@ -78,8 +88,8 @@ export async function sendVerificationEmail(userId: string): Promise<void> {
 
   await sendEmail({
     to: user.email,
-    subject: "Judo-Arena — подтвердите ваш email",
-    html: verificationEmailHtml(user.name, verifyUrl),
+    subject: verificationEmailSubject(user.preferredLocale),
+    html: verificationEmailHtml(user.name, verifyUrl, user.preferredLocale),
   });
 }
 
@@ -144,14 +154,77 @@ export async function verifyEmail(token: string): Promise<{ email: string }> {
 // HTML шаблон письма
 // ============================================================
 
-function verificationEmailHtml(name: string, verifyUrl: string): string {
+type EmailLocale = "kk" | "ru" | "en";
+
+const verificationCopy: Record<
+  EmailLocale,
+  {
+    lang: string;
+    subject: string;
+    title: string;
+    greeting: (name: string) => string;
+    instruction: string;
+    button: string;
+    fallback: string;
+    expiry: string;
+    country: string;
+  }
+> = {
+  kk: {
+    lang: "kk",
+    subject: "Judo-Arena — email мекенжайыңызды растаңыз",
+    title: "Email мекенжайыңызды растаңыз",
+    greeting: (name) => `Сәлем, <strong>${escapeHtml(name)}</strong>!`,
+    instruction: "Тіркелуді аяқтау үшін төмендегі батырманы басыңыз.",
+    button: "Email-ды растау",
+    fallback: "Егер батырма жұмыс істемесе, мына сілтемені көшіріңіз:",
+    expiry:
+      "Сілтеме 24 сағат бойы жарамды. Егер сіз тіркелмеген болсаңыз, бұл хатты елемеңіз.",
+    country: "Қазақстан",
+  },
+  ru: {
+    lang: "ru",
+    subject: "Judo-Arena — подтвердите ваш email",
+    title: "Подтвердите ваш email",
+    greeting: (name) => `Здравствуйте, <strong>${escapeHtml(name)}</strong>!`,
+    instruction: "Для завершения регистрации нажмите кнопку ниже.",
+    button: "Подтвердить email",
+    fallback: "Если кнопка не работает, скопируйте эту ссылку:",
+    expiry:
+      "Ссылка действительна 24 часа. Если вы не регистрировались, просто проигнорируйте это письмо.",
+    country: "Казахстан",
+  },
+  en: {
+    lang: "en",
+    subject: "Judo-Arena — confirm your email",
+    title: "Confirm your email",
+    greeting: (name) => `Hello, <strong>${escapeHtml(name)}</strong>!`,
+    instruction: "Click the button below to complete your registration.",
+    button: "Confirm email",
+    fallback: "If the button does not work, copy this link:",
+    expiry:
+      "The link is valid for 24 hours. If you did not register, simply ignore this email.",
+    country: "Kazakhstan",
+  },
+};
+
+function verificationEmailSubject(locale: EmailLocale): string {
+  return verificationCopy[locale].subject;
+}
+
+function verificationEmailHtml(
+  name: string,
+  verifyUrl: string,
+  locale: EmailLocale,
+): string {
+  const copy = verificationCopy[locale];
   return `
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="${copy.lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Подтверждение email — Judo-Arena</title>
+  <title>${copy.title} — Judo-Arena</title>
 </head>
 <body style="margin:0;padding:0;background:#f0f2f5;font-family:'Inter',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:40px 20px;">
@@ -168,11 +241,11 @@ function verificationEmailHtml(name: string, verifyUrl: string): string {
           <tr>
             <td style="padding:40px;">
               <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111;">
-                Подтвердите ваш email
+                ${copy.title}
               </h2>
               <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
-                Здравствуйте, <strong>${escapeHtml(name)}</strong>!<br>
-                Для завершения регистрации нажмите кнопку ниже.
+                ${copy.greeting(name)}<br>
+                ${copy.instruction}
               </p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
@@ -180,20 +253,20 @@ function verificationEmailHtml(name: string, verifyUrl: string): string {
                     <a href="${verifyUrl}"
                        style="display:inline-block;background:#fbbf24;color:#111;font-weight:800;font-size:16px;
                               padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">
-                      Подтвердить email
+                      ${copy.button}
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="color:#999;font-size:13px;margin:0 0 8px;">
-                Если кнопка не работает, скопируйте эту ссылку:
+                ${copy.fallback}
               </p>
               <p style="color:#6b7280;font-size:12px;word-break:break-all;background:#f9fafb;
                          padding:10px;border-radius:6px;margin:0 0 24px;">
                 ${verifyUrl}
               </p>
               <p style="color:#bbb;font-size:12px;margin:0;">
-                Ссылка действительна 24 часа. Если вы не регистрировались — просто проигнорируйте это письмо.
+                ${copy.expiry}
               </p>
             </td>
           </tr>
@@ -201,7 +274,7 @@ function verificationEmailHtml(name: string, verifyUrl: string): string {
           <tr>
             <td style="background:#f9fafb;padding:18px 40px;text-align:center;">
               <p style="color:#bbb;font-size:12px;margin:0;">
-                © ${new Date().getFullYear()} Judo-Arena · Казахстан
+                © ${new Date().getFullYear()} Judo-Arena · ${copy.country}
               </p>
             </td>
           </tr>
