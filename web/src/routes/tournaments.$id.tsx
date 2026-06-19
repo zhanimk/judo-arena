@@ -566,7 +566,7 @@ function TournamentDetail() {
                   </div>
                   <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                     <Images className="h-4 w-4 text-gold" />
-                    {tourney.galleryUrls.length} фото
+                    {galleryUrls.length} фото
                   </div>
                 </div>
                 <div className="-mx-2 grid auto-cols-[86%] grid-flow-col gap-3 overflow-x-auto px-2 pb-3 snap-x snap-mandatory sm:auto-cols-[48%] lg:auto-cols-[32%] [scrollbar-width:thin]">
