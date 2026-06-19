@@ -31,11 +31,13 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export function issueCsrfToken(reply: FastifyReply): string {
   const token = randomBytes(32).toString("hex");
   reply.setCookie(CSRF_COOKIE, token, {
-    httpOnly: true,            // JS не читает cookie — клиент берёт токен из тела ответа
-    sameSite: "strict",
+    httpOnly: true, // JS не читает cookie — клиент берёт токен из тела ответа
+    // Production UI and API use different sites, therefore this cookie must
+    // be explicitly allowed on credentialed cross-site requests.
+    sameSite: env.NODE_ENV === "production" ? "none" : "strict",
     secure: env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24,     // 24 часа
+    maxAge: 60 * 60 * 24, // 24 часа
   });
   return token;
 }
@@ -48,7 +50,9 @@ export async function verifyCsrf(
   // Безопасные методы не требуют проверки
   if (SAFE_METHODS.has(request.method)) return;
 
-  const cookieToken = (request.cookies as Record<string, string | undefined>)[CSRF_COOKIE];
+  const cookieToken = (request.cookies as Record<string, string | undefined>)[
+    CSRF_COOKIE
+  ];
   const headerToken = request.headers[CSRF_HEADER] as string | undefined;
 
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {

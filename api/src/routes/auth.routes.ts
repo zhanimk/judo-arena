@@ -87,7 +87,9 @@ const REFRESH_COOKIE_TTL_SEC = parseTTLToSeconds(env.JWT_REFRESH_TTL);
 const cookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  // The production frontend and API are hosted on different sites
+  // (Vercel + Render), so Lax cookies are not sent with API fetches.
+  sameSite: (env.NODE_ENV === "production" ? "none" : "lax") as "none" | "lax",
   path: "/api/auth",
   maxAge: REFRESH_COOKIE_TTL_SEC,
 };

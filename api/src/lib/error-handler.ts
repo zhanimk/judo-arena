@@ -30,6 +30,7 @@ function isDomainError(err: unknown): err is DomainError {
 
 /** Fastify/AJV validation error shape */
 interface FastifyValidationError {
+  code?: string;
   statusCode?: number;
   validation?: unknown[];
   message: string;
@@ -71,6 +72,17 @@ export function attachErrorHandler(app: FastifyInstance): void {
       return reply
         .code(429)
         .send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
+    }
+
+    // Multipart upload limit
+    if (
+      fastifyErr.statusCode === 413 ||
+      fastifyErr.code === "FST_REQ_FILE_TOO_LARGE"
+    ) {
+      return reply.code(413).send({
+        error: "FILE_TOO_LARGE",
+        message: "Файл тым үлкен. Өлшемі кішірек файлды таңдаңыз.",
+      });
     }
 
     // Unexpected errors

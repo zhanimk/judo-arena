@@ -4,9 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   Clock,
   Download,
+  ExternalLink,
   FileDown,
   FileText,
   Images,
@@ -251,6 +254,8 @@ function TournamentDetail() {
 
   const name = localizeName(tourney.name);
   const desc = localizeName(tourney.description);
+  const galleryUrls = Array.isArray(tourney.galleryUrls) ? tourney.galleryUrls : [];
+  const selectedGalleryIndex = selectedImage ? galleryUrls.indexOf(selectedImage) : -1;
   return (
     <div className="min-h-screen flex flex-col pt-20 sm:pt-22">
       <SiteHeader fixed />
@@ -396,219 +401,161 @@ function TournamentDetail() {
 
       {activeTab === "overview" && (
         <section id="overview-detail" className="container mx-auto px-4 py-12">
-          <div className="space-y-5">
-            {/* ── Row 1: About + Map ── */}
-            <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
-              {/* About */}
-              <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
+          <div className="mx-auto max-w-6xl space-y-6">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+              <article className="rounded-3xl border border-gold/20 bg-card/60 p-5 shadow-elegant backdrop-blur sm:p-7">
                 <div className="text-xs uppercase tracking-[0.3em] text-gold">
                   {t("tournament.full_info")}
                 </div>
                 <h2 className="mt-3 font-display text-3xl font-bold">{t("tournament.about")}</h2>
                 {desc && (
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{desc}</p>
                 )}
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <InfoCard label={t("tournament.deadline")} value={deadlineText(tourney)} />
-                  <InfoCard
+
+                <div className="mt-6 overflow-hidden rounded-2xl border border-border/50">
+                  <OverviewDetailRow
+                    icon={Calendar}
+                    label={t("tournament.metric_date")}
+                    value={`${dateRange(tourney.startDate, tourney.endDate)} · ${timeText(tourney.startDate)}`}
+                  />
+                  <OverviewDetailRow
+                    icon={Clock}
+                    label={t("tournament.deadline")}
+                    value={deadlineText(tourney)}
+                  />
+                  <OverviewDetailRow
+                    icon={Users}
                     label={t("tournament.weigh_in_time")}
                     value={weighInText(tourney, t("tournament.tbd_later"))}
                   />
-                  <InfoCard
+                  <OverviewDetailRow
+                    icon={MapPin}
                     label={t("tournament.weigh_in_location")}
                     value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")}
-                  />
-                  <InfoCard
-                    label={t("tournament.city_label")}
-                    value={tourney.city || t("tournament.not_specified")}
-                  />
-                  <InfoCard
-                    label={t("payments.entry_fee")}
-                    value={formatKzt(tourney.entryFeeKzt ?? 0)}
-                  />
-                  <InfoCard
-                    label={t("tournament.tatami_count")}
-                    value={String(tourney.tatamiCount ?? 1)}
-                  />
-                  <InfoCard
-                    label={t("tournament.metric_location")}
-                    value={[tourney.location, tourney.city].filter(Boolean).join(", ")}
-                  />
-                  <InfoCard
-                    label={t("tournament.stat_categories")}
-                    value={String(tourney.categories?.length ?? 0)}
+                    last
                   />
                 </div>
-                {/* Action buttons */}
-                <div className="mt-5 flex flex-wrap gap-2 border-t border-border/40 pt-4">
+              </article>
+
+              <aside className="rounded-3xl border border-gold/25 bg-gradient-to-b from-gold/10 to-card/60 p-5 shadow-elegant backdrop-blur sm:p-7">
+                <div className="text-xs uppercase tracking-[0.3em] text-gold">Қатысу</div>
+                <div className="mt-3 flex items-end justify-between gap-4 border-b border-border/50 pb-5">
+                  <div>
+                    <div className="text-sm text-muted-foreground">{t("payments.entry_fee")}</div>
+                    <div className="mt-1 font-display text-3xl font-bold">
+                      {formatKzt(tourney.entryFeeKzt ?? 0)}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-muted-foreground">
+                    <div>{tourney.categories?.length ?? 0} санат</div>
+                    <div>{tourney._count?.applications ?? 0} өтінім</div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => switchTab("categories")}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground shadow-gold transition hover:opacity-90"
+                  >
+                    <Users className="h-4 w-4" /> {t("tournament.view_categories")}
+                  </button>
                   {tourney.kaspiPaymentUrl && (
                     <a
                       href={tourney.kaspiPaymentUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold hover:opacity-90"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gold/35 bg-background/50 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10"
                     >
                       <CircleDollarSign className="h-4 w-4" /> {t("payments.pay_kaspi")}
                     </a>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => switchTab("categories")}
-                    className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
-                  >
-                    <Users className="h-4 w-4" /> {t("tournament.view_categories")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchTab("liveTop")}
-                    className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/40 px-4 py-2 text-sm text-muted-foreground hover:border-gold/50 hover:text-gold"
-                  >
-                    <Radio className="h-4 w-4" /> {t("tournament.tab_live")}
-                  </button>
                 </div>
-              </div>
 
-              {/* Map */}
-              <div className="rounded-2xl border border-border/60 bg-card/55 shadow-elegant backdrop-blur overflow-hidden flex flex-col">
-                {/* Embedded map — shown only when mapUrl is set */}
+                {tourney.regulationUrl && (
+                  <div className="mt-5 border-t border-border/50 pt-5">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl border border-gold/30 bg-gold/10 p-2.5 text-gold">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs text-muted-foreground">
+                          {t("tournament.regulation_title")}
+                        </div>
+                        <div className="mt-0.5 truncate text-sm font-semibold">
+                          {tourney.regulationFileName || t("tournament.regulation_title")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRegulationOpen(true)}
+                        className="rounded-lg border border-gold/35 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold hover:bg-gold/20"
+                      >
+                        Көру
+                      </button>
+                      <a
+                        href={mediaUrl(tourney.regulationUrl)}
+                        download
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs font-semibold hover:border-gold/40 hover:text-gold"
+                      >
+                        <FileDown className="h-3.5 w-3.5" /> Жүктеу
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            </div>
+
+            <article className="overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-elegant backdrop-blur">
+              <div className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(300px,0.7fr)]">
                 {tourney.mapUrl ? (
                   <iframe
                     title={t("tournament.map_link")}
                     src={mapEmbedUrl(tourney)}
-                    className="w-full h-52 border-0"
+                    className="h-72 w-full border-0 sm:h-80 lg:h-full lg:min-h-[340px]"
                     loading="lazy"
                     allow="fullscreen"
                     referrerPolicy="no-referrer-when-downgrade"
                   />
                 ) : (
-                  <div className="flex h-40 items-center justify-center bg-card/30">
-                    <MapPin className="h-10 w-10 text-gold/30" />
+                  <div className="flex h-64 items-center justify-center bg-card/30 sm:h-80">
+                    <MapPin className="h-12 w-12 text-gold/30" />
                   </div>
                 )}
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-lg border border-gold/30 bg-gold/10 p-2 text-gold shrink-0">
-                      <MapPin className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm">{tourney.location}</div>
-                      <div className="text-xs text-muted-foreground">{tourney.city}</div>
-                    </div>
-                  </div>
-                  {tourney.weighInLocation && (
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-lg border border-border/40 bg-card/50 p-2 text-muted-foreground shrink-0">
-                        <Clock className="h-4 w-4" />
-                      </div>
-                      <div>
+                <div className="flex flex-col justify-center p-6 sm:p-8">
+                  <div className="text-xs uppercase tracking-[0.3em] text-gold">Өтетін жері</div>
+                  <h2 className="mt-3 font-display text-2xl font-bold">
+                    {tourney.location || t("tournament.not_specified")}
+                  </h2>
+                  {tourney.city && <div className="mt-1 text-muted-foreground">{tourney.city}</div>}
+
+                  {tourney.weighInLocation &&
+                    tourney.weighInLocation.trim() !== tourney.location?.trim() && (
+                      <div className="mt-5 rounded-xl border border-border/50 bg-background/35 p-4">
                         <div className="text-xs text-muted-foreground">
                           {t("tournament.weigh_in_location")}
                         </div>
-                        <div className="text-sm font-medium">{tourney.weighInLocation}</div>
+                        <div className="mt-1 text-sm font-semibold">{tourney.weighInLocation}</div>
                       </div>
-                    </div>
-                  )}
+                    )}
+
                   {tourney.mapUrl && (
                     <a
                       href={tourney.mapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3 py-1.5 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
+                      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gold/35 bg-gold/10 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/20"
                     >
-                      <MapPin className="h-3.5 w-3.5" /> {t("tournament.map_link")}
+                      <ExternalLink className="h-4 w-4" /> {t("tournament.map_link")}
                     </a>
                   )}
                 </div>
               </div>
-            </div>
+            </article>
 
-            {/* ── Row 2: Regulation + Stats ── */}
-            <div className="grid gap-5 lg:grid-cols-2">
-              {/* Regulation */}
-              <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
-                  {t("tournament.regulation_title")}
-                </div>
-                {tourney.regulationUrl ? (
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-gold shrink-0">
-                      <FileText className="h-8 w-8" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold truncate">
-                        {tourney.regulationFileName || t("tournament.regulation_title")}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {t("tournament.regulation_hint")}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setRegulationOpen(true)}
-                          className="inline-flex items-center gap-2 rounded-md bg-gradient-gold px-4 py-2 text-sm font-semibold text-gold-foreground shadow-gold hover:opacity-90"
-                        >
-                          <FileText className="h-4 w-4" /> Регламентті көру
-                        </button>
-                        <a
-                          href={mediaUrl(tourney.regulationUrl)}
-                          download
-                          className="inline-flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:bg-gold/20"
-                        >
-                          <FileDown className="h-4 w-4" /> Жүктеу
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <FileText className="h-6 w-6 shrink-0" />
-                    <span className="text-sm">{t("tournament.regulation_hint")}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Live stats */}
-              <div className="rounded-2xl border border-border/60 bg-card/55 p-6 shadow-elegant backdrop-blur">
-                <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
-                  {t("tournament.open_dashboard")}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <InfoCard
-                    label={t("tournament.metric_applications")}
-                    value={String(tourney._count?.applications ?? 0)}
-                  />
-                  <InfoCard label={t("tournament.stat_matches")} value={String(matches.length)} />
-                  <InfoCard
-                    label={t("tournament.tab_live")}
-                    value={
-                      brackets.length ? t("tournament.live_ready") : t("tournament.live_not_ready")
-                    }
-                  />
-                  <InfoCard
-                    label={t("tournament.tatami_count")}
-                    value={String(tourney.tatamiCount ?? 1)}
-                  />
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => switchTab("categories")}
-                    className="rounded-md border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold hover:border-gold/60"
-                  >
-                    {t("tournament.view_categories")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchTab("wall")}
-                    className="rounded-md bg-gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-gold"
-                  >
-                    Татами live
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {Array.isArray(tourney.galleryUrls) && tourney.galleryUrls.length > 0 && (
+            {galleryUrls.length > 0 && (
               <div className="rounded-2xl border border-gold/20 bg-card/60 p-6 shadow-elegant backdrop-blur">
                 <div className="mb-4 flex items-end justify-between gap-3">
                   <div>
@@ -622,24 +569,23 @@ function TournamentDetail() {
                     {tourney.galleryUrls.length} фото
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {tourney.galleryUrls.map((url, index) => (
+                <div className="-mx-2 grid auto-cols-[86%] grid-flow-col gap-3 overflow-x-auto px-2 pb-3 snap-x snap-mandatory sm:auto-cols-[48%] lg:auto-cols-[32%] [scrollbar-width:thin]">
+                  {galleryUrls.map((url, index) => (
                     <button
                       key={`${url}-${index}`}
                       type="button"
                       onClick={() => setSelectedImage(url)}
-                      className={`group relative overflow-hidden rounded-xl border border-border/60 bg-background/40 ${
-                        index === 0 ? "sm:col-span-2 lg:row-span-2" : ""
-                      }`}
+                      className="group relative aspect-[4/3] snap-start overflow-hidden rounded-2xl border border-border/60 bg-background/40 text-left"
                     >
                       <img
                         src={mediaUrl(url)}
                         alt={`${name} — ${index + 1}`}
-                        className={`w-full object-cover transition duration-500 group-hover:scale-105 ${
-                          index === 0 ? "h-64 lg:h-full" : "h-44"
-                        }`}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/45 to-transparent opacity-0 transition group-hover:opacity-100" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                      <div className="absolute bottom-3 left-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+                        {index + 1} / {galleryUrls.length}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -875,6 +821,21 @@ function TournamentDetail() {
           url={mediaUrl(selectedImage)}
           title={name}
           onClose={() => setSelectedImage(null)}
+          onPrevious={
+            selectedGalleryIndex >= 0 && galleryUrls.length > 1
+              ? () =>
+                  setSelectedImage(
+                    galleryUrls[
+                      (selectedGalleryIndex - 1 + galleryUrls.length) % galleryUrls.length
+                    ],
+                  )
+              : undefined
+          }
+          onNext={
+            selectedGalleryIndex >= 0 && galleryUrls.length > 1
+              ? () => setSelectedImage(galleryUrls[(selectedGalleryIndex + 1) % galleryUrls.length])
+              : undefined
+          }
         />
       )}
     </div>
@@ -941,7 +902,19 @@ function DocumentModal({
   );
 }
 
-function ImageModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+function ImageModal({
+  url,
+  title,
+  onClose,
+  onPrevious,
+  onNext,
+}: {
+  url: string;
+  title: string;
+  onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-[110] grid place-items-center bg-black/90 p-4 backdrop-blur-sm"
@@ -960,7 +933,27 @@ function ImageModal({ url, title, onClose }: { url: string; title: string; onClo
       >
         <X className="h-5 w-5" />
       </button>
+      {onPrevious && (
+        <button
+          type="button"
+          onClick={onPrevious}
+          className="absolute left-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white transition hover:bg-black/80 sm:left-6"
+          aria-label="Алдыңғы фото"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
       <img src={url} alt={title} className="max-h-[90vh] max-w-[94vw] rounded-xl object-contain" />
+      {onNext && (
+        <button
+          type="button"
+          onClick={onNext}
+          className="absolute right-3 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white transition hover:bg-black/80 sm:right-6"
+          aria-label="Келесі фото"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 }
@@ -1625,11 +1618,28 @@ function SmallMetric({ label, value }: { label: string; value: string | number }
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function OverviewDetailRow({
+  icon: Icon,
+  label,
+  value,
+  last = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="mt-1 font-display text-lg font-semibold leading-tight">{value}</div>
+    <div
+      className={`grid gap-2 bg-background/25 px-4 py-4 sm:grid-cols-[2.5rem_11rem_minmax(0,1fr)] sm:items-center ${
+        last ? "" : "border-b border-border/40"
+      }`}
+    >
+      <div className="hidden h-9 w-9 place-items-center rounded-lg bg-gold/10 text-gold sm:grid">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold leading-relaxed sm:text-right">{value}</div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from "../lib/route-guards.js";
 import { storeFile, storePrivateFile } from "../lib/storage.js";
 import { redis } from "../lib/redis.js";
+import { attachErrorHandler } from "../lib/error-handler.js";
 
 // ── Per-user daily upload limits ──────────────────────────────────────────────
 // Limits how many files a single authenticated user can upload per calendar day.
@@ -124,6 +125,8 @@ async function convertAvatarToPortraitWebP(buffer: Buffer): Promise<Buffer> {
 }
 
 export async function uploadRoutes(app: FastifyInstance): Promise<void> {
+  attachErrorHandler(app);
+
   /**
    * POST /api/upload/image
    * Accepts JPG/PNG/WEBP/GIF, converts to WebP, resizes to ≤2048px.
@@ -286,7 +289,15 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
           .code(400)
           .send({ error: "NO_FILE", message: "Файл жіберілмеді" });
 
-      if (!allowedDocumentTypes.has(file.mimetype)) {
+      // Some browsers/OS file pickers report valid PDFs as application/octet-stream.
+      // Trust the extension only to select validation; the PDF signature is checked below.
+      const declaredMime =
+        file.mimetype === "application/octet-stream" &&
+        file.filename?.toLowerCase().endsWith(".pdf")
+          ? "application/pdf"
+          : file.mimetype;
+
+      if (!allowedDocumentTypes.has(declaredMime)) {
         return reply.code(400).send({
           error: "INVALID_FILE_TYPE",
           message: "Тек PDF, JPG, PNG немесе WEBP жүктеуге болады",
@@ -294,7 +305,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const raw = await file.toBuffer();
-      if (!hasValidDocumentMagicBytes(raw, file.mimetype)) {
+      if (!hasValidDocumentMagicBytes(raw, declaredMime)) {
         return reply.code(400).send({
           error: "INVALID_FILE_CONTENT",
           message: "Файл мазмұны декларацияланған типке сәйкес келмейді",
@@ -302,9 +313,9 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       }
 
       let content = raw;
-      let mimeOut = file.mimetype;
+      let mimeOut = declaredMime;
       let ext = ".pdf";
-      if (file.mimetype !== "application/pdf") {
+      if (declaredMime !== "application/pdf") {
         content = await convertToWebP(raw, MAX_WIDTH);
         mimeOut = "image/webp";
         ext = ".webp";

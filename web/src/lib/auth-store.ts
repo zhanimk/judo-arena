@@ -10,7 +10,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import { api, setAccessToken, setOnUnauthorized } from "./api";
+import { api, ApiError, setAccessToken, setOnUnauthorized, wasRefreshRejected } from "./api";
 import { setOnAuthRevoked } from "./socket";
 import { Sentry } from "./sentry";
 import type { User, UserRole } from "./api-types";
@@ -66,7 +66,10 @@ function getSnapshot(): AuthState {
 // ============================================================
 
 export function useAuth(): AuthState & {
-  login: (email: string, password: string) => Promise<User | { totpRequired: true; challengeToken: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<User | { totpRequired: true; challengeToken: string }>;
   register: (data: Parameters<typeof api.auth.register>[0]) => Promise<User>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
@@ -132,15 +135,20 @@ export async function bootstrap(): Promise<void> {
   if (state.status === "loading" || state.status === "authenticated") return;
   setState({ status: "loading" });
 
-  // Таймаут 8 сек на случай офлайн/долгого старта
+  // Render can need a few seconds to wake up. Do not treat that as logout.
   const timeoutId = setTimeout(() => {
     if (state.status === "loading") {
       setState({ user: null, status: "unauthenticated" });
     }
-  }, 8000);
+  }, 15_000);
 
   try {
-    const newToken = await api.auth.refresh();
+    let newToken: string | null = null;
+    for (let attempt = 0; attempt < 3 && !newToken; attempt++) {
+      newToken = await api.auth.refresh();
+      if (newToken || wasRefreshRejected()) break;
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
     if (!newToken) {
       setState({ user: null, status: "unauthenticated" });
       return;
@@ -159,8 +167,12 @@ export async function refreshMe(): Promise<void> {
   try {
     const { user } = await api.auth.me();
     setState({ user });
-  } catch {
-    setState({ user: null, status: "unauthenticated" });
+  } catch (error) {
+    // Do not destroy a valid local session because of a temporary network or
+    // server failure. The API client handles confirmed refresh rejection.
+    if (error instanceof ApiError && error.status === 401) {
+      setState({ user: null, status: "unauthenticated" });
+    }
   }
 }
 

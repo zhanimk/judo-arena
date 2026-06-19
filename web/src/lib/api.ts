@@ -12,10 +12,23 @@
 // Непустая строка (продакш) → прямой адрес API сервера.
 import { updateSocketToken } from "./socket";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const CONFIGURED_API_BASE = import.meta.env.VITE_API_URL || "";
+
+function apiBase(): string {
+  // Vercel proxies /api and /uploads to Render. Keeping browser requests on
+  // the frontend origin makes auth cookies first-party (required by Safari).
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname.endsWith(".vercel.app") ||
+      window.location.hostname === "judo-arena.vercel.app")
+  ) {
+    return "";
+  }
+  return CONFIGURED_API_BASE;
+}
 
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${apiBase()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function mediaUrl(url?: string | null): string {
@@ -41,6 +54,7 @@ let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 let refreshFailCount = 0;
 const MAX_REFRESH_FAILURES = 3;
+let refreshRejected = false;
 
 // Дедупликация GET-запросов — предотвращает дублирующие fetch при двойном клике
 const pendingRequests = new Map<string, Promise<unknown>>();
@@ -52,7 +66,7 @@ let csrfToken: string | null = null;
 
 async function fetchCsrfToken(): Promise<void> {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/csrf-token`, {
+    const res = await fetch(`${apiBase()}/api/auth/csrf-token`, {
       credentials: "include",
     });
     if (res.ok) {
@@ -124,24 +138,38 @@ export class ApiError extends Error {
 async function refreshTokens(): Promise<string | null> {
   if (isRefreshing && refreshPromise) return refreshPromise;
   if (refreshFailCount >= MAX_REFRESH_FAILURES) {
-    if (onUnauthorized) onUnauthorized();
     return null;
   }
   isRefreshing = true;
   refreshPromise = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        refreshFailCount++;
+      refreshRejected = false;
+      // A second browser tab can rotate the shared refresh cookie a fraction
+      // before this tab. Retry once so the newer cookie can be used.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(`${apiBase()}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAccessToken(data.accessToken ?? null);
+          refreshFailCount = 0;
+          return accessToken;
+        }
+        if (res.status !== 401 && res.status !== 403) {
+          refreshFailCount++;
+          return null;
+        }
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          continue;
+        }
+        refreshRejected = true;
+        refreshFailCount = MAX_REFRESH_FAILURES;
         return null;
       }
-      const data = await res.json();
-      setAccessToken(data.accessToken ?? null);
-      refreshFailCount = 0;
-      return accessToken;
+      return null;
     } catch {
       refreshFailCount++;
       return null;
@@ -155,6 +183,10 @@ async function refreshTokens(): Promise<string | null> {
 
 export function resetRefreshFailCount(): void {
   refreshFailCount = 0;
+}
+
+export function wasRefreshRejected(): boolean {
+  return refreshRejected;
 }
 
 async function request<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -201,7 +233,7 @@ async function _doRequest<T = unknown>(path: string, opts: RequestOptions = {}):
   };
 
   const doFetch = (token?: string | null) =>
-    fetch(`${API_BASE}${path}`, {
+    fetch(`${apiBase()}${path}`, {
       ...rest,
       credentials: "include",
       headers: buildHeaders(token),
@@ -215,7 +247,7 @@ async function _doRequest<T = unknown>(path: string, opts: RequestOptions = {}):
     const newToken = await refreshTokens();
     if (newToken) {
       res = await doFetch(newToken);
-    } else {
+    } else if (refreshRejected) {
       if (onUnauthorized) onUnauthorized();
     }
   }
@@ -260,7 +292,7 @@ async function _doRequest<T = unknown>(path: string, opts: RequestOptions = {}):
 // Authenticated download — fetches with Bearer token and triggers browser download
 export async function downloadWithAuth(path: string, filename: string): Promise<void> {
   const token = accessToken;
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     credentials: "include",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -845,15 +877,15 @@ export const api = {
       const q = qs(params);
       return request<Paginated<AuditLog>>(`/api/admin/audit-logs${q}`);
     },
-    bracketPdfUrl: (bracketId: string) => `${API_BASE}/api/pdf/bracket?bracketId=${bracketId}`,
+    bracketPdfUrl: (bracketId: string) => `${apiBase()}/api/pdf/bracket?bracketId=${bracketId}`,
     allBracketsPdfUrl: (tournamentId: string) =>
-      `${API_BASE}/api/pdf/tournament-brackets?tournamentId=${tournamentId}`,
+      `${apiBase()}/api/pdf/tournament-brackets?tournamentId=${tournamentId}`,
     protocolPdfUrl: (tournamentId: string) =>
-      `${API_BASE}/api/pdf/protocol?tournamentId=${tournamentId}`,
+      `${apiBase()}/api/pdf/protocol?tournamentId=${tournamentId}`,
     excelExportUrl: (tournamentId: string) =>
-      `${API_BASE}/api/pdf/export/excel?tournamentId=${tournamentId}`,
+      `${apiBase()}/api/pdf/export/excel?tournamentId=${tournamentId}`,
     certificateUrl: (athleteId: string, tournamentId: string) =>
-      `${API_BASE}/api/pdf/certificate?athleteId=${athleteId}&tournamentId=${tournamentId}`,
+      `${apiBase()}/api/pdf/certificate?athleteId=${athleteId}&tournamentId=${tournamentId}`,
     triggerBackup: () =>
       request<{ ok: boolean; filename: string; sizeBytes: number; durationMs: number }>(
         "/api/admin/backup",
@@ -1038,4 +1070,4 @@ export const api = {
   },
 };
 
-export const apiBaseUrl = API_BASE;
+export const apiBaseUrl = apiBase();

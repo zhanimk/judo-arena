@@ -1,4 +1,14 @@
 {
   "installCommand": "npm install --include=dev",
-  "buildCommand": "npm run build -w tanstack_start_ts && rm -rf .vercel/output && mkdir -p .vercel && cp -R web/.vercel/output .vercel/output"
+  "buildCommand": "npm run build -w tanstack_start_ts && rm -rf .vercel/output && mkdir -p .vercel && cp -R web/.vercel/output .vercel/output",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://judo-arena-api.onrender.com/api/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://judo-arena-api.onrender.com/uploads/:path*"
+    }
+  ]
 }

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
+  Edit3,
   FileText,
   ImageIcon,
   Loader2,
@@ -21,6 +22,23 @@ import { Panel } from "@/components/dashboard/DashboardShell";
 import { api, ApiError, mediaUrl } from "@/lib/api";
 import { Input, localizeName, formatWeighIn, toDateTimeLocal, mapEmbedUrl } from "./shared";
 import { MapLocationPicker } from "./MapLocationPicker";
+
+function localizedValue(value: unknown, locale: "kk" | "ru" | "en"): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const localized = value as Record<string, unknown>;
+    return typeof localized[locale] === "string" ? localized[locale] : "";
+  }
+  return "";
+}
+
+function compactLocalized(values: Record<"kk" | "ru" | "en", string>) {
+  return Object.fromEntries(
+    Object.entries(values)
+      .map(([locale, value]) => [locale, value.trim()])
+      .filter(([, value]) => value),
+  );
+}
 
 function formatSaveError(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;
@@ -44,6 +62,23 @@ function fmtDate(iso: string): string {
   });
 }
 
+const MAX_REGULATION_FILE_SIZE = 20 * 1024 * 1024;
+const REGULATION_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+
+function validateRegulationFile(file: File): string | null {
+  if (file.size > MAX_REGULATION_FILE_SIZE) {
+    return "Файл тым үлкен. Рұқсат етілген ең үлкен өлшем — 20 МБ.";
+  }
+  if (
+    file.type &&
+    !REGULATION_FILE_TYPES.has(file.type) &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
+    return "Тек PDF, JPG, PNG немесе WEBP жүктеуге болады.";
+  }
+  return null;
+}
+
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/40">
@@ -55,11 +90,47 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   );
 }
 
+function Textarea({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={4}
+        className="mt-1.5 w-full resize-y rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+      />
+    </div>
+  );
+}
+
 export function TournamentOverviewTab({ tournament: tourney }: { tournament: any }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
   // Form state
+  const [nameKk, setNameKk] = useState(localizedValue(tourney.name, "kk"));
+  const [nameRu, setNameRu] = useState(localizedValue(tourney.name, "ru"));
+  const [nameEn, setNameEn] = useState(localizedValue(tourney.name, "en"));
+  const [descriptionKk, setDescriptionKk] = useState(localizedValue(tourney.description, "kk"));
+  const [descriptionRu, setDescriptionRu] = useState(localizedValue(tourney.description, "ru"));
+  const [descriptionEn, setDescriptionEn] = useState(localizedValue(tourney.description, "en"));
+  const [city, setCity] = useState(tourney.city ?? "");
+  const [location, setLocation] = useState(tourney.location ?? "");
+  const [startDate, setStartDate] = useState(toDateTimeLocal(tourney.startDate ?? ""));
+  const [endDate, setEndDate] = useState(toDateTimeLocal(tourney.endDate ?? ""));
+  const [primaryLocale, setPrimaryLocale] = useState<"kk" | "ru" | "en">(
+    tourney.primaryLocale ?? "kk",
+  );
+  const [tatamiCount, setTatamiCount] = useState(Number(tourney.tatamiCount ?? 1));
   const [posterUrl, setPosterUrl] = useState(tourney.posterUrl ?? "");
   const [galleryUrls, setGalleryUrls] = useState<string[]>(
     Array.isArray(tourney.galleryUrls) ? tourney.galleryUrls : [],
@@ -76,7 +147,6 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
   const [regulationUrl, setRegulationUrl] = useState(tourney.regulationUrl ?? "");
   const [regulationFileName, setRegulationFileName] = useState(tourney.regulationFileName ?? "");
 
-  const tatamiCount = Number(tourney.tatamiCount ?? 1);
   const initUrls = useMemo(() => {
     const saved: string[] = Array.isArray(tourney.youtubeUrls) ? tourney.youtubeUrls : [];
     return Array.from({ length: tatamiCount }, (_, i) => saved[i] ?? "");
@@ -91,6 +161,22 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
   const saveAll = useMutation({
     mutationFn: () =>
       api.tournaments.update(tourney.id, {
+        name: compactLocalized({ kk: nameKk, ru: nameRu, en: nameEn }),
+        description: compactLocalized({
+          kk: descriptionKk,
+          ru: descriptionRu,
+          en: descriptionEn,
+        }),
+        city: city.trim(),
+        location: location.trim(),
+        ...(tourney.status !== "IN_PROGRESS" && tourney.status !== "COMPLETED"
+          ? {
+              startDate: new Date(startDate).toISOString(),
+              endDate: new Date(endDate).toISOString(),
+            }
+          : {}),
+        primaryLocale,
+        tatamiCount,
         posterUrl: posterUrl || null,
         galleryUrls: galleryUrls.length > 0 ? galleryUrls : null,
         regulationUrl: regulationUrl || null,
@@ -136,7 +222,13 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
     },
     onError: (e: unknown) => {
       const msg =
-        e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("error.generic");
+        e instanceof ApiError
+          ? e.message
+          : e instanceof TypeError
+            ? "Файлды жүктеу мүмкін болмады. Интернет байланысын тексеріп, қайталап көріңіз."
+            : e instanceof Error
+              ? e.message
+              : t("error.generic");
       setUploadError(msg);
     },
   });
@@ -203,10 +295,81 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
       </div>
 
       <div className="space-y-6">
-        {/* ── Section 1: Dates & Deadlines ── */}
+        {/* ── Section 1: Main tournament data ── */}
+        <div className="rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <SectionHeader icon={<Edit3 className="h-4 w-4" />} title="Турнирдің негізгі деректері" />
+          <p className="mb-4 text-xs text-muted-foreground">
+            Атауы, сипаттамасы, қала, мекенжай және күндер жария бетте бірден жаңартылады.
+          </p>
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Input label="Атауы · Қазақша" value={nameKk} onChange={setNameKk} />
+            <Input label="Название · Русский" value={nameRu} onChange={setNameRu} />
+            <Input label="Name · English" value={nameEn} onChange={setNameEn} />
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <Textarea
+              label="Сипаттама · Қазақша"
+              value={descriptionKk}
+              onChange={setDescriptionKk}
+            />
+            <Textarea
+              label="Описание · Русский"
+              value={descriptionRu}
+              onChange={setDescriptionRu}
+            />
+            <Textarea
+              label="Description · English"
+              value={descriptionEn}
+              onChange={setDescriptionEn}
+            />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Input label={t("tournament.city")} value={city} onChange={setCity} />
+            <Input label={t("tournament.location")} value={location} onChange={setLocation} />
+            <Input
+              label={t("tournament.tatami_count")}
+              type="number"
+              min={1}
+              max={20}
+              value={String(tatamiCount)}
+              onChange={(value: string) => setTatamiCount(Number(value) || 1)}
+            />
+            <div>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                {t("tournament.primary_locale")}
+              </label>
+              <select
+                value={primaryLocale}
+                onChange={(event) => setPrimaryLocale(event.target.value as "kk" | "ru" | "en")}
+                className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+              >
+                <option value="kk">Қазақша</option>
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 2: Dates & Deadlines ── */}
         <div className="rounded-xl border border-border/50 bg-card/30 p-4">
           <SectionHeader icon={<Calendar className="h-4 w-4" />} title="Күндер және мерзімдер" />
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Input
+              label={t("tournament.start_date")}
+              type="datetime-local"
+              value={startDate}
+              onChange={setStartDate}
+              disabled={tourney.status === "IN_PROGRESS" || tourney.status === "COMPLETED"}
+            />
+            <Input
+              label={t("tournament.end_date")}
+              type="datetime-local"
+              value={endDate}
+              onChange={setEndDate}
+              disabled={tourney.status === "IN_PROGRESS" || tourney.status === "COMPLETED"}
+            />
             <Input
               label={t("tournament.application_deadline")}
               type="datetime-local"
@@ -226,9 +389,14 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
               onChange={setWeighInEnd}
             />
           </div>
+          {(tourney.status === "IN_PROGRESS" || tourney.status === "COMPLETED") && (
+            <div className="mt-2 text-xs text-amber-500">
+              Басталған немесе аяқталған турнирдің негізгі күндері өзгертілмейді.
+            </div>
+          )}
         </div>
 
-        {/* ── Section 2: Location ── */}
+        {/* ── Section 3: Location ── */}
         <div className="rounded-xl border border-border/50 bg-card/30 p-4">
           <SectionHeader icon={<MapPin className="h-4 w-4" />} title="Орналасуы" />
           <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -248,7 +416,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
                   placeholder={t("tournament.location")}
                 />
               </div>
-              <MapLocationPicker city={tourney.city} mapUrl={mapUrl} onChange={setMapUrl} />
+              <MapLocationPicker city={city} mapUrl={mapUrl} onChange={setMapUrl} />
               {mapUrl && (
                 <a
                   href={mapUrl}
@@ -263,7 +431,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
             <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40">
               <iframe
                 title="Tournament map"
-                src={mapEmbedUrl({ ...tourney, mapUrl })}
+                src={mapEmbedUrl({ ...tourney, mapUrl, location, city })}
                 className="h-52 w-full border-0"
                 loading="lazy"
               />
@@ -271,8 +439,8 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
                 <div className="flex gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
                   <div>
-                    <div className="font-medium">{tourney.location}</div>
-                    <div className="text-xs text-muted-foreground">{tourney.city}</div>
+                    <div className="font-medium">{location}</div>
+                    <div className="text-xs text-muted-foreground">{city}</div>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -520,7 +688,15 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
                   disabled={uploadRegulation.isPending}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
-                    if (file) uploadRegulation.mutate(file);
+                    if (file) {
+                      const validationError = validateRegulationFile(file);
+                      if (validationError) {
+                        setUploadError(validationError);
+                      } else {
+                        setUploadError("");
+                        uploadRegulation.mutate(file);
+                      }
+                    }
                     event.currentTarget.value = "";
                   }}
                 />
