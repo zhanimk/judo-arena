@@ -517,8 +517,8 @@ export function TournamentScoreboardPanel({
                     onOverride={(side) =>
                       setOverrideDialog({
                         matchId: m.id,
-                        redName: athleteName(m.redAthlete),
-                        blueName: athleteName(m.blueAthlete),
+                        redName: athleteName(m.redAthlete, t),
+                        blueName: athleteName(m.blueAthlete, t),
                         side,
                         reason: "",
                       })
@@ -611,8 +611,8 @@ export function TournamentScoreboardPanel({
                           onOverride={(side) =>
                             setOverrideDialog({
                               matchId: m.id,
-                              redName: athleteName(m.redAthlete),
-                              blueName: athleteName(m.blueAthlete),
+                              redName: athleteName(m.redAthlete, t),
+                              blueName: athleteName(m.blueAthlete, t),
                               side,
                               reason: "",
                             })
@@ -686,8 +686,8 @@ export function TournamentScoreboardPanel({
                                       onOverride={(side) =>
                                         setOverrideDialog({
                                           matchId: m.id,
-                                          redName: athleteName(m.redAthlete),
-                                          blueName: athleteName(m.blueAthlete),
+                                          redName: athleteName(m.redAthlete, t),
+                                          blueName: athleteName(m.blueAthlete, t),
                                           side,
                                           reason: "",
                                         })
@@ -751,19 +751,19 @@ export function TournamentScoreboardPanel({
                       </div>
                       <div className="flex items-center gap-1.5">
                         {/* Override: change winner */}
-                        {m.redAthlete && m.blueAthlete && (
+                        {(m.redAthlete || m.blueAthlete) && (
                           <div className="inline-flex overflow-hidden rounded-md border border-sky-500/40">
                             <button
                               onClick={() =>
                                 setOverrideDialog({
                                   matchId: m.id,
-                                  redName: athleteName(m.redAthlete),
-                                  blueName: athleteName(m.blueAthlete),
+                                  redName: athleteName(m.redAthlete, t),
+                                  blueName: athleteName(m.blueAthlete, t),
                                   side: "RED",
                                   reason: "",
                                 })
                               }
-                              disabled={m.winnerId === m.redAthlete?.id}
+                              disabled={m.winnerId === m.redAthlete?.id || !m.redAthlete}
                               className="px-2 py-1 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
                               title={t("matches_admin.mark_white_winner")}
                             >
@@ -773,13 +773,13 @@ export function TournamentScoreboardPanel({
                               onClick={() =>
                                 setOverrideDialog({
                                   matchId: m.id,
-                                  redName: athleteName(m.redAthlete),
-                                  blueName: athleteName(m.blueAthlete),
+                                  redName: athleteName(m.redAthlete, t),
+                                  blueName: athleteName(m.blueAthlete, t),
                                   side: "BLUE",
                                   reason: "",
                                 })
                               }
-                              disabled={m.winnerId === m.blueAthlete?.id}
+                              disabled={m.winnerId === m.blueAthlete?.id || !m.blueAthlete}
                               className="border-l border-sky-500/40 px-2 py-1 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
                               title={t("matches_admin.mark_blue_winner")}
                             >
@@ -793,8 +793,8 @@ export function TournamentScoreboardPanel({
                             if (
                               window.confirm(
                                 t("matches_admin.reset_match_confirm_named", {
-                                  red: athleteName(m.redAthlete),
-                                  blue: athleteName(m.blueAthlete),
+                                  red: athleteName(m.redAthlete, t),
+                                  blue: athleteName(m.blueAthlete, t),
                                 }),
                               )
                             ) {
@@ -820,7 +820,7 @@ export function TournamentScoreboardPanel({
                           {redWon && <span className="text-gold">★ {t("matches_admin.won")}</span>}
                         </div>
                         <div className="truncate text-sm font-semibold">
-                          {athleteName(m.redAthlete)}
+                          {athleteName(m.redAthlete, t)}
                         </div>
                         <div className="mt-1 font-mono text-xs text-muted-foreground">
                           I:{redScore.ippon ?? 0} W:{redScore.wazaari ?? 0} Y:{redScore.yuko ?? 0}{" "}
@@ -837,7 +837,7 @@ export function TournamentScoreboardPanel({
                           )}
                         </div>
                         <div className="truncate text-sm font-semibold">
-                          {athleteName(m.blueAthlete)}
+                          {athleteName(m.blueAthlete, t)}
                         </div>
                         <div className="mt-1 font-mono text-xs text-muted-foreground">
                           I:{blueScore.ippon ?? 0} W:{blueScore.wazaari ?? 0} Y:
@@ -1158,7 +1158,7 @@ function MatchCard({
               )}
             </div>
             <div className="truncate text-sm font-medium">
-              {athleteName(match.redAthlete)} vs {athleteName(match.blueAthlete)}
+              {athleteName(match.redAthlete, t)} vs {athleteName(match.blueAthlete, t)}
             </div>
           </div>
         </div>
@@ -1182,8 +1182,8 @@ function MatchCard({
           {t("matches_admin.winner")}:{" "}
           <b>
             {pendingResult.winnerSide === "RED"
-              ? athleteName(match.redAthlete)
-              : athleteName(match.blueAthlete)}
+              ? athleteName(match.redAthlete, t)
+              : athleteName(match.blueAthlete, t)}
           </b>
           <span className="text-muted-foreground"> · {pendingResult.reason}</span>
         </div>
@@ -1250,7 +1250,7 @@ function MatchCard({
               onClick={() => onOverride("RED")}
               disabled={match.winnerId === match.redAthlete?.id}
               className="px-2 py-1.5 text-xs text-foreground hover:bg-muted/60 disabled:opacity-30"
-              title={`${t("matches_admin.white")}: ${athleteName(match.redAthlete)} ${t("matches_admin.mark_winner_suffix")}`}
+              title={`${t("matches_admin.white")}: ${athleteName(match.redAthlete, t)} ${t("matches_admin.mark_winner_suffix")}`}
             >
               {t("matches_admin.white")}
             </button>
@@ -1258,7 +1258,7 @@ function MatchCard({
               onClick={() => onOverride("BLUE")}
               disabled={match.winnerId === match.blueAthlete?.id}
               className="border-l border-sky-500/40 px-2 py-1.5 text-xs text-sky-400 hover:bg-sky-500/15 disabled:opacity-30"
-              title={`${t("matches_admin.blue")}: ${athleteName(match.blueAthlete)} ${t("matches_admin.mark_winner_suffix")}`}
+              title={`${t("matches_admin.blue")}: ${athleteName(match.blueAthlete, t)} ${t("matches_admin.mark_winner_suffix")}`}
             >
               {t("matches_admin.blue")}
             </button>
@@ -1312,7 +1312,7 @@ function ScoreSide({
         {side === "RED" ? t("matches_admin.white") : t("matches_admin.blue")}
         {isWinner && <span className="ml-1 text-gold">★</span>}
       </div>
-      <div className="truncate text-sm font-medium">{athleteName(athlete)}</div>
+      <div className="truncate text-sm font-medium">{athleteName(athlete, t)}</div>
       <div className="mt-1 text-xs">
         I:{score?.ippon ?? 0} W:{score?.wazaari ?? 0} Y:{score?.yuko ?? 0} S:{score?.shido ?? 0}
       </div>
@@ -1343,9 +1343,10 @@ function isMatchReady(match: Match) {
   return Boolean(match.redAthleteId && match.blueAthleteId);
 }
 
-function athleteName(athlete: MatchAthlete | null | undefined) {
-  if (!athlete) return "TBD";
-  return [athlete.name, athlete.surname].filter(Boolean).join(" ") || "TBD";
+function athleteName(athlete: MatchAthlete | null | undefined, t?: any) {
+  const fallback = t ? t("common.tbd", { defaultValue: "TBD" }) : "TBD";
+  if (!athlete) return fallback;
+  return [athlete.name, athlete.surname].filter(Boolean).join(" ") || fallback;
 }
 
 function statusLabel(

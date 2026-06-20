@@ -1,6 +1,6 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
 import { api, ApiError, setAccessToken } from "@/lib/api";
@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/site/ThemeToggle";
 import type { Locale } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Judo-Arena — вход и регистрация" }] }),
@@ -74,6 +75,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
   // 2FA state
   const [totpChallenge, setTotpChallenge] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
@@ -114,6 +116,10 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (mode === "register" && !turnstileToken && !isDev) {
+      setError("Пожалуйста, подтвердите что вы не робот (Капча)");
+      return;
+    }
     if (mode === "register" && !isPasswordStrong(password)) {
       setError(t("auth.pwd_strength_weak"));
       return;
@@ -767,6 +773,15 @@ function Login() {
                 >
                   <span className="mt-0.5 shrink-0">⚠</span>
                   {error}
+                </div>
+              )}
+
+              {mode === "register" && !isDev && (
+                <div className="flex justify-center mt-2">
+                  <Turnstile 
+                    siteKey="1x00000000000000000000AA" 
+                    onSuccess={(token) => setTurnstileToken(token)} 
+                  />
                 </div>
               )}
 

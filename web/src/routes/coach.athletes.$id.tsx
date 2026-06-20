@@ -1,6 +1,7 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 import { FileText, Loader2, Trash2 } from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -115,32 +116,8 @@ function CoachAthleteDetails() {
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
                     {t("documents.title")}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {((athlete as any).documents as UserDocument[]).map((doc) => (
-                      <a
-                        key={doc.id}
-                        href={mediaUrl(doc.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group block overflow-hidden rounded-lg border border-border/60 hover:border-gold/50 transition-colors"
-                        title={docLabel(doc.type)}
-                      >
-                        {doc.mimeType?.startsWith("image/") ? (
-                          <img
-                            src={mediaUrl(doc.url)}
-                            alt={docLabel(doc.type)}
-                            className="h-24 w-24 object-cover group-hover:opacity-90"
-                          />
-                        ) : (
-                          <div className="flex h-24 w-24 flex-col items-center justify-center gap-1 bg-card/60 text-muted-foreground">
-                            <FileText className="h-6 w-6" />
-                          </div>
-                        )}
-                        <div className="bg-card/80 px-1 py-1 text-[9px] text-center text-muted-foreground truncate w-24">
-                          {docLabel(doc.type)}
-                        </div>
-                      </a>
-                    ))}
+                  <div className="max-w-sm">
+                    <DocumentList documents={(athlete as any).documents} />
                   </div>
                 </div>
               ) : null}

@@ -937,9 +937,9 @@ function TimerBar({
     return () => clearInterval(id);
   }, [isClockRunning, clock?.runningStartedAt]);
 
-  const elapsed = getClockElapsedSec(scoreSnapshot, now);
-  let timerStr = isGoldenScore ? fmtTimer(elapsed) : fmtTimer(Math.max(0, durationSec - elapsed));
-  let timerColor = "#111";
+  const elapsed = computeElapsed(scoreSnapshot, now);
+  let timerStr = isGoldenScore ? fmtTimer(Math.max(0, elapsed - durationSec)) : fmtTimer(Math.max(0, durationSec - elapsed));
+  let timerColor = "#6b7280";
   let pulse = false;
 
   if (!isFinished) {
@@ -1002,7 +1002,7 @@ function TimerBar({
   );
 }
 
-function getClockElapsedSec(
+function computeElapsed(
   score: MatchScoreSnapshot | null | undefined,
   now = Date.now(),
 ): number {
@@ -1017,8 +1017,9 @@ function getClockElapsedSec(
 function boardClockText(match: Match): string {
   const score = match.scoreSnapshot;
   const duration = match.bracket?.category?.matchDurationSec ?? 240;
-  const elapsed = getClockElapsedSec(score);
-  return score?.isGoldenScore ? fmtTimer(elapsed) : fmtTimer(Math.max(0, duration - elapsed));
+  if (!score) return "0:00";
+  const elapsed = computeElapsed(score, Date.now());
+  return score?.isGoldenScore ? fmtTimer(Math.max(0, elapsed - duration)) : fmtTimer(Math.max(0, duration - elapsed));
 }
 
 function OsaekomiBar({ startedAt, side }: { startedAt: string; side: string }) {

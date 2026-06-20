@@ -208,12 +208,10 @@ function resolveEffectiveFormat(
   requestedFormat: BracketFormat,
   athleteCount: number,
 ): BracketFormat {
-  // Kazakhstan/Judo-friendly default:
-  // 2-5 athletes: one pool, everyone fights everyone.
-  // 6-10 athletes: two balanced pools A/B, top 2 advance to playoff.
-  // 11+ athletes: Olympic/IJF elimination with repechage.
+  // 2-5 athletes: one pool, everyone fights everyone (Круговая система).
+  // 6+ athletes: Olympic/IJF elimination with repechage (Сетка).
   if (athleteCount <= 5) return BracketFormat.ROUND_ROBIN;
-  if (athleteCount <= 10) return BracketFormat.MIXED;
+  
   if (requestedFormat === BracketFormat.MIXED) return BracketFormat.MIXED;
   return BracketFormat.SE_IJF;
 }

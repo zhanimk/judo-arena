@@ -122,6 +122,7 @@ export interface Category {
   ageMax: number;
   weightMin: number;
   weightMax: number;
+  matchDate?: string | null;
   matchDurationSec: number;
   goldenScoreSec: number;
   format: BracketFormat;
@@ -517,6 +518,7 @@ export interface CreateCategoryInput {
   format?: string;
   allowYuko?: boolean;
   name?: LocalizedName | null;
+  matchDate?: string | null;
 }
 
 export type UpdateCategoryInput = Partial<CreateCategoryInput>;

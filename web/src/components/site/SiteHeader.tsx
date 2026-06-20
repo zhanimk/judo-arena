@@ -1,5 +1,4 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import emblem from "@/assets/jcl-logo.jpeg";
 import { Menu, X, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -78,19 +77,18 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
       <div className="container mx-auto px-3 py-2.5 sm:px-4 sm:py-3">
         {/* ── floating pill ── */}
         <div className="flex h-14 items-center justify-between gap-2 rounded-full border border-gold/20 bg-background/90 px-2 shadow-[0_4px_24px_rgba(0,0,0,0.14)] backdrop-blur-2xl dark:bg-[#0a0f20]/92 sm:px-3">
-          {/* Logo */}
           <Link
             to={user ? dashboardRoot(user.role) : "/"}
-            className="group flex shrink-0 items-center gap-2.5 pl-1"
+            className="group flex shrink-0 items-center gap-2 pl-2"
           >
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-gold/30 transition-all group-hover:ring-gold/60 group-hover:scale-105">
-              <img src={emblem} alt="JCL" className="h-full w-full object-cover" />
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md ring-1 ring-gold/30 transition-all group-hover:ring-gold/60 group-hover:scale-105">
+              <img src="/main-logo.png" alt="JCL" className="h-full w-full object-cover" />
             </span>
-            <span className="hidden font-display text-[15px] font-bold leading-none sm:block">
+            <span className="hidden font-display text-[15px] font-bold leading-none sm:block tracking-wide transition-colors group-hover:text-gold">
               JUDO<span className="text-gradient-gold">·</span>CHILD
               <span className="text-gradient-gold">·</span>LEAGUE
             </span>
-            <span className="font-display text-[15px] font-bold leading-none sm:hidden">JCL</span>
+            <span className="font-display text-[15px] font-bold leading-none sm:hidden text-gradient-gold">JCL</span>
           </Link>
 
           {/* Center nav — desktop */}

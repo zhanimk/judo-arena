@@ -456,6 +456,7 @@ export async function createCategory(
     data: {
       tournamentId,
       name: input.name ?? undefined,
+      matchDate: input.matchDate ?? null,
       gender: input.gender,
       ageMin: input.ageMin,
       ageMax: input.ageMax,
@@ -524,6 +525,7 @@ export async function createCategoriesBulk(
       data: categoriesToCreate.map((category) => ({
         tournamentId,
         name: category.name ?? undefined,
+        matchDate: category.matchDate ?? null,
         gender: category.gender,
         ageMin: category.ageMin,
         ageMax: category.ageMax,

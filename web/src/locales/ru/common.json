@@ -130,6 +130,7 @@
     "actions": "Действия",
     "status": "Статус",
     "unknown": "Неизвестно",
+    "tbd": "Нет соперника",
     "yes": "Да",
     "no": "Нет",
     "required": "Обязательное поле",
@@ -356,6 +357,7 @@
     "metric_passed": "Прошли",
     "metric_pending": "Ожидание",
     "metric_failed": "Не прошли",
+    "metric_payment_waiting": "Ожидают оплаты",
     "bulk_pass_all": "Допустить всех ожидающих",
     "no_approved": "Нет одобренных заявок",
     "no_approved_hint": "Взвешивание открыто только для одобренных заявок",
@@ -364,6 +366,7 @@
     "tab_active": "Активные",
     "tab_accepted": "Принятые",
     "tab_problem": "Проблема",
+    "tab_payment": "Оплата",
     "tab_all": "Все",
     "club_pass_btn": "Допустить клуб",
     "view_all": "Все",
@@ -1960,5 +1963,19 @@
     "of_wins": "от побед",
     "rating_history": "История рейтинга",
     "recent_results": "Последние результаты"
+  },
+  "2fa": {
+    "title": "2FA — Двухфакторная аутентификация",
+    "status_on": "2FA включена",
+    "status_off": "2FA отключена",
+    "btn_enable": "Включить 2FA",
+    "btn_disable": "Отключить 2FA",
+    "scan_qr": "Отсканируйте QR-код в Google Authenticator или Authy:",
+    "secret_key": "Ключ",
+    "enter_code": "Введите 6-значный код из приложения",
+    "enter_code_disable": "Введите код для продолжения",
+    "invalid_code": "Неверный код",
+    "enabled_success": "2FA успешно включена ✓",
+    "disabled_success": "2FA отключена"
   }
 }

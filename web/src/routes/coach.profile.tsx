@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { DocumentViewer } from "@/components/documents/DocumentViewer";
 
 type UserDocumentType = "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
 
@@ -244,6 +245,7 @@ function DocumentUploadRow({
 }) {
   const { t } = useTranslation();
   const [error, setError] = useState("");
+  const [showViewer, setShowViewer] = useState(false);
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
@@ -278,14 +280,25 @@ function DocumentUploadRow({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
           {document ? (
-            <button
-              type="button"
-              onClick={() => api.auth.downloadDocument(document).catch(() => undefined)}
-              className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
-            >
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{document.originalName || t("documents.open_file")}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowViewer(true)}
+                className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{document.originalName || t("documents.open_file")}</span>
+              </button>
+              {showViewer && (
+                <DocumentViewer
+                  document={document}
+                  documents={[document]}
+                  onClose={() => setShowViewer(false)}
+                  onNavigate={() => {}}
+                  t={t}
+                />
+              )}
+            </>
           ) : (
             <div className="mt-2 text-xs text-muted-foreground">{t("documents.not_uploaded")}</div>
           )}

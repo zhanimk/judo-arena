@@ -15,7 +15,7 @@ import {
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import { api, ApiError } from "@/lib/api";
 import type { Club, ClubJoinRequest } from "@/lib/api-types";
 import { isAthleteProfileComplete, useAuth } from "@/lib/auth-store";

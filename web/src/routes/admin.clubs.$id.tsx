@@ -9,6 +9,7 @@ import {
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import { ArrowLeft, ChevronDown, Edit2, FileText, Lock, Mail, Phone, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 import { api, ApiError, mediaUrl } from "@/lib/api";
 import type { Club, User, ClubGroup, Application, UserDocument } from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
@@ -934,34 +935,8 @@ function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
                 {t("documents.title")}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {docs.map((doc) => (
-                  <a
-                    key={doc.id}
-                    href={mediaUrl(doc.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="group block overflow-hidden rounded-lg border border-border/60 hover:border-gold/50 transition-colors"
-                    title={docTypeLabel(doc.type)}
-                  >
-                    {doc.mimeType?.startsWith("image/") ? (
-                      <img
-                        src={mediaUrl(doc.url)}
-                        alt={docTypeLabel(doc.type)}
-                        className="h-24 w-24 object-cover group-hover:opacity-90 transition-opacity"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-24 flex-col items-center justify-center gap-1 bg-card/60 text-muted-foreground">
-                        <FileText className="h-6 w-6" />
-                        <span className="text-[9px] text-center px-1 leading-tight">{docTypeLabel(doc.type)}</span>
-                      </div>
-                    )}
-                    <div className="bg-card/80 px-1.5 py-1 text-[9px] text-center text-muted-foreground truncate w-24">
-                      {docTypeLabel(doc.type)}
-                    </div>
-                  </a>
-                ))}
+              <div className="max-w-sm">
+                <DocumentList documents={docs} />
               </div>
             </div>
           ) : (

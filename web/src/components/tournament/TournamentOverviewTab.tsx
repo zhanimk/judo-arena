@@ -231,59 +231,35 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
         {/* ── Section 2: Location ── */}
         <div className="rounded-xl border border-border/50 bg-card/30 p-4">
           <SectionHeader icon={<MapPin className="h-4 w-4" />} title="Орналасуы" />
-          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input
-                  label={t("tournament.map_url")}
-                  type="url"
-                  value={mapUrl}
-                  onChange={setMapUrl}
-                  placeholder="Google Maps / 2GIS"
-                />
-                <Input
-                  label={t("tournament.weigh_in_location")}
-                  value={weighInLocation}
-                  onChange={setWeighInLocation}
-                  placeholder={t("tournament.location")}
-                />
-              </div>
-              <MapLocationPicker city={tourney.city} mapUrl={mapUrl} onChange={setMapUrl} />
-              {mapUrl && (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label={t("tournament.map_url")}
+                type="url"
+                value={mapUrl}
+                onChange={setMapUrl}
+                placeholder="Google Maps / 2GIS"
+              />
+              <Input
+                label={t("tournament.weigh_in_location")}
+                value={weighInLocation}
+                onChange={setWeighInLocation}
+                placeholder={t("tournament.location")}
+              />
+            </div>
+            <MapLocationPicker city={tourney.city} mapUrl={mapUrl} onChange={setMapUrl} />
+            {mapUrl && (
+              <div className="flex">
                 <a
                   href={mapUrl}
                   target="_blank"
                   rel="noopener"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-3 py-1.5 text-xs hover:border-gold/40"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-3 py-1.5 text-xs hover:border-gold/40 transition-colors"
                 >
-                  <MapPin className="h-3 w-3" /> {t("tournament.map_link")}
+                  <MapPin className="h-3 w-3 text-gold" /> {t("tournament.map_link")}
                 </a>
-              )}
-            </div>
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40">
-              <iframe
-                title="Tournament map"
-                src={mapEmbedUrl({ ...tourney, mapUrl })}
-                className="h-52 w-full border-0"
-                loading="lazy"
-              />
-              <div className="space-y-2 p-3 text-sm">
-                <div className="flex gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                  <div>
-                    <div className="font-medium">{tourney.location}</div>
-                    <div className="text-xs text-muted-foreground">{tourney.city}</div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                  <div>
-                    <div className="font-medium">{t("tournament.weigh_in_tab")}</div>
-                    <div className="text-xs text-muted-foreground">{formatWeighIn(tourney, t)}</div>
-                  </div>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -20,7 +20,7 @@ import { initWebVitals } from "@/lib/web-vitals";
 import { usePWA } from "@/hooks/usePWA";
 import { EmailVerificationBanner } from "@/components/ui/EmailVerificationBanner";
 import { useTranslation } from "react-i18next";
-import emblem from "@/assets/jcl-logo.jpeg";
+
 
 // Initialise Sentry as early as possible
 initSentry();
@@ -95,7 +95,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
       <div className="absolute inset-0 grid-bg opacity-25" />
       <div className="relative max-w-md rounded-2xl border border-gold/25 bg-card/70 p-8 text-center shadow-elegant backdrop-blur">
-        <img src={emblem} alt="" className="mx-auto mb-5 h-16 w-16 rounded-full object-cover" />
+        <img src="/main-logo.png" alt="" className="mx-auto mb-5 h-16 w-16 rounded-full object-cover" />
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {error.message || "Бетті қайта жүктеп көріңіз."}
@@ -166,8 +166,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       // PWA
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
-      { rel: "apple-touch-icon", href: "/icon-192.png", sizes: "192x192" },
+      { rel: "icon", href: "/main-logo.png", type: "image/svg+xml", sizes: "192x192 512x512" },
+      { rel: "apple-touch-icon", href: "/main-logo.png", sizes: "192x192 512x512" },
     ],
   }),
   shellComponent: RootShell,
@@ -265,7 +265,7 @@ function SplashScreen() {
           <span className="absolute inset-0 rounded-full conic-gold opacity-80 blur-[14px]" />
           <span className="absolute inset-[3px] rounded-full bg-card" />
           <img
-            src={emblem}
+            src="/main-logo.png"
             alt=""
             className="relative h-20 w-20 rounded-full object-cover shadow-gold"
           />

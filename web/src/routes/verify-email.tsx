@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import { apiUrl } from "@/lib/api";
 
 export const Route = createFileRoute("/verify-email")({

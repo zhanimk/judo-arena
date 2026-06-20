@@ -6,6 +6,7 @@ import {
   LoadingState,
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import {
   ArrowLeft,
@@ -590,42 +591,6 @@ function AdminUserDetail() {
   );
 }
 
-function DocumentList({ documents }: { documents: UserDocument[] }) {
-  const { t } = useTranslation();
-  const ordered = ["BIRTH_CERTIFICATE", "STUDY_CERTIFICATE", "COACH_ID"]
-    .map((type) => documents.find((document) => document.type === type))
-    .filter((document): document is UserDocument => Boolean(document));
-
-  if (ordered.length === 0) {
-    return (
-      <EmptyState title={t("documents.no_documents")} hint={t("documents.no_documents_hint")} />
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {ordered.map((document: UserDocument) => (
-        <button
-          type="button"
-          key={document.id}
-          onClick={() => api.auth.downloadDocument(document).catch(() => undefined)}
-          className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/35 p-3 text-sm hover:border-gold/40"
-        >
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 font-semibold">
-              <FileText className="h-4 w-4 shrink-0 text-gold" />
-              {documentTypeLabel(document.type, t)}
-            </span>
-            <span className="mt-1 block truncate text-xs text-muted-foreground">
-              {document.originalName || t("documents.open_file")}
-            </span>
-          </span>
-          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ============================================================
 // Shared UI
@@ -692,12 +657,6 @@ function placeLabel(p: number, t: (k: string, opts?: Record<string, unknown>) =>
   return place;
 }
 
-function documentTypeLabel(type: string, t: (k: string) => string): string {
-  if (type === "BIRTH_CERTIFICATE") return t("documents.birth_certificate");
-  if (type === "STUDY_CERTIFICATE") return t("documents.study_certificate");
-  if (type === "COACH_ID") return t("documents.coach_id");
-  return type;
-}
 
 function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
   if (!n) return "—";

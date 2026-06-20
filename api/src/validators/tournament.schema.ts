@@ -156,6 +156,7 @@ export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
 export const createCategorySchema = z
   .object({
     name: i18nName.optional(),
+    matchDate: z.coerce.date().nullable().optional(),
     gender: z.enum(["MALE", "FEMALE"]),
     ageMin: z.coerce.number().int().min(4).max(99),
     ageMax: z.coerce.number().int().min(4).max(99),
@@ -191,6 +192,7 @@ export type CreateCategoriesBulkInput = z.infer<
 export const updateCategorySchema = z
   .object({
     name: i18nName.optional(),
+    matchDate: z.coerce.date().nullable().optional(),
     gender: z.enum(["MALE", "FEMALE"]).optional(),
     ageMin: z.coerce.number().int().min(4).max(99).optional(),
     ageMax: z.coerce.number().int().min(4).max(99).optional(),

@@ -129,6 +129,7 @@
     "actions": "Әрекеттер",
     "status": "Мәртебе",
     "unknown": "Белгісіз",
+    "tbd": "Қарсылас жоқ",
     "yes": "Иә",
     "no": "Жоқ",
     "required": "Міндетті өріс",
@@ -355,6 +356,7 @@
     "metric_passed": "Өтті",
     "metric_pending": "Күтуде",
     "metric_failed": "Өтпеді",
+    "metric_payment_waiting": "Төлем күтуде",
     "bulk_pass_all": "Барлық күтудегіні өткізу",
     "no_approved": "Бекітілген өтінім жоқ",
     "no_approved_hint": "Таразыға тарту тек бекітілген өтінімдер үшін ашылады",
@@ -363,6 +365,7 @@
     "tab_active": "Жұмыста",
     "tab_accepted": "Қабылданған",
     "tab_problem": "Мәселе",
+    "tab_payment": "Төлем",
     "tab_all": "Барлығы",
     "club_pass_btn": "Клубты өткізу",
     "view_all": "Барлығы",
@@ -1915,7 +1918,6 @@
     "coach_id_hint": "Жаттықтырушыны растайтын куәлік немесе құжат.",
     "upload": "Жүктеу",
     "replace": "Ауыстыру",
-    "replace": "Ауыстыру",
     "saved": "Құжат сақталды",
     "upload_error": "Құжат жүктелмеді",
     "not_uploaded": "Әлі жүктелмеген",
@@ -1960,5 +1962,19 @@
     "of_wins": "жеңістен",
     "rating_history": "Рейтинг тарихы",
     "recent_results": "Соңғы нәтижелер"
+  },
+  "2fa": {
+    "title": "2FA — Екі факторлы аутентификация",
+    "status_on": "2FA қосылған",
+    "status_off": "2FA өшірілген",
+    "btn_enable": "2FA қосу",
+    "btn_disable": "2FA өшіру",
+    "scan_qr": "QR-кодты Google Authenticator немесе Authy қолданбасымен сканерлеңіз:",
+    "secret_key": "Кілт",
+    "enter_code": "Қолданбадан 6 санды кодты енгізіңіз",
+    "enter_code_disable": "Жалғастыру үшін кодты енгізіңіз",
+    "invalid_code": "Код қате",
+    "enabled_success": "2FA қосылды ✓",
+    "disabled_success": "2FA өшірілді"
   }
 }

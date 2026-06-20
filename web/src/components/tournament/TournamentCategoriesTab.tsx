@@ -39,6 +39,7 @@ function CategoryForm({
     nameKk: initial?.name?.kk ?? "",
     nameRu: initial?.name?.ru ?? "",
     nameEn: initial?.name?.en ?? "",
+    matchDate: initial?.matchDate ? new Date(initial.matchDate).toISOString().split("T")[0] : "",
     gender: initial?.gender ?? "MALE",
     ageMin: String(initial?.ageMin ?? 13),
     ageMax: String(initial?.ageMax ?? 15),
@@ -78,6 +79,7 @@ function CategoryForm({
     const name = compactI18n({ kk: form.nameKk, ru: form.nameRu, en: form.nameEn });
     onSubmit({
       ...(Object.keys(name).length > 0 ? { name } : {}),
+      matchDate: form.matchDate ? new Date(form.matchDate).toISOString() : null,
       gender: form.gender,
       ageMin: Number(form.ageMin),
       ageMax: Number(form.ageMax),
@@ -138,6 +140,13 @@ function CategoryForm({
           label={t("categories.name_en")}
           value={form.nameEn}
           onChange={(v: string) => setForm({ ...form, nameEn: v })}
+        />
+
+        <Input
+          label="День турнира"
+          type="date"
+          value={form.matchDate}
+          onChange={(v: string) => setForm({ ...form, matchDate: v })}
         />
 
         <Select
@@ -522,6 +531,11 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
                     <div>
                       <div className="font-medium">{categoryTitle(c, t)}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
+                        {c.matchDate && (
+                          <span className="mr-2 inline-flex items-center rounded border border-border/60 bg-background/50 px-1.5 py-0.5 font-medium text-foreground">
+                            📅 {new Date(c.matchDate).toLocaleDateString("kk-KZ")}
+                          </span>
+                        )}
                         {c.gender === "MALE"
                           ? `♂ ${t("common.male")}`
                           : `♀ ${t("tatami.female_short")}`}{" "}

@@ -99,6 +99,9 @@ const schema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:admin@judo-arena.kz"),
 
+  // SMS
+  MOBIZON_API_KEY: z.string().optional(),
+
   // Версия приложения (задаётся при деплое через CI/CD)
   // Render: задай в Environment Variables: APP_VERSION=${{ github.sha }}
   APP_VERSION: z.string().default("0.1.0"),

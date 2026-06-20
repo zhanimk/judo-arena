@@ -27,6 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 import { api, ApiError } from "@/lib/api";
 import type {
   AthleteLeaderboardEntry,
@@ -781,39 +782,11 @@ function UsersTab() {
                               </div>
                               {/* Documents */}
                               {docs.length > 0 && (
-                                <div className="shrink-0">
+                                <div className="shrink-0 max-w-sm">
                                   <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
                                     {t("documents.title")}
                                   </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {docs.map((doc) => (
-                                      <a
-                                        key={doc.id}
-                                        href={mediaUrl(doc.url)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="group block overflow-hidden rounded-lg border border-border/60 hover:border-gold/50 transition-colors"
-                                        title={docTypeLabel(doc.type)}
-                                      >
-                                        {doc.mimeType?.startsWith("image/") ? (
-                                          <img
-                                            src={mediaUrl(doc.url)}
-                                            alt={docTypeLabel(doc.type)}
-                                            className="h-24 w-24 object-cover group-hover:opacity-90 transition-opacity"
-                                          />
-                                        ) : (
-                                          <div className="flex h-24 w-24 flex-col items-center justify-center gap-1 bg-card/60 text-muted-foreground">
-                                            <User className="h-6 w-6" />
-                                            <span className="text-[9px] text-center px-1">{docTypeLabel(doc.type)}</span>
-                                          </div>
-                                        )}
-                                        <div className="bg-card/80 px-1.5 py-1 text-[9px] text-center text-muted-foreground truncate w-24">
-                                          {docTypeLabel(doc.type)}
-                                        </div>
-                                      </a>
-                                    ))}
-                                  </div>
+                                  <DocumentList documents={docs} />
                                 </div>
                               )}
                               {/* Actions */}

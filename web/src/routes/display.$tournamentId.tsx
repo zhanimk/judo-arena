@@ -229,9 +229,11 @@ function SingleTatamiDisplay({
   const score = match?.scoreSnapshot;
   const red = match?.redAthlete;
   const blue = match?.blueAthlete;
+  const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = computeElapsed(score?.clock, now);
-  const pending = score?.pendingResult;
   const isGS = score?.isGoldenScore;
+  const displaySec = isGS ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
+  const pending = score?.pendingResult;
 
   const catLabel = match?.bracket?.category
     ? categoryLabel(match.bracket.category)
@@ -325,7 +327,7 @@ function SingleTatamiDisplay({
                   letterSpacing: 2,
                 }}
               >
-                {formatTime(elapsedSec)}
+                {formatTime(displaySec)}
               </div>
               {score?.osaekomi && (
                 <div
@@ -453,8 +455,10 @@ function TatamiCard({ ts, now }: { ts: TatamiState<MatchAny>; now: number }) {
   const score = match?.scoreSnapshot;
   const red = match?.redAthlete;
   const blue = match?.blueAthlete;
+  const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = computeElapsed(score?.clock, now);
   const isGS = score?.isGoldenScore;
+  const displaySec = isGS ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
   const pending = score?.pendingResult;
 
   return (
@@ -492,7 +496,7 @@ function TatamiCard({ ts, now }: { ts: TatamiState<MatchAny>; now: number }) {
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {formatTime(elapsedSec)}
+            {formatTime(displaySec)}
           </span>
         )}
         {isGS && (

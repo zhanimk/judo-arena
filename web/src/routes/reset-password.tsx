@@ -1,6 +1,6 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Loader2, CheckCircle2, ArrowLeft, Eye, EyeOff, ShieldCheck } from "lucide-react";

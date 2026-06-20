@@ -296,6 +296,7 @@ model Category {
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   name             Json? // Опциональное название категории
+  matchDate        DateTime? // День проведения матчей категории
   gender           Gender
   ageMin           Int
   ageMax           Int

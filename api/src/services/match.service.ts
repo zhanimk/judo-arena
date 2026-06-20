@@ -145,9 +145,6 @@ export async function resetMatch(matchId: string) {
   if (match.status === MatchStatus.PENDING) {
     throw new MatchError("ALREADY_PENDING", "Матч уже в ожидании", 409);
   }
-  if (!match.redAthleteId || !match.blueAthleteId) {
-    throw new MatchError("INCOMPLETE_PAIRING", "Нет участников", 409);
-  }
 
   if (
     match.status === MatchStatus.COMPLETED &&

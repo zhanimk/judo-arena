@@ -68,16 +68,22 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
   const quarterSize = size / quartersCount;
   const quarters: ((string | null) | undefined)[][] = Array.from({ length: quartersCount }, () => []);
 
+  // Чтобы одноклубники не встречались слишком рано, мы должны распределять их
+  // не в соседние четверти (0 и 1 - это одна половина сетки), а в противоположные.
+  // Порядок заполнения четвертей: [0, 2, 1, 3] -> Pool A, Pool C, Pool B, Pool D.
+  const quarterSequence = quartersCount === 4 ? [0, 2, 1, 3] : [0, 1];
+
   // Раунд-робин по четвертям, начиная с самого крупного клуба
   for (const [, athletesOfClub] of clubBuckets) {
-    // Стартуем со случайной четверти, чтобы не было всегда одной и той же
-    const startQ = Math.floor(rng() * quartersCount);
+    // Стартуем со случайной позиции в sequence, чтобы не было всегда одной и той же
+    const startIdx = Math.floor(rng() * quartersCount);
     for (let i = 0; i < athletesOfClub.length; i++) {
       // Выбираем четверть с наименьшим числом этого клуба и в которой ещё есть место
       let bestQ = -1;
       let bestScore = Infinity;
       for (let off = 0; off < quartersCount; off++) {
-        const q = (startQ + off) % quartersCount;
+        const idx = (startIdx + off) % quartersCount;
+        const q = quarterSequence[idx]!;
         if (quarters[q]!.length >= quarterSize) continue;
         const sameClubCount = quarters[q]!.filter(
           (x) => x !== null && x !== undefined && athletesOfClub.find((a) => a.id === x),
@@ -95,16 +101,34 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
     }
   }
 
-  // Дополняем BYE
-  for (const q of quarters) {
-    while (q!.length < quarterSize) q!.push(null);
-  }
-
-  // Внутри четверти — перемешиваем порядок, чтобы BYE не были в начале/конце
+  // Формируем пары внутри четвертей так, чтобы BYE (null) никогда не встречался с другим BYE
   const result: (string | null)[] = [];
   for (const q of quarters) {
-    const shuffled = fisherYatesShuffle(q!.slice(), rng);
-    result.push(...(shuffled as (string | null)[]));
+    const athletesInQuarter = q!.slice() as (string | null)[];
+    const shuffledAthletes = fisherYatesShuffle(athletesInQuarter, rng);
+    
+    const numMatches = quarterSize / 2;
+    const pairs: ((string | null)[])[] = [];
+    
+    let athleteIndex = 0;
+    // Сначала в каждый матч (пару) кладем по одному участнику
+    for (let i = 0; i < numMatches; i++) {
+      const p1 = shuffledAthletes[athleteIndex++] || null;
+      pairs.push([p1, null]);
+    }
+    
+    // Оставшихся участников распределяем как вторых соперников
+    for (let i = 0; i < pairs.length; i++) {
+      if (athleteIndex < shuffledAthletes.length) {
+        pairs[i]![1] = shuffledAthletes[athleteIndex++];
+      }
+    }
+    
+    // Перемешиваем сами матчи (пары) внутри четверти
+    const shuffledPairs = fisherYatesShuffle(pairs, rng);
+    for (const pair of shuffledPairs) {
+      result.push(pair[0]!, pair[1]!);
+    }
   }
 
   return result;

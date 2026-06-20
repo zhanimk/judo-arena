@@ -272,14 +272,14 @@ function TournamentDetail() {
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <StatusBadge status={tourney.status} />
-                <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-xs text-gold">
+                <span className="rounded-full border border-gold/40 bg-gold/20 px-3 py-1 text-xs font-semibold text-gold shadow-[0_0_15px_rgba(234,179,8,0.2)] backdrop-blur-md">
                   {t("tournament.all_info_badge")}
                 </span>
               </div>
-              <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-tight drop-shadow-2xl sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 max-w-4xl font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl text-foreground drop-shadow-sm">
                 {name}
               </h1>
-              {desc && <p className="mt-4 max-w-3xl text-muted-foreground">{desc}</p>}
+              {desc && <p className="mt-4 max-w-3xl text-lg text-muted-foreground font-medium leading-relaxed drop-shadow-sm">{desc}</p>}
 
               <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <Metric
@@ -340,23 +340,24 @@ function TournamentDetail() {
               <button
                 type="button"
                 onClick={() => setSelectedImage(tourney.posterUrl!)}
-                className="group hidden overflow-hidden rounded-3xl border border-gold/25 bg-card/80 p-3 text-left shadow-2xl shadow-black/10 backdrop-blur lg:block"
+                className="group relative hidden overflow-hidden rounded-3xl border border-border/50 bg-card/60 p-3 text-left shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl lg:block transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-gold/30 hover:-translate-y-2"
               >
-                <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                  <div className="text-xs uppercase tracking-[0.28em] text-gold">
+                <div className="absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative mb-2 flex items-center justify-between gap-3 px-1">
+                  <div className="text-xs font-bold uppercase tracking-[0.28em] text-gold drop-shadow-sm">
                     Турнир афишасы
                   </div>
-                  <Images className="h-4 w-4 text-gold" />
+                  <Images className="h-4 w-4 text-gold drop-shadow-sm" />
                 </div>
-                <div className="grid aspect-[4/5] place-items-center overflow-hidden rounded-2xl border border-border/60 bg-background/80">
+                <div className="relative grid aspect-[4/5] place-items-center overflow-hidden rounded-2xl border border-border/50 bg-muted/30">
                   <img
                     src={mediaUrl(tourney.posterUrl)}
                     alt={name}
-                    className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-[1.02]"
+                    className="max-h-full max-w-full object-contain transition duration-700 group-hover:scale-105"
                   />
                 </div>
-                <div className="mt-3 px-1 text-sm font-semibold text-foreground">{name}</div>
-                <div className="mt-1 px-1 text-xs text-muted-foreground">
+                <div className="relative mt-3 px-1 text-sm font-bold text-foreground transition-colors group-hover:text-gold">{name}</div>
+                <div className="relative mt-1 px-1 text-xs font-medium text-muted-foreground/80">
                   Фотоны толық көру үшін басыңыз
                 </div>
               </button>
@@ -366,15 +367,15 @@ function TournamentDetail() {
       </section>
 
       <div className="sticky top-20 z-40 mx-auto w-full max-w-6xl px-4 sm:top-24">
-        <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-gold/25 bg-background/90 p-2 shadow-elegant backdrop-blur-xl [scrollbar-width:none]">
+        <nav className="flex gap-2 overflow-x-auto rounded-full border border-border/50 bg-background/60 p-2 shadow-sm dark:shadow-2xl backdrop-blur-2xl [scrollbar-width:none]">
           {(
             [
               { id: "overview" as const, label: t("tournament.tab_overview") },
               { id: "categories" as const, label: t("tournament.tab_categories") },
-              { id: "wall" as const, label: "3 · Татами live" },
-              { id: "liveTop" as const, label: "4 · Live-топ" },
+              { id: "wall" as const, label: "Татами live" },
+              { id: "liveTop" as const, label: "Live-топ" },
               ...(tourney?.status === "COMPLETED"
-                ? [{ id: "results" as const, label: "5 · Нәтижелер" }]
+                ? [{ id: "results" as const, label: "Нәтижелер" }]
                 : []),
             ] as const
           ).map((item) => (
@@ -382,10 +383,10 @@ function TournamentDetail() {
               key={item.id}
               type="button"
               onClick={() => switchTab(item.id as typeof activeTab)}
-              className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 ${
+              className={`group shrink-0 rounded-full px-6 py-2.5 text-sm font-bold transition-all duration-300 ${
                 activeTab === item.id
-                  ? "border-gold/70 bg-gradient-gold text-gold-foreground shadow-gold"
-                  : "border-border/50 bg-card/60 text-muted-foreground hover:border-gold/50 hover:bg-gold/10 hover:text-gold"
+                  ? "bg-gradient-gold text-black shadow-[0_0_20px_rgba(234,179,8,0.3)] scale-[1.02]"
+                  : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
               }`}
             >
               {item.label}
@@ -417,26 +418,6 @@ function TournamentDetail() {
                   <InfoCard
                     label={t("tournament.weigh_in_location")}
                     value={tourney.weighInLocation || tourney.location || t("tournament.tbd_later")}
-                  />
-                  <InfoCard
-                    label={t("tournament.city_label")}
-                    value={tourney.city || t("tournament.not_specified")}
-                  />
-                  <InfoCard
-                    label={t("payments.entry_fee")}
-                    value={formatKzt(tourney.entryFeeKzt ?? 0)}
-                  />
-                  <InfoCard
-                    label={t("tournament.tatami_count")}
-                    value={String(tourney.tatamiCount ?? 1)}
-                  />
-                  <InfoCard
-                    label={t("tournament.metric_location")}
-                    value={[tourney.location, tourney.city].filter(Boolean).join(", ")}
-                  />
-                  <InfoCard
-                    label={t("tournament.stat_categories")}
-                    value={String(tourney.categories?.length ?? 0)}
                   />
                 </div>
                 {/* Action buttons */}
@@ -671,7 +652,7 @@ function TournamentDetail() {
           {categoryRows.length === 0 ? (
             <Empty text={t("tournament.no_categories")} />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {categoryRows.map(
                 ({
                   category,
@@ -690,27 +671,37 @@ function TournamentDetail() {
                     onClick={() =>
                       setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)
                     }
-                    className={`group text-left rounded-2xl border p-5 shadow-elegant backdrop-blur transition-all hover:-translate-y-1 ${
+                    className={`group relative overflow-hidden text-left rounded-3xl border p-6 shadow-md dark:shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] ${
                       selectedCategoryId === category.id
-                        ? "border-gold/70 bg-gold/10"
-                        : "border-border/60 bg-card/60 hover:border-gold/40"
+                        ? "border-gold/60 bg-gold/10 ring-1 ring-gold/30"
+                        : "border-border/50 bg-card/40 hover:border-gold/40 hover:bg-card/60"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-display text-xl font-semibold group-hover:text-gold">
+                    <div className={`absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent transition-opacity duration-500 ${selectedCategoryId === category.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="font-display text-2xl font-bold leading-tight drop-shadow-sm transition-colors group-hover:text-gold">
                           {categoryTitle(category, t)}
                         </h3>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {category.gender === "MALE"
-                            ? t("tournament.gender_male_short")
-                            : t("tournament.gender_female_short")}{" "}
-                          · {category.ageMin}-{category.ageMax} {t("common.years_short")}
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                          {category.matchDate && (
+                            <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-foreground/80">
+                              📅 {new Date(category.matchDate).toLocaleDateString("kk-KZ")}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-foreground/80">
+                            {category.gender === "MALE" ? "🚹 " + t("tournament.gender_male_short") : "🚺 " + t("tournament.gender_female_short")}
+                          </span>
+                          <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-foreground/80">
+                            🎂 {category.ageMin}-{category.ageMax} {t("common.years_short")}
+                          </span>
                         </div>
                       </div>
-                      <FormatBadge format={category.format} />
+                      <div className="shrink-0">
+                        <FormatBadge format={category.format} />
+                      </div>
                     </div>
-                    <div className="mt-5 grid grid-cols-3 gap-2">
+                    <div className="relative mt-6 grid grid-cols-3 gap-3">
                       <SmallMetric
                         label={t("tournament.participants_label")}
                         value={participants || "—"}
@@ -1457,6 +1448,11 @@ function ResultsTab({
                         {categoryTitle(r.category, t)}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
+                        {r.category.matchDate && (
+                          <span className="mr-2 inline-flex items-center rounded border border-border/60 bg-background/50 px-1.5 py-0.5 font-medium text-foreground">
+                            📅 {new Date(r.category.matchDate).toLocaleDateString("kk-KZ")}
+                          </span>
+                        )}
                         {r.category.gender === "MALE"
                           ? t("tournament.gender_male_abbr")
                           : t("tournament.gender_female_abbr")}{" "}
@@ -1608,28 +1604,29 @@ function Metric({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/55 p-4 backdrop-blur">
-      <Icon className="mb-3 h-5 w-5 text-gold" />
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="mt-1 font-display text-lg font-bold leading-tight">{value}</div>
+    <div className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-gold/40 hover:bg-card/60 hover:shadow-lg hover:shadow-gold/5">
+      <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gold/10 blur-2xl transition-all duration-500 group-hover:scale-150 group-hover:bg-gold/20" />
+      <Icon className="mb-3 h-6 w-6 text-gold drop-shadow-[0_0_8px_rgba(234,179,8,0.4)] transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1" />
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">{label}</div>
+      <div className="mt-1.5 font-display text-xl font-bold leading-tight text-foreground drop-shadow-sm">{value}</div>
     </div>
   );
 }
 
 function SmallMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="font-display text-xl font-bold text-gradient-gold">{value}</div>
+    <div className="rounded-xl border border-border/50 bg-card/40 px-3 py-2 backdrop-blur-md">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground/80">{label}</div>
+      <div className="font-display text-xl font-bold text-gradient-gold drop-shadow-sm">{value}</div>
     </div>
   );
 }
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="mt-1 font-display text-lg font-semibold leading-tight">{value}</div>
+    <div className="group rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:bg-card/60 hover:shadow-lg hover:shadow-gold/5">
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{label}</div>
+      <div className="mt-1.5 font-display text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-gold">{value}</div>
     </div>
   );
 }
@@ -1649,11 +1646,12 @@ function Empty({ text }: { text: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
-  const m: Record<string, { c: string; key: string }> = {
+  const m: Record<string, { c: string; key: string; dot?: string }> = {
     DRAFT: { c: "bg-muted text-muted-foreground", key: "status.DRAFT" },
     REGISTRATION_OPEN: {
       c: "bg-gold/15 text-gold border border-gold/30",
       key: "status.REGISTRATION_OPEN",
+      dot: "bg-gold",
     },
     REGISTRATION_CLOSED: {
       c: "bg-amber-500/15 text-amber-300 border border-amber-500/30",

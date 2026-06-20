@@ -159,7 +159,7 @@ function JudgePanel() {
   const pendingResult = score_.pendingResult;
   const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = getClockElapsedSec(score_);
-  const displaySec = score_.isGoldenScore ? elapsedSec : Math.max(0, durationSec - elapsedSec);
+  const displaySec = score_.isGoldenScore ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
 
   const osaekomiActive = osaeStartedLocal !== null;
   const osaekomiDurationSec = osaekomiActive

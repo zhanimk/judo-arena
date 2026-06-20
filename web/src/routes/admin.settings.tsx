@@ -196,6 +196,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // ─── TwoFactorPanel ───────────────────────────────────────────────────────────
 
 export function TwoFactorPanel() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [step, setStep] = useState<"idle" | "setup" | "disable">("idle");
   const [code, setCode] = useState("");
@@ -215,33 +216,33 @@ export function TwoFactorPanel() {
       setSecret(data.secret);
       setStep("setup");
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Қате"),
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : t("error.generic")),
   });
 
   const verifyMut = useMutation({
     mutationFn: (c: string) => api.auth.twofa.verifySetup(c),
     onSuccess: () => {
-      toast.success("2FA қосылды ✓");
+      toast.success(t("2fa.enabled_success"));
       setStep("idle"); setCode(""); setQrUrl(""); setSecret("");
       qc.invalidateQueries({ queryKey: ["2fa-status"] });
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Код қате"),
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : t("2fa.invalid_code")),
   });
 
   const disableMut = useMutation({
     mutationFn: (c: string) => api.auth.twofa.disable(c),
     onSuccess: () => {
-      toast.success("2FA өшірілді");
+      toast.success(t("2fa.disabled_success"));
       setStep("idle"); setCode("");
       qc.invalidateQueries({ queryKey: ["2fa-status"] });
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Код қате"),
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : t("2fa.invalid_code")),
   });
 
   const enabled = statusQ.data?.enabled ?? false;
 
   return (
-    <Panel title="2FA — Екі факторлы аутентификация">
+    <Panel title={t("2fa.title")}>
       <div className="space-y-4">
         {/* Status */}
         <div className="flex items-center gap-3">
@@ -249,7 +250,7 @@ export function TwoFactorPanel() {
             ? <ShieldCheck className="h-5 w-5 text-emerald-500" />
             : <ShieldOff className="h-5 w-5 text-muted-foreground" />}
           <span className={`text-sm font-semibold ${enabled ? "text-emerald-500" : "text-muted-foreground"}`}>
-            {enabled ? "2FA қосылған" : "2FA өшірілген"}
+            {enabled ? t("2fa.status_on") : t("2fa.status_off")}
           </span>
         </div>
 
@@ -267,26 +268,26 @@ export function TwoFactorPanel() {
             className="inline-flex items-center gap-2 rounded-md bg-gold/10 border border-gold/30 px-4 py-2 text-sm font-semibold text-gold hover:bg-gold/20 transition-colors disabled:opacity-50"
           >
             {setupMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            2FA қосу
+            {t("2fa.btn_enable")}
           </button>
         )}
 
         {step === "setup" && (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              QR-кодты Google Authenticator немесе Authy қолданбасымен сканерлеңіз:
+              {t("2fa.scan_qr")}
             </div>
             {qrUrl && (
               <img src={qrUrl} alt="QR code" className="w-48 h-48 rounded-lg border border-border/40" />
             )}
             {secret && (
               <div className="rounded-md bg-muted/30 px-3 py-2 font-mono text-xs text-muted-foreground break-all">
-                Кілт: {secret}
+                {t("2fa.secret_key")}: {secret}
               </div>
             )}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Қолданбадан 6 санды кодты енгізіңіз:
+                {t("2fa.enter_code")}:
               </label>
               <input
                 type="text"
@@ -305,13 +306,13 @@ export function TwoFactorPanel() {
                 className="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-500/20 disabled:opacity-50"
               >
                 {verifyMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Растау
+                {t("common.confirm")}
               </button>
               <button
                 onClick={() => { setStep("idle"); setCode(""); setQrUrl(""); setSecret(""); setError(""); }}
                 className="inline-flex items-center rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
               >
-                Болдырмау
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -324,13 +325,13 @@ export function TwoFactorPanel() {
             className="inline-flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
           >
             <ShieldOff className="h-4 w-4" />
-            2FA өшіру
+            {t("2fa.btn_disable")}
           </button>
         )}
 
         {step === "disable" && (
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">Жалғастыру үшін кодты енгізіңіз:</div>
+            <div className="text-sm text-muted-foreground">{t("2fa.enter_code_disable")}:</div>
             <input
               type="text"
               inputMode="numeric"
@@ -348,13 +349,13 @@ export function TwoFactorPanel() {
                 className="inline-flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20 disabled:opacity-50"
               >
                 {disableMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Өшіру
+                {t("common.disable")}
               </button>
               <button
                 onClick={() => { setStep("idle"); setCode(""); setError(""); }}
                 className="inline-flex items-center rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
               >
-                Болдырмау
+                {t("common.cancel")}
               </button>
             </div>
           </div>

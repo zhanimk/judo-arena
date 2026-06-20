@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { ReactNode, useState } from "react";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import {
   LogOut,
   Loader2,
@@ -147,23 +147,15 @@ export function DashboardShell({
           ) : (
             <Link
               to={dashboardRoot(user?.role)}
-              className="group flex flex-1 min-w-0 items-center gap-2.5"
+              className="group flex h-16 items-center gap-3 border-b border-border/40 px-6 transition-colors hover:bg-gold/5"
             >
-              <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
-                <span className="absolute inset-0 rounded-full conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
-                <span className="absolute inset-[2px] rounded-full bg-card" />
-                <img
-                  src={emblem}
-                  alt=""
-                  className="relative h-7 w-7 rounded-full object-cover shadow-gold transition-transform group-hover:rotate-6 group-hover:scale-105"
-                />
+              <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md ring-1 ring-gold/30 transition-all group-hover:ring-gold/60 group-hover:scale-105">
+                <img src="/main-logo.png" alt="JCL" className="h-full w-full object-cover" />
               </span>
-              <span className="min-w-0">
-                <span className="block font-display text-sm font-bold leading-none tracking-wide truncate">
-                  JUDO<span className="text-gradient-gold">·</span>ARENA
-                </span>
-                <span className="block text-[9px] uppercase tracking-[0.2em] text-muted-foreground mt-0.5 truncate">
-                  management
+              <span className="font-display text-[16px] font-bold leading-none tracking-wide transition-colors group-hover:text-gold">
+                JUDO<span className="text-gradient-gold">·</span>ARENA
+                <span className="mt-1.5 block text-[9px] uppercase tracking-widest text-muted-foreground/80">
+                  Management
                 </span>
               </span>
             </Link>
@@ -443,7 +435,7 @@ export function Panel({
     <section className={`glass rounded-xl p-4 sm:p-6${className ? ` ${className}` : ""}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold">{title}</h2>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="shrink-0 max-w-full overflow-x-auto [scrollbar-width:none]">{action}</div>}
       </div>
       {children}
     </section>

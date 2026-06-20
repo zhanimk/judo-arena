@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import { api, ApiError } from "@/lib/api";
 import type { Club, ClubJoinRequest } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";

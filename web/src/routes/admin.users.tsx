@@ -6,6 +6,7 @@ import {
   LoadingState,
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
 import {
   Bell,
@@ -152,8 +153,8 @@ function AdminUsers() {
       <Panel
         title={`${query.data?.total ?? 0} ${(role === "ATHLETE" ? t("admin.users_athletes") : role === "COACH" ? t("admin.users_coaches") : role === "ADMIN" ? t("admin.users_admins") : t("admin.users_all")).toLowerCase()}`}
         action={
-          <div className="flex flex-wrap gap-2">
-            <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5">
+          <div className="flex flex-wrap items-center gap-2 max-w-full">
+            <div className="inline-flex flex-wrap rounded-md border border-border bg-card/50 p-0.5">
               {roleTabs.map(([value, label]) => (
                 <button
                   key={value || "all"}
@@ -164,13 +165,13 @@ function AdminUsers() {
                 </button>
               ))}
             </div>
-            <div className="relative">
+            <div className="relative flex-1 min-w-[150px] max-w-xs">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("common.search_placeholder")}
-                className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none"
+                className="w-full text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none"
               />
             </div>
             <select
@@ -630,255 +631,6 @@ function UserDetailsModal({
   );
 }
 
-function DocumentList({ documents }: { documents: UserDocument[] }) {
-  const { t } = useTranslation();
-  const [viewing, setViewing] = useState<UserDocument | null>(null);
-
-  const ordered = ["BIRTH_CERTIFICATE", "STUDY_CERTIFICATE", "COACH_ID"]
-    .map((type) => documents.find((document) => document.type === type))
-    .filter((document): document is UserDocument => Boolean(document));
-
-  if (ordered.length === 0) {
-    return (
-      <EmptyState title={t("documents.no_documents")} hint={t("documents.no_documents_hint")} />
-    );
-  }
-
-  return (
-    <>
-      <div className="space-y-2">
-        {ordered.map((document: UserDocument) => (
-          <button
-            type="button"
-            key={document.id}
-            onClick={() => setViewing(document)}
-            className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/35 p-3 text-sm hover:border-gold/40 text-left"
-          >
-            <span className="min-w-0">
-              <span className="flex items-center gap-2 font-semibold">
-                <FileText className="h-4 w-4 shrink-0 text-gold" />
-                {documentTypeLabel(document.type, t)}
-              </span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">
-                {document.originalName || t("documents.open_file")}
-              </span>
-            </span>
-            <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </button>
-        ))}
-      </div>
-
-      {viewing && (
-        <DocumentViewer
-          document={viewing}
-          documents={ordered}
-          onClose={() => setViewing(null)}
-          onNavigate={setViewing}
-          t={t}
-        />
-      )}
-    </>
-  );
-}
-
-function DocumentViewer({
-  document,
-  documents,
-  onClose,
-  onNavigate,
-  t,
-}: {
-  document: UserDocument;
-  documents: UserDocument[];
-  onClose: () => void;
-  onNavigate: (d: UserDocument) => void;
-  t: (k: string) => string;
-}) {
-  const idx = documents.indexOf(document);
-  const isPdf = document.mimeType === "application/pdf" || document.url?.endsWith(".pdf");
-  const isImage = document.mimeType?.startsWith("image/") || (!isPdf && document.url);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && idx > 0) onNavigate(documents[idx - 1]);
-      if (e.key === "ArrowRight" && idx < documents.length - 1) onNavigate(documents[idx + 1]);
-    };
-    globalThis.document.addEventListener("keydown", handler);
-    return () => globalThis.document.removeEventListener("keydown", handler);
-  }, [document, documents, idx, onClose, onNavigate]);
-
-  // Получаем URL для просмотра через authenticated download
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [docLoading, setDocLoading] = useState(true);
-  const [docError, setDocError] = useState(false);
-
-  useEffect(() => {
-    setObjectUrl(null);
-    setDocLoading(true);
-    setDocError(false);
-    const ctrl = new AbortController();
-
-    import("@/lib/api").then(({ apiBaseUrl, getAccessToken }) => {
-      fetch(`${apiBaseUrl}/api/auth/documents/${document.id}/download`, {
-        credentials: "include",
-        headers: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
-        signal: ctrl.signal,
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error("load failed");
-          return r.blob();
-        })
-        .then((blob) => {
-          setObjectUrl(URL.createObjectURL(blob));
-          setDocLoading(false);
-        })
-        .catch((err) => {
-          if (err.name !== "AbortError") setDocError(true);
-          setDocLoading(false);
-        });
-    });
-
-    return () => {
-      ctrl.abort();
-      setObjectUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-    };
-  }, [document.id]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur" onClick={onClose}>
-      {/* Header */}
-      <div
-        className="flex items-center justify-between gap-3 p-3 bg-black/60"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-widest text-white/50">
-            {documentTypeLabel(document.type, t)}
-          </div>
-          <div className="truncate text-sm font-medium text-white">
-            {document.originalName || t("documents.open_file")}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Навигация между документами */}
-          {documents.length > 1 && (
-            <div className="flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-1">
-              <button
-                type="button"
-                disabled={idx === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigate(documents[idx - 1]);
-                }}
-                className="p-1 text-white/70 hover:text-white disabled:opacity-30"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="text-xs text-white/60">
-                {idx + 1}/{documents.length}
-              </span>
-              <button
-                type="button"
-                disabled={idx === documents.length - 1}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigate(documents[idx + 1]);
-                }}
-                className="p-1 text-white/70 hover:text-white disabled:opacity-30"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (objectUrl) {
-                const a = globalThis.document.createElement("a");
-                a.href = objectUrl;
-                a.download = document.originalName || `document-${document.id}`;
-                a.click();
-              }
-            }}
-            title={t("documents.download")}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div
-        className="flex flex-1 items-center justify-center overflow-hidden p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {docLoading && (
-          <div className="flex flex-col items-center gap-3 text-white/60">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <span className="text-sm">{t("common.loading")}</span>
-          </div>
-        )}
-        {docError && (
-          <div className="text-center text-white/60">
-            <FileText className="mx-auto h-10 w-10 mb-2 opacity-40" />
-            <div className="text-sm">{t("documents.load_error")}</div>
-          </div>
-        )}
-        {!docLoading && !docError && objectUrl && (
-          <>
-            {isPdf ? (
-              <iframe
-                src={objectUrl}
-                className="h-full w-full max-w-3xl rounded-lg border border-white/10"
-                title={document.originalName || "document"}
-              />
-            ) : isImage ? (
-              <img
-                src={objectUrl}
-                alt={document.originalName || "document"}
-                className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
-              />
-            ) : (
-              <div className="text-center text-white/60">
-                <FileText className="mx-auto h-10 w-10 mb-2 opacity-40" />
-                <div className="text-sm mb-3">{t("documents.preview_unavailable")}</div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const a = globalThis.document.createElement("a");
-                    a.href = objectUrl;
-                    a.download = document.originalName || `document-${document.id}`;
-                    a.click();
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
-                >
-                  <Download className="h-4 w-4" />
-                  {t("documents.download")}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (

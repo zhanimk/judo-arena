@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 
 export const Route = createFileRoute("/email-verified")({
   head: () => ({ meta: [{ title: "Email расталды — Judo-Arena" }] }),

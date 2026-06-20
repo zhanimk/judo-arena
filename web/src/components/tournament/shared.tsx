@@ -175,7 +175,7 @@ export function athleteAge(athlete: any): number | null {
 export function weightLabel(c: any, t?: any): string {
   const kg = t ? t("common.kg") : "kg";
   const max = Number(c.weightMax);
-  if (Number.isFinite(max) && max >= 100) return `+${Math.round(Number(c.weightMin))} ${kg}`;
+  if (Number.isFinite(max) && max >= 999) return `+${Math.round(Number(c.weightMin))} ${kg}`;
   return `-${Math.round(max)} ${kg}`;
 }
 

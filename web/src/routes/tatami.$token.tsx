@@ -494,9 +494,18 @@ function TatamiJudgePanel() {
       : (tournament?.name as string | undefined)) ?? "Жарыс";
   const allowYuko = Boolean(cat?.allowYuko);
 
-  const canScore = isClockRunning && !pendingResult && !scoreAction.isPending;
+  const canScore = isRunning && !pendingResult && !scoreAction.isPending;
   const redIpponScored = (redS.ippon ?? 0) >= 1;
   const blueIpponScored = (blueS.ippon ?? 0) >= 1;
+
+  const toggleTimer = () => {
+    if (pendingResult || isFinished) return;
+    if (isPending || isPaused) {
+      if (!startMatch.isPending) startMatch.mutate();
+    } else if (isClockRunning) {
+      if (!pauseMatch.isPending) pauseMatch.mutate();
+    }
+  };
 
   // Sync ref for keyboard handler
   actionsRef.current = {
@@ -804,6 +813,7 @@ function TatamiJudgePanel() {
           isFinished={isFinished}
           osaekomi={score_.osaekomi ?? null}
           compact={compact}
+          onClick={toggleTimer}
         />
 
         {/* КӨК card */}
@@ -1521,6 +1531,7 @@ function TimerBar({
   isFinished,
   osaekomi,
   compact,
+  onClick,
 }: {
   scoreSnapshot?: import("@/lib/api-types").MatchScoreSnapshot;
   durationSec: number;
@@ -1529,6 +1540,7 @@ function TimerBar({
   isFinished: boolean;
   osaekomi: import("@/lib/api-types").Match["osaekomi"];
   compact: boolean;
+  onClick?: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
   const clock = scoreSnapshot?.clock;
@@ -1541,7 +1553,7 @@ function TimerBar({
   }, [isClockRunning, clock?.runningStartedAt]);
 
   const elapsed = clockElapsedSec(scoreSnapshot, now);
-  let timerStr = isGoldenScore ? fmtTimer(elapsed) : fmtTimer(Math.max(0, durationSec - elapsed));
+  let timerStr = isGoldenScore ? fmtTimer(Math.max(0, elapsed - durationSec)) : fmtTimer(Math.max(0, durationSec - elapsed));
   let timerColor = "#6b7280";
   let pulse = false;
 
@@ -1564,6 +1576,7 @@ function TimerBar({
 
   return (
     <div
+      onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",
@@ -1572,6 +1585,7 @@ function TimerBar({
         padding: compact ? "2px 0" : "6px 0",
         background: "#f0f2f5",
         flexShrink: 0,
+        cursor: onClick ? "pointer" : "default",
       }}
     >
       <div

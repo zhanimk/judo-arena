@@ -1239,6 +1239,42 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
 /* ─── Round Robin view ───────────────────────────────────────────────────── */
 
 function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
+  const { t } = useTranslation();
+
+  // 1. Собрать всех атлетов
+  const athleteMap = new Map<string, BracketAthlete>();
+  for (const m of matches) {
+    if (m.redAthlete) athleteMap.set(m.redAthlete.id, m.redAthlete);
+    if (m.blueAthlete) athleteMap.set(m.blueAthlete.id, m.blueAthlete);
+  }
+
+  // 2. Посчитать статистику
+  const statsMap = new Map<string, { wins: number; losses: number; played: number }>();
+  for (const id of athleteMap.keys()) {
+    statsMap.set(id, { wins: 0, losses: 0, played: 0 });
+  }
+
+  for (const m of matches) {
+    if (m.status !== "COMPLETED") continue;
+    const r = statsMap.get(m.redAthleteId || "");
+    const b = statsMap.get(m.blueAthleteId || "");
+
+    if (m.winnerId === m.redAthleteId && r && b) {
+      r.wins++; r.played++;
+      b.losses++; b.played++;
+    } else if (m.winnerId === m.blueAthleteId && r && b) {
+      b.wins++; b.played++;
+      r.losses++; r.played++;
+    } else if (!m.winnerId && r && b) {
+      r.played++; b.played++;
+    }
+  }
+
+  const standings = Array.from(statsMap.entries())
+    .map(([id, s]) => ({ id, athlete: athleteMap.get(id)!, ...s }))
+    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+
+  // 3. Группировка матчей по турам
   const byRound = new Map<number, BracketMatch[]>();
   for (const m of matches) {
     if (!byRound.has(m.round)) byRound.set(m.round, []);
@@ -1247,19 +1283,105 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
   const rounds = Array.from(byRound.entries()).sort((a, b) => a[0] - b[0]);
 
   return (
-    <div className="space-y-6">
-      {rounds.map(([round, ms]) => (
-        <div key={round}>
-          <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{round}-тур</div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {ms
-              .sort((a, b) => a.position - b.position)
-              .map((m) => (
-                <MatchCard key={m.id} match={m} />
-              ))}
-          </div>
+    <div className="space-y-8">
+      {/* Матрица (Шахматка) */}
+      <div className="rounded-xl border border-border overflow-hidden bg-card/40 shadow-sm">
+        <div className="px-4 py-3 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-widest border-b border-border">
+          {t("bracket.standings_matrix", "Турнирная таблица")}
         </div>
-      ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50 bg-background/20 text-xs font-medium uppercase text-muted-foreground">
+                <th className="px-4 py-3 text-left w-10">#</th>
+                <th className="px-4 py-3 text-left min-w-[180px]">{t("tournament.athletes")}</th>
+                {standings.map((s, i) => (
+                  <th key={`col-${s.id}`} className="px-3 py-3 text-center border-l border-border/40 min-w-[40px]">
+                    {i + 1}
+                  </th>
+                ))}
+                <th className="px-3 py-3 text-center border-l border-border bg-background/40 w-12" title={t("bracket.standing_wins")}>W</th>
+                <th className="px-3 py-3 text-center bg-background/40 w-12" title={t("bracket.standing_losses")}>L</th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((row, i) => (
+                <tr key={`row-${row.id}`} className="border-b border-border/50 last:border-0 hover:bg-muted/10 transition-colors">
+                  <td className="px-4 py-3 font-medium text-muted-foreground">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium whitespace-nowrap">
+                    {row.athlete.name} {row.athlete.surname}
+                  </td>
+                  {standings.map((col, j) => {
+                    if (i === j) {
+                      return (
+                        <td key={`cell-${row.id}-${col.id}`} className="px-3 py-3 text-center border-l border-border/40 bg-muted/20 text-muted-foreground/30 font-bold select-none">
+                          <span className="block h-px w-full bg-border/40 rotate-45 transform origin-center scale-150"></span>
+                        </td>
+                      );
+                    }
+                    
+                    const m = matches.find(
+                      (match) =>
+                        (match.redAthleteId === row.id && match.blueAthleteId === col.id) ||
+                        (match.redAthleteId === col.id && match.blueAthleteId === row.id)
+                    );
+                    
+                    let content = <span className="text-muted-foreground/30">—</span>;
+                    if (m) {
+                      if (m.status === "COMPLETED") {
+                        if (m.winnerId === row.id) {
+                          content = <span className="text-emerald-500 font-bold">1</span>;
+                        } else if (m.winnerId === col.id) {
+                          content = <span className="text-rose-500 font-medium">0</span>;
+                        } else {
+                          content = <span className="text-muted-foreground">½</span>;
+                        }
+                      } else if (m.status === "IN_PROGRESS") {
+                         content = <span className="text-gold animate-pulse text-xs">...</span>;
+                      } else {
+                         content = <span className="text-gold/40 text-[10px]">vs</span>;
+                      }
+                    }
+
+                    return (
+                      <td key={`cell-${row.id}-${col.id}`} className="px-3 py-3 text-center border-l border-border/40 bg-background/30 font-display text-base">
+                        {content}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-3 text-center border-l border-border font-bold text-emerald-500 bg-background/40">
+                    {row.wins}
+                  </td>
+                  <td className="px-3 py-3 text-center text-rose-500 font-medium bg-background/40">
+                    {row.losses}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Список матчей по турам */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4 px-1">
+          {t("bracket.matches_by_round", "Матчи по турам")}
+        </div>
+        <div className="space-y-6">
+          {rounds.map(([round, ms]) => (
+            <div key={round}>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-3 opacity-80">{round}-тур</div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {ms
+                  .sort((a, b) => a.position - b.position)
+                  .map((m) => (
+                    <MatchCard key={m.id} match={m} />
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

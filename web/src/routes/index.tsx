@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { LazyImage, Avatar } from "@/components/ui/avatar-image";
 import { TatamiScene } from "@/components/home/TatamiScene";
 import { api, mediaUrl } from "@/lib/api";
-import emblem from "@/assets/jcl-logo.jpeg";
+const emblem = "/main-logo.png";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteWomanWhite from "@/assets/athlete-woman-white.jpg";
