@@ -603,7 +603,7 @@ async function main() {
   console.log(`Rating entries: ${ratings}`);
   console.log(`Live wall: /live-wall/${TOURNAMENT_ID}`);
   console.log(`Tatami 1 TV: /live-wall/${TOURNAMENT_ID}?tatami=1`);
-  console.log("Admin login: admin@judo-arena.kz / password123");
+  console.log("Admin login: admin@judo-arena.kz / JudoArenaAdmin2026!");
 }
 
 main()

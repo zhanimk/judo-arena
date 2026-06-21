@@ -14,7 +14,7 @@
  *   npx prisma db seed
  *
  * Demo password for every account:
- *   password123
+ *   JudoArenaAdmin2026!
  */
 
 import {
@@ -37,7 +37,7 @@ import { prepareTournamentDraw } from "../src/services/bracket.service.js";
 
 const prisma = new PrismaClient();
 
-const PASSWORD = "password123";
+const PASSWORD = "JudoArenaAdmin2026!";
 const TOURNAMENT_ID = "demo-complete-flow-2026";
 const ENTRY_FEE_KZT = 5000;
 
@@ -675,7 +675,7 @@ async function main() {
   console.log(
     `Tatami distribution: ${JSON.stringify(drawResult.tatami.loads)}`,
   );
-  console.log("\nDemo accounts, password: password123");
+  console.log("\nDemo accounts, password: JudoArenaAdmin2026!");
   console.log("ADMIN:   admin@judo-arena.kz");
   console.log("COACH:   coach.almaty@judo-arena.kz");
   console.log("ATHLETE: rr.01@almaty-demo.demo.judo-arena.kz");
