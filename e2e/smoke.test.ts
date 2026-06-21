@@ -52,7 +52,7 @@ async function logout(page: Page) {
 test.describe("Public pages", () => {
   test("landing page loads", async ({ page }) => {
     await page.goto(BASE);
-    await expect(page).toHaveTitle(/Judo-Arena/i);
+    await expect(page).toHaveTitle(/Judo Child League|Judo-Arena/i);
     // Should show hero section
     await expect(page.locator("body")).toContainText(/judo|дзюдо/i);
   });
@@ -177,7 +177,7 @@ test.describe("Admin dashboard", () => {
     );
     await expect(page.getByText("Афиша және турнир галереясы")).toBeVisible();
     await expect(page.getByText("Турнир регламенті")).toBeVisible();
-    await expect(page.locator('iframe[src*="maps.google.com"]')).toBeVisible();
+    await expect(page.getByText("© OpenStreetMap")).toBeVisible();
     await expect(page.locator('input[type="file"]')).toHaveCount(3);
   });
 
