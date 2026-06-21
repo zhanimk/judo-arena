@@ -31,14 +31,21 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { LiveBracket } from "@/components/judo/LiveBracket";
 import { api, ApiError } from "@/lib/api";
-import type { Application, ApplicationEntry, Category, User, Match, Bracket } from "@/lib/api-types";
+import type {
+  Application,
+  ApplicationEntry,
+  Category,
+  User,
+  Match,
+  Bracket,
+} from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useRealtime } from "@/lib/socket";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/tournaments/$id")({
-  head: () => ({ meta: [{ title: "Жарыс санаттары — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жарыс санаттары — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
@@ -118,7 +125,8 @@ function CoachTournamentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach-tournament-application", id] });
     },
-    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach.athlete_add_error")),
+    onError: (e: unknown) =>
+      setError(e instanceof ApiError ? e.message : t("coach.athlete_add_error")),
     onSettled: () => setAdding(null),
   });
 
@@ -390,7 +398,9 @@ function CoachTournamentDetail() {
         />
         <MiniStat
           label={t("coach.female_count")}
-          value={(tournament.categories ?? []).filter((c: Category) => c.gender === "FEMALE").length}
+          value={
+            (tournament.categories ?? []).filter((c: Category) => c.gender === "FEMALE").length
+          }
         />
         <MiniStat label={t("dashboard.matches")} value={clubMatches.length} />
       </div>
@@ -497,7 +507,9 @@ function CoachTournamentDetail() {
         ) : (
           <div className="space-y-4">
             {categories.map((category: Category) => {
-              const bracket = bracketsQuery.data?.find((b: Bracket) => b.categoryId === category.id);
+              const bracket = bracketsQuery.data?.find(
+                (b: Bracket) => b.categoryId === category.id,
+              );
               const categoryEntries = enteredByCategory.get(category.id) ?? [];
               const eligible = (membersQuery.data ?? []).filter((athlete: User) =>
                 fitsCategory(athlete, category),
@@ -505,7 +517,9 @@ function CoachTournamentDetail() {
               const ineligiblePreview = (membersQuery.data ?? [])
                 .filter((athlete: User) => !fitsCategory(athlete, category))
                 .slice(0, 4);
-              const enteredIds = new Set(categoryEntries.map((entry: ApplicationEntry) => entry.athleteId));
+              const enteredIds = new Set(
+                categoryEntries.map((entry: ApplicationEntry) => entry.athleteId),
+              );
               const eligibleToAdd = eligible.filter((athlete: User) => !enteredIds.has(athlete.id));
               const categoryMatches = clubMatches.filter(
                 (match: Match) => match.bracket?.categoryId === category.id,
@@ -624,16 +638,17 @@ function CoachTournamentDetail() {
                                       {athlete.name} {athlete.surname}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                      {athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : "—"} {t("common.years_short")} ·{" "}
-                                      {athlete.weightKg} {t("common.kg")} ·{" "}
-                                      {athlete.beltRank ?? "—"}
+                                      {athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : "—"}{" "}
+                                      {t("common.years_short")} · {athlete.weightKg}{" "}
+                                      {t("common.kg")} · {athlete.beltRank ?? "—"}
                                     </div>
                                   </div>
                                   {alreadyIn ? (
                                     <EntryCheckBadge
                                       issues={validateApplicationEntry(
                                         categoryEntries.find(
-                                          (entry: ApplicationEntry) => entry.athleteId === athlete.id,
+                                          (entry: ApplicationEntry) =>
+                                            entry.athleteId === athlete.id,
                                         ) ?? ({ athlete, category } as ApplicationEntry),
                                         t,
                                       )}
@@ -741,33 +756,35 @@ function CoachTournamentDetail() {
           <div className="rounded-lg border border-gold/25 bg-gold/5 p-4">
             {entries.length > 0 && (
               <div className="mb-4 space-y-2">
-                {entryIssues.map(({ entry, issues }: { entry: ApplicationEntry; issues: string[] }) => (
-                  <div
-                    key={entry.id}
-                    className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <div className="font-medium">
-                          {entry.athlete?.name} {entry.athlete?.surname}
+                {entryIssues.map(
+                  ({ entry, issues }: { entry: ApplicationEntry; issues: string[] }) => (
+                    <div
+                      key={entry.id}
+                      className={`rounded-md border px-3 py-2 text-sm ${issues.length ? "border-amber-500/40 bg-amber-500/10" : "border-border/50 bg-background/30"}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="font-medium">
+                            {entry.athlete?.name} {entry.athlete?.surname}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {categoryTitle(entry.category)}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {categoryTitle(entry.category)}
-                        </div>
+                        <EntryCheckBadge issues={issues} />
                       </div>
-                      <EntryCheckBadge issues={issues} />
+                      {issues.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
+                          {issues.map((issue: string) => (
+                            <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">
+                              {issue}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {issues.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-amber-100">
-                        {issues.map((issue: string) => (
-                          <span key={issue} className="rounded-full bg-amber-500/15 px-2 py-0.5">
-                            {issue}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
 
@@ -909,7 +926,13 @@ function ApplyUnavailable({ reason, danger }: { reason: string; danger?: boolean
   );
 }
 
-function Info({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+function Info({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
   return (
     <span className="inline-flex items-center gap-2">
       <Icon className="h-4 w-4 text-gold/70" /> {children}
@@ -1081,7 +1104,11 @@ function validateApplicationEntry(entry: ApplicationEntry, t: (k: string) => str
   return reason === "OK" ? [] : [reason];
 }
 
-function categoryMismatchReason(athlete: User, category: Category, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function categoryMismatchReason(
+  athlete: User,
+  category: Category,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   if (!athlete.gender) return t("coach.mismatch_no_gender");
   if (athlete.gender !== category.gender) return t("coach.mismatch_gender");
   if (!athlete.dateOfBirth) return t("coach.mismatch_no_dob");
@@ -1116,7 +1143,10 @@ function formatKzt(value: number): string {
   return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
 }
 
-function formatWeighIn(tournament: import("@/lib/api-types").Tournament, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function formatWeighIn(
+  tournament: import("@/lib/api-types").Tournament,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   const place = tournament.weighInLocation || tournament.location;
   const start = tournament.weighInStart
     ? new Date(tournament.weighInStart).toLocaleString("kk-KZ")

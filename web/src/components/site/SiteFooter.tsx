@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { ArrowUpRight, Instagram, Mail, MapPin, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 

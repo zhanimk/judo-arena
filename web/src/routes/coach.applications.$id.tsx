@@ -43,7 +43,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/applications/$id")({
-  head: () => ({ meta: [{ title: "Өтінім — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Өтінім — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
@@ -541,14 +541,18 @@ function ApplicationDetail() {
             ) : (
               <div className="space-y-2">
                 {filteredAthletes.map((athlete: User) => {
-                  const alreadyIn = (app.entries ?? []).some((e: ApplicationEntry) => e.athleteId === athlete.id);
+                  const alreadyIn = (app.entries ?? []).some(
+                    (e: ApplicationEntry) => e.athleteId === athlete.id,
+                  );
                   const relevantCategories =
                     categoryFilter === "ALL"
                       ? categoriesQuery.data!
                       : categoriesQuery.data!.filter(
                           (category: Category) => category.id === categoryFilter,
                         );
-                  const matching = relevantCategories.filter((c: Category) => fitsCategory(athlete, c));
+                  const matching = relevantCategories.filter((c: Category) =>
+                    fitsCategory(athlete, c),
+                  );
                   const issues = athleteEligibilityIssues(athlete, relevantCategories, t);
 
                   return (
@@ -703,12 +707,16 @@ function ApplicationDetail() {
                         {m.bracketSection ?? "main"} · {m.round}
                       </td>
                       <td
-                        className={rosterIds.has(m.redAthlete?.id ?? "") ? "font-medium text-gold" : ""}
+                        className={
+                          rosterIds.has(m.redAthlete?.id ?? "") ? "font-medium text-gold" : ""
+                        }
                       >
                         {athleteName(m.redAthlete)}
                       </td>
                       <td
-                        className={rosterIds.has(m.blueAthlete?.id ?? "") ? "font-medium text-gold" : ""}
+                        className={
+                          rosterIds.has(m.blueAthlete?.id ?? "") ? "font-medium text-gold" : ""
+                        }
                       >
                         {athleteName(m.blueAthlete)}
                       </td>
@@ -827,7 +835,10 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
     staleTime: 30_000,
   });
 
-  const actionMeta: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  const actionMeta: Record<
+    string,
+    { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
+  > = {
     "application.submit": {
       label: t("status.SUBMITTED"),
       icon: Send,
@@ -870,7 +881,9 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
               color: "text-muted-foreground border-border bg-muted/20",
             };
             const Icon = meta.icon;
-            const notes = (log.after as Record<string, unknown>)?.reviewerNotes as string | undefined;
+            const notes = (log.after as Record<string, unknown>)?.reviewerNotes as
+              | string
+              | undefined;
             const actor = log.actor;
             return (
               <li key={log.id} className="ml-5">
@@ -909,7 +922,15 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
   );
 }
 
-function InfoItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-md border border-border/50 bg-background/30 p-3">
       <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
@@ -974,7 +995,11 @@ function fitsCategory(athlete: User | null | undefined, category: Category): boo
   );
 }
 
-function athleteEligibilityIssues(athlete: User, categories: Category[], t: (k: string, opts?: Record<string, unknown>) => string): string[] {
+function athleteEligibilityIssues(
+  athlete: User,
+  categories: Category[],
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string[] {
   const issues: string[] = [];
   if (!athlete.gender) issues.push(t("coach.mismatch_no_gender"));
   if (!athlete.dateOfBirth) issues.push(t("coach.mismatch_no_dob"));

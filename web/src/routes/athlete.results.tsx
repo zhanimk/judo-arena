@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Award, Swords, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/athlete/results")({
-  head: () => ({ meta: [{ title: "Нәтижелер — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Нәтижелер — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>

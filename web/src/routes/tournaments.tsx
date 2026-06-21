@@ -30,7 +30,7 @@ import { useTranslation } from "react-i18next";
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
     meta: [
-      { title: "Жарыстар — Judo-Arena" },
+      { title: "Жарыстар — Judo Child League" },
       { name: "description", content: "Дзюдо жарыстарының афишасы және live-нәтижелері." },
     ],
   }),

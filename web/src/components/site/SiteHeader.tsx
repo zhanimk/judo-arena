@@ -85,7 +85,8 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
               <img src="/jcl-logo.jpg" alt="JCL" className="h-full w-full object-cover" />
             </span>
             <span className="hidden font-display text-lg font-black tracking-tight sm:block">
-              JUDO<span className="text-gradient-gold">·</span>ARENA
+              JUDO<span className="text-gradient-gold">·</span>CHILD
+              <span className="text-gradient-gold">·</span>LEAGUE
             </span>
           </Link>
 

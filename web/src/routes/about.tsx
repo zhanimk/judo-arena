@@ -8,8 +8,11 @@ import { useTranslation } from "react-i18next";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "Платформа туралы — Judo-Arena" },
-      { name: "description", content: "Judo-Arena жобасы туралы: технологиялар, архитектура және стандарттар." },
+      { title: "Платформа туралы — Judo Child League" },
+      {
+        name: "description",
+        content: "Judo-Arena жобасы туралы: технологиялар, архитектура және стандарттар.",
+      },
     ],
   }),
   errorComponent: RouteErrorUI,
@@ -32,16 +35,19 @@ function About() {
       <section className="container mx-auto px-4 pt-20 pb-16 max-w-4xl">
         <div className="text-xs uppercase tracking-[0.3em] text-gold mb-3">{t("about.title")}</div>
         <h1 className="font-display text-5xl md:text-6xl font-bold leading-tight">
-          {t("about.hero_title")}<br/><span className="text-gradient-gold italic">{t("about.hero_title_accent")}</span>
+          {t("about.hero_title")}
+          <br />
+          <span className="text-gradient-gold italic">{t("about.hero_title_accent")}</span>
         </h1>
-        <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-          {t("about.hero_desc")}
-        </p>
+        <p className="mt-6 text-lg text-muted-foreground leading-relaxed">{t("about.hero_desc")}</p>
       </section>
 
       <section className="container mx-auto px-4 pb-24 max-w-4xl space-y-6">
         {blocks.map((b) => (
-          <div key={b.tKey} className="glass rounded-xl p-7 flex gap-5 hover:border-gold/40 transition-colors">
+          <div
+            key={b.tKey}
+            className="glass rounded-xl p-7 flex gap-5 hover:border-gold/40 transition-colors"
+          >
             <div className="h-12 w-12 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
               <b.icon className="h-5 w-5 text-gold" />
             </div>

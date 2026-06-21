@@ -127,7 +127,7 @@ interface TTournament {
 // ── Route ────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/tournaments/$id")({
-  head: () => ({ meta: [{ title: "Жарыс — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жарыс — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   validateSearch: (s: Record<string, unknown>): { categoryId?: string } => ({
     categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,

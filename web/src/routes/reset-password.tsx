@@ -1,6 +1,6 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Loader2, CheckCircle2, ArrowLeft, Eye, EyeOff, ShieldCheck } from "lucide-react";
@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { PasswordStrength, isPasswordStrong } from "@/components/ui/PasswordStrength";
 
 export const Route = createFileRoute("/reset-password")({
-  head: () => ({ meta: [{ title: "Жаңа құпиясөз — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жаңа құпиясөз — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { token?: string } => ({
     token: typeof search.token === "string" ? search.token : undefined,
@@ -63,7 +63,7 @@ function ResetPassword() {
       <div className="w-full max-w-sm">
         <Link to="/" className="inline-flex items-center gap-2.5 mb-10">
           <img src={emblem} alt="" className="h-9 w-9 rounded-full object-cover" />
-          <span className="font-display text-xl font-bold">JUDO·ARENA</span>
+          <span className="font-display text-xl font-bold">JUDO CHILD LEAGUE</span>
         </Link>
 
         {!token ? (

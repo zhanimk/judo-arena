@@ -131,7 +131,7 @@ export function DashboardShell({
           {collapsed ? (
             <Link
               to={dashboardRoot(user?.role)}
-              title="JUDO·ARENA"
+              title="JUDO·CHILD·LEAGUE"
               className="group flex items-center justify-center"
             >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
@@ -154,7 +154,8 @@ export function DashboardShell({
               </span>
               <div className="flex flex-col">
                 <span className="font-display text-sm font-bold tracking-tight">
-                  JUDO<span className="text-gradient-gold">·</span>ARENA
+                  JUDO<span className="text-gradient-gold">·</span>CHILD
+                  <span className="text-gradient-gold">·</span>LEAGUE
                 </span>
                 <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
                   Management

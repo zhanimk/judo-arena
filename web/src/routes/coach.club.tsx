@@ -42,7 +42,7 @@ const COUNTRIES = [
 ];
 
 export const Route = createFileRoute("/coach/club")({
-  head: () => ({ meta: [{ title: "Клуб — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Клуб — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>

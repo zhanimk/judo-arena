@@ -23,7 +23,7 @@ import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches")({
-  head: () => ({ meta: [{ title: "Жекпе-жектер — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жекпе-жектер — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
@@ -287,7 +287,9 @@ function ScoreChip({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

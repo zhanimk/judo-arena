@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 export const Route = createFileRoute("/rankings")({
   head: () => ({
     meta: [
-      { title: "Дәреже — Judo-Arena" },
+      { title: "Дәреже — Judo Child League" },
       { name: "description", content: "Дзюдо спортшыларының жалпы дәреже кестесі." },
     ],
   }),

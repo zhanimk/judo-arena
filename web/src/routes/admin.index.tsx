@@ -27,7 +27,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/admin/")({
-  head: () => ({ meta: [{ title: "Әкімші — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Әкімші — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ADMIN"]}>
@@ -236,17 +236,29 @@ function AdminOverview() {
                 },
                 { to: "/admin/users", icon: Users, label: t("dashboard.users") },
                 { to: "/admin/ratings", icon: ShieldAlert, label: t("dashboard.ratings") },
-              ].map(({ to, icon: Icon, label, search }: { to: string; icon: React.ComponentType<{ className?: string }>; label: string; search?: Record<string, unknown> }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  {...(search ? { search } : {})}
-                  className="glass border border-border py-3 rounded-xl text-xs hover:border-gold/40 hover:bg-gold/5 text-center flex flex-col items-center gap-1.5 transition-colors"
-                >
-                  <Icon className="h-4 w-4 text-gold" />
-                  {label}
-                </Link>
-              ))}
+              ].map(
+                ({
+                  to,
+                  icon: Icon,
+                  label,
+                  search,
+                }: {
+                  to: string;
+                  icon: React.ComponentType<{ className?: string }>;
+                  label: string;
+                  search?: Record<string, unknown>;
+                }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    {...(search ? { search } : {})}
+                    className="glass border border-border py-3 rounded-xl text-xs hover:border-gold/40 hover:bg-gold/5 text-center flex flex-col items-center gap-1.5 transition-colors"
+                  >
+                    <Icon className="h-4 w-4 text-gold" />
+                    {label}
+                  </Link>
+                ),
+              )}
             </div>
           </div>
         </Panel>
@@ -288,7 +300,9 @@ function AdminOverview() {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

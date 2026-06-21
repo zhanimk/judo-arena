@@ -22,7 +22,7 @@ import { buildTatamiState, type TatamiState } from "@/lib/tatami-state";
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/display/$tournamentId")({
-  head: () => ({ meta: [{ title: "Display — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Display — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   validateSearch: (s: Record<string, unknown>): { tatami?: number } => {
     const n = Number(s.tatami);

@@ -33,7 +33,7 @@ function useOnlineStatus() {
 }
 
 export const Route = createFileRoute("/tatami/$token")({
-  head: () => ({ meta: [{ title: "Татами — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Татами — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: TatamiJudgePanel,
 });
@@ -1553,7 +1553,9 @@ function TimerBar({
   }, [isClockRunning, clock?.runningStartedAt]);
 
   const elapsed = clockElapsedSec(scoreSnapshot, now);
-  let timerStr = isGoldenScore ? fmtTimer(Math.max(0, elapsed - durationSec)) : fmtTimer(Math.max(0, durationSec - elapsed));
+  let timerStr = isGoldenScore
+    ? fmtTimer(Math.max(0, elapsed - durationSec))
+    : fmtTimer(Math.max(0, durationSec - elapsed));
   let timerColor = "#6b7280";
   let pulse = false;
 

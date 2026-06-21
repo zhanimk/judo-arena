@@ -16,14 +16,14 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { api, ApiError } from "@/lib/api";
 import type { Club, ClubJoinRequest } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 export const Route = createFileRoute("/coach/onboarding")({
-  head: () => ({ meta: [{ title: "Бастау — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Бастау — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
@@ -201,7 +201,7 @@ function CoachOnboarding() {
           <div className="flex items-center gap-3">
             <img src={emblem} alt="" className="h-10 w-10 rounded-full object-cover" />
             <div>
-              <div className="font-display text-lg font-bold">JUDO·ARENA</div>
+              <div className="font-display text-lg font-bold">JUDO CHILD LEAGUE</div>
               <div className="text-xs text-muted-foreground">{t("coach_onboarding.subtitle")}</div>
             </div>
           </div>

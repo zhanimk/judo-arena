@@ -1,6 +1,12 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  EmptyState,
+  LoadingState,
+  Panel,
+  StatCard,
+} from "@/components/dashboard/DashboardShell";
 import { Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -12,7 +18,7 @@ import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/matches/$id")({
-  head: () => ({ meta: [{ title: "Жекпе-жек — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жекпе-жек — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
@@ -39,26 +45,39 @@ function AthleteMatchDetails() {
   const tournamentId = match?.tournament?.id;
   const isLive = match?.status === "IN_PROGRESS";
 
-  useRealtime(
-    tournamentId ? [`tournament:${tournamentId}`] : [],
-    {
-      "match:scoreUpdate":   () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
-      "match:finished":      () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
-      "match:started":       () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
-      "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
-    },
-  );
+  useRealtime(tournamentId ? [`tournament:${tournamentId}`] : [], {
+    "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+    "match:finished": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+    "match:started": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+    "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["athlete-match", id] }),
+  });
 
-  const isMyMatch = !!match && (match.redAthlete?.id === athleteId || match.blueAthlete?.id === athleteId);
-  const mySide = match?.redAthlete?.id === athleteId ? "red" : match?.blueAthlete?.id === athleteId ? "blue" : null;
-  const opponent = mySide === "red" ? match?.blueAthlete : mySide === "blue" ? match?.redAthlete : null;
+  const isMyMatch =
+    !!match && (match.redAthlete?.id === athleteId || match.blueAthlete?.id === athleteId);
+  const mySide =
+    match?.redAthlete?.id === athleteId
+      ? "red"
+      : match?.blueAthlete?.id === athleteId
+        ? "blue"
+        : null;
+  const opponent =
+    mySide === "red" ? match?.blueAthlete : mySide === "blue" ? match?.redAthlete : null;
   const won = match?.winnerId === athleteId;
   const completed = match?.status === "COMPLETED";
   const myScore = mySide ? match?.scoreSnapshot?.[mySide] : null;
-  const opponentScore = mySide === "red" ? match?.scoreSnapshot?.blue : mySide === "blue" ? match?.scoreSnapshot?.red : null;
+  const opponentScore =
+    mySide === "red"
+      ? match?.scoreSnapshot?.blue
+      : mySide === "blue"
+        ? match?.scoreSnapshot?.red
+        : null;
 
   return (
-    <DashboardShell role={t("roles.ATHLETE")} navItems={nav} accentTitle={t("matches.match_detail")}>
+    <DashboardShell
+      role={t("roles.ATHLETE")}
+      navItems={nav}
+      accentTitle={t("matches.match_detail")}
+    >
       <div className="mb-4">
         <Link to="/athlete/matches" className="text-sm text-muted-foreground hover:text-gold">
           ← {t("matches.back_to_list")}
@@ -81,16 +100,46 @@ function AthleteMatchDetails() {
       ) : (
         <>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard label={t("matches.result")} value={completed ? (won ? t("matches.win") : t("matches.loss")) : String(t(`status.${match.status}`, match.status))} hint={match.tatamiNumber ? `${t("common.tatami")} ${match.tatamiNumber}` : t("matches.no_tatami")} accent={won} />
-            <StatCard label={t("matches.round")} value={String(match.round)} hint={sectionLabel(match.bracketSection, t)} />
-            <StatCard label={t("matches.opponent")} value={opponent ? `${opponent.name} ${opponent.surname}` : "TBD"} hint={opponent ? t("matches.opponent_ready") : t("matches.opponent_tbd")} />
-            <StatCard label={t("common.tournament")} value={localizeName(match.tournament?.name)} hint={match.tournament?.status ?? "—"} />
+            <StatCard
+              label={t("matches.result")}
+              value={
+                completed
+                  ? won
+                    ? t("matches.win")
+                    : t("matches.loss")
+                  : String(t(`status.${match.status}`, match.status))
+              }
+              hint={
+                match.tatamiNumber
+                  ? `${t("common.tatami")} ${match.tatamiNumber}`
+                  : t("matches.no_tatami")
+              }
+              accent={won}
+            />
+            <StatCard
+              label={t("matches.round")}
+              value={String(match.round)}
+              hint={sectionLabel(match.bracketSection, t)}
+            />
+            <StatCard
+              label={t("matches.opponent")}
+              value={opponent ? `${opponent.name} ${opponent.surname}` : "TBD"}
+              hint={opponent ? t("matches.opponent_ready") : t("matches.opponent_tbd")}
+            />
+            <StatCard
+              label={t("common.tournament")}
+              value={localizeName(match.tournament?.name)}
+              hint={match.tournament?.status ?? "—"}
+            />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <Panel title={t("matches.match_card")}>
               <div className="grid gap-3 text-sm">
-                <Info label={t("common.category")} value={categoryTitle(match.bracket?.category, t)} />
+                <Info
+                  label={t("common.category")}
+                  value={categoryTitle(match.bracket?.category, t)}
+                />
                 <Info label={t("common.format")} value={match.bracket?.format ?? "—"} />
                 <Info label={t("matches.started_at")} value={formatDateTime(match.startedAt)} />
                 <Info label={t("matches.finished_at")} value={formatDateTime(match.finishedAt)} />
@@ -108,7 +157,10 @@ function AthleteMatchDetails() {
               ) : (
                 <ol className="space-y-2 text-sm">
                   {(match.events ?? []).map((event) => (
-                    <li key={event.id} className="glass flex items-center justify-between gap-3 rounded-md p-3">
+                    <li
+                      key={event.id}
+                      className="glass flex items-center justify-between gap-3 rounded-md p-3"
+                    >
                       <div className="min-w-0">
                         <div className="font-medium">{eventLabel(event.type, event.side, t)}</div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -131,9 +183,19 @@ function AthleteMatchDetails() {
   );
 }
 
-function ScoreBox({ title, score, active = false }: { title: string; score: MatchSideScore | null | undefined; active?: boolean }) {
+function ScoreBox({
+  title,
+  score,
+  active = false,
+}: {
+  title: string;
+  score: MatchSideScore | null | undefined;
+  active?: boolean;
+}) {
   return (
-    <div className={`rounded-md border p-3 ${active ? "border-gold/40 bg-gold/10" : "border-border/50 bg-muted/20"}`}>
+    <div
+      className={`rounded-md border p-3 ${active ? "border-gold/40 bg-gold/10" : "border-border/50 bg-muted/20"}`}
+    >
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{title}</div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
         <ScoreValue label="Ippon" value={score?.ippon ?? 0} />
@@ -165,11 +227,14 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function categoryTitle(category: Category | null | undefined, t: (key: string) => string): string {
   if (!category) return t("common.category");
-  const gender = category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
+  const gender =
+    category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
   return `${gender} ${category.ageMin}-${category.ageMax}, ${category.weightMin}-${category.weightMax} кг`;
 }
 
-function localizeName(value: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  value: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!value) return "—";
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || "—";
@@ -183,10 +248,14 @@ function sectionLabel(section: string | null | undefined, t: (key: string) => st
     bronze2: t("bracket.section_bronze2"),
     final: t("bracket.section_final"),
   };
-  return section ? labels[section] ?? section : t("bracket.section_main");
+  return section ? (labels[section] ?? section) : t("bracket.section_main");
 }
 
-function eventLabel(type: string, side: string | null | undefined, t: (key: string) => string): string {
+function eventLabel(
+  type: string,
+  side: string | null | undefined,
+  t: (key: string) => string,
+): string {
   // Proper nouns (Hajime, Ippon, etc.) are NOT translated
   const labels: Record<string, string> = {
     HAJIME: "Hajime",
@@ -201,7 +270,8 @@ function eventLabel(type: string, side: string | null | undefined, t: (key: stri
     REPLAY: t("matches.event_replay"),
     END: t("matches.event_end"),
   };
-  const sideLabel = side === "RED" ? t("matches.side_red") : side === "BLUE" ? t("matches.side_blue") : "";
+  const sideLabel =
+    side === "RED" ? t("matches.side_red") : side === "BLUE" ? t("matches.side_blue") : "";
   return `${labels[type] ?? type}${sideLabel ? ` · ${sideLabel}` : ""}`;
 }
 

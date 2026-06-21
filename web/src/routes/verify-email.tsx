@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { apiUrl } from "@/lib/api";
 
 export const Route = createFileRoute("/verify-email")({
-  head: () => ({ meta: [{ title: "Email растау — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Email растау — Judo Child League" }] }),
   validateSearch: (search: Record<string, unknown>): { token?: string } => ({
     token: typeof search.token === "string" ? search.token : undefined,
   }),

@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/notifications")({
-  head: () => ({ meta: [{ title: "Хабарландырулар — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Хабарландырулар — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>

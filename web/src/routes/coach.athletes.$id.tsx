@@ -20,7 +20,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/athletes/$id")({
-  head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Спортшы — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>

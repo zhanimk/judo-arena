@@ -195,7 +195,7 @@ function techniqueLabel(technique: string, t: TranslateFn): string {
 }
 
 export const Route = createFileRoute("/athlete/profile")({
-  head: () => ({ meta: [{ title: "Профиль — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Профиль — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>

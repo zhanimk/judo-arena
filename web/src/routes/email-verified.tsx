@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 
 export const Route = createFileRoute("/email-verified")({
-  head: () => ({ meta: [{ title: "Email расталды — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Email расталды — Judo Child League" }] }),
   validateSearch: (search: Record<string, unknown>): { email?: string } => ({
     email: typeof search.email === "string" ? search.email : undefined,
   }),

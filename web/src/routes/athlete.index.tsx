@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 export const Route = createFileRoute("/athlete/")({
-  head: () => ({ meta: [{ title: "Спортшы — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Спортшы — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
@@ -183,15 +183,21 @@ function AthleteOverview() {
     );
 
   const myTournamentsCount = new Set(
-    (matchesQuery.data ?? []).filter((m: Match) => m.tournamentId).map((m: Match) => m.tournamentId),
+    (matchesQuery.data ?? [])
+      .filter((m: Match) => m.tournamentId)
+      .map((m: Match) => m.tournamentId),
   ).size;
   const totalMatches = matchesQuery.data?.length ?? 0;
   const wins = (matchesQuery.data ?? []).filter((m: Match) => m.winnerId === athleteId).length;
   const losses = (matchesQuery.data ?? []).filter(
     (m: Match) => m.winnerId && m.winnerId !== athleteId,
   ).length;
-  const goldCount = (ratingQuery.data?.entries ?? []).filter((e: RatingEntry) => e.place === 1).length;
-  const totalMedals = (ratingQuery.data?.entries ?? []).filter((e: RatingEntry) => (e.place ?? 99) <= 3).length;
+  const goldCount = (ratingQuery.data?.entries ?? []).filter(
+    (e: RatingEntry) => e.place === 1,
+  ).length;
+  const totalMedals = (ratingQuery.data?.entries ?? []).filter(
+    (e: RatingEntry) => (e.place ?? 99) <= 3,
+  ).length;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const fullName = `${user.name} ${user.surname}`;
   const belt = normalizeBelt(user.beltRank) || "6 КЮ";
@@ -512,7 +518,9 @@ function normalizeBelt(raw?: string | null): string {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string | null {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string | null {
   if (!n) return null;
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || null;

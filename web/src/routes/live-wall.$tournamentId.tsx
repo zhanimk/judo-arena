@@ -17,7 +17,7 @@ import { buildTatamiState, hasPendingResult, type TatamiState } from "@/lib/tata
 import type { Match, User, MatchScoreSnapshot } from "@/lib/api-types";
 
 export const Route = createFileRoute("/live-wall/$tournamentId")({
-  head: () => ({ meta: [{ title: "Live Wall — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Live Wall — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { tatami?: number } => {
     const tv = Number(search.tatami);
@@ -938,7 +938,9 @@ function TimerBar({
   }, [isClockRunning, clock?.runningStartedAt]);
 
   const elapsed = computeElapsed(scoreSnapshot, now);
-  let timerStr = isGoldenScore ? fmtTimer(Math.max(0, elapsed - durationSec)) : fmtTimer(Math.max(0, durationSec - elapsed));
+  let timerStr = isGoldenScore
+    ? fmtTimer(Math.max(0, elapsed - durationSec))
+    : fmtTimer(Math.max(0, durationSec - elapsed));
   let timerColor = "#6b7280";
   let pulse = false;
 
@@ -1002,10 +1004,7 @@ function TimerBar({
   );
 }
 
-function computeElapsed(
-  score: MatchScoreSnapshot | null | undefined,
-  now = Date.now(),
-): number {
+function computeElapsed(score: MatchScoreSnapshot | null | undefined, now = Date.now()): number {
   const clock = score?.clock;
   const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
   if (!clock?.running || !clock.runningStartedAt) return base;
@@ -1019,7 +1018,9 @@ function boardClockText(match: Match): string {
   const duration = match.bracket?.category?.matchDurationSec ?? 240;
   if (!score) return "0:00";
   const elapsed = computeElapsed(score, Date.now());
-  return score?.isGoldenScore ? fmtTimer(Math.max(0, elapsed - duration)) : fmtTimer(Math.max(0, duration - elapsed));
+  return score?.isGoldenScore
+    ? fmtTimer(Math.max(0, elapsed - duration))
+    : fmtTimer(Math.max(0, duration - elapsed));
 }
 
 function OsaekomiBar({ startedAt, side }: { startedAt: string; side: string }) {

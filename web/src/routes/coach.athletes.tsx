@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DocumentList } from "@/components/documents/DocumentViewer";
 
 export const Route = createFileRoute("/coach/athletes")({
-  head: () => ({ meta: [{ title: "Спортшылар — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Спортшылар — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>

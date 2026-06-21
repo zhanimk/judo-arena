@@ -31,7 +31,7 @@ import { useTranslation } from "react-i18next";
 import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Judo-Arena — вход и регистрация" }] }),
+  head: () => ({ meta: [{ title: "Judo Child League — вход и регистрация" }] }),
   errorComponent: RouteErrorUI,
   validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
     mode: search.mode === "register" ? "register" : search.mode === "login" ? "login" : undefined,
@@ -227,7 +227,8 @@ function Login() {
               <img src={emblem} alt="" className="h-full w-full object-cover" />
             </span>
             <span className="truncate font-display text-sm font-bold sm:text-[15px]">
-              JUDO<span className="text-gradient-gold">·</span>ARENA
+              JUDO<span className="text-gradient-gold">·</span>CHILD
+              <span className="text-gradient-gold">·</span>LEAGUE
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -492,7 +493,7 @@ function Login() {
                   style={{ boxShadow: "0 0 10px rgba(200,146,42,0.45)" }}
                 />
                 <span className="lp-brand-text text-xs font-black uppercase tracking-[0.12em]">
-                  Judo-Arena
+                  Judo Child League
                 </span>
               </div>
             </div>
@@ -537,7 +538,7 @@ function Login() {
               <Link
                 to="/"
                 className="lp-home-btn hidden h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:text-[#c8922a] sm:inline-flex"
-                aria-label="Judo-Arena"
+                aria-label="Judo Child League"
               >
                 <ArrowUpRight className="h-4 w-4" />
               </Link>

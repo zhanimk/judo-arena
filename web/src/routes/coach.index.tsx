@@ -30,7 +30,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/")({
-  head: () => ({ meta: [{ title: "Жаттықтырушы — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жаттықтырушы — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
@@ -221,7 +221,7 @@ function CoachOverview() {
             />
           ) : (
             <div className="space-y-3">
-              {openTournaments.slice(0, 5).map(( tournament: Tournament) => {
+              {openTournaments.slice(0, 5).map((tournament: Tournament) => {
                 const deadline = tournament.applicationDeadline ?? tournament.startDate;
                 const deadlinePassed = new Date(deadline).getTime() < Date.now();
                 const existingApp = appByTournament.get(tournament.id);
@@ -398,7 +398,9 @@ function AppStatusBadge({ status }: { status: string }) {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "";

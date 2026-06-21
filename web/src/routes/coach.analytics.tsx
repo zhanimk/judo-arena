@@ -28,7 +28,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/coach/analytics")({
-  head: () => ({ meta: [{ title: "Аналитика — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Аналитика — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>

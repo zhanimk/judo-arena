@@ -69,7 +69,8 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
           />
         </div>
         <div className="font-display text-3xl font-bold">
-          Judo<span className="text-gradient-gold">·</span>Arena
+          Judo<span className="text-gradient-gold">·</span>Child
+          <span className="text-gradient-gold">·</span>League
         </div>
         <p className="mt-2 text-xs uppercase tracking-[0.35em] text-muted-foreground">{label}</p>
         <div className="mx-auto mt-7 h-1 w-56 overflow-hidden rounded-full bg-border/50">
@@ -122,20 +123,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
+      { title: "Judo Child League — Дзюдо жарыстарын басқару платформасы" },
       {
         name: "description",
         content:
           "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже.",
       },
-      { property: "og:title", content: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
+      { property: "og:title", content: "Judo Child League — Дзюдо жарыстарын басқару платформасы" },
       {
         property: "og:description",
         content:
           "Дзюдо жарыстарын автоматтандыру: жеребе, төрелік, IJF стандарты бойынша нақты уақыттағы дәреже.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Judo-Arena — Дзюдо жарыстарын басқару платформасы" },
+      {
+        name: "twitter:title",
+        content: "Judo Child League — Дзюдо жарыстарын басқару платформасы",
+      },
       {
         name: "twitter:description",
         content:
@@ -157,7 +161,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Judo-Arena" },
+      { name: "apple-mobile-web-app-title", content: "Judo Child League" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -278,7 +282,8 @@ function SplashScreen() {
       {/* Brand name */}
       <div style={{ animation: "splashTextIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.25s both" }}>
         <p className="font-display text-3xl font-bold tracking-wide text-center">
-          JUDO<span className="text-gradient-gold">·</span>ARENA
+          JUDO<span className="text-gradient-gold">·</span>CHILD
+          <span className="text-gradient-gold">·</span>LEAGUE
         </p>
         <p className="mt-2 text-center text-xs uppercase tracking-[0.35em] text-muted-foreground">
           цифрлық дзюдо платформасы

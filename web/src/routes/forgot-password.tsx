@@ -1,13 +1,13 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Құпиясөзді ұмыттым — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Құпиясөзді ұмыттым — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: ForgotPassword,
 });

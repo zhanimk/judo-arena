@@ -15,7 +15,7 @@ import { Loader2, Trophy, Play, Pause, Timer } from "lucide-react";
 import { useRealtime } from "@/lib/socket";
 
 export const Route = createFileRoute("/judge/$token")({
-  head: () => ({ meta: [{ title: "Төреші панелі — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Төреші панелі — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: JudgePanel,
 });
@@ -36,16 +36,13 @@ function JudgePanel() {
   const matchVersion: number | undefined = match?.version;
 
   // Real-time подписка на изменения этого матча
-  useRealtime(
-    match?.tournamentId ? [`tournament:${match.tournamentId}`] : [],
-    {
-      "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
-      "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
-      "match:finished": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
-      "match:osaekomiStart": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
-      "match:osaekomiEnd": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
-    },
-  );
+  useRealtime(match?.tournamentId ? [`tournament:${match.tournamentId}`] : [], {
+    "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+    "match:pendingResult": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+    "match:finished": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+    "match:osaekomiStart": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+    "match:osaekomiEnd": () => qc.invalidateQueries({ queryKey: ["judge-session", token] }),
+  });
 
   // Локальный таймер удержания
   const [osaeStartedLocal, setOsaeStartedLocal] = useState<number | null>(null);
@@ -79,51 +76,67 @@ function JudgePanel() {
     mutationFn: () => api.matches.start(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
   });
   const pauseMatch = useMutation({
     mutationFn: () => api.matches.pause(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.action_error")),
   });
   const score = useMutation({
     mutationFn: (params: { type: string; side: "RED" | "BLUE" }) =>
       api.matches.score(matchId!, params.type, params.side, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.score_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.score_error")),
   });
   const osaekomi = useMutation({
-    mutationFn: (side: "RED" | "BLUE") => api.matches.osaekomi(matchId!, side, token, undefined, matchVersion),
+    mutationFn: (side: "RED" | "BLUE") =>
+      api.matches.osaekomi(matchId!, side, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.osaekomi_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.osaekomi_error")),
   });
   const toketa = useMutation({
     mutationFn: () => api.matches.toketa(matchId!, token, undefined, matchVersion),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.toketa_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.toketa_error")),
   });
   const goldenScore = useMutation({
     mutationFn: () => api.matches.goldenScore(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.golden_score_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.golden_score_error")),
   });
   const confirmResult = useMutation({
     mutationFn: () => api.matches.confirm(matchId!, token),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.confirm_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.confirm_error")),
   });
   const finishMatch = useMutation({
     mutationFn: (params: { winnerSide: "RED" | "BLUE"; reason?: string }) =>
-      api.matches.finish(matchId!, params.winnerSide, params.reason, token, undefined, matchVersion),
+      api.matches.finish(
+        matchId!,
+        params.winnerSide,
+        params.reason,
+        token,
+        undefined,
+        matchVersion,
+      ),
     onMutate: () => setActionError(""),
     onSuccess: refetch,
-    onError: (e: unknown) => setActionError(e instanceof ApiError ? e.message : t("judge.finish_error")),
+    onError: (e: unknown) =>
+      setActionError(e instanceof ApiError ? e.message : t("judge.finish_error")),
   });
 
   if (sessionQuery.isLoading) {
@@ -135,11 +148,14 @@ function JudgePanel() {
   }
 
   if (sessionQuery.error) {
-    const msg = sessionQuery.error instanceof ApiError ? sessionQuery.error.message : t("error.generic");
+    const msg =
+      sessionQuery.error instanceof ApiError ? sessionQuery.error.message : t("error.generic");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
         <div className="glass rounded-2xl p-8 max-w-md text-center">
-          <div className="text-destructive font-display text-2xl mb-2">{t("judge.unavailable")}</div>
+          <div className="text-destructive font-display text-2xl mb-2">
+            {t("judge.unavailable")}
+          </div>
           <div className="text-sm text-muted-foreground">{msg}</div>
         </div>
       </div>
@@ -148,7 +164,10 @@ function JudgePanel() {
 
   const red = match?.redAthlete;
   const blue = match?.blueAthlete;
-  const score_ = (match?.scoreSnapshot ?? { red: {}, blue: {} }) as import("@/lib/api-types").MatchScoreSnapshot;
+  const score_ = (match?.scoreSnapshot ?? {
+    red: {},
+    blue: {},
+  }) as import("@/lib/api-types").MatchScoreSnapshot;
   const redS = score_.red ?? {};
   const blueS = score_.blue ?? {};
   const isRunning = match?.status === "IN_PROGRESS";
@@ -159,14 +178,21 @@ function JudgePanel() {
   const pendingResult = score_.pendingResult;
   const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = getClockElapsedSec(score_);
-  const displaySec = score_.isGoldenScore ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
+  const displaySec = score_.isGoldenScore
+    ? Math.max(0, elapsedSec - durationSec)
+    : Math.max(0, durationSec - elapsedSec);
 
   const osaekomiActive = osaeStartedLocal !== null;
   const osaekomiDurationSec = osaekomiActive
     ? Math.floor((Date.now() - osaeStartedLocal) / 1000)
     : 0;
   const osaekomiSide = score_.osaekomi?.side as "RED" | "BLUE" | undefined;
-  const osaekomiSideLabel = osaekomiSide === "RED" ? t("judge.side_red") : osaekomiSide === "BLUE" ? t("judge.side_blue") : "";
+  const osaekomiSideLabel =
+    osaekomiSide === "RED"
+      ? t("judge.side_red")
+      : osaekomiSide === "BLUE"
+        ? t("judge.side_blue")
+        : "";
 
   return (
     <div className="min-h-screen bg-gradient-hero text-foreground p-4 sm:p-6">
@@ -177,7 +203,9 @@ function JudgePanel() {
             {t("judge.panel_title")}
           </div>
           <div className="text-sm text-gold">
-            {(typeof match?.tournament?.name === "object" && match.tournament?.name !== null ? (match.tournament.name.kk ?? match.tournament.name.ru) : match?.tournament?.name as string | undefined) ?? t("common.tournament")}
+            {(typeof match?.tournament?.name === "object" && match.tournament?.name !== null
+              ? (match.tournament.name.kk ?? match.tournament.name.ru)
+              : (match?.tournament?.name as string | undefined)) ?? t("common.tournament")}
             {match?.tatamiNumber ? ` · ${t("common.tatami")} #${match.tatamiNumber}` : ""}
           </div>
         </div>
@@ -186,9 +214,13 @@ function JudgePanel() {
         {isFinished && winnerId && (
           <div className="mb-6 glass rounded-2xl border-2 border-gold/60 p-6 text-center">
             <Trophy className="h-12 w-12 text-gold mx-auto mb-2" />
-            <div className="text-xs uppercase tracking-widest text-gold/80">{t("common.winner")}</div>
+            <div className="text-xs uppercase tracking-widest text-gold/80">
+              {t("common.winner")}
+            </div>
             <div className="font-display text-3xl text-gradient-gold mt-2">
-              {winnerId === red?.id ? `${red.name} ${red.surname}` : `${blue?.name} ${blue?.surname}`}
+              {winnerId === red?.id
+                ? `${red.name} ${red.surname}`
+                : `${blue?.name} ${blue?.surname}`}
             </div>
           </div>
         )}
@@ -213,11 +245,25 @@ function JudgePanel() {
 
         <div className="mb-4 glass rounded-2xl border border-border/60 p-4 text-center">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            {pendingResult ? t("judge.confirm_needed") : score_.isGoldenScore ? "Golden Score" : isPaused ? "Mate" : isClockRunning ? t("judge.time_running") : t("judge.waiting")}
+            {pendingResult
+              ? t("judge.confirm_needed")
+              : score_.isGoldenScore
+                ? "Golden Score"
+                : isPaused
+                  ? "Mate"
+                  : isClockRunning
+                    ? t("judge.time_running")
+                    : t("judge.waiting")}
           </div>
-          <div className={`font-display text-6xl font-black tabular-nums ${
-            score_.isGoldenScore ? "text-gold" : displaySec <= 30 && isClockRunning ? "text-destructive" : "text-foreground"
-          }`}>
+          <div
+            className={`font-display text-6xl font-black tabular-nums ${
+              score_.isGoldenScore
+                ? "text-gold"
+                : displaySec <= 30 && isClockRunning
+                  ? "text-destructive"
+                  : "text-foreground"
+            }`}
+          >
             {fmtTimer(displaySec)}
           </div>
         </div>
@@ -231,9 +277,13 @@ function JudgePanel() {
         {pendingResult && (
           <div className="mb-5 glass rounded-2xl border-2 border-gold/70 bg-gold/10 p-5 text-center">
             <Trophy className="h-10 w-10 text-gold mx-auto mb-2" />
-            <div className="text-xs uppercase tracking-widest text-gold/80">{t("judge.match_finished")}</div>
+            <div className="text-xs uppercase tracking-widest text-gold/80">
+              {t("judge.match_finished")}
+            </div>
             <div className="font-display text-2xl text-gradient-gold mt-1">
-              {pendingResult.winnerSide === "RED" ? `${red?.name} ${red?.surname}` : `${blue?.name} ${blue?.surname}`}
+              {pendingResult.winnerSide === "RED"
+                ? `${red?.name} ${red?.surname}`
+                : `${blue?.name} ${blue?.surname}`}
             </div>
             <button
               onClick={() => confirmResult.mutate()}
@@ -277,14 +327,18 @@ function JudgePanel() {
           {isRunning && !pendingResult && (
             <>
               <button
-                onClick={() => finishMatch.mutate({ winnerSide: "RED", reason: t("judge.judge_decision") })}
+                onClick={() =>
+                  finishMatch.mutate({ winnerSide: "RED", reason: t("judge.judge_decision") })
+                }
                 disabled={finishMatch.isPending}
                 className="rounded-lg border border-gray-400/50 bg-gray-500/10 px-6 py-3 font-bold text-gray-200 disabled:opacity-50"
               >
                 {t("judge.red_won")}
               </button>
               <button
-                onClick={() => finishMatch.mutate({ winnerSide: "BLUE", reason: t("judge.judge_decision") })}
+                onClick={() =>
+                  finishMatch.mutate({ winnerSide: "BLUE", reason: t("judge.judge_decision") })
+                }
                 disabled={finishMatch.isPending}
                 className="rounded-lg border border-sky-400/50 bg-sky-500/10 px-6 py-3 font-bold text-sky-200 disabled:opacity-50"
               >
@@ -298,7 +352,8 @@ function JudgePanel() {
         <div className="grid gap-4 md:grid-cols-2">
           {(["RED", "BLUE"] as const).map((side) => {
             const a = side === "RED" ? red : blue;
-            const s: import("@/lib/api-types").MatchScoreSnapshot["red"] = side === "RED" ? redS : blueS;
+            const s: import("@/lib/api-types").MatchScoreSnapshot["red"] =
+              side === "RED" ? redS : blueS;
             const isOsae = osaekomiActive && osaekomiSide === side;
             return (
               <div
@@ -309,7 +364,9 @@ function JudgePanel() {
               >
                 {/* Имя */}
                 <div className="mb-3">
-                  <div className={`text-xs uppercase tracking-widest ${side === "RED" ? "text-gray-300" : "text-sky-300"}`}>
+                  <div
+                    className={`text-xs uppercase tracking-widest ${side === "RED" ? "text-gray-300" : "text-sky-300"}`}
+                  >
                     {side === "RED" ? `⬜ ${t("judge.side_red")}` : `🔵 ${t("judge.side_blue")}`}
                   </div>
                   <div className="font-display text-2xl font-semibold leading-tight">
@@ -336,31 +393,35 @@ function JudgePanel() {
                 <div className="grid grid-cols-2 gap-2">
                   <ScoreBtn
                     label="IPPON"
-	                    color="bg-gradient-gold text-gold-foreground"
-	                    onClick={() => score.mutate({ type: "IPPON", side })}
-	                    disabled={!isClockRunning || Boolean(pendingResult)}
-	                  />
+                    color="bg-gradient-gold text-gold-foreground"
+                    onClick={() => score.mutate({ type: "IPPON", side })}
+                    disabled={!isClockRunning || Boolean(pendingResult)}
+                  />
                   <ScoreBtn
                     label="WAZA-ARI"
-	                    color="glass border border-gold/40 text-gold"
-	                    onClick={() => score.mutate({ type: "WAZA_ARI", side })}
-	                    disabled={!isClockRunning || Boolean(pendingResult)}
-	                  />
+                    color="glass border border-gold/40 text-gold"
+                    onClick={() => score.mutate({ type: "WAZA_ARI", side })}
+                    disabled={!isClockRunning || Boolean(pendingResult)}
+                  />
                   <ScoreBtn
                     label={isOsae ? "TOKETA" : "OSAEKOMI"}
-                    color={isOsae ? "bg-gold text-gold-foreground animate-pulse" : "glass border border-gold/30 text-gold/80"}
+                    color={
+                      isOsae
+                        ? "bg-gold text-gold-foreground animate-pulse"
+                        : "glass border border-gold/30 text-gold/80"
+                    }
                     onClick={() => {
-	                      if (isOsae) toketa.mutate();
-	                      else osaekomi.mutate(side);
-	                    }}
-	                    disabled={Boolean(pendingResult) || (!isClockRunning && !isOsae)}
-	                  />
+                      if (isOsae) toketa.mutate();
+                      else osaekomi.mutate(side);
+                    }}
+                    disabled={Boolean(pendingResult) || (!isClockRunning && !isOsae)}
+                  />
                   <ScoreBtn
                     label="SHIDO"
-	                    color="bg-destructive/20 text-destructive border border-destructive/40"
-	                    onClick={() => score.mutate({ type: "SHIDO", side })}
-	                    disabled={!isClockRunning || Boolean(pendingResult)}
-	                  />
+                    color="bg-destructive/20 text-destructive border border-destructive/40"
+                    onClick={() => score.mutate({ type: "SHIDO", side })}
+                    disabled={!isClockRunning || Boolean(pendingResult)}
+                  />
                 </div>
               </div>
             );
@@ -369,7 +430,8 @@ function JudgePanel() {
 
         {/* Footer */}
         <div className="mt-6 text-center text-xs text-muted-foreground">
-          {t("judge.session_expires")}: {sessionQuery.data?.expiresAt
+          {t("judge.session_expires")}:{" "}
+          {sessionQuery.data?.expiresAt
             ? new Date(sessionQuery.data.expiresAt).toLocaleString("kk-KZ")
             : "—"}
         </div>
@@ -379,8 +441,16 @@ function JudgePanel() {
 }
 
 function ScoreBtn({
-  label, color, onClick, disabled,
-}: { label: string; color: string; onClick: () => void; disabled?: boolean }) {
+  label,
+  color,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  color: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
@@ -392,7 +462,9 @@ function ScoreBtn({
   );
 }
 
-function getClockElapsedSec(score: import("@/lib/api-types").MatchScoreSnapshot | null | undefined): number {
+function getClockElapsedSec(
+  score: import("@/lib/api-types").MatchScoreSnapshot | null | undefined,
+): number {
   const clock = score?.clock;
   const base = Math.max(0, Number(clock?.elapsedSec ?? 0));
   if (!clock?.running || !clock.runningStartedAt) return base;

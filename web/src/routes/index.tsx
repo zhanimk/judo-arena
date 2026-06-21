@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { LazyImage, Avatar } from "@/components/ui/avatar-image";
 import { TatamiScene } from "@/components/home/TatamiScene";
 import { api, mediaUrl } from "@/lib/api";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteWomanWhite from "@/assets/athlete-woman-white.jpg";
@@ -42,13 +42,13 @@ import type { AthleteLeaderboardEntry, Tournament, Match, Club } from "@/lib/api
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Judo-Arena — Дзюдо жарыстарын автоматтандыру" },
+      { title: "Judo Child League — Дзюдо жарыстарын автоматтандыру" },
       {
         name: "description",
         content:
           "Дзюдо жарыстарына арналған цифрлық платформа: автоматты жеребе тастау, төрелік панелі, нақты уақыттағы дәреже.",
       },
-      { property: "og:title", content: "Judo-Arena — Дзюдоның цифрлық аренасы" },
+      { property: "og:title", content: "Judo Child League — Дзюдоның цифрлық аренасы" },
       {
         property: "og:description",
         content: "Жарыстар, жеребе, төрелік, дәреже — бір экранда, нақты уақытта.",

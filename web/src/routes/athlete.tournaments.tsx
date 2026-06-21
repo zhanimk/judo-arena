@@ -27,7 +27,7 @@ import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/athlete/tournaments")({
-  head: () => ({ meta: [{ title: "Жарыстар — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жарыстар — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["ATHLETE"]}>
@@ -288,7 +288,10 @@ function applicationTone(status?: string): string {
   return "border-border/50 bg-muted/20 text-muted-foreground";
 }
 
-function categoryTitle(c: import("@/lib/api-types").Category | null | undefined, t: (key: string, opts?: Record<string, unknown>) => string): string {
+function categoryTitle(
+  c: import("@/lib/api-types").Category | null | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   if (!c) return t("common.category");
   const custom = localizeName(c.name);
   if (custom !== "—") return custom;
@@ -296,7 +299,9 @@ function categoryTitle(c: import("@/lib/api-types").Category | null | undefined,
   return `${genderLabel} ${c.ageMin}-${c.ageMax} ${t("common.years_short")} ${c.weightMin}-${c.weightMax} кг`;
 }
 
-function localizeName(name: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  name: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";

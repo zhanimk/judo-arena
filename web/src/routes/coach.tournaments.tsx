@@ -25,7 +25,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/coach/tournaments")({
-  head: () => ({ meta: [{ title: "Жарыстар — Judo-Arena" }] }),
+  head: () => ({ meta: [{ title: "Жарыстар — Judo Child League" }] }),
   errorComponent: RouteErrorUI,
   component: () => (
     <ProtectedRoute allowedRoles={["COACH"]}>
@@ -56,7 +56,9 @@ function CoachTournaments() {
     queryFn: () => api.applications.myClub(),
   });
 
-  const appByTournament = new Map((myAppsQuery.data ?? []).map((a: Application) => [a.tournamentId, a]));
+  const appByTournament = new Map(
+    (myAppsQuery.data ?? []).map((a: Application) => [a.tournamentId, a]),
+  );
 
   return (
     <DashboardShell
@@ -213,7 +215,9 @@ function applicationButtonStyle(status: string): string {
   return "border-border text-muted-foreground hover:text-foreground";
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
