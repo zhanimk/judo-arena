@@ -117,7 +117,8 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (mode === "register" && !turnstileToken && !isDev) {
+    const turnstileKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    if (mode === "register" && !turnstileToken && !isDev && turnstileKey) {
       setError("Пожалуйста, подтвердите что вы не робот (Капча)");
       return;
     }
@@ -821,10 +822,10 @@ function Login() {
                 </label>
               )}
 
-              {mode === "register" && !isDev && (
+              {mode === "register" && !isDev && import.meta.env.VITE_TURNSTILE_SITE_KEY && (
                 <div className="flex justify-center mt-2">
                   <Turnstile
-                    siteKey="1x00000000000000000000AA"
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                     onSuccess={(token) => setTurnstileToken(token)}
                   />
                 </div>
