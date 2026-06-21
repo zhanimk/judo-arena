@@ -15,10 +15,8 @@ export default defineConfig({
     include: ["tests/db/**/*.test.ts"],
     environment: "node",
     globals: false,
-    // Run DB tests serially — they share one database, parallel runs cause conflicts
     pool: "forks",
-    singleThread: true,
-    // Generous timeout for DB round-trips
+    fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

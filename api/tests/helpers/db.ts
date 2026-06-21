@@ -74,6 +74,15 @@ export async function cleanup(): Promise<void> {
   }
 }
 
+import { redis, pubClient, subClient } from "../../src/lib/redis.js";
+
+export async function closeConnections(): Promise<void> {
+  await db.$disconnect();
+  redis.disconnect();
+  pubClient.disconnect();
+  subClient.disconnect();
+}
+
 // ─── User factories ────────────────────────────────────────────────────────
 
 const DEFAULT_PASSWORD = "Test1234!";

@@ -21,3 +21,4 @@ backups/
 uploads/
 *.log
 *.zip
+api/scripts/

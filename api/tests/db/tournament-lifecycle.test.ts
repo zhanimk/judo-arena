@@ -51,7 +51,8 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await db.$disconnect();
+  const { closeConnections } = await import("../helpers/db.js");
+  await closeConnections();
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────
