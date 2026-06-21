@@ -1994,5 +1994,19 @@
     "invalid_code": "Код қате",
     "enabled_success": "2FA қосылды ✓",
     "disabled_success": "2FA өшірілді"
+  },
+  "coach_analytics": {
+    "title": "Клуб аналитикасы",
+    "total_medals": "Барлық медальдар",
+    "average_rating": "Орташа рейтинг",
+    "total_points": "Клубтың ұпайлар жиынтығы",
+    "top_athletes": "Үздік 10 спортшы (ұпай бойынша)",
+    "no_data": "Әзірге деректер жоқ",
+    "no_data_hint": "Сіздің спортшыларыңыз әлі турнирлерге қатыспаған немесе ұпай жинамаған.",
+    "points": "Ұпай",
+    "medals_distribution": "Медальдардың бөлінуі",
+    "gold": "Алтын",
+    "silver": "Күміс",
+    "bronze": "Қола"
   }
 }

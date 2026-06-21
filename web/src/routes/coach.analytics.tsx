@@ -204,9 +204,21 @@ function CoachAnalytics() {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: "Золото", value: analytics.medals.gold, fill: "#eab308" },
-                        { name: "Серебро", value: analytics.medals.silver, fill: "#94a3b8" },
-                        { name: "Бронза", value: analytics.medals.bronze, fill: "#b45309" },
+                        {
+                          name: t("coach_analytics.gold", "Золото"),
+                          value: analytics.medals.gold,
+                          fill: "#eab308",
+                        },
+                        {
+                          name: t("coach_analytics.silver", "Серебро"),
+                          value: analytics.medals.silver,
+                          fill: "#94a3b8",
+                        },
+                        {
+                          name: t("coach_analytics.bronze", "Бронза"),
+                          value: analytics.medals.bronze,
+                          fill: "#b45309",
+                        },
                       ]}
                       cx="50%"
                       cy="50%"
@@ -217,9 +229,21 @@ function CoachAnalytics() {
                       stroke="none"
                     >
                       {[
-                        { name: "Золото", value: analytics.medals.gold, fill: "#eab308" },
-                        { name: "Серебро", value: analytics.medals.silver, fill: "#94a3b8" },
-                        { name: "Бронза", value: analytics.medals.bronze, fill: "#b45309" },
+                        {
+                          name: t("coach_analytics.gold", "Золото"),
+                          value: analytics.medals.gold,
+                          fill: "#eab308",
+                        },
+                        {
+                          name: t("coach_analytics.silver", "Серебро"),
+                          value: analytics.medals.silver,
+                          fill: "#94a3b8",
+                        },
+                        {
+                          name: t("coach_analytics.bronze", "Бронза"),
+                          value: analytics.medals.bronze,
+                          fill: "#b45309",
+                        },
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -240,14 +264,18 @@ function CoachAnalytics() {
                 <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-yellow-500/10 to-transparent border border-yellow-500/20 p-3">
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                    <span className="text-sm font-medium">Золото</span>
+                    <span className="text-sm font-medium">
+                      {t("coach_analytics.gold", "Золото")}
+                    </span>
                   </div>
                   <span className="text-lg font-bold text-yellow-500">{analytics.medals.gold}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-400/10 to-transparent border border-slate-400/20 p-3">
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full bg-slate-400" />
-                    <span className="text-sm font-medium">Серебро</span>
+                    <span className="text-sm font-medium">
+                      {t("coach_analytics.silver", "Серебро")}
+                    </span>
                   </div>
                   <span className="text-lg font-bold text-slate-400">
                     {analytics.medals.silver}
@@ -256,7 +284,9 @@ function CoachAnalytics() {
                 <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-amber-700/10 to-transparent border border-amber-700/20 p-3">
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full bg-amber-600" />
-                    <span className="text-sm font-medium">Бронза</span>
+                    <span className="text-sm font-medium">
+                      {t("coach_analytics.bronze", "Бронза")}
+                    </span>
                   </div>
                   <span className="text-lg font-bold text-amber-600">
                     {analytics.medals.bronze}

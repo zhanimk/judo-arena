@@ -2018,5 +2018,19 @@
     "invalid_code": "Неверный код",
     "enabled_success": "2FA успешно включена ✓",
     "disabled_success": "2FA отключена"
+  },
+  "coach_analytics": {
+    "title": "Аналитика клуба",
+    "total_medals": "Всего медалей",
+    "average_rating": "Средний рейтинг",
+    "total_points": "Сумма очков клуба",
+    "top_athletes": "Топ-10 спортсменов (по очкам)",
+    "no_data": "Пока нет данных",
+    "no_data_hint": "Ваши спортсмены еще не участвовали в турнирах или не заработали очки.",
+    "points": "Очков",
+    "medals_distribution": "Распределение медалей",
+    "gold": "Золото",
+    "silver": "Серебро",
+    "bronze": "Бронза"
   }
 }
