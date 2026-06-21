@@ -49,8 +49,7 @@
     "panel": "Панель",
     "coaches": "Жаттықтырушылар",
     "coach": "Жаттықтырушы",
-    "hello": "Сәлем",
-    "analytics": "Аналитика"
+    "hello": "Сәлем"
   },
   "status": {
     "DRAFT": "Жоба",
@@ -1724,7 +1723,15 @@
     "no_requests": "Сұраныстар жоқ",
     "no_requests_hint": "Жаттықтырушылардан жаңа сұраныстар жоқ",
     "make_owner": "Иесі ету",
-    "remove_coach": "Жаттықтырушыны шығару"
+    "remove_coach": "Жаттықтырушыны шығару",
+    "edit_club": "Клубты өңдеу",
+    "language_details": "Клуб мәліметтері",
+    "club_address": "Мекенжай",
+    "club_phone": "Телефон",
+    "club_email": "Email",
+    "club_instagram": "Instagram",
+    "club_contacts": "Байланыс",
+    "upload_hint": "PNG, JPG, WebP форматы 5MB дейін"
   },
   "categories": {
     "total": "Барлығы {{count}} санат",

@@ -5,6 +5,9 @@ import {
   //   Building2,
   Check,
   Crown,
+  MapPin,
+  Phone,
+  Instagram as InstagramIcon,
   Image as ImageIcon,
   Loader2,
   Pencil,
@@ -55,6 +58,9 @@ type ClubForm = {
   shortName: string;
   city: string;
   country: string;
+  address: string;
+  phone: string;
+  instagram: string;
   logoUrl: string;
 };
 
@@ -64,6 +70,9 @@ const emptyForm: ClubForm = {
   shortName: "",
   city: "",
   country: "KZ",
+  address: "",
+  phone: "",
+  instagram: "",
   logoUrl: "",
 };
 
@@ -76,6 +85,7 @@ function CoachClub() {
   const isOwner = user?.clubRole === "OWNER";
   const qc = useQueryClient();
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const clubQuery = useQuery({
     queryKey: ["coach-club", clubId],
@@ -102,6 +112,8 @@ function CoachClub() {
   });
 
   const formInitial = useMemo(() => toClubForm(clubQuery.data), [clubQuery.data]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [noClubTab, setNoClubTab] = useState<"join" | "create">("join");
 
   const saveClub = useMutation({
     mutationFn: (form: ClubForm) => {
@@ -110,6 +122,8 @@ function CoachClub() {
     },
     onSuccess: async () => {
       setError("");
+      setFieldErrors({});
+      setIsEditing(false);
       await refreshMe();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["coach-club"] }),
@@ -119,8 +133,20 @@ function CoachClub() {
         qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
       ]);
     },
-    onError: (e: unknown) =>
-      setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
+    onError: (e: unknown) => {
+      if (e instanceof ApiError) {
+        setError(e.message || t("coach_club.save_error"));
+        if (Array.isArray(e.details)) {
+          const fe: Record<string, string> = {};
+          for (const issue of e.details) {
+            if (issue.path) fe[issue.path] = issue.message;
+          }
+          setFieldErrors(fe);
+        }
+      } else {
+        setError(t("coach_club.save_error"));
+      }
+    },
   });
 
   return (
@@ -136,87 +162,130 @@ function CoachClub() {
       )}
 
       {!clubId && (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-          <Panel title={t("coach_club.create_club")}>
-            <ClubEditor
-              initial={formInitial}
-              isSaving={saveClub.isPending}
-              error={error}
-              onSubmit={(form) => saveClub.mutate(form)}
-            />
-          </Panel>
-          <Panel title={t("coach_club.join_club")}>
-            <CoachJoinClubPanel
-              requests={coachRequestsQuery.data ?? []}
-              isLoading={coachRequestsQuery.isLoading}
-              onChanged={async () => {
-                await Promise.all([
-                  qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
-                  qc.invalidateQueries({ queryKey: ["auth-me"] }),
-                ]);
-                await refreshMe();
-              }}
-            />
-          </Panel>
+        <div className="mx-auto max-w-2xl mt-4">
+          <div className="flex gap-1 p-1 bg-muted/40 rounded-lg mb-6 w-fit mx-auto border border-border/50">
+            <button
+              onClick={() => setNoClubTab("join")}
+              className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "join" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {t("coach_club.join_club")}
+            </button>
+            <button
+              onClick={() => setNoClubTab("create")}
+              className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "create" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {t("coach_club.create_club")}
+            </button>
+          </div>
+
+          {noClubTab === "join" ? (
+            <Panel title={t("coach_club.join_club")}>
+              <CoachJoinClubPanel
+                requests={coachRequestsQuery.data ?? []}
+                isLoading={coachRequestsQuery.isLoading}
+                onChanged={async () => {
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
+                    qc.invalidateQueries({ queryKey: ["auth-me"] }),
+                  ]);
+                  await refreshMe();
+                }}
+              />
+            </Panel>
+          ) : (
+            <Panel title={t("coach_club.create_club")}>
+              <ClubEditor
+                initial={formInitial}
+                isSaving={saveClub.isPending}
+                error={error}
+                onSubmit={(form) => saveClub.mutate(form)}
+                fieldErrors={fieldErrors}
+              />
+            </Panel>
+          )}
         </div>
       )}
 
       {clubId && (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-          <Panel title={clubId ? t("coach_club.club_card") : t("coach_club.create_club")}>
-            {clubQuery.isLoading ? (
-              <LoadingState />
-            ) : (
+        <div className="mx-auto max-w-5xl space-y-6">
+          <div className="flex items-center justify-between border-b border-border/40 pb-4">
+            <h2 className="text-2xl font-semibold tracking-tight">{t("coach_club.my_club")}</h2>
+            <div className="flex gap-2">
+              {isOwner && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-2 rounded-md bg-gold/10 text-gold hover:bg-gold/20 px-4 py-2 text-sm font-medium transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                  {t("common.edit")}
+                </button>
+              )}
+              {isOwner && isEditing && (
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background hover:bg-muted px-4 py-2 text-sm font-medium text-muted-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  {t("common.cancel")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {isEditing ? (
+            <Panel title={t("coach_club.edit_club") || "Edit Club"}>
               <ClubEditor
                 initial={formInitial}
                 isSaving={saveClub.isPending}
                 error={error}
                 onSubmit={(form) => saveClub.mutate(form)}
                 readOnly={!isOwner}
+                fieldErrors={fieldErrors}
               />
-            )}
-          </Panel>
+            </Panel>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-[1fr_320px] items-start">
+              <div className="space-y-6">
+                <ClubPreview club={clubQuery.data} fallback={formInitial} />
+              </div>
+              <div className="space-y-6">
+                <Panel title={t("coach_club.club_coaches")}>
+                  <ClubCoaches
+                    clubId={clubId}
+                    currentUserId={user?.id}
+                    canManage={isOwner}
+                    coaches={clubQuery.data?.members ?? (user ? [user] : [])}
+                    onChanged={async () => {
+                      await Promise.all([
+                        qc.invalidateQueries({ queryKey: ["coach-club"] }),
+                        qc.invalidateQueries({ queryKey: ["auth-me"] }),
+                      ]);
+                      await refreshMe();
+                    }}
+                  />
+                </Panel>
 
-          <Panel title={t("coach_club.preview")}>
-            <ClubPreview club={clubQuery.data} fallback={formInitial} />
-            <div className="mt-5 border-t border-border/40 pt-5">
-              <h3 className="mb-3 text-xs uppercase tracking-widest text-muted-foreground">
-                {t("coach_club.club_coaches")}
-              </h3>
-              <ClubCoaches
-                clubId={clubId}
-                currentUserId={user?.id}
-                canManage={isOwner}
-                coaches={clubQuery.data?.members ?? (user ? [user] : [])}
-                onChanged={async () => {
-                  await Promise.all([
-                    qc.invalidateQueries({ queryKey: ["coach-club"] }),
-                    qc.invalidateQueries({ queryKey: ["auth-me"] }),
-                  ]);
-                  await refreshMe();
-                }}
-              />
+                {isOwner && (
+                  <Panel
+                    title={`${t("coach_club.coach_requests")} ${incomingCoachRequestsQuery.data?.length ?? 0}`}
+                  >
+                    <IncomingCoachRequests
+                      requests={incomingCoachRequestsQuery.data ?? []}
+                      isLoading={incomingCoachRequestsQuery.isLoading}
+                      onChanged={async () => {
+                        await Promise.all([
+                          qc.invalidateQueries({
+                            queryKey: ["incoming-coach-club-join-requests", clubId],
+                          }),
+                          qc.invalidateQueries({ queryKey: ["coach-club", clubId] }),
+                        ]);
+                      }}
+                    />
+                  </Panel>
+                )}
+              </div>
             </div>
-          </Panel>
-        </div>
-      )}
-
-      {clubId && isOwner && (
-        <div className="mt-6">
-          <Panel
-            title={`${t("coach_club.coach_requests")} ${incomingCoachRequestsQuery.data?.length ?? 0}`}
-          >
-            <IncomingCoachRequests
-              requests={incomingCoachRequestsQuery.data ?? []}
-              isLoading={incomingCoachRequestsQuery.isLoading}
-              onChanged={async () => {
-                await Promise.all([
-                  qc.invalidateQueries({ queryKey: ["incoming-coach-club-join-requests", clubId] }),
-                  qc.invalidateQueries({ queryKey: ["coach-club", clubId] }),
-                ]);
-              }}
-            />
-          </Panel>
+          )}
         </div>
       )}
 
@@ -413,12 +482,14 @@ function ClubEditor({
   error,
   onSubmit,
   readOnly = false,
+  fieldErrors,
 }: {
   initial: ClubForm;
   isSaving: boolean;
   error: string;
   onSubmit: (form: ClubForm) => void;
   readOnly?: boolean;
+  fieldErrors?: Record<string, string>;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(initial);
@@ -441,122 +512,183 @@ function ClubEditor({
         e.preventDefault();
         if (!readOnly) onSubmit(form);
       }}
-      className="space-y-5"
+      className="space-y-6"
     >
       {readOnly && (
-        <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground mb-4">
           {t("coach_club.readonly_hint")}
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        {(["kk", "ru", "en"] as const).map((lng) => (
-          <button
-            key={lng}
-            type="button"
-            onClick={() => setLocale(lng)}
-            disabled={readOnly}
-            className={`rounded-md border px-3 py-1.5 text-xs uppercase transition-colors ${
-              locale === lng
-                ? "border-gold/50 bg-gold/15 text-gold"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {lng}
-          </button>
-        ))}
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field
-          label={`${t("coach_club.name_label")} (${locale.toUpperCase()})`}
-          value={form.name[locale]}
-          onChange={(value) => updateLocale("name", value)}
-          required={locale === "kk"}
-          disabled={readOnly}
-        />
-        <Field
-          label={t("coach_club.short_name")}
-          value={form.shortName}
-          onChange={(shortName) => setForm({ ...form, shortName })}
-          placeholder="JCL Almaty"
-          disabled={readOnly}
-        />
-        <Field
-          label={t("admin.club_city")}
-          value={form.city}
-          onChange={(city) => setForm({ ...form, city })}
-          required
-          disabled={readOnly}
-        />
-        <Field
-          label={t("admin.club_country")}
-          value={form.country}
-          onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })}
-          required
-          maxLength={2}
-          disabled={readOnly}
-        />
-        <div className="md:col-span-2">
-          <label className="text-xs uppercase tracking-widest text-muted-foreground">
-            {t("coach_club.logo_label")}
-          </label>
-          <div className="mt-1.5 flex gap-2">
-            <input
-              value={form.logoUrl}
-              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-              disabled={readOnly}
-              placeholder="/uploads/... or https://..."
-              className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-            />
-            <label
-              className={`inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground ${readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:text-foreground"}`}
-            >
-              {uploadLogo.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {t("coach_club.upload_btn")}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                className="hidden"
+      <div className="p-4 rounded-xl border border-border/40 bg-muted/10 space-y-5">
+        <div className="flex items-center justify-between border-b border-border/40 pb-3">
+          <div className="text-sm font-medium text-foreground">
+            {t("coach_club.language_details") || "Details"}
+          </div>
+          <div className="flex flex-wrap gap-1 bg-muted/50 p-1 rounded-md border border-border/50">
+            {(["kk", "ru", "en"] as const).map((lng) => (
+              <button
+                key={lng}
+                type="button"
+                onClick={() => setLocale(lng)}
                 disabled={readOnly}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadLogo.mutate(file);
-                  e.currentTarget.value = "";
-                }}
-              />
+                className={`rounded-md border px-3 py-1.5 text-xs uppercase transition-colors ${
+                  locale === lng
+                    ? "border-gold/50 bg-gold/15 text-gold"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {lng}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field
+            label={`${t("coach_club.name_label")} (${locale.toUpperCase()})`}
+            value={form.name[locale]}
+            onChange={(value) => updateLocale("name", value)}
+            required={locale === "kk"}
+            disabled={readOnly}
+            error={fieldErrors?.[`name.${locale}`] || fieldErrors?.name}
+          />
+          <Field
+            label={t("coach_club.short_name")}
+            value={form.shortName}
+            onChange={(shortName) => setForm({ ...form, shortName })}
+            placeholder="JCL Almaty"
+            disabled={readOnly}
+            error={fieldErrors?.shortName}
+          />
+          <Field
+            label={t("admin.club_city")}
+            value={form.city}
+            onChange={(city) => setForm({ ...form, city })}
+            required
+            disabled={readOnly}
+            error={fieldErrors?.city}
+          />
+          <Field
+            label={t("admin.club_country")}
+            value={form.country}
+            onChange={(country) => setForm({ ...form, country: country.toUpperCase().slice(0, 2) })}
+            required
+            maxLength={2}
+            disabled={readOnly}
+          />
+          <Field
+            label={t("coach_club.club_address") || "Address"}
+            value={form.address}
+            onChange={(address) => setForm({ ...form, address })}
+            disabled={readOnly}
+            className="md:col-span-2"
+            error={fieldErrors?.address}
+          />
+          <div className="md:col-span-2 border-t border-border/40 my-2 pt-4">
+            <div className="text-sm font-medium text-foreground mb-3">
+              {t("coach_club.club_contacts") || "Contacts"}
+            </div>
+          </div>
+          <Field
+            label={t("coach_club.club_phone") || "Phone"}
+            value={form.phone}
+            onChange={(phone) => setForm({ ...form, phone })}
+            disabled={readOnly}
+            type="tel"
+            error={fieldErrors?.phone}
+          />
+          <Field
+            label={t("coach_club.club_instagram") || "Instagram"}
+            value={form.instagram}
+            onChange={(instagram) => setForm({ ...form, instagram })}
+            placeholder="@judoclub"
+            disabled={readOnly}
+            className="md:col-span-2"
+            error={fieldErrors?.instagram}
+          />
+          <div className="md:col-span-2">
+            <label className="text-xs uppercase tracking-widest text-muted-foreground">
+              {t("coach_club.description_label")} ({locale.toUpperCase()})
             </label>
+            <textarea
+              value={form.description[locale]}
+              onChange={(e) => updateLocale("description", e.target.value)}
+              disabled={readOnly}
+              rows={4}
+              className="mt-1.5 w-full resize-none rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+              placeholder={t("coach_club.description_placeholder")}
+            />
           </div>
         </div>
       </div>
 
-      <div>
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">
-          {t("coach_club.description_label")} ({locale.toUpperCase()})
-        </label>
-        <textarea
-          value={form.description[locale]}
-          onChange={(e) => updateLocale("description", e.target.value)}
-          disabled={readOnly}
-          rows={5}
-          className="mt-1.5 w-full resize-none rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-          placeholder={t("coach_club.description_placeholder")}
-        />
+      <div className="p-4 rounded-xl border border-border/40 bg-muted/10 space-y-4">
+        <div className="text-sm font-medium text-foreground border-b border-border/40 pb-3 mb-4">
+          {t("coach_club.logo_label") || "Logo"}
+        </div>
+        <div className="flex gap-4 items-center">
+          {form.logoUrl ? (
+            <img
+              src={mediaUrl(form.logoUrl)}
+              alt="Logo"
+              className="w-16 h-16 rounded-md object-cover bg-background border border-border"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center border border-border/50 text-muted-foreground">
+              <ImageIcon className="w-6 h-6" />
+            </div>
+          )}
+          <div className="flex-1 space-y-2">
+            <div className="flex gap-2">
+              <input
+                value={form.logoUrl}
+                onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                disabled={readOnly}
+                placeholder="/uploads/... or https://..."
+                className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+              />
+              <label
+                className={`inline-flex items-center gap-1.5 rounded-md bg-secondary hover:bg-secondary/80 px-4 py-2 text-sm text-secondary-foreground transition-colors ${readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+              >
+                {uploadLogo.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {t("coach_club.upload_btn")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  disabled={readOnly}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadLogo.mutate(file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("coach_club.upload_hint") || "PNG, JPG, WebP up to 5MB"}
+            </p>
+          </div>
+        </div>
       </div>
 
       {error && <div className="text-sm text-destructive">{error}</div>}
       {!readOnly && (
-        <button
-          disabled={isSaving}
-          type="submit"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 font-medium text-gold-foreground shadow-gold disabled:opacity-50 sm:w-auto"
-        >
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {t("common.save")}
-        </button>
+        <div className="pt-2">
+          <button
+            disabled={isSaving}
+            type="submit"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gradient-gold px-6 py-2.5 font-medium text-gold-foreground shadow-gold disabled:opacity-50 sm:w-auto hover:brightness-110 transition-all"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {t("common.save")}
+          </button>
+        </div>
       )}
     </form>
   );
@@ -797,29 +929,93 @@ function ClubPreview({ club, fallback }: { club: Club | null | undefined; fallba
     localizeName(club?.description) ||
     fallback.description.kk ||
     fallback.description.ru ||
-    fallback.description.en ||
-    t("coach_club.description_preview_hint");
+    fallback.description.en;
 
   return (
-    <div className="overflow-hidden rounded-md border border-border/60 bg-background/30">
-      <div className="flex aspect-[16/9] items-center justify-center bg-muted/30">
-        {logo ? (
-          <LazyImage src={mediaUrl(logo)} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <ImageIcon className="h-12 w-12 text-muted-foreground" />
-        )}
+    <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-sm relative">
+      <div className="h-32 w-full bg-gradient-to-r from-gold/40 via-gold/20 to-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
       </div>
-      <div className="p-4">
-        <div className="font-display text-xl font-semibold">{name}</div>
-        <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          {club?.city || fallback.city || t("admin.club_city")} ·{" "}
-          {(() => {
-            const code = club?.country || fallback.country || "KZ";
-            const c = COUNTRIES.find((x) => x.code === code);
-            return c ? `${c.flag} ${c.name}` : code;
-          })()}
+
+      <div className="px-6 relative flex justify-between items-end">
+        <div className="-mt-12 h-24 w-24 overflow-hidden rounded-2xl border-4 border-card bg-muted shadow-xl z-10 flex-shrink-0">
+          {logo ? (
+            <LazyImage src={mediaUrl(logo)} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-muted/30">
+              <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+          )}
         </div>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">{description}</p>
+
+        <div className="pb-2">
+          <span className="inline-flex items-center rounded-full border border-gold/30 bg-gold/10 px-2.5 py-0.5 text-xs font-semibold text-gold shadow-sm">
+            {t("coach_club.club_card") || "Club Card"}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-6 pt-5">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">{name}</h2>
+          <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground/80 font-medium">
+            <MapPin className="h-4 w-4 shrink-0 text-gold/70" />
+            {club?.city || fallback.city || t("admin.club_city")}
+            <span className="text-border mx-1">•</span>
+            {(() => {
+              const code = club?.country || fallback.country || "KZ";
+              const c = COUNTRIES.find((x) => x.code === code);
+              return c ? `${c.flag} ${c.name}` : code;
+            })()}
+          </div>
+        </div>
+
+        {description && (
+          <div className="mt-5 rounded-xl bg-muted/30 p-4 border border-border/30">
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              {description}
+            </p>
+          </div>
+        )}
+
+        {(club?.address ||
+          fallback.address ||
+          club?.phone ||
+          fallback.phone ||
+          club?.instagram ||
+          fallback.instagram) && (
+          <div className="mt-6 border-t border-border/40 pt-5">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              {t("coach_club.club_contacts") || "Contacts"}
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              {(club?.address || fallback.address) && (
+                <div className="flex items-start gap-3 text-foreground/80">
+                  <div className="mt-0.5 rounded-md bg-gold/10 p-1.5 text-gold shrink-0">
+                    <MapPin className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="leading-snug">{club?.address || fallback.address}</span>
+                </div>
+              )}
+              {(club?.phone || fallback.phone) && (
+                <div className="flex items-center gap-3 text-foreground/80">
+                  <div className="rounded-md bg-gold/10 p-1.5 text-gold shrink-0">
+                    <Phone className="w-3.5 h-3.5" />
+                  </div>
+                  <span>{club?.phone || fallback.phone}</span>
+                </div>
+              )}
+              {(club?.instagram || fallback.instagram) && (
+                <div className="flex items-center gap-3 text-foreground/80">
+                  <div className="rounded-md bg-gold/10 p-1.5 text-gold shrink-0">
+                    <InstagramIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <span>{club?.instagram || fallback.instagram}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1089,8 +1285,9 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "valu
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  error?: string;
 };
-function Field({ label, value, onChange, className = "", ...rest }: FieldProps) {
+function Field({ label, value, onChange, className = "", error, ...rest }: FieldProps) {
   return (
     <div className={className}>
       <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>
@@ -1098,8 +1295,11 @@ function Field({ label, value, onChange, className = "", ...rest }: FieldProps) 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         {...rest}
-        className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+        className={`mt-1.5 w-full rounded-md border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none ${
+          error ? "border-destructive text-destructive" : "border-border"
+        }`}
       />
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -1113,6 +1313,9 @@ function toClubForm(club: Club | null | undefined): ClubForm {
     city: club.city ?? "",
     country: club.country ?? "KZ",
     logoUrl: club.logoUrl ?? "",
+    address: club.address ?? "",
+    phone: club.phone ?? "",
+    instagram: club.instagram ?? "",
   };
 }
 
@@ -1124,6 +1327,9 @@ function fromClubForm(form: ClubForm) {
     city: form.city.trim(),
     country: form.country.trim() || "KZ",
     logoUrl: form.logoUrl.trim() || undefined,
+    address: form.address.trim() || undefined,
+    phone: form.phone.trim() || undefined,
+    instagram: form.instagram.trim() || undefined,
   };
 }
 

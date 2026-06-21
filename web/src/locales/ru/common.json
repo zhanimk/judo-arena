@@ -60,8 +60,7 @@
     "panel": "Панель",
     "coaches": "Тренеры",
     "coach": "Тренер",
-    "hello": "Привет",
-    "analytics": "Аналитика"
+    "hello": "Привет"
   },
   "status": {
     "DRAFT": "Черновик",
@@ -1722,7 +1721,7 @@
     "cover_label": "Обложка профиля",
     "gallery_label": "Галерея (ссылки через запятую)",
     "gallery_title": "Галерея зала",
-    "description_preview_hint": "Описание клуба еще не заполнено.",
+    "description_preview_hint": "Сохраните для предпросмотра",
     "change_logo": "Заменить лого",
     "change_photo": "Заменить фото",
     "name_label": "Название клуба",
@@ -1731,7 +1730,6 @@
     "upload_btn": "Загрузить",
     "description_label": "Описание",
     "description_placeholder": "О клубе...",
-    "description_preview_hint": "Сохраните для предпросмотра",
     "group_add_error": "Ошибка добавления группы",
     "group_save_error": "Ошибка сохранения группы",
     "group_delete_error": "Ошибка удаления группы",
@@ -1749,7 +1747,15 @@
     "no_requests": "Заявок нет",
     "no_requests_hint": "Новых заявок от тренеров нет",
     "make_owner": "Сделать владельцем",
-    "remove_coach": "Удалить тренера"
+    "remove_coach": "Удалить тренера",
+    "edit_club": "Редактировать клуб",
+    "language_details": "Основная информация",
+    "club_address": "Адрес",
+    "club_phone": "Телефон",
+    "club_email": "Email",
+    "club_instagram": "Instagram",
+    "club_contacts": "Контакты",
+    "upload_hint": "PNG, JPG, WebP до 5MB"
   },
   "categories": {
     "total": "Всего {{count}} категорий",

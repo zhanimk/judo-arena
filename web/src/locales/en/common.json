@@ -1705,7 +1705,7 @@
     "cover_label": "Profile Cover",
     "gallery_label": "Gallery (comma separated links)",
     "gallery_title": "Gym Gallery",
-    "description_preview_hint": "Club description is not filled yet.",
+    "description_preview_hint": "Save to preview",
     "change_logo": "Change Logo",
     "change_photo": "Change Photo",
     "name_label": "Club Name",
@@ -1714,7 +1714,6 @@
     "upload_btn": "Upload",
     "description_label": "Description",
     "description_placeholder": "About the club...",
-    "description_preview_hint": "Save to preview",
     "group_add_error": "Error adding group",
     "group_save_error": "Error saving group",
     "group_delete_error": "Error deleting group",
@@ -1732,7 +1731,15 @@
     "no_requests": "No requests",
     "no_requests_hint": "No new requests from coaches",
     "make_owner": "Make Owner",
-    "remove_coach": "Remove Coach"
+    "remove_coach": "Remove Coach",
+    "edit_club": "Edit Club",
+    "language_details": "Club Details",
+    "club_address": "Address",
+    "club_phone": "Phone",
+    "club_email": "Email",
+    "club_instagram": "Instagram",
+    "club_contacts": "Contacts",
+    "upload_hint": "PNG, JPG, WebP up to 5MB"
   },
   "categories": {
     "total": "{{count}} categories total",

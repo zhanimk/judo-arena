@@ -1565,7 +1565,14 @@
     "no_requests": "Заявок нет",
     "no_requests_hint": "Новых заявок от тренеров нет",
     "make_owner": "Сделать владельцем",
-    "remove_coach": "Удалить тренера"
+    "remove_coach": "Удалить тренера",
+    "edit_club": "Редактировать клуб",
+    "language_details": "Основная информация",
+    "club_address": "Адрес",
+    "club_phone": "Телефон",
+    "club_email": "Email",
+    "club_instagram": "Instagram",
+    "club_contacts": "Контакты"
   },
   "categories": {
     "total": "Всего {{count}} категорий",

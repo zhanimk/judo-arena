@@ -1564,7 +1564,14 @@
     "no_requests": "Сұраныстар жоқ",
     "no_requests_hint": "Жаттықтырушылардан жаңа сұраныстар жоқ",
     "make_owner": "Иесі ету",
-    "remove_coach": "Жаттықтырушыны шығару"
+    "remove_coach": "Жаттықтырушыны шығару",
+    "edit_club": "Клубты өңдеу",
+    "language_details": "Клуб мәліметтері",
+    "club_address": "Мекенжай",
+    "club_phone": "Телефон",
+    "club_email": "Email",
+    "club_instagram": "Instagram",
+    "club_contacts": "Байланыс"
   },
   "categories": {
     "total": "Барлығы {{count}} санат",
@@ -1765,7 +1772,6 @@
     "coach_id": "Жаттықтырушы куәлігі",
     "coach_id_hint": "Жаттықтырушыны растайтын куәлік немесе құжат.",
     "upload": "Жүктеу",
-    "replace": "Ауыстыру",
     "replace": "Ауыстыру",
     "saved": "Құжат сақталды",
     "upload_error": "Құжат жүктелмеді",
