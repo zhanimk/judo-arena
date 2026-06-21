@@ -13,7 +13,6 @@ import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
 import { useTranslation } from "react-i18next";
-import { Award, Swords, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/athlete/results")({
   head: () => ({ meta: [{ title: "Нәтижелер — Judo Child League" }] }),
@@ -48,11 +47,6 @@ function Results() {
     queryFn: () => api.matches.list({ athleteId, limit: 200 }),
     enabled: !!athleteId,
   });
-  const matches = matchesQuery.data ?? [];
-  const wins = matches.filter(
-    (match: Match) => match.status === "COMPLETED" && match.winnerId === athleteId,
-  ).length;
-  const completed = matches.filter((match: Match) => match.status === "COMPLETED").length;
 
   return (
     <DashboardShell
@@ -61,22 +55,12 @@ function Results() {
       accentTitle={t("athlete.results_page_title")}
     >
       <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          <ResultMetric
-            icon={TrendingUp}
-            label={t("athlete.my_rating")}
-            value={String(Math.round(ratingQuery.data?.totalPoints ?? 0))}
-          />
-          <ResultMetric icon={Swords} label={t("dashboard.matches")} value={String(completed)} />
-          <ResultMetric icon={Award} label={t("matches.win")} value={String(wins)} />
+        <div className="mb-5">
+          {statsQuery.data && <AthleteStatsPanel stats={statsQuery.data} t={t} />}
         </div>
 
-        {statsQuery.data && <AthleteStatsPanel stats={statsQuery.data} t={t} />}
-
         <div className="mt-5 grid items-start gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <Panel
-            title={`${t("athlete.my_rating")}: ${Math.round(ratingQuery.data?.totalPoints ?? 0)} ${t("common.points").toLowerCase()}`}
-          >
+          <Panel title={t("athlete.tournament_results") || "Жарыс нәтижелері"}>
             {ratingQuery.isLoading ? (
               <LoadingState />
             ) : (ratingQuery.data?.entries ?? []).length === 0 ? (
@@ -153,28 +137,6 @@ function Results() {
         </div>
       </div>
     </DashboardShell>
-  );
-}
-
-function ResultMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-gold/20 bg-card/55 p-4 shadow-elegant">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10">
-        <Icon className="h-5 w-5 text-gold" />
-      </div>
-      <div>
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-        <div className="font-display text-2xl font-bold text-gradient-gold">{value}</div>
-      </div>
-    </div>
   );
 }
 
@@ -259,54 +221,7 @@ function AthleteStatsPanel({ stats, t }: { stats: AthleteStatsData; t: (k: strin
         </div>
       )}
 
-      {/* Последние результаты */}
-      {(stats.rating.recent as unknown[]).length > 0 && (
-        <div className="mt-4 rounded-xl border border-border/40 bg-card/60 p-4">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            {t("stats.recent_results")}
-          </div>
-          <div className="space-y-2">
-            {(
-              stats.rating.recent as Array<{
-                place: number;
-                points: number;
-                tournament: { name: unknown; startDate: string };
-                category: { gender: string; weightMin: number; weightMax: number };
-              }>
-            ).map((entry, i) => {
-              const tName = entry.tournament.name;
-              const name =
-                typeof tName === "object" && tName !== null
-                  ? ((tName as Record<string, string>)["kk"] ??
-                    (tName as Record<string, string>)["ru"] ??
-                    "—")
-                  : String(tName ?? "—");
-              const w =
-                entry.category.weightMax >= 200
-                  ? `+${entry.category.weightMin}`
-                  : `-${entry.category.weightMax}`;
-              const placeColor =
-                entry.place === 1
-                  ? "text-yellow-500"
-                  : entry.place === 2
-                    ? "text-slate-400"
-                    : entry.place === 3
-                      ? "text-amber-600"
-                      : "text-muted-foreground";
-              return (
-                <div key={i} className="flex items-center gap-3 text-sm">
-                  <span className={`w-6 font-black tabular-nums ${placeColor}`}>{entry.place}</span>
-                  <span className="flex-1 truncate">{name}</span>
-                  <span className="text-muted-foreground shrink-0">{w} кг</span>
-                  <span className="text-gold font-semibold shrink-0">
-                    +{Number(entry.points).toFixed(0)} pts
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Последние результаты удалены, так как они дублируются ниже в панели */}
     </div>
   );
 }
