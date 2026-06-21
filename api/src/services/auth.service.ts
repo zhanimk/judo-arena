@@ -254,6 +254,19 @@ export async function updateMeProfile(
       ...(input.preferredLocale !== undefined && {
         preferredLocale: input.preferredLocale,
       }),
+      ...(input.city !== undefined && { city: input.city?.trim() || null }),
+      ...(input.education !== undefined && {
+        education: input.education?.trim() || null,
+      }),
+      ...(input.coachCategory !== undefined && {
+        coachCategory: input.coachCategory?.trim() || null,
+      }),
+      ...(input.coachExperienceYears !== undefined && {
+        coachExperienceYears: input.coachExperienceYears,
+      }),
+      ...(input.coachTitle !== undefined && {
+        coachTitle: input.coachTitle?.trim() || null,
+      }),
     },
   });
 }
