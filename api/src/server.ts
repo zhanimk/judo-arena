@@ -385,9 +385,15 @@ async function buildServer() {
   app.get("/api/populate-defense", async (_req, reply) => {
     try {
       const { execSync } = await import("node:child_process");
-      const output = execSync("npm run prisma:defense-live -w api", {
-        encoding: "utf-8",
-      });
+      // Render root might be 'api', so try without workspace first, then fallback
+      let output = "";
+      try {
+        output = execSync("npm run prisma:defense-live", { encoding: "utf-8" });
+      } catch {
+        output = execSync("npm run prisma:defense-live -w api", {
+          encoding: "utf-8",
+        });
+      }
       return reply.send({ success: true, output });
     } catch (e: any) {
       return reply.code(500).send({
