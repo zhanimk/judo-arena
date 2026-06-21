@@ -124,14 +124,6 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get<{ Params: { id: string } }>(
-    "/:id/analytics",
-    coachOrAdmin,
-    async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      return getClubAnalytics(request.user!.sub, request.params.id);
-    },
-  );
-
   // ============================================================
   // ГРУППЫ (вложены под /clubs/:id/groups)
   // ============================================================
