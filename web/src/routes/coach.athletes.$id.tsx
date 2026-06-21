@@ -8,12 +8,12 @@ import {
   StatCard,
 } from "@/components/dashboard/DashboardShell";
 import { DocumentList } from "@/components/documents/DocumentViewer";
-import { FileText, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, ApiError, mediaUrl } from "@/lib/api";
-import type { User, Match, Category, UserDocument } from "@/lib/api-types";
+import type { User, Match, Category } from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -284,11 +284,4 @@ function localizeName(
 
 function getAge(dob: string): number {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000));
-}
-
-function docLabel(type: string): string {
-  if (type === "BIRTH_CERTIFICATE") return "Туу туралы";
-  if (type === "STUDY_CERTIFICATE") return "Оқу куәлігі";
-  if (type === "COACH_ID") return "Тренер куәлігі";
-  return "Құжат";
 }

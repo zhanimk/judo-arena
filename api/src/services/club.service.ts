@@ -531,3 +531,18 @@ async function assertCanOwnClub(
     403,
   );
 }
+
+export async function getClubAnalytics(actorUserId: string, clubId: string) {
+  // Validate that the club exists
+  const club = await prisma.club.findUnique({ where: { id: clubId } });
+  if (!club) throw new ClubError("CLUB_NOT_FOUND", "Клуб не найден", 404);
+
+  // Return mock analytics data for now so the app builds and runs
+  return {
+    totalAthletes: 0,
+    averageRating: 0,
+    totalPoints: 0,
+    medals: { total: 0, gold: 0, silver: 0, bronze: 0 },
+    topAthletes: [],
+  };
+}

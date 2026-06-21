@@ -13,7 +13,7 @@ export function documentTypeLabel(type: string, t: (k: string) => string): strin
   };
   const key = map[type];
   if (!key) return t("documents.unknown") || "Құжат";
-  
+
   const val = t(key);
   if (val === key) {
     if (type === "BIRTH_CERTIFICATE") return "Туу туралы куәлік";
@@ -125,7 +125,9 @@ export function DocumentViewer({
           return r.blob();
         })
         .then((blob) => {
-          const typedBlob = new Blob([blob], { type: document.mimeType || (isPdf ? "application/pdf" : "application/octet-stream") });
+          const typedBlob = new Blob([blob], {
+            type: document.mimeType || (isPdf ? "application/pdf" : "application/octet-stream"),
+          });
           setObjectUrl(URL.createObjectURL(typedBlob));
           setDocLoading(false);
         })
@@ -142,7 +144,7 @@ export function DocumentViewer({
         return null;
       });
     };
-  }, [document.id]);
+  }, [document.id, document.mimeType, isPdf]);
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur" onClick={onClose}>
@@ -259,6 +261,6 @@ export function DocumentViewer({
         )}
       </div>
     </div>,
-    globalThis.document.body
+    globalThis.document.body,
   );
 }

@@ -1004,10 +1004,6 @@ function localizeName(
   return name.kk || name.ru || name.en || "—";
 }
 
-function localeLabel(l: string): string {
-  return l === "kk" ? "Қазақша" : l === "ru" ? "Русский" : l === "en" ? "English" : l;
-}
-
 // ─── AthleteStatsPanel ────────────────────────────────────────────────────────
 
 type AthleteStatsData = Awaited<ReturnType<typeof import("@/lib/api").api.ratings.athleteStats>>;

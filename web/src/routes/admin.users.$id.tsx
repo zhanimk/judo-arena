@@ -8,19 +8,10 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { DocumentList } from "@/components/documents/DocumentViewer";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import {
-  ArrowLeft,
-  Edit2,
-  ExternalLink,
-  FileText,
-  Key,
-  Lock,
-  RefreshCw,
-  Unlock,
-} from "lucide-react";
+import { ArrowLeft, Edit2, Key, Lock, RefreshCw, Unlock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, mediaUrl } from "@/lib/api";
-import type { Club, User, RatingEntry, UserDocument } from "@/lib/api-types";
+import type { Club, User, RatingEntry } from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState } from "react";
@@ -591,7 +582,6 @@ function AdminUserDetail() {
   );
 }
 
-
 // ============================================================
 // Shared UI
 // ============================================================
@@ -628,7 +618,17 @@ function ErrBox({ msg }: { msg?: string }) {
   );
 }
 
-function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint?: string; accent?: boolean }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  accent?: boolean;
+}) {
   return (
     <div className={`glass rounded-xl p-5 ${accent ? "border-gold/40" : ""}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -657,8 +657,9 @@ function placeLabel(p: number, t: (k: string, opts?: Record<string, unknown>) =>
   return place;
 }
 
-
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

@@ -23,7 +23,6 @@ import {
   Trash2,
   Trophy,
   Unlock,
-  User,
   Users,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -240,7 +239,9 @@ function ClubsTab() {
                 )}
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <div className="text-sm">
-                    <span className="text-muted-foreground text-xs">{t("dashboard.athletes")}: </span>
+                    <span className="text-muted-foreground text-xs">
+                      {t("dashboard.athletes")}:{" "}
+                    </span>
                     <span className="text-gold font-display text-lg">{c._count?.members ?? 0}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -302,7 +303,7 @@ function ClubsTab() {
             <h3 className="font-display text-lg font-semibold mb-4">{t("admin.clubs_new")}</h3>
             {Boolean(createMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {((createMut.error as Error))?.message ?? t("error.generic")}
+                {(createMut.error as Error)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
@@ -448,7 +449,7 @@ function ClubsTab() {
             <p className="text-xs text-destructive/80 mb-4">{t("common.irreversible")}</p>
             {Boolean(deleteClubMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {((deleteClubMut.error as Error))?.message ?? t("error.generic")}
+                {(deleteClubMut.error as Error)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -651,7 +652,10 @@ function UsersTab() {
               ).map(([value, label]) => (
                 <button
                   key={value || "all"}
-                  onClick={() => { setRole(value); setPage(0); }}
+                  onClick={() => {
+                    setRole(value);
+                    setPage(0);
+                  }}
                   className={`rounded px-2.5 py-1.5 text-xs transition-colors ${role === value ? "bg-gold text-gold-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {label} <span className="opacity-70">{roleCount(roleCounts.data, value)}</span>
@@ -662,14 +666,20 @@ function UsersTab() {
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(0);
+                }}
                 placeholder={`${t("common.search")}...`}
                 className="text-sm bg-input border border-border rounded pl-7 pr-3 py-1.5 focus:border-gold focus:outline-none"
               />
             </div>
             <select
               value={clubFilter}
-              onChange={(e) => { setClubFilter(e.target.value); setPage(0); }}
+              onChange={(e) => {
+                setClubFilter(e.target.value);
+                setPage(0);
+              }}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("admin.clubs_title")}</option>
@@ -681,7 +691,10 @@ function UsersTab() {
             </select>
             <select
               value={activeOnly}
-              onChange={(e) => { setActiveOnly(e.target.value); setPage(0); }}
+              onChange={(e) => {
+                setActiveOnly(e.target.value);
+                setPage(0);
+              }}
               className="text-sm bg-input border border-border rounded px-2 py-1.5"
             >
               <option value="">{t("admin.users_all")}</option>
@@ -696,7 +709,7 @@ function UsersTab() {
         ) : query.isError ? (
           <EmptyState
             title={t("admin.users_load_error")}
-            hint={((query.error as Error))?.message ?? t("error.api")}
+            hint={(query.error as Error)?.message ?? t("error.api")}
           />
         ) : (query.data?.items ?? []).length === 0 ? (
           <div className="py-8 text-center">
@@ -712,7 +725,9 @@ function UsersTab() {
             <table className="w-full text-sm">
               <thead className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/40">
                 <tr>
-                  <th className="py-2" colSpan={2}>{t("admin.field_fullname")}</th>
+                  <th className="py-2" colSpan={2}>
+                    {t("admin.field_fullname")}
+                  </th>
                   <th>Email</th>
                   <th>{t("common.role")}</th>
                   <th>{t("admin.field_club")}</th>
@@ -737,21 +752,29 @@ function UsersTab() {
                               name={`${u.name} ${u.surname}`}
                               size={32}
                             />
-                            <span className={`font-medium ${expanded ? "text-gold" : ""}`}>{u.name} {u.surname}</span>
+                            <span className={`font-medium ${expanded ? "text-gold" : ""}`}>
+                              {u.name} {u.surname}
+                            </span>
                           </div>
                         </td>
                         <td className="text-xs text-muted-foreground">{u.email}</td>
-                        <td className="text-xs"><RoleBadge role={u.role} /></td>
+                        <td className="text-xs">
+                          <RoleBadge role={u.role} />
+                        </td>
                         <td className="text-xs text-muted-foreground">
                           {u.club ? localizeName(u.club.name) : "—"}
                         </td>
                         <td>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full ${u.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}
+                          >
                             {u.isActive ? t("admin.active") : t("admin.blocked_status")}
                           </span>
                         </td>
                         <td>
-                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180 text-gold" : ""}`} />
+                          <ChevronDown
+                            className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180 text-gold" : ""}`}
+                          />
                         </td>
                       </tr>
                       {expanded && (
@@ -768,16 +791,46 @@ function UsersTab() {
                                 />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs flex-1 min-w-0">
                                   {u.email && <InfoRow label="Email" value={u.email} />}
-                                  {(u as any).phone && <InfoRow label={t("admin.field_phone")} value={(u as any).phone} />}
+                                  {(u as any).phone && (
+                                    <InfoRow
+                                      label={t("admin.field_phone")}
+                                      value={(u as any).phone}
+                                    />
+                                  )}
                                   {(u as any).dateOfBirth && (
-                                    <InfoRow label={t("admin.field_dob")} value={new Date((u as any).dateOfBirth).toLocaleDateString()} />
+                                    <InfoRow
+                                      label={t("admin.field_dob")}
+                                      value={new Date((u as any).dateOfBirth).toLocaleDateString()}
+                                    />
                                   )}
                                   {(u as any).weightKg && (
-                                    <InfoRow label={t("admin.field_weight_kg")} value={`${(u as any).weightKg} ${t("common.kg")}`} />
+                                    <InfoRow
+                                      label={t("admin.field_weight_kg")}
+                                      value={`${(u as any).weightKg} ${t("common.kg")}`}
+                                    />
                                   )}
-                                  {(u as any).gender && <InfoRow label={t("common.gender")} value={(u as any).gender === "MALE" ? t("common.male") : t("common.female")} />}
-                                  {(u as any).beltRank && <InfoRow label={t("admin.field_belt")} value={(u as any).beltRank} />}
-                                  {u.club && <InfoRow label={t("admin.field_club")} value={localizeName(u.club.name)} />}
+                                  {(u as any).gender && (
+                                    <InfoRow
+                                      label={t("common.gender")}
+                                      value={
+                                        (u as any).gender === "MALE"
+                                          ? t("common.male")
+                                          : t("common.female")
+                                      }
+                                    />
+                                  )}
+                                  {(u as any).beltRank && (
+                                    <InfoRow
+                                      label={t("admin.field_belt")}
+                                      value={(u as any).beltRank}
+                                    />
+                                  )}
+                                  {u.club && (
+                                    <InfoRow
+                                      label={t("admin.field_club")}
+                                      value={localizeName(u.club.name)}
+                                    />
+                                  )}
                                 </div>
                               </div>
                               {/* Documents */}
@@ -792,13 +845,30 @@ function UsersTab() {
                               {/* Actions */}
                               <div className="flex flex-row sm:flex-col gap-2 shrink-0">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); toggle.mutate({ id: u.id, active: !u.isActive }); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggle.mutate({ id: u.id, active: !u.isActive });
+                                  }}
                                   className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:border-gold/40 whitespace-nowrap"
                                 >
-                                  {u.isActive ? <><Lock className="h-3 w-3" /> {t("admin.block_user")}</> : <><Unlock className="h-3 w-3" /> {t("admin.unblock_user")}</>}
+                                  {u.isActive ? (
+                                    <>
+                                      <Lock className="h-3 w-3" /> {t("admin.block_user")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Unlock className="h-3 w-3" /> {t("admin.unblock_user")}
+                                    </>
+                                  )}
                                 </button>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteUserModal({ id: u.id, name: `${u.name} ${u.surname}` }); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteUserModal({
+                                      id: u.id,
+                                      name: `${u.name} ${u.surname}`,
+                                    });
+                                  }}
                                   className="inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 whitespace-nowrap"
                                 >
                                   <Trash2 className="h-3 w-3" /> {t("common.delete")}
@@ -818,7 +888,8 @@ function UsersTab() {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm">
             <span className="text-xs text-muted-foreground">
-              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data?.total ?? 0)} / {query.data?.total ?? 0}
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data?.total ?? 0)} /{" "}
+              {query.data?.total ?? 0}
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -828,7 +899,9 @@ function UsersTab() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="px-2 text-xs">{page + 1} / {totalPages}</span>
+              <span className="px-2 text-xs">
+                {page + 1} / {totalPages}
+              </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
@@ -891,7 +964,7 @@ function UsersTab() {
             </h3>
             {Boolean(createMut.error) && (
               <div className="mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded p-2">
-                {((createMut.error as Error))?.message ?? t("error.generic")}
+                {(createMut.error as Error)?.message ?? t("error.generic")}
               </div>
             )}
             <div className="space-y-3">
@@ -1494,7 +1567,9 @@ function AthleteHistory({ athleteId }: { athleteId: string }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2">
-      <span className="text-muted-foreground w-28 shrink-0 text-xs uppercase tracking-widest pt-0.5">{label}</span>
+      <span className="text-muted-foreground w-28 shrink-0 text-xs uppercase tracking-widest pt-0.5">
+        {label}
+      </span>
       <span className="font-medium break-all">{value}</span>
     </div>
   );
@@ -1516,7 +1591,10 @@ function roleCount(data: Record<string, number> | undefined | null, role: string
   return `(${data[role || "ALL"] ?? 0})`;
 }
 
-function placeLabel(place: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function placeLabel(
+  place: number,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   const label = t("admin.place_n", { n: place });
   if (place === 1) return `🥇 ${label}`;
   if (place === 2) return `🥈 ${label}`;
@@ -1537,14 +1615,9 @@ function categoryTitle(cat: Category | null | undefined, t: (k: string) => strin
   return [name, gender, weight].filter(Boolean).join(" · ");
 }
 
-function docTypeLabel(type: string): string {
-  if (type === "BIRTH_CERTIFICATE") return "Туу туралы";
-  if (type === "STUDY_CERTIFICATE") return "Оқу куәлігі";
-  if (type === "COACH_ID") return "Тренер куәлігі";
-  return "Құжат";
-}
-
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

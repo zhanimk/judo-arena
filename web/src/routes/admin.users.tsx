@@ -8,32 +8,11 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { DocumentList } from "@/components/documents/DocumentViewer";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import {
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  FileText,
-  Loader2,
-  Lock,
-  Search,
-  Send,
-  Star,
-  Unlock,
-  X,
-  ZoomIn,
-} from "lucide-react";
+import { Bell, Loader2, Lock, Search, Send, Star, Unlock, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError, mediaUrl } from "@/lib/api";
-import type {
-  AthleteLeaderboardEntry,
-  Club,
-  User,
-  UserRole,
-  RatingEntry,
-  UserDocument,
-} from "@/lib/api-types";
+import type { AthleteLeaderboardEntry, Club, User, UserRole, RatingEntry } from "@/lib/api-types";
 import { Avatar } from "@/components/ui/avatar-image";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useState, useDeferredValue, useEffect } from "react";
@@ -631,7 +610,6 @@ function UserDetailsModal({
   );
 }
 
-
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background/35 p-4">
@@ -676,13 +654,6 @@ function placeLabel(
   if (place === 2) return `🥈 ${label}`;
   if (place === 3) return `🥉 ${label}`;
   return label;
-}
-
-function documentTypeLabel(type: string, t: (k: string) => string): string {
-  if (type === "BIRTH_CERTIFICATE") return t("documents.birth_certificate");
-  if (type === "STUDY_CERTIFICATE") return t("documents.study_certificate");
-  if (type === "COACH_ID") return t("documents.coach_id");
-  return type;
 }
 
 function SendNotificationModal({ user, onClose }: { user: User; onClose: () => void }) {

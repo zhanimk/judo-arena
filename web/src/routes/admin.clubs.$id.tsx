@@ -7,7 +7,18 @@ import {
   EmptyState,
 } from "@/components/dashboard/DashboardShell";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import { ArrowLeft, ChevronDown, Edit2, FileText, Lock, Mail, Phone, Plus, Trash2, Unlock, UserPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Edit2,
+  Lock,
+  Mail,
+  Phone,
+  Plus,
+  Trash2,
+  Unlock,
+  UserPlus,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DocumentList } from "@/components/documents/DocumentViewer";
 import { api, ApiError, mediaUrl } from "@/lib/api";
@@ -193,7 +204,7 @@ function AdminClubDetail() {
         <div className="glass rounded-xl p-6 text-sm text-destructive border border-destructive/30">
           <div className="font-medium mb-1">{t("error.api")}</div>
           <div className="text-muted-foreground">
-            {((query.error as Error))?.message ?? t("admin.club_load_error")}
+            {(query.error as Error)?.message ?? t("admin.club_load_error")}
           </div>
           <button
             onClick={() => query.refetch()}
@@ -292,8 +303,17 @@ function AdminClubDetail() {
         {/* Club info */}
         <Panel title={t("admin.club_about")}>
           <div className="space-y-2 text-sm">
-            <Field label={t("admin.club_name_ru")} value={(typeof c.name === "object" && c.name !== null ? c.name.ru : undefined) ?? localizeName(c.name)} />
-            <Field label={t("admin.club_name_kk")} value={(typeof c.name === "object" && c.name !== null ? c.name.kk : undefined) ?? "—"} />
+            <Field
+              label={t("admin.club_name_ru")}
+              value={
+                (typeof c.name === "object" && c.name !== null ? c.name.ru : undefined) ??
+                localizeName(c.name)
+              }
+            />
+            <Field
+              label={t("admin.club_name_kk")}
+              value={(typeof c.name === "object" && c.name !== null ? c.name.kk : undefined) ?? "—"}
+            />
             <Field label={t("admin.club_short_name")} value={c.shortName ?? "—"} />
             <Field label={t("admin.club_city")} value={`${c.city}, ${c.country}`} />
             <Field
@@ -337,7 +357,9 @@ function AdminClubDetail() {
             <EmptyState title={t("admin.no_coaches")} hint={t("admin.add_btn_hint")} />
           ) : (
             <ul className="space-y-2 text-sm">
-              {coaches.map((m: User) => <MemberCard key={m.id} member={m} t={t} />)}
+              {coaches.map((m: User) => (
+                <MemberCard key={m.id} member={m} t={t} />
+              ))}
             </ul>
           )}
         </Panel>
@@ -362,7 +384,9 @@ function AdminClubDetail() {
             <EmptyState title={t("admin.no_athletes")} hint={t("admin.add_btn_hint")} />
           ) : (
             <ul className="space-y-2 text-sm max-h-[600px] overflow-y-auto">
-              {athletes.map((m: User) => <MemberCard key={m.id} member={m} t={t} />)}
+              {athletes.map((m: User) => (
+                <MemberCard key={m.id} member={m} t={t} />
+              ))}
             </ul>
           )}
         </Panel>
@@ -722,7 +746,9 @@ function AdminClubDetail() {
           <p className="text-sm text-muted-foreground">
             {t("admin.delete_group_confirm", { name: deleteGroup.name })}
           </p>
-          {Boolean(deleteGroupMut.error) && <ErrBox msg={(deleteGroupMut.error as Error)?.message} />}
+          {Boolean(deleteGroupMut.error) && (
+            <ErrBox msg={(deleteGroupMut.error as Error)?.message} />
+          )}
           <ModalFooter
             onCancel={() => setDeleteGroup(null)}
             onConfirm={() => deleteGroupMut.mutate()}
@@ -785,7 +811,14 @@ function Modal({
   );
 }
 
-function ModalFooter({ onCancel, onConfirm, loading, disabled, label, danger }: {
+function ModalFooter({
+  onCancel,
+  onConfirm,
+  loading,
+  disabled,
+  label,
+  danger,
+}: {
   onCancel: () => void;
   onConfirm: () => void;
   loading: boolean;
@@ -831,7 +864,17 @@ function Field2({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-function StatCard({ label, value, hint, accent }: { label: string; value: string | number; hint?: string; accent?: boolean }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  accent?: boolean;
+}) {
   return (
     <div className={`glass rounded-xl p-5 ${accent ? "border-gold/40" : ""}`}>
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -852,17 +895,12 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
-}
-
-function docTypeLabel(type: string): string {
-  if (type === "BIRTH_CERTIFICATE") return "Туу туралы";
-  if (type === "STUDY_CERTIFICATE") return "Оқу куәлігі";
-  if (type === "COACH_ID") return "Тренер куәлігі";
-  return "Құжат";
 }
 
 function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }) {
@@ -870,7 +908,9 @@ function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }
   const docs: UserDocument[] = (m as any).documents ?? [];
 
   return (
-    <li className={`glass rounded-lg overflow-hidden transition-colors ${open ? "border border-gold/30" : ""}`}>
+    <li
+      className={`glass rounded-lg overflow-hidden transition-colors ${open ? "border border-gold/30" : ""}`}
+    >
       {/* Header row — always visible */}
       <button
         type="button"
@@ -884,21 +924,37 @@ function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }
           className="shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate">{m.name} {m.surname}</div>
+          <div className="font-medium truncate">
+            {m.name} {m.surname}
+          </div>
           <div className="text-xs text-muted-foreground truncate flex items-center gap-2">
-            {m.gender === "MALE" ? t("common.male") : m.gender === "FEMALE" ? t("common.female") : null}
-            {(m as any).weightKg ? <span>· {(m as any).weightKg} {t("common.kg")}</span> : null}
+            {m.gender === "MALE"
+              ? t("common.male")
+              : m.gender === "FEMALE"
+                ? t("common.female")
+                : null}
+            {(m as any).weightKg ? (
+              <span>
+                · {(m as any).weightKg} {t("common.kg")}
+              </span>
+            ) : null}
             {(m as any).beltRank ? <span>· {(m as any).beltRank}</span> : null}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {(m as any).totalPoints ? (
-            <span className="font-display font-bold text-gold text-sm">{Math.round((m as any).totalPoints)}</span>
+            <span className="font-display font-bold text-gold text-sm">
+              {Math.round((m as any).totalPoints)}
+            </span>
           ) : null}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-destructive/15 text-destructive"}`}
+          >
             {m.isActive ? t("admin.active") : t("admin.blocked_status")}
           </span>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180 text-gold" : ""}`} />
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180 text-gold" : ""}`}
+          />
         </div>
       </button>
 
@@ -919,7 +975,8 @@ function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }
             )}
             {(m as any).dateOfBirth && (
               <div className="text-muted-foreground">
-                {t("admin.born_label")}: {new Date((m as any).dateOfBirth).toLocaleDateString("kk-KZ")}
+                {t("admin.born_label")}:{" "}
+                {new Date((m as any).dateOfBirth).toLocaleDateString("kk-KZ")}
               </div>
             )}
             {(m as any).nameLatin && (m as any).surnameLatin && (
@@ -940,7 +997,9 @@ function MemberCard({ member: m, t }: { member: User; t: (k: string) => string }
               </div>
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground italic">{t("documents.no_documents")}</div>
+            <div className="text-xs text-muted-foreground italic">
+              {t("documents.no_documents")}
+            </div>
           )}
         </div>
       )}

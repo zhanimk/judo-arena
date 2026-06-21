@@ -13,7 +13,6 @@ import {
   XCircle,
   AlertTriangle,
   X,
-  Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

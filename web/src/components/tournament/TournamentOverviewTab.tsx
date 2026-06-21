@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Calendar,
   CheckCircle2,
-  Clock,
   CreditCard,
   FileText,
   ImageIcon,
@@ -19,7 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Panel } from "@/components/dashboard/DashboardShell";
 import { api, ApiError, mediaUrl } from "@/lib/api";
-import { Input, localizeName, formatWeighIn, toDateTimeLocal, mapEmbedUrl } from "./shared";
+import { Input, localizeName, toDateTimeLocal } from "./shared";
 import { MapLocationPicker } from "./MapLocationPicker";
 
 function formatSaveError(error: unknown, fallback: string): string {

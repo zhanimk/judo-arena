@@ -64,6 +64,7 @@ import {
   bulkImportAthletes,
   updateAthlete,
   detachAthleteFromClub,
+  getClubAnalytics,
 } from "../services/club.service.js";
 import {
   adminOnly,
@@ -121,14 +122,6 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteClub(request.user!.sub, request.params.id);
       return reply.code(204).send();
-    },
-  );
-
-  app.get<{ Params: { id: string } }>(
-    "/:id/analytics",
-    coachOrAdmin,
-    async (request: FastifyRequest<{ Params: { id: string } }>) => {
-      return getClubAnalytics(request.user!.sub, request.params.id);
     },
   );
 
