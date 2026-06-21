@@ -17,7 +17,14 @@ import {
   afterEach,
   vi,
 } from "vitest";
-import { db, cleanup, makeAdmin, makeClub, requireDb } from "../helpers/db.js";
+import {
+  db,
+  cleanup,
+  makeAdmin,
+  makeClub,
+  requireDb,
+  closeConnections,
+} from "../helpers/db.js";
 
 // ── External side-effects that don't belong in unit tests ─────────────────
 // Email sending is out of scope — we verify DB state, not SMTP.
@@ -46,7 +53,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await db.$disconnect();
+  await closeConnections();
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────

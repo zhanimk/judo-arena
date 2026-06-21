@@ -24,6 +24,7 @@ import {
   makeTournament,
   makeCategory,
   requireDb,
+  closeConnections,
 } from "../helpers/db.js";
 
 vi.mock("../../src/services/notification.service.js", () => ({
@@ -51,7 +52,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await db.$disconnect();
+  await closeConnections();
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────
