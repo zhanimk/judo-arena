@@ -834,14 +834,12 @@ function UsersTab() {
                                 </div>
                               </div>
                               {/* Documents */}
-                              {docs.length > 0 && (
-                                <div className="shrink-0 max-w-sm">
-                                  <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
-                                    {t("documents.title")}
-                                  </div>
-                                  <DocumentList documents={docs} />
+                              <div className="shrink-0 max-w-sm">
+                                <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                                  {t("documents.title")}
                                 </div>
-                              )}
+                                <DocumentList documents={docs} />
+                              </div>
                               {/* Actions */}
                               <div className="flex flex-row sm:flex-col gap-2 shrink-0">
                                 <button
