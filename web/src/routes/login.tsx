@@ -1,6 +1,6 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
 import { api, ApiError, setAccessToken } from "@/lib/api";
@@ -227,8 +227,7 @@ function Login() {
               <img src={emblem} alt="" className="h-full w-full object-cover" />
             </span>
             <span className="truncate font-display text-sm font-bold sm:text-[15px]">
-              JUDO<span className="text-gradient-gold">·</span>CHILD
-              <span className="text-gradient-gold">·</span>LEAGUE
+              JUDO<span className="text-gradient-gold">·</span>ARENA
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">

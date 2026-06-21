@@ -63,7 +63,7 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
           <div className="absolute inset-3 rounded-full border border-gold/35" />
           <div className="absolute inset-6 rounded-full bg-card shadow-elegant" />
           <img
-            src="/main-logo.png"
+            src="/jcl-logo.jpg"
             alt=""
             className="absolute inset-7 h-14 w-14 rounded-full object-cover shadow-gold"
           />
@@ -95,7 +95,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       <div className="absolute inset-0 grid-bg opacity-25" />
       <div className="relative max-w-md rounded-2xl border border-gold/25 bg-card/70 p-8 text-center shadow-elegant backdrop-blur">
         <img
-          src="/main-logo.png"
+          src="/jcl-logo.jpg"
           alt=""
           className="mx-auto mb-5 h-16 w-16 rounded-full object-cover"
         />
@@ -169,8 +169,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       // PWA
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/main-logo.png", type: "image/svg+xml", sizes: "192x192 512x512" },
-      { rel: "apple-touch-icon", href: "/main-logo.png", sizes: "192x192 512x512" },
+      { rel: "icon", href: "/jcl-logo.jpg", type: "image/svg+xml", sizes: "192x192 512x512" },
+      { rel: "apple-touch-icon", href: "/jcl-logo.jpg", sizes: "192x192 512x512" },
     ],
   }),
   shellComponent: RootShell,
@@ -268,7 +268,7 @@ function SplashScreen() {
           <span className="absolute inset-0 rounded-full conic-gold opacity-80 blur-[14px]" />
           <span className="absolute inset-[3px] rounded-full bg-card" />
           <img
-            src="/main-logo.png"
+            src="/jcl-logo.jpg"
             alt=""
             className="relative h-20 w-20 rounded-full object-cover shadow-gold"
           />
