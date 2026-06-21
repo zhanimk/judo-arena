@@ -59,7 +59,16 @@ function CoachProfile() {
       toast.success(t("profile.saved"));
     },
     onError: (e: unknown) => {
-      const msg = e instanceof ApiError ? e.message : t("profile.save_error");
+      let msg = t("profile.save_error");
+      if (e instanceof ApiError) {
+        msg = e.message;
+        if (Array.isArray(e.details) && e.details.length > 0) {
+          const issues = e.details
+            .map((issue: any) => `${t(`fields.${issue.path}`, issue.path)}: ${issue.message}`)
+            .join(", ");
+          msg = `${msg}: ${issues}`;
+        }
+      }
       setError(msg);
       toast.error(msg);
     },
@@ -128,23 +137,8 @@ function CoachProfile() {
               label={t("profile.phone")}
               value={form.phone}
               onChange={(phone) => setForm({ ...form, phone })}
+              required
             />
-            <div>
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                {t("profile.language")}
-              </label>
-              <select
-                value={form.preferredLocale}
-                onChange={(e) =>
-                  setForm({ ...form, preferredLocale: e.target.value as "kk" | "ru" | "en" })
-                }
-                className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-              >
-                <option value="kk">{t("profile.lang_kk")}</option>
-                <option value="ru">{t("profile.lang_ru")}</option>
-                <option value="en">{t("profile.lang_en")}</option>
-              </select>
-            </div>
             <div className="sm:col-span-2">
               <label className="text-xs uppercase tracking-widest text-muted-foreground">
                 {t("profile.photo")}
@@ -287,7 +281,9 @@ function DocumentUploadRow({
                 className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{document.originalName || t("documents.open_file")}</span>
+                <span className="truncate">
+                  {document.originalName || t("documents.open_file")}
+                </span>
               </button>
               {showViewer && (
                 <DocumentViewer

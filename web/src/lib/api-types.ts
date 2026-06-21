@@ -56,6 +56,11 @@ export interface User {
   preferredLocale: Locale;
   avatarUrl?: string | null;
   phone?: string | null;
+  city?: string | null;
+  education?: string | null;
+  coachCategory?: string | null;
+  coachExperienceYears?: number | null;
+  coachTitle?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   totpEnabled?: boolean;
@@ -91,7 +96,13 @@ export interface Club {
   shortName?: string | null;
   city: string;
   country: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  instagram?: string | null;
   logoUrl?: string | null;
+  coverUrl?: string | null;
+  galleryUrls?: string[] | null;
   description?: LocalizedName;
   isActive: boolean;
   isBlocked: boolean;
@@ -434,6 +445,20 @@ export interface TatamiSession {
   stats?: { total: number; completed: number; pending: number };
 }
 
+export interface ClubAnalytics {
+  totalAthletes: number;
+  medals: { gold: number; silver: number; bronze: number; total: number };
+  averageRating: number;
+  totalPoints: number;
+  topAthletes: Array<{
+    id: string;
+    name: string;
+    surname: string;
+    avatarUrl: string | null;
+    points: number;
+  }>;
+}
+
 // ── Paginated responses ───────────────────────────────────────────────────────
 
 export interface Paginated<T> {
@@ -456,6 +481,11 @@ export interface UpdateProfileInput {
   weightKg?: number | null;
   beltRank?: string | null;
   phone?: string | null;
+  city?: string | null;
+  education?: string | null;
+  coachCategory?: string | null;
+  coachExperienceYears?: number | null;
+  coachTitle?: string | null;
   preferredLocale?: Locale;
   avatarUrl?: string | null;
   currentPassword?: string;
@@ -467,8 +497,14 @@ export interface CreateClubInput {
   shortName?: string | null;
   city: string;
   country?: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  instagram?: string | null;
   description?: LocalizedName;
   logoUrl?: string | null;
+  coverUrl?: string | null;
+  galleryUrls?: string[] | null;
 }
 
 export type UpdateClubInput = Partial<CreateClubInput>;

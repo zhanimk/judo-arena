@@ -36,12 +36,18 @@ const nameField = z
   .string()
   .min(1)
   .max(64)
-  .regex(/^[\p{L}\s'-]+$/u, "Допускаются только буквы, пробел, дефис, апостроф");
+  .regex(
+    /^[\p{L}\s'-]+$/u,
+    "Допускаются только буквы, пробел, дефис, апостроф",
+  );
 
 const nameLatinField = z
   .string()
   .max(64)
-  .regex(/^[A-Za-z\s'-]*$/, "Допускаются только латинские буквы, пробел, дефис, апостроф")
+  .regex(
+    /^[A-Za-z\s'-]*$/,
+    "Допускаются только латинские буквы, пробел, дефис, апостроф",
+  )
   .optional();
 
 const dateOfBirthField = z.coerce
@@ -108,10 +114,19 @@ export const updateMeProfileSchema = z
     phone: z
       .string()
       .regex(/^\+?[1-9]\d{6,14}$/, "Некорректный формат телефона")
-      .nullable()
       .optional(),
     avatarUrl: imageUrlSchema.nullable().optional(),
     preferredLocale: z.enum(["ru", "kk", "en"]).optional(),
+    city: z.string().max(100).nullable().optional(),
+    education: z.string().max(200).nullable().optional(),
+    coachCategory: z.string().max(100).nullable().optional(),
+    coachExperienceYears: z.coerce
+      .number()
+      .min(0)
+      .max(100)
+      .nullable()
+      .optional(),
+    coachTitle: z.string().max(100).nullable().optional(),
   })
   .strict();
 

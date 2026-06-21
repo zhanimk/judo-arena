@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { ReactNode, useState } from "react";
-const emblem = "/main-logo.png";
+const emblem = "/jcl-logo.jpg";
 import {
   LogOut,
   Loader2,
@@ -149,15 +149,17 @@ export function DashboardShell({
               to={dashboardRoot(user?.role)}
               className="group flex h-16 items-center gap-3 border-b border-border/40 px-6 transition-colors hover:bg-gold/5"
             >
-              <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md ring-1 ring-gold/30 transition-all group-hover:ring-gold/60 group-hover:scale-105">
-                <img src="/main-logo.png" alt="JCL" className="h-full w-full object-cover" />
+              <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-gold/30 bg-white shadow-gold transition-all group-hover:ring-gold/60 group-hover:scale-105">
+                <img src="/jcl-logo.jpg" alt="JCL" className="h-full w-full object-cover" />
               </span>
-              <span className="font-display text-[16px] font-bold leading-none tracking-wide transition-colors group-hover:text-gold">
-                JUDO<span className="text-gradient-gold">·</span>ARENA
-                <span className="mt-1.5 block text-[9px] uppercase tracking-widest text-muted-foreground/80">
+              <div className="flex flex-col">
+                <span className="font-display text-sm font-bold tracking-tight">
+                  JUDO<span className="text-gradient-gold">·</span>ARENA
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
                   Management
                 </span>
-              </span>
+              </div>
             </Link>
           )}
 
@@ -435,7 +437,9 @@ export function Panel({
     <section className={`glass rounded-xl p-4 sm:p-6${className ? ` ${className}` : ""}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold">{title}</h2>
-        {action && <div className="shrink-0 max-w-full overflow-x-auto [scrollbar-width:none]">{action}</div>}
+        {action && (
+          <div className="shrink-0 max-w-full overflow-x-auto [scrollbar-width:none]">{action}</div>
+        )}
       </div>
       {children}
     </section>

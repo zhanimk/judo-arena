@@ -317,6 +317,7 @@ import type {
   WeightClassLeaderboardEntry,
   FederationAnalytics,
   PaymentInitResult,
+  ClubAnalytics,
 } from "./api-types";
 
 export const api = {
@@ -462,6 +463,7 @@ export const api = {
       return request<Paginated<Club>>(`/api/clubs${q}`);
     },
     get: (id: string) => request<Club>(`/api/clubs/${id}`),
+    analytics: (id: string) => request<ClubAnalytics>(`/api/clubs/${id}/analytics`),
     create: (data: CreateClubInput) => request<Club>("/api/clubs", { method: "POST", json: data }),
     update: (id: string, data: UpdateClubInput) =>
       request<Club>(`/api/clubs/${id}`, { method: "PATCH", json: data }),

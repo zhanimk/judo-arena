@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertTriangle,
   X,
+  Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -139,7 +140,8 @@ function CoachOnboarding() {
     if (!phone.trim()) return;
     setSavingPhone(true);
     try {
-      await api.auth.updateProfile({ phone: phone.trim() });
+      const cleanPhone = phone.replace(/\s+/g, "");
+      await api.auth.updateProfile({ phone: cleanPhone });
       await refreshMe();
     } catch {
       // ignore — phone saved locally

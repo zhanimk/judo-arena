@@ -28,7 +28,7 @@ import { ThemeToggle } from "@/components/site/ThemeToggle";
 import type { Locale } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Judo-Arena — вход и регистрация" }] }),
@@ -72,6 +72,7 @@ function Login() {
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
@@ -122,6 +123,10 @@ function Login() {
     }
     if (mode === "register" && !isPasswordStrong(password)) {
       setError(t("auth.pwd_strength_weak"));
+      return;
+    }
+    if (mode === "register" && !termsAccepted) {
+      setError(t("auth.accept_terms_error", "Вы должны согласиться с условиями платформы"));
       return;
     }
     if (mode === "register" && password !== confirmPassword) {
@@ -776,11 +781,51 @@ function Login() {
                 </div>
               )}
 
+              {mode === "register" && (
+                <label className="flex items-start gap-3 mt-2 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="h-5 w-5 rounded border border-border/60 bg-background/50 transition-all peer-checked:border-gold peer-checked:bg-gold/15 group-hover:border-gold/50" />
+                    <svg
+                      className="absolute h-3 w-3 text-gold opacity-0 transition-opacity peer-checked:opacity-100"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-sm text-muted-foreground leading-snug">
+                    {t("auth.accept_terms_prefix", "Я соглашаюсь с")}{" "}
+                    <a
+                      href="#"
+                      className="text-foreground hover:text-gold transition-colors underline underline-offset-2"
+                    >
+                      {t("auth.privacy_policy", "Политикой конфиденциальности")}
+                    </a>{" "}
+                    {t("auth.and", "и")}{" "}
+                    <a
+                      href="#"
+                      className="text-foreground hover:text-gold transition-colors underline underline-offset-2"
+                    >
+                      {t("auth.terms_of_use", "Условиями использования")}
+                    </a>
+                    .
+                  </span>
+                </label>
+              )}
+
               {mode === "register" && !isDev && (
                 <div className="flex justify-center mt-2">
-                  <Turnstile 
-                    siteKey="1x00000000000000000000AA" 
-                    onSuccess={(token) => setTurnstileToken(token)} 
+                  <Turnstile
+                    siteKey="1x00000000000000000000AA"
+                    onSuccess={(token) => setTurnstileToken(token)}
                   />
                 </div>
               )}

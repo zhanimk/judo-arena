@@ -1,7 +1,18 @@
 {
   "app": {
     "name": "JUDO-ARENA",
-    "tagline": "Цифровая арена дзюдо"
+    "tagline": "Цифровая арена дзюдо",
+    "coach_analytics": {
+      "title": "Аналитика клуба",
+      "total_medals": "Всего медалей",
+      "average_rating": "Средний рейтинг",
+      "total_points": "Сумма очков клуба",
+      "top_athletes": "Топ-10 спортсменов",
+      "no_data": "Пока нет данных",
+      "no_data_hint": "Ваши спортсмены еще не участвовали в турнирах или не заработали очки.",
+      "points": "Очков",
+      "medals_distribution": "Распределение медалей"
+    }
   },
   "nav": {
     "home": "Главная",
@@ -40,6 +51,7 @@
     "audit": "Аудит",
     "settings": "Настройки",
     "notifications": "Уведомления",
+    "analytics": "Аналитика",
     "live_matches": "Live матчи",
     "ratings": "Рейтинг",
     "reports": "Отчёты",
@@ -227,6 +239,11 @@
     "hero_coach_line_1": "Создай",
     "hero_coach_line_2": "команду",
     "hero_subtitle": "Современная цифровая платформа для турниров по дзюдо в Казахстане",
+    "accept_terms_prefix": "Я соглашаюсь с",
+    "privacy_policy": "Политикой конфиденциальности",
+    "and": "и",
+    "terms_of_use": "Условиями использования",
+    "accept_terms_error": "Вы должны согласиться с условиями платформы",
     "stat_tournaments": "Турниры",
     "stat_athletes": "Спортсмены",
     "dan_rank": "Дан-рейтинг",
@@ -1183,6 +1200,11 @@
     "backup_last": "Последняя: {{filename}} ({{size}} МБ)"
   },
   "profile": {
+    "city": "Город",
+    "education": "Образование",
+    "coach_category": "Категория",
+    "coach_title": "Спортивное звание",
+    "experience_years": "Стаж работы (лет)",
     "title": "Мой профиль",
     "personal_info": "Личные данные",
     "preview": "Внешний вид",
@@ -1690,6 +1712,19 @@
     "import_errors": "Ошибки",
     "import_row": "Строка",
     "readonly_hint": "Только владелец клуба может вносить изменения",
+    "section_basic": "Основная информация",
+    "section_contacts": "Контакты и Местоположение",
+    "section_media": "Медиа",
+    "address_label": "Адрес зала",
+    "phone_label": "Телефон",
+    "email_label": "Email",
+    "instagram_label": "Instagram",
+    "cover_label": "Обложка профиля",
+    "gallery_label": "Галерея (ссылки через запятую)",
+    "gallery_title": "Галерея зала",
+    "description_preview_hint": "Описание клуба еще не заполнено.",
+    "change_logo": "Заменить лого",
+    "change_photo": "Заменить фото",
     "name_label": "Название клуба",
     "short_name": "Краткое название",
     "logo_label": "Логотип",

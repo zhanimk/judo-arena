@@ -76,6 +76,14 @@ import {
 export async function clubRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
+  app.get<{ Params: { id: string } }>(
+    "/:id/analytics",
+    coachOrAdmin,
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getClubAnalytics(request.user!.sub, request.params.id);
+    },
+  );
+
   // ============================================================
   // КЛУБЫ
   // ============================================================
@@ -92,15 +100,11 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
-    "/",
-    coachOrAdmin,
-    async (request, reply) => {
-      const input = createClubSchema.parse(request.body);
-      const club = await createClub(request.user!.sub, input);
-      return reply.code(201).send(club);
-    },
-  );
+  app.post("/", coachOrAdmin, async (request, reply) => {
+    const input = createClubSchema.parse(request.body);
+    const club = await createClub(request.user!.sub, input);
+    return reply.code(201).send(club);
+  });
 
   app.patch<{ Params: { id: string } }>(
     "/:id",
@@ -117,6 +121,14 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
       await deleteClub(request.user!.sub, request.params.id);
       return reply.code(204).send();
+    },
+  );
+
+  app.get<{ Params: { id: string } }>(
+    "/:id/analytics",
+    coachOrAdmin,
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getClubAnalytics(request.user!.sub, request.params.id);
     },
   );
 
@@ -174,15 +186,19 @@ export async function clubRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string }; Body: { rows?: unknown[] } }>(
     "/:id/athletes/bulk-import",
     coachOrAdmin,
-    async (request: FastifyRequest<{ Params: { id: string }; Body: { rows?: unknown[] } }>, reply) => {
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { rows?: unknown[] };
+      }>,
+      reply,
+    ) => {
       const { rows } = request.body ?? {};
       if (!Array.isArray(rows)) {
-        return reply
-          .code(400)
-          .send({
-            error: "INVALID_BODY",
-            message: "rows должен быть массивом",
-          });
+        return reply.code(400).send({
+          error: "INVALID_BODY",
+          message: "rows должен быть массивом",
+        });
       }
       const result = await bulkImportAthletes(
         request.user!.sub,
@@ -256,10 +272,8 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // Спортсмен: посмотреть свои заявки
-  app.get(
-    "/athlete/join-requests",
-    athleteOnly,
-    async (request) => listMyJoinRequests(request.user!.sub),
+  app.get("/athlete/join-requests", athleteOnly, async (request) =>
+    listMyJoinRequests(request.user!.sub),
   );
 
   // Спортсмен: отозвать заявку
@@ -276,10 +290,8 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // Тренер: посмотреть входящие PENDING заявки своего клуба
-  app.get(
-    "/coach/join-requests",
-    coachOnly,
-    async (request) => listPendingRequests(request.user!.sub),
+  app.get("/coach/join-requests", coachOnly, async (request) =>
+    listPendingRequests(request.user!.sub),
   );
 
   // Тренер: одобрить или отклонить заявку
@@ -308,10 +320,8 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
-    "/coach/club-join-requests",
-    coachOnly,
-    async (request) => listMyCoachJoinRequests(request.user!.sub),
+  app.get("/coach/club-join-requests", coachOnly, async (request) =>
+    listMyCoachJoinRequests(request.user!.sub),
   );
 
   app.delete<{ Params: { id: string } }>(
@@ -322,10 +332,8 @@ export async function clubAdjacentRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get(
-    "/coach/club-join-requests/incoming",
-    coachOnly,
-    async (request) => listPendingCoachRequests(request.user!.sub),
+  app.get("/coach/club-join-requests/incoming", coachOnly, async (request) =>
+    listPendingCoachRequests(request.user!.sub),
   );
 
   app.post<{ Params: { id: string } }>(

@@ -446,14 +446,28 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const document = await prisma.userDocument.findUnique({
         where: { id: request.params.id },
+        include: { user: { select: { clubId: true } } },
       });
       if (!document) {
         return reply.code(404).send({ error: "DOCUMENT_NOT_FOUND" });
       }
-      if (
-        document.userId !== request.user!.sub &&
-        request.user!.role !== "ADMIN"
-      ) {
+
+      let isAllowed = false;
+      if (document.userId === request.user!.sub) {
+        isAllowed = true;
+      } else if (request.user!.role === "ADMIN") {
+        isAllowed = true;
+      } else if (request.user!.role === "COACH") {
+        const coach = await prisma.user.findUnique({
+          where: { id: request.user!.sub },
+          select: { clubId: true },
+        });
+        if (coach?.clubId && document.user.clubId === coach.clubId) {
+          isAllowed = true;
+        }
+      }
+
+      if (!isAllowed) {
         return reply.code(403).send({ error: "FORBIDDEN" });
       }
 

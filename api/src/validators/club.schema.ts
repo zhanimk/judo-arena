@@ -42,7 +42,13 @@ export const createClubSchema = z
     shortName: z.string().min(2).max(50).optional(),
     city: z.string().min(1).max(100),
     country: z.string().length(2).default("KZ"),
+    address: z.string().max(255).optional(),
+    phone: z.string().max(50).optional(),
+    email: z.string().email().max(255).optional(),
+    instagram: z.string().max(100).optional(),
     logoUrl: imageUrlSchema.optional(),
+    coverUrl: imageUrlSchema.optional(),
+    galleryUrls: z.array(imageUrlSchema).max(20).optional(),
     description: i18nStringOptional,
   })
   .strict();

@@ -32,17 +32,57 @@ type UserDocumentType = "BIRTH_CERTIFICATE" | "STUDY_CERTIFICATE" | "COACH_ID";
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 const BELT_RANKS = [
-  { value: "6 КЮ", labelKey: "athlete_dashboard.belt_white", gradient: "from-zinc-100 to-zinc-300" },
-  { value: "5 КЮ", labelKey: "athlete_dashboard.belt_yellow", gradient: "from-yellow-300 to-yellow-500" },
-  { value: "4 КЮ", labelKey: "athlete_dashboard.belt_orange", gradient: "from-orange-400 to-orange-600" },
-  { value: "3 КЮ", labelKey: "athlete_dashboard.belt_green", gradient: "from-green-500 to-emerald-700" },
+  {
+    value: "6 КЮ",
+    labelKey: "athlete_dashboard.belt_white",
+    gradient: "from-zinc-100 to-zinc-300",
+  },
+  {
+    value: "5 КЮ",
+    labelKey: "athlete_dashboard.belt_yellow",
+    gradient: "from-yellow-300 to-yellow-500",
+  },
+  {
+    value: "4 КЮ",
+    labelKey: "athlete_dashboard.belt_orange",
+    gradient: "from-orange-400 to-orange-600",
+  },
+  {
+    value: "3 КЮ",
+    labelKey: "athlete_dashboard.belt_green",
+    gradient: "from-green-500 to-emerald-700",
+  },
   { value: "2 КЮ", labelKey: "athlete_dashboard.belt_blue", gradient: "from-sky-500 to-blue-700" },
-  { value: "1 КЮ", labelKey: "athlete_dashboard.belt_brown", gradient: "from-amber-700 to-amber-950" },
-  { value: "1 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
-  { value: "2 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
-  { value: "3 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
-  { value: "4 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
-  { value: "5 ДАН", labelKey: "athlete_dashboard.belt_black", gradient: "from-gray-800 to-gray-950" },
+  {
+    value: "1 КЮ",
+    labelKey: "athlete_dashboard.belt_brown",
+    gradient: "from-amber-700 to-amber-950",
+  },
+  {
+    value: "1 ДАН",
+    labelKey: "athlete_dashboard.belt_black",
+    gradient: "from-gray-800 to-gray-950",
+  },
+  {
+    value: "2 ДАН",
+    labelKey: "athlete_dashboard.belt_black",
+    gradient: "from-gray-800 to-gray-950",
+  },
+  {
+    value: "3 ДАН",
+    labelKey: "athlete_dashboard.belt_black",
+    gradient: "from-gray-800 to-gray-950",
+  },
+  {
+    value: "4 ДАН",
+    labelKey: "athlete_dashboard.belt_black",
+    gradient: "from-gray-800 to-gray-950",
+  },
+  {
+    value: "5 ДАН",
+    labelKey: "athlete_dashboard.belt_black",
+    gradient: "from-gray-800 to-gray-950",
+  },
 ];
 
 // Normalize any belt rank string to our canonical form "N КЮ" / "N ДАН"
@@ -169,7 +209,13 @@ function Profile() {
   const { user, refreshMe } = useAuth();
   const [editing, setEditing] = useState(false);
 
-  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
+  const {
+    isSupported: pushSupported,
+    isSubscribed: pushSubscribed,
+    isLoading: pushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+  } = usePushNotifications();
 
   const statsQuery = useQuery({
     queryKey: ["athlete-stats", user?.id],
@@ -264,24 +310,34 @@ function Profile() {
                 width={80}
               />
               {beltEntry && (
-                <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-b ${beltEntry.gradient} border-2 border-card shadow`} />
+                <div
+                  className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-b ${beltEntry.gradient} border-2 border-card shadow`}
+                />
               )}
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-display font-bold leading-tight">{fullName}</h2>
               {(user.nameLatin || user.surnameLatin) && (
-                <p className="text-sm text-muted-foreground mt-0.5">{user.nameLatin} {user.surnameLatin}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {user.nameLatin} {user.surnameLatin}
+                </p>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {user.beltRank && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium">
-                    {beltEntry && <span className={`h-2.5 w-2.5 rounded-full bg-gradient-to-b ${beltEntry.gradient} shrink-0`} />}
+                    {beltEntry && (
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full bg-gradient-to-b ${beltEntry.gradient} shrink-0`}
+                      />
+                    )}
                     {user.beltRank}
                   </span>
                 )}
                 {user.gender && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium">
-                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full shrink-0 ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`}
+                    />
                     {user.gender === "MALE" ? t("common.male") : t("common.female")}
                   </span>
                 )}
@@ -320,288 +376,308 @@ function Profile() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[2fr_1fr] lg:items-start">
-        <Panel
-          title={t("profile.personal_info")}
-        >
-          {error && (
-            <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          {editing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                saveProfile.mutate();
-              }}
-              className="grid gap-3 grid-cols-1 sm:grid-cols-2"
-            >
-              <Input
-                label={t("common.name")}
-                value={form.name}
-                onChange={(v) => setForm({ ...form, name: v })}
-                required
-              />
-              <Input
-                label={t("common.surname")}
-                value={form.surname}
-                onChange={(v) => setForm({ ...form, surname: v })}
-                required
-              />
-              <Input
-                label={t("profile.name_latin")}
-                value={form.nameLatin}
-                onChange={(v) => setForm({ ...form, nameLatin: v })}
-              />
-              <Input
-                label={t("profile.surname_latin")}
-                value={form.surnameLatin}
-                onChange={(v) => setForm({ ...form, surnameLatin: v })}
-              />
-              <Input
-                label={t("auth.date_of_birth")}
-                type="date"
-                value={form.dateOfBirth}
-                onChange={(v) => setForm({ ...form, dateOfBirth: v })}
-              />
-              <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                  {t("common.gender")}
-                </label>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className={`h-9 w-2.5 shrink-0 rounded-full ${form.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
-                  <select
-                    value={form.gender}
-                    onChange={(e) =>
-                      setForm({ ...form, gender: e.target.value as "MALE" | "FEMALE" })
-                    }
-                    className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
-                  >
-                    <option value="MALE">{t("common.male")}</option>
-                    <option value="FEMALE">{t("common.female")}</option>
-                  </select>
-                </div>
+          <Panel title={t("profile.personal_info")}>
+            {error && (
+              <div className="mb-4 rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
               </div>
-              <Input
-                label={t("profile.weight_kg")}
-                type="number"
-                step="0.1"
-                min="1"
-                max="300"
-                value={form.weightKg}
-                onChange={(v) => setForm({ ...form, weightKg: v })}
-              />
-              <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                  {t("common.belt")}
-                </label>
-                <div className="mt-1.5 flex items-center gap-2">
-                  {form.beltRank && (() => {
-                    const belt = BELT_RANKS.find((b) => b.value === form.beltRank);
-                    return belt ? (
-                      <div className={`h-9 w-2.5 shrink-0 rounded-full bg-gradient-to-b ${belt.gradient}`} />
-                    ) : null;
-                  })()}
-                  <select
-                    value={form.beltRank}
-                    onChange={(e) => setForm({ ...form, beltRank: e.target.value })}
-                    className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
-                  >
-                    <option value="">{t("profile.belt_placeholder")}</option>
-                    {BELT_RANKS.map((b) => (
-                      <option key={b.value} value={b.value}>
-                        {b.value} — {t(b.labelKey)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <Input
-                label={t("profile.phone")}
-                value={form.phone}
-                onChange={(v) => setForm({ ...form, phone: v })}
-              />
-              <div>
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">
-                  {t("profile.avatar")}
-                </label>
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    value={form.avatarUrl}
-                    onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-                    placeholder={t("profile.avatar_placeholder")}
-                    className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
-                  />
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-                    {uploadAvatar.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setAvatarFile(file);
-                        e.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  {t("profile.photo_requirements")}
-                </p>
-              </div>
-              <button
-                type="submit"
-                disabled={saveProfile.isPending}
-                className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
+            )}
+            {editing ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveProfile.mutate();
+                }}
+                className="grid gap-3 grid-cols-1 sm:grid-cols-2"
               >
-                {saveProfile.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                {t("common.save")}
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <Field label={t("common.full_name")} value={fullName} />
-              <Field
-                label={t("profile.latin_label")}
-                value={`${user.nameLatin ?? "—"} ${user.surnameLatin ?? ""}`}
-              />
-              <Field label={t("common.email")} value={user.email} />
-              <Field
-                label={t("auth.date_of_birth")}
-                value={
-                  user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString("kk-KZ") : "—"
-                }
-              />
-              <div className="flex items-center justify-between pb-2 border-b border-border/20">
-                <span className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.gender")}</span>
-                <div className="flex items-center gap-2">
-                  {user.gender && (
-                    <div className={`h-4 w-4 rounded-full ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`} />
-                  )}
-                  <span className="text-sm font-medium">
-                    {user.gender === "MALE" ? t("common.male") : user.gender === "FEMALE" ? t("common.female") : "—"}
-                  </span>
-                </div>
-              </div>
-              <Field
-                label={t("common.weight")}
-                value={user.weightKg ? `${user.weightKg} ${t("common.kg")}` : "—"}
-              />
-              <div className="flex items-center justify-between pb-2 border-b border-border/20">
-                <span className="text-xs uppercase tracking-widest text-muted-foreground">{t("common.belt")}</span>
-                <div className="flex items-center gap-2">
-                  {user.beltRank && (() => {
-                    const belt = BELT_RANKS.find((b) => b.value === normalizeBelt(user.beltRank));
-                    return belt ? (
-                      <div className={`h-5 w-2.5 rounded-full bg-gradient-to-b ${belt.gradient}`} />
-                    ) : null;
-                  })()}
-                  <span className="text-sm font-medium">{user.beltRank ?? "—"}</span>
-                </div>
-              </div>
-              <Field label={t("profile.phone")} value={user.phone ?? "—"} />
-            </div>
-          )}
-        </Panel>
-
-        <div className="space-y-4">
-          <Panel title={t("common.club")}>
-            {user.club ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold">{localizeName(user.club.name)}</p>
-                    <p className="text-xs text-muted-foreground">{user.club.city}</p>
+                <Input
+                  label={t("common.name")}
+                  value={form.name}
+                  onChange={(v) => setForm({ ...form, name: v })}
+                  required
+                />
+                <Input
+                  label={t("common.surname")}
+                  value={form.surname}
+                  onChange={(v) => setForm({ ...form, surname: v })}
+                  required
+                />
+                <Input
+                  label={t("profile.name_latin")}
+                  value={form.nameLatin}
+                  onChange={(v) => setForm({ ...form, nameLatin: v })}
+                />
+                <Input
+                  label={t("profile.surname_latin")}
+                  value={form.surnameLatin}
+                  onChange={(v) => setForm({ ...form, surnameLatin: v })}
+                />
+                <Input
+                  label={t("auth.date_of_birth")}
+                  type="date"
+                  value={form.dateOfBirth}
+                  onChange={(v) => setForm({ ...form, dateOfBirth: v })}
+                />
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("common.gender")}
+                  </label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div
+                      className={`h-9 w-2.5 shrink-0 rounded-full ${form.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`}
+                    />
+                    <select
+                      value={form.gender}
+                      onChange={(e) =>
+                        setForm({ ...form, gender: e.target.value as "MALE" | "FEMALE" })
+                      }
+                      className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
+                    >
+                      <option value="MALE">{t("common.male")}</option>
+                      <option value="FEMALE">{t("common.female")}</option>
+                    </select>
                   </div>
                 </div>
-              </div>
+                <Input
+                  label={t("profile.weight_kg")}
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="300"
+                  value={form.weightKg}
+                  onChange={(v) => setForm({ ...form, weightKg: v })}
+                />
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("common.belt")}
+                  </label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    {form.beltRank &&
+                      (() => {
+                        const belt = BELT_RANKS.find((b) => b.value === form.beltRank);
+                        return belt ? (
+                          <div
+                            className={`h-9 w-2.5 shrink-0 rounded-full bg-gradient-to-b ${belt.gradient}`}
+                          />
+                        ) : null;
+                      })()}
+                    <select
+                      value={form.beltRank}
+                      onChange={(e) => setForm({ ...form, beltRank: e.target.value })}
+                      className="flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm outline-none focus:border-gold"
+                    >
+                      <option value="">{t("profile.belt_placeholder")}</option>
+                      {BELT_RANKS.map((b) => (
+                        <option key={b.value} value={b.value}>
+                          {b.value} — {t(b.labelKey)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <Input
+                  label={t("profile.phone")}
+                  value={form.phone}
+                  onChange={(v) => setForm({ ...form, phone: v })}
+                  required
+                />
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("profile.avatar")}
+                  </label>
+                  <div className="mt-1.5 flex gap-2">
+                    <input
+                      value={form.avatarUrl}
+                      onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
+                      placeholder={t("profile.avatar_placeholder")}
+                      className="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
+                    />
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                      {uploadAvatar.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setAvatarFile(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {t("profile.photo_requirements")}
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={saveProfile.isPending}
+                  className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 text-sm font-medium text-gold-foreground shadow-gold disabled:opacity-50"
+                >
+                  {saveProfile.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {t("common.save")}
+                </button>
+              </form>
             ) : (
-              <ClubJoinSection userId={user.id} />
+              <div className="space-y-4">
+                <Field label={t("common.full_name")} value={fullName} />
+                <Field
+                  label={t("profile.latin_label")}
+                  value={`${user.nameLatin ?? "—"} ${user.surnameLatin ?? ""}`}
+                />
+                <Field label={t("common.email")} value={user.email} />
+                <Field
+                  label={t("auth.date_of_birth")}
+                  value={
+                    user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString("kk-KZ") : "—"
+                  }
+                />
+                <div className="flex items-center justify-between pb-2 border-b border-border/20">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("common.gender")}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {user.gender && (
+                      <div
+                        className={`h-4 w-4 rounded-full ${user.gender === "MALE" ? "bg-sky-500" : "bg-pink-500"}`}
+                      />
+                    )}
+                    <span className="text-sm font-medium">
+                      {user.gender === "MALE"
+                        ? t("common.male")
+                        : user.gender === "FEMALE"
+                          ? t("common.female")
+                          : "—"}
+                    </span>
+                  </div>
+                </div>
+                <Field
+                  label={t("common.weight")}
+                  value={user.weightKg ? `${user.weightKg} ${t("common.kg")}` : "—"}
+                />
+                <div className="flex items-center justify-between pb-2 border-b border-border/20">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                    {t("common.belt")}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {user.beltRank &&
+                      (() => {
+                        const belt = BELT_RANKS.find(
+                          (b) => b.value === normalizeBelt(user.beltRank),
+                        );
+                        return belt ? (
+                          <div
+                            className={`h-5 w-2.5 rounded-full bg-gradient-to-b ${belt.gradient}`}
+                          />
+                        ) : null;
+                      })()}
+                    <span className="text-sm font-medium">{user.beltRank ?? "—"}</span>
+                  </div>
+                </div>
+                <Field label={t("profile.phone")} value={user.phone ?? "—"} />
+              </div>
             )}
           </Panel>
 
-          {/* Next level techniques card */}
-          <NextLevelCard beltRank={user.beltRank} />
-
-          <Panel title={t("documents.title")}>
-            <div className="space-y-3">
-              <DocumentUploadRow
-                type="BIRTH_CERTIFICATE"
-                label={t("documents.birth_certificate")}
-                hint={t("documents.birth_certificate_hint")}
-                document={findDocument(user.documents, "BIRTH_CERTIFICATE")}
-                refreshMe={refreshMe}
-              />
-              <DocumentUploadRow
-                type="STUDY_CERTIFICATE"
-                label={t("documents.study_certificate")}
-                hint={t("documents.study_certificate_hint")}
-                document={findDocument(user.documents, "STUDY_CERTIFICATE")}
-                refreshMe={refreshMe}
-              />
-            </div>
-          </Panel>
-
-          <Panel title={t("dashboard.settings")}>
-            <div className="space-y-3">
-              <Field label={t("profile.language")} value={localeLabel(user.preferredLocale)} />
-              <Field
-                label={t("profile.registered_at")}
-                value={new Date(user.createdAt).toLocaleDateString("kk-KZ")}
-              />
-              <Field
-                label={t("profile.account_status")}
-                value={user.isActive ? t("common.active") : t("profile.blocked")}
-              />
-
-              {/* Push-уведомления */}
-              {pushSupported && (
-                <div className="pt-2 border-t border-border/30">
-                  <div className="text-xs text-muted-foreground mb-2">
-                    {t("profile.push_notifications") ?? "Push-хабарламалар"}
+          <div className="space-y-4">
+            <Panel title={t("common.club")}>
+              {user.club ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold">{localizeName(user.club.name)}</p>
+                      <p className="text-xs text-muted-foreground">{user.club.city}</p>
+                    </div>
                   </div>
-                  <button
-                    onClick={pushSubscribed ? unsubscribePush : subscribePush}
-                    disabled={pushLoading}
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      pushSubscribed
-                        ? "border border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10"
-                        : "border border-gold/40 bg-gold/10 text-gold hover:bg-gold/20"
-                    } disabled:opacity-50`}
-                  >
-                    {pushLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : pushSubscribed ? (
-                      "🔕 " + (t("profile.push_disable") ?? "Өшіру")
-                    ) : (
-                      "🔔 " + (t("profile.push_enable") ?? "Қосу")
-                    )}
-                  </button>
-                  {pushSubscribed && (
-                    <p className="mt-1 text-[11px] text-emerald-500">
-                      ✓ {t("profile.push_active") ?? "Матч хабарламалары қосылған"}
-                    </p>
-                  )}
                 </div>
+              ) : (
+                <ClubJoinSection userId={user.id} />
               )}
-            </div>
-          </Panel>
+            </Panel>
+
+            {/* Next level techniques card */}
+            <NextLevelCard beltRank={user.beltRank} />
+
+            <Panel title={t("documents.title")}>
+              <div className="space-y-3">
+                <DocumentUploadRow
+                  type="BIRTH_CERTIFICATE"
+                  label={t("documents.birth_certificate")}
+                  hint={t("documents.birth_certificate_hint")}
+                  document={findDocument(user.documents, "BIRTH_CERTIFICATE")}
+                  refreshMe={refreshMe}
+                />
+                <DocumentUploadRow
+                  type="STUDY_CERTIFICATE"
+                  label={t("documents.study_certificate")}
+                  hint={t("documents.study_certificate_hint")}
+                  document={findDocument(user.documents, "STUDY_CERTIFICATE")}
+                  refreshMe={refreshMe}
+                />
+              </div>
+            </Panel>
+
+            <Panel title={t("dashboard.settings")}>
+              <div className="space-y-3">
+                <Field
+                  label={t("profile.registered_at")}
+                  value={new Date(user.createdAt).toLocaleDateString("kk-KZ")}
+                />
+                <Field
+                  label={t("profile.account_status")}
+                  value={user.isActive ? t("common.active") : t("profile.blocked")}
+                />
+
+                {/* Push-уведомления */}
+                {pushSupported && (
+                  <div className="pt-2 border-t border-border/30">
+                    <div className="text-xs text-muted-foreground mb-2">
+                      {t("profile.push_notifications") ?? "Push-хабарламалар"}
+                    </div>
+                    <button
+                      onClick={pushSubscribed ? unsubscribePush : subscribePush}
+                      disabled={pushLoading}
+                      className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        pushSubscribed
+                          ? "border border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10"
+                          : "border border-gold/40 bg-gold/10 text-gold hover:bg-gold/20"
+                      } disabled:opacity-50`}
+                    >
+                      {pushLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : pushSubscribed ? (
+                        "🔕 " + (t("profile.push_disable") ?? "Өшіру")
+                      ) : (
+                        "🔔 " + (t("profile.push_enable") ?? "Қосу")
+                      )}
+                    </button>
+                    {pushSubscribed && (
+                      <p className="mt-1 text-[11px] text-emerald-500">
+                        ✓ {t("profile.push_active") ?? "Матч хабарламалары қосылған"}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Panel>
+          </div>
         </div>
-        </div>{/* closes 2-col grid */}
+        {/* closes 2-col grid */}
 
         {/* ── Статистика ── */}
         {statsQuery.data && <AthleteStatsPanel stats={statsQuery.data} t={t} />}
-      </div>{/* closes space-y-5 */}
+      </div>
+      {/* closes space-y-5 */}
       <AvatarCropDialog
         file={avatarFile}
         busy={uploadAvatar.isPending}
@@ -669,7 +745,9 @@ function DocumentUploadRow({
                 className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-xs text-gold hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{document.originalName || t("documents.open_file")}</span>
+                <span className="truncate">
+                  {document.originalName || t("documents.open_file")}
+                </span>
               </button>
               {showViewer && (
                 <DocumentViewer
@@ -848,7 +926,8 @@ function ClubJoinSection({ userId }: { userId: string }) {
             )}
           {(clubsQuery.data?.items ?? []).map((club: Club) => {
             const alreadySent = (requestsQuery.data ?? []).some(
-              (r: { clubId?: string; status: string }) => r.clubId === club.id && r.status === "PENDING",
+              (r: { clubId?: string; status: string }) =>
+                r.clubId === club.id && r.status === "PENDING",
             );
             return (
               <div
@@ -917,7 +996,9 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function localizeName(name: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  name: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!name) return "—";
   if (typeof name === "string") return name;
   return name.kk || name.ru || name.en || "—";
@@ -931,25 +1012,34 @@ function localeLabel(l: string): string {
 
 type AthleteStatsData = Awaited<ReturnType<typeof import("@/lib/api").api.ratings.athleteStats>>;
 
-function AthleteStatsPanel({
-  stats,
-  t,
-}: {
-  stats: AthleteStatsData;
-  t: (k: string) => string;
-}) {
+function AthleteStatsPanel({ stats, t }: { stats: AthleteStatsData; t: (k: string) => string }) {
   const m = stats.matches;
   const r = stats.rating;
 
   const statCards = [
-    { label: t("stats.total_matches"),  value: String(m.total),              sub: "" },
-    { label: t("stats.wins"),           value: String(m.wins),               sub: `${m.winRate}%`, color: "text-emerald-500" },
-    { label: t("stats.losses"),         value: String(m.losses),             sub: "", color: "text-rose-400" },
-    { label: t("stats.ippon_wins"),     value: String(m.ipponWins),          sub: `${m.ipponWinRate}% ${t("stats.of_wins")}`, color: "text-yellow-500" },
-    { label: t("stats.wazaari_wins"),   value: String(m.wazaariWins),        sub: "" },
-    { label: t("stats.gs_wins"),        value: String(m.goldenScoreWins),    sub: "" },
-    { label: t("stats.tournaments"),    value: String(stats.tournaments.total), sub: "" },
-    { label: t("stats.rating_points"),  value: r.totalPoints.toFixed(0),     sub: "", color: "text-gold" },
+    { label: t("stats.total_matches"), value: String(m.total), sub: "" },
+    {
+      label: t("stats.wins"),
+      value: String(m.wins),
+      sub: `${m.winRate}%`,
+      color: "text-emerald-500",
+    },
+    { label: t("stats.losses"), value: String(m.losses), sub: "", color: "text-rose-400" },
+    {
+      label: t("stats.ippon_wins"),
+      value: String(m.ipponWins),
+      sub: `${m.ipponWinRate}% ${t("stats.of_wins")}`,
+      color: "text-yellow-500",
+    },
+    { label: t("stats.wazaari_wins"), value: String(m.wazaariWins), sub: "" },
+    { label: t("stats.gs_wins"), value: String(m.goldenScoreWins), sub: "" },
+    { label: t("stats.tournaments"), value: String(stats.tournaments.total), sub: "" },
+    {
+      label: t("stats.rating_points"),
+      value: r.totalPoints.toFixed(0),
+      sub: "",
+      color: "text-gold",
+    },
   ];
 
   return (
@@ -959,9 +1049,14 @@ function AthleteStatsPanel({
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statCards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-border/40 bg-card/60 p-4 flex flex-col gap-1">
+          <div
+            key={card.label}
+            className="rounded-xl border border-border/40 bg-card/60 p-4 flex flex-col gap-1"
+          >
             <div className="text-[11px] text-muted-foreground font-medium">{card.label}</div>
-            <div className={`text-3xl font-black tabular-nums ${card.color ?? ""}`}>{card.value}</div>
+            <div className={`text-3xl font-black tabular-nums ${card.color ?? ""}`}>
+              {card.value}
+            </div>
             {card.sub && <div className="text-[11px] text-muted-foreground">{card.sub}</div>}
           </div>
         ))}
@@ -984,25 +1079,41 @@ function AthleteStatsPanel({
             {t("stats.recent_results")}
           </div>
           <div className="space-y-2">
-            {(stats.rating.recent as Array<{
-              place: number; points: number;
-              tournament: { name: unknown; startDate: string };
-              category: { gender: string; weightMin: number; weightMax: number };
-            }>).map((entry, i) => {
+            {(
+              stats.rating.recent as Array<{
+                place: number;
+                points: number;
+                tournament: { name: unknown; startDate: string };
+                category: { gender: string; weightMin: number; weightMax: number };
+              }>
+            ).map((entry, i) => {
               const tName = entry.tournament.name;
-              const name = typeof tName === "object" && tName !== null
-                ? ((tName as Record<string, string>)["kk"] ?? (tName as Record<string, string>)["ru"] ?? "—")
-                : String(tName ?? "—");
-              const w = entry.category.weightMax >= 200
-                ? `+${entry.category.weightMin}`
-                : `-${entry.category.weightMax}`;
-              const placeColor = entry.place === 1 ? "text-yellow-500" : entry.place === 2 ? "text-slate-400" : entry.place === 3 ? "text-amber-600" : "text-muted-foreground";
+              const name =
+                typeof tName === "object" && tName !== null
+                  ? ((tName as Record<string, string>)["kk"] ??
+                    (tName as Record<string, string>)["ru"] ??
+                    "—")
+                  : String(tName ?? "—");
+              const w =
+                entry.category.weightMax >= 200
+                  ? `+${entry.category.weightMin}`
+                  : `-${entry.category.weightMax}`;
+              const placeColor =
+                entry.place === 1
+                  ? "text-yellow-500"
+                  : entry.place === 2
+                    ? "text-slate-400"
+                    : entry.place === 3
+                      ? "text-amber-600"
+                      : "text-muted-foreground";
               return (
                 <div key={i} className="flex items-center gap-3 text-sm">
                   <span className={`w-6 font-black tabular-nums ${placeColor}`}>{entry.place}</span>
                   <span className="flex-1 truncate">{name}</span>
                   <span className="text-muted-foreground shrink-0">{w} кг</span>
-                  <span className="text-gold font-semibold shrink-0">+{Number(entry.points).toFixed(0)} pts</span>
+                  <span className="text-gold font-semibold shrink-0">
+                    +{Number(entry.points).toFixed(0)} pts
+                  </span>
                 </div>
               );
             })}

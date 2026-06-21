@@ -14,8 +14,12 @@ import {
   Trash2,
   Upload,
   UserPlus,
-  //   Users,
+  Users,
   X,
+  Phone,
+  Mail,
+  MapPin,
+  Instagram,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import {
@@ -113,7 +117,8 @@ function CoachClub() {
         qc.invalidateQueries({ queryKey: ["coach-club-join-requests"] }),
       ]);
     },
-    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
+    onError: (e: unknown) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.save_error")),
   });
 
   return (
@@ -250,9 +255,11 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
-  const [result, setResult] = useState<{ created: number; skipped: number; errors: { row: number; email: string; reason: string }[] } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    created: number;
+    skipped: number;
+    errors: { row: number; email: string; reason: string }[];
+  } | null>(null);
   //   const _qc = useQueryClient();
 
   const importMut = useMutation({
@@ -283,9 +290,7 @@ function BulkImportPanel({ clubId, onImported }: { clubId: string; onImported: (
       });
       const normalizedGender = obj.gender?.toUpperCase();
       const gender =
-        normalizedGender === "MALE" || normalizedGender === "FEMALE"
-          ? normalizedGender
-          : undefined;
+        normalizedGender === "MALE" || normalizedGender === "FEMALE" ? normalizedGender : undefined;
       return {
         email: obj.email,
         password: obj.password,
@@ -804,9 +809,13 @@ function ClubPreview({ club, fallback }: { club: Club | null | undefined; fallba
       </div>
       <div className="p-4">
         <div className="font-display text-xl font-semibold">{name}</div>
-        <div className="mt-1 text-sm text-muted-foreground">
+        <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
           {club?.city || fallback.city || t("admin.club_city")} ·{" "}
-          {club?.country || fallback.country}
+          {(() => {
+            const code = club?.country || fallback.country || "KZ";
+            const c = COUNTRIES.find((x) => x.code === code);
+            return c ? `${c.flag} ${c.name}` : code;
+          })()}
         </div>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
@@ -848,7 +857,8 @@ function CoachJoinClubPanel({
       setError("");
       await onChanged();
     },
-    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
+    onError: (e: unknown) =>
+      setError(e instanceof ApiError ? e.message : t("coach_club.cancel_error")),
   });
 
   return (

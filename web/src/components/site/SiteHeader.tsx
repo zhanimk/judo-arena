@@ -79,16 +79,14 @@ export function SiteHeader({ fixed = false, hideUntilScroll = false }: SiteHeade
         <div className="flex h-14 items-center justify-between gap-2 rounded-full border border-gold/20 bg-background/90 px-2 shadow-[0_4px_24px_rgba(0,0,0,0.14)] backdrop-blur-2xl dark:bg-[#0a0f20]/92 sm:px-3">
           <Link
             to={user ? dashboardRoot(user.role) : "/"}
-            className="group flex shrink-0 items-center gap-2 pl-2"
+            className="group flex shrink-0 items-center gap-3 pl-2"
           >
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md ring-1 ring-gold/30 transition-all group-hover:ring-gold/60 group-hover:scale-105">
-              <img src="/main-logo.png" alt="JCL" className="h-full w-full object-cover" />
+            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-gold/30 bg-white shadow-gold transition-all group-hover:ring-gold/60 group-hover:scale-105">
+              <img src="/jcl-logo.jpg" alt="JCL" className="h-full w-full object-cover" />
             </span>
-            <span className="hidden font-display text-[15px] font-bold leading-none sm:block tracking-wide transition-colors group-hover:text-gold">
-              JUDO<span className="text-gradient-gold">·</span>CHILD
-              <span className="text-gradient-gold">·</span>LEAGUE
+            <span className="hidden font-display text-lg font-black tracking-tight sm:block">
+              JUDO<span className="text-gradient-gold">·</span>ARENA
             </span>
-            <span className="font-display text-[15px] font-bold leading-none sm:hidden text-gradient-gold">JCL</span>
           </Link>
 
           {/* Center nav — desktop */}

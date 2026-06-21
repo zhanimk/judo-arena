@@ -24,7 +24,11 @@ import type {
 import { ClubRole, UserRole } from "@prisma/client";
 
 export class ClubError extends Error {
-  constructor(public code: string, message: string, public httpStatus = 400) {
+  constructor(
+    public code: string,
+    message: string,
+    public httpStatus = 400,
+  ) {
     super(message);
     this.name = "ClubError";
   }
@@ -68,7 +72,15 @@ export async function getClub(id: string) {
       members: {
         where: { role: UserRole.COACH },
         orderBy: [{ surname: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, surname: true, email: true, phone: true, avatarUrl: true, clubRole: true },
+        select: {
+          id: true,
+          name: true,
+          surname: true,
+          email: true,
+          phone: true,
+          avatarUrl: true,
+          clubRole: true,
+        },
       },
     },
   });
@@ -76,9 +88,15 @@ export async function getClub(id: string) {
   return club;
 }
 
-export async function createClub(creatorUserId: string, input: CreateClubInput) {
-  const creator = await prisma.user.findUnique({ where: { id: creatorUserId } });
-  if (!creator) throw new ClubError("USER_NOT_FOUND", "Создатель не найден", 404);
+export async function createClub(
+  creatorUserId: string,
+  input: CreateClubInput,
+) {
+  const creator = await prisma.user.findUnique({
+    where: { id: creatorUserId },
+  });
+  if (!creator)
+    throw new ClubError("USER_NOT_FOUND", "Создатель не найден", 404);
 
   // COACH без клуба становится участником своего нового клуба.
   // COACH уже в клубе — не может создать ещё один (нужно сначала уйти из текущего).
@@ -97,6 +115,12 @@ export async function createClub(creatorUserId: string, input: CreateClubInput) 
       city: input.city,
       country: input.country,
       logoUrl: input.logoUrl,
+      coverUrl: input.coverUrl,
+      galleryUrls: input.galleryUrls ?? [],
+      address: input.address,
+      phone: input.phone,
+      email: input.email,
+      instagram: input.instagram,
       description: input.description ?? undefined,
       createdById: creatorUserId,
     },
@@ -119,7 +143,11 @@ export async function createClub(creatorUserId: string, input: CreateClubInput) 
   return getClub(club.id);
 }
 
-export async function updateClub(actorUserId: string, clubId: string, input: UpdateClubInput) {
+export async function updateClub(
+  actorUserId: string,
+  clubId: string,
+  input: UpdateClubInput,
+) {
   await assertCanOwnClub(actorUserId, clubId);
 
   const club = await prisma.club.update({
@@ -130,6 +158,14 @@ export async function updateClub(actorUserId: string, clubId: string, input: Upd
       ...(input.city && { city: input.city }),
       ...(input.country && { country: input.country }),
       ...(input.logoUrl !== undefined && { logoUrl: input.logoUrl }),
+      ...(input.coverUrl !== undefined && { coverUrl: input.coverUrl }),
+      ...(input.galleryUrls !== undefined && {
+        galleryUrls: input.galleryUrls,
+      }),
+      ...(input.address !== undefined && { address: input.address }),
+      ...(input.phone !== undefined && { phone: input.phone }),
+      ...(input.email !== undefined && { email: input.email }),
+      ...(input.instagram !== undefined && { instagram: input.instagram }),
       ...(input.description && { description: input.description }),
     },
   });
@@ -184,7 +220,11 @@ export async function updateClubGroup(
   if (!group) throw new ClubError("GROUP_NOT_FOUND", "Группа не найдена", 404);
   await assertCanManageClub(actorUserId, group.clubId);
 
-  if (input.ageMin !== undefined && input.ageMax !== undefined && input.ageMin > input.ageMax) {
+  if (
+    input.ageMin !== undefined &&
+    input.ageMax !== undefined &&
+    input.ageMin > input.ageMax
+  ) {
     throw new ClubError("INVALID_RANGE", "ageMin должен быть ≤ ageMax", 400);
   }
 
@@ -212,11 +252,22 @@ export async function listClubMembers(clubId: string) {
     where: { clubId, role: UserRole.ATHLETE },
     orderBy: [{ surname: "asc" }, { name: "asc" }],
     select: {
-      id: true, email: true, name: true, surname: true,
-      nameLatin: true, surnameLatin: true, dateOfBirth: true,
-      gender: true, weightKg: true, beltRank: true,
-      isActive: true, preferredLocale: true, avatarUrl: true,
-      role: true, phone: true, clubId: true,
+      id: true,
+      email: true,
+      name: true,
+      surname: true,
+      nameLatin: true,
+      surnameLatin: true,
+      dateOfBirth: true,
+      gender: true,
+      weightKg: true,
+      beltRank: true,
+      isActive: true,
+      preferredLocale: true,
+      avatarUrl: true,
+      role: true,
+      phone: true,
+      clubId: true,
       documents: { orderBy: { updatedAt: "desc" as const } },
     },
   });
@@ -231,7 +282,9 @@ export async function createAthleteByCoach(
 ) {
   await assertCanManageClub(actorUserId, clubId);
 
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const existing = await prisma.user.findUnique({
+    where: { email: input.email },
+  });
   if (existing) {
     throw new ClubError("EMAIL_TAKEN", "Email уже зарегистрирован", 409);
   }
@@ -256,10 +309,19 @@ export async function createAthleteByCoach(
       clubId,
     },
     select: {
-      id: true, email: true, name: true, surname: true,
-      nameLatin: true, surnameLatin: true, dateOfBirth: true,
-      gender: true, weightKg: true, beltRank: true,
-      role: true, clubId: true, createdAt: true,
+      id: true,
+      email: true,
+      name: true,
+      surname: true,
+      nameLatin: true,
+      surnameLatin: true,
+      dateOfBirth: true,
+      gender: true,
+      weightKg: true,
+      beltRank: true,
+      role: true,
+      clubId: true,
+      createdAt: true,
     },
   });
 }
@@ -292,7 +354,11 @@ export async function bulkImportAthletes(
   await assertCanManageClub(actorUserId, clubId);
 
   if (rows.length > 200) {
-    throw new ClubError("TOO_MANY_ROWS", "Максимум 200 спортсменов за раз", 400);
+    throw new ClubError(
+      "TOO_MANY_ROWS",
+      "Максимум 200 спортсменов за раз",
+      400,
+    );
   }
 
   const result: BulkImportResult = { created: 0, skipped: 0, errors: [] };
@@ -300,10 +366,16 @@ export async function bulkImportAthletes(
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
     try {
-      const existing = await prisma.user.findUnique({ where: { email: row.email.toLowerCase().trim() } });
+      const existing = await prisma.user.findUnique({
+        where: { email: row.email.toLowerCase().trim() },
+      });
       if (existing) {
         result.skipped++;
-        result.errors.push({ row: i + 1, email: row.email, reason: "Email уже зарегистрирован" });
+        result.errors.push({
+          row: i + 1,
+          email: row.email,
+          reason: "Email уже зарегистрирован",
+        });
         continue;
       }
 
@@ -349,15 +421,26 @@ export async function updateAthlete(
 
   const isSelf = actor.id === athlete.id;
   const isAdmin = actor.role === UserRole.ADMIN;
-  const isHisCoach = actor.role === UserRole.COACH && actor.clubId !== null && actor.clubId === athlete.clubId;
+  const isHisCoach =
+    actor.role === UserRole.COACH &&
+    actor.clubId !== null &&
+    actor.clubId === athlete.clubId;
 
   if (!isSelf && !isAdmin && !isHisCoach) {
-    throw new ClubError("FORBIDDEN", "Нет прав на изменение этого спортсмена", 403);
+    throw new ClubError(
+      "FORBIDDEN",
+      "Нет прав на изменение этого спортсмена",
+      403,
+    );
   }
 
   // Только админ и тренер могут менять clubId и isActive
   const canChangePrivileged = isAdmin || isHisCoach;
-  const { clubId: _clubId, isActive: _isActive, ...rest } = input as typeof input & {
+  const {
+    clubId: _clubId,
+    isActive: _isActive,
+    ...rest
+  } = input as typeof input & {
     clubId?: string;
     isActive?: boolean;
   };
@@ -369,16 +452,31 @@ export async function updateAthlete(
     where: { id: athleteId },
     data,
     select: {
-      id: true, email: true, name: true, surname: true,
-      nameLatin: true, surnameLatin: true, dateOfBirth: true,
-      gender: true, weightKg: true, beltRank: true,
-      phone: true, avatarUrl: true, preferredLocale: true,
-      role: true, clubId: true, isActive: true, updatedAt: true,
+      id: true,
+      email: true,
+      name: true,
+      surname: true,
+      nameLatin: true,
+      surnameLatin: true,
+      dateOfBirth: true,
+      gender: true,
+      weightKg: true,
+      beltRank: true,
+      phone: true,
+      avatarUrl: true,
+      preferredLocale: true,
+      role: true,
+      clubId: true,
+      isActive: true,
+      updatedAt: true,
     },
   });
 }
 
-export async function detachAthleteFromClub(actorUserId: string, athleteId: string) {
+export async function detachAthleteFromClub(
+  actorUserId: string,
+  athleteId: string,
+) {
   const athlete = await prisma.user.findUnique({ where: { id: athleteId } });
   if (!athlete || athlete.role !== UserRole.ATHLETE) {
     throw new ClubError("ATHLETE_NOT_FOUND", "Спортсмен не найден", 404);
@@ -387,16 +485,23 @@ export async function detachAthleteFromClub(actorUserId: string, athleteId: stri
     throw new ClubError("NOT_IN_CLUB", "Спортсмен не состоит в клубе", 400);
   }
   await assertCanManageClub(actorUserId, athlete.clubId);
-  await prisma.user.update({ where: { id: athleteId }, data: { clubId: null } });
+  await prisma.user.update({
+    where: { id: athleteId },
+    data: { clubId: null },
+  });
 }
 
 // ============================================================
 // УТИЛИТЫ ПРАВ
 // ============================================================
 
-async function assertCanManageClub(actorUserId: string, clubId: string): Promise<void> {
+async function assertCanManageClub(
+  actorUserId: string,
+  clubId: string,
+): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor) throw new ClubError("USER_NOT_FOUND", "Пользователь не найден", 404);
+  if (!actor)
+    throw new ClubError("USER_NOT_FOUND", "Пользователь не найден", 404);
   if (actor.role === UserRole.ADMIN) return;
   if (actor.role === UserRole.COACH && actor.clubId === clubId) return;
   throw new ClubError(
@@ -406,11 +511,20 @@ async function assertCanManageClub(actorUserId: string, clubId: string): Promise
   );
 }
 
-async function assertCanOwnClub(actorUserId: string, clubId: string): Promise<void> {
+async function assertCanOwnClub(
+  actorUserId: string,
+  clubId: string,
+): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor) throw new ClubError("USER_NOT_FOUND", "Пользователь не найден", 404);
+  if (!actor)
+    throw new ClubError("USER_NOT_FOUND", "Пользователь не найден", 404);
   if (actor.role === UserRole.ADMIN) return;
-  if (actor.role === UserRole.COACH && actor.clubId === clubId && actor.clubRole === ClubRole.OWNER) return;
+  if (
+    actor.role === UserRole.COACH &&
+    actor.clubId === clubId &&
+    actor.clubRole === ClubRole.OWNER
+  )
+    return;
   throw new ClubError(
     "FORBIDDEN",
     "Клуб карточкасын тек клуб иесі немесе администратор өзгерте алады",

@@ -1,6 +1,12 @@
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { DashboardShell, EmptyState, LoadingState, Panel, StatCard } from "@/components/dashboard/DashboardShell";
+import {
+  DashboardShell,
+  EmptyState,
+  LoadingState,
+  Panel,
+  StatCard,
+} from "@/components/dashboard/DashboardShell";
 import { DocumentList } from "@/components/documents/DocumentViewer";
 import { FileText, Loader2, Trash2 } from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
@@ -22,7 +28,6 @@ export const Route = createFileRoute("/coach/athletes/$id")({
     </ProtectedRoute>
   ),
 });
-
 
 function CoachAthleteDetails() {
   const { t } = useTranslation();
@@ -64,7 +69,11 @@ function CoachAthleteDetails() {
   });
 
   return (
-    <DashboardShell role={t("roles.COACH")} navItems={nav} accentTitle={athlete ? `${athlete.name} ${athlete.surname}` : t("roles.athlete")}>
+    <DashboardShell
+      role={t("roles.COACH")}
+      navItems={nav}
+      accentTitle={athlete ? `${athlete.name} ${athlete.surname}` : t("roles.athlete")}
+    >
       <div className="mb-4">
         <Link to="/coach/athletes" className="text-sm text-muted-foreground hover:text-gold">
           ← {t("coach.back_to_athletes")}
@@ -78,10 +87,31 @@ function CoachAthleteDetails() {
       ) : (
         <>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard label={t("common.age")} value={athlete.dateOfBirth ? String(getAge(athlete.dateOfBirth)) : "—"} hint={athlete.gender === "MALE" ? t("common.male") : t("common.female")} />
-            <StatCard label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} hint={athlete.beltRank ?? t("coach.no_belt")} />
-            <StatCard label={t("matches.win")} value={`${wins} / ${completed.length}`} hint={upcoming > 0 ? t("common.athletes_count", { count: upcoming }) : t("coach.all_completed")} accent />
-            <StatCard label="Email" value={athlete.email ?? "—"} hint={athlete.isActive ? t("common.active") : t("common.blocked")} />
+            <StatCard
+              label={t("common.age")}
+              value={athlete.dateOfBirth ? String(getAge(athlete.dateOfBirth)) : "—"}
+              hint={athlete.gender === "MALE" ? t("common.male") : t("common.female")}
+            />
+            <StatCard
+              label={t("common.weight")}
+              value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"}
+              hint={athlete.beltRank ?? t("coach.no_belt")}
+            />
+            <StatCard
+              label={t("matches.win")}
+              value={`${wins} / ${completed.length}`}
+              hint={
+                upcoming > 0
+                  ? t("common.athletes_count", { count: upcoming })
+                  : t("coach.all_completed")
+              }
+              accent
+            />
+            <StatCard
+              label="Email"
+              value={athlete.email ?? "—"}
+              hint={athlete.isActive ? t("common.active") : t("common.blocked")}
+            />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -102,25 +132,32 @@ function CoachAthleteDetails() {
                 {athlete.nameLatin && athlete.surnameLatin && (
                   <Info label="Latin" value={`${athlete.nameLatin} ${athlete.surnameLatin}`} />
                 )}
-                <Info label={t("auth.date_of_birth")} value={athlete.dateOfBirth ? new Date(athlete.dateOfBirth).toLocaleDateString("kk-KZ") : "—"} />
-                <Info label={t("common.gender")} value={athlete.gender === "MALE" ? t("common.male") : athlete.gender === "FEMALE" ? t("common.female") : "—"} />
-                <Info label={t("common.weight")} value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"} />
+                <Info
+                  label={t("auth.date_of_birth")}
+                  value={
+                    athlete.dateOfBirth
+                      ? new Date(athlete.dateOfBirth).toLocaleDateString("kk-KZ")
+                      : "—"
+                  }
+                />
+                <Info
+                  label={t("common.gender")}
+                  value={
+                    athlete.gender === "MALE"
+                      ? t("common.male")
+                      : athlete.gender === "FEMALE"
+                        ? t("common.female")
+                        : "—"
+                  }
+                />
+                <Info
+                  label={t("common.weight")}
+                  value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"}
+                />
                 <Info label={t("common.belt")} value={athlete.beltRank ?? "—"} />
                 {athlete.phone && <Info label={t("admin.field_phone")} value={athlete.phone} />}
                 {athlete.email && <Info label="Email" value={athlete.email} />}
               </dl>
-
-              {/* Documents */}
-              {((athlete as any).documents as UserDocument[] | undefined)?.length ? (
-                <div className="mt-4 pt-4 border-t border-border/40">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                    {t("documents.title")}
-                  </div>
-                  <div className="max-w-sm">
-                    <DocumentList documents={(athlete as any).documents} />
-                  </div>
-                </div>
-              ) : null}
 
               <div className="mt-5 border-t border-border/40 pt-4">
                 {!showDetachConfirm ? (
@@ -137,7 +174,9 @@ function CoachAthleteDetails() {
                   </button>
                 ) : (
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                    <p className="text-sm font-medium text-destructive">{t("coach.detach_confirm_title")}</p>
+                    <p className="text-sm font-medium text-destructive">
+                      {t("coach.detach_confirm_title")}
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {t("coach.detach_confirm_hint")}
                     </p>
@@ -174,25 +213,43 @@ function CoachAthleteDetails() {
               ) : (
                 <ul className="space-y-2 text-sm">
                   {matches.map((match: Match) => {
-                    const opponent = match.redAthlete?.id === id ? match.blueAthlete : match.redAthlete;
+                    const opponent =
+                      match.redAthlete?.id === id ? match.blueAthlete : match.redAthlete;
                     const won = match.winnerId === id;
                     const isCompleted = match.status === "COMPLETED";
                     return (
-                      <li key={match.id} className="glass flex items-center justify-between rounded-md p-3">
+                      <li
+                        key={match.id}
+                        className="glass flex items-center justify-between rounded-md p-3"
+                      >
                         <div>
-                          <div className="font-medium">vs {opponent ? `${opponent.name} ${opponent.surname}` : "TBD"}</div>
+                          <div className="font-medium">
+                            vs {opponent ? `${opponent.name} ${opponent.surname}` : "TBD"}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {localizeName(match.tournament?.name) ?? t("common.tournament")} · {categoryTitle(match.bracket?.category, t)} · {t("matches.round")} {match.round}
+                            {localizeName(match.tournament?.name) ?? t("common.tournament")} ·{" "}
+                            {categoryTitle(match.bracket?.category, t)} · {t("matches.round")}{" "}
+                            {match.round}
                           </div>
                         </div>
-                        <span className={`text-xs ${isCompleted ? (won ? "text-gold" : "text-destructive") : "text-muted-foreground"}`}>
-                          {isCompleted ? (won ? t("matches.win") : t("matches.loss")) : String(t(`status.${match.status}`, match.status))}
+                        <span
+                          className={`text-xs ${isCompleted ? (won ? "text-gold" : "text-destructive") : "text-muted-foreground"}`}
+                        >
+                          {isCompleted
+                            ? won
+                              ? t("matches.win")
+                              : t("matches.loss")
+                            : String(t(`status.${match.status}`, match.status))}
                         </span>
                       </li>
                     );
                   })}
                 </ul>
               )}
+            </Panel>
+
+            <Panel title={t("documents.title")}>
+              <DocumentList documents={(athlete as any).documents ?? []} />
             </Panel>
           </div>
         </>
@@ -212,11 +269,14 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function categoryTitle(category: Category | null | undefined, t: (key: string) => string): string {
   if (!category) return t("common.category");
-  const gender = category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
+  const gender =
+    category.gender === "MALE" ? t("rankings.filter_male") : t("rankings.filter_female");
   return `${gender} ${category.ageMin}-${category.ageMax}, ${category.weightMin}-${category.weightMax} кг`;
 }
 
-function localizeName(value: import("@/lib/api-types").LocalizedName | string | null | undefined): string | null {
+function localizeName(
+  value: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
   return value.kk || value.ru || value.en || null;

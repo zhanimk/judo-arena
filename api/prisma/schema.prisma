@@ -132,6 +132,11 @@ model User {
   preferredLocale Locale    @default(kk)
   avatarUrl       String?
   phone           String?
+  city            String?
+  education       String?
+  coachCategory   String?
+  coachExperienceYears Int?
+  coachTitle      String?
   isActive        Boolean   @default(true)
 
   // Email verification
@@ -200,11 +205,17 @@ model Club {
   name          Json // { ru, kk, en }
   shortName     String?
   city          String
-  country       String  @default("KZ")
+  country       String   @default("KZ")
+  address       String?
+  phone         String?
+  email         String?
+  instagram     String?
   logoUrl       String?
-  description   Json? // { ru, kk, en }
-  isActive      Boolean @default(true)
-  isBlocked     Boolean @default(false)
+  coverUrl      String?
+  galleryUrls   String[] @default([])
+  description   Json?    // { ru, kk, en }
+  isActive      Boolean  @default(true)
+  isBlocked     Boolean  @default(false)
   blockedReason String?
 
   createdById String?

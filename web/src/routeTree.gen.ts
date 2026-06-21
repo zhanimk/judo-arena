@@ -8,1119 +8,1135 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as TournamentsRouteImport } from './routes/tournaments'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RankingsRouteImport } from './routes/rankings'
-import { Route as ProtocolRouteImport } from './routes/protocol'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as JudgeRouteImport } from './routes/judge'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as EmailVerifiedRouteImport } from './routes/email-verified'
-import { Route as CoachRouteImport } from './routes/coach'
-import { Route as AthleteRouteImport } from './routes/athlete'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as CoachIndexRouteImport } from './routes/coach.index'
-import { Route as AthleteIndexRouteImport } from './routes/athlete.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
-import { Route as TatamiTokenRouteImport } from './routes/tatami.$token'
-import { Route as LiveWallTournamentIdRouteImport } from './routes/live-wall.$tournamentId'
-import { Route as JudgeTokenRouteImport } from './routes/judge.$token'
-import { Route as DisplayTournamentIdRouteImport } from './routes/display.$tournamentId'
-import { Route as CoachTournamentsRouteImport } from './routes/coach.tournaments'
-import { Route as CoachProfileRouteImport } from './routes/coach.profile'
-import { Route as CoachOnboardingRouteImport } from './routes/coach.onboarding'
-import { Route as CoachNotificationsRouteImport } from './routes/coach.notifications'
-import { Route as CoachClubRouteImport } from './routes/coach.club'
-import { Route as CoachAthletesRouteImport } from './routes/coach.athletes'
-import { Route as CoachApplicationsRouteImport } from './routes/coach.applications'
-import { Route as AthleteTournamentsRouteImport } from './routes/athlete.tournaments'
-import { Route as AthleteResultsRouteImport } from './routes/athlete.results'
-import { Route as AthleteProfileRouteImport } from './routes/athlete.profile'
-import { Route as AthleteOnboardingRouteImport } from './routes/athlete.onboarding'
-import { Route as AthleteNotificationsRouteImport } from './routes/athlete.notifications'
-import { Route as AthleteMatchesRouteImport } from './routes/athlete.matches'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
-import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
-import { Route as AdminReportsRouteImport } from './routes/admin.reports'
-import { Route as AdminRatingsRouteImport } from './routes/admin.ratings'
-import { Route as AdminProtocolsRouteImport } from './routes/admin.protocols'
-import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
-import { Route as AdminMatchesRouteImport } from './routes/admin.matches'
-import { Route as AdminClubsRouteImport } from './routes/admin.clubs'
-import { Route as AdminAuditRouteImport } from './routes/admin.audit'
-import { Route as AdminApplicationsRouteImport } from './routes/admin.applications'
-import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
-import { Route as CoachTournamentsIdRouteImport } from './routes/coach.tournaments.$id'
-import { Route as CoachAthletesIdRouteImport } from './routes/coach.athletes.$id'
-import { Route as CoachApplicationsIdRouteImport } from './routes/coach.applications.$id'
-import { Route as AthleteMatchesIdRouteImport } from './routes/athlete.matches.$id'
-import { Route as AdminUsersIdRouteImport } from './routes/admin.users.$id'
-import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
-import { Route as AdminClubsIdRouteImport } from './routes/admin.clubs.$id'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as VerifyEmailRouteImport } from "./routes/verify-email";
+import { Route as TournamentsRouteImport } from "./routes/tournaments";
+import { Route as ResetPasswordRouteImport } from "./routes/reset-password";
+import { Route as RankingsRouteImport } from "./routes/rankings";
+import { Route as ProtocolRouteImport } from "./routes/protocol";
+import { Route as LoginRouteImport } from "./routes/login";
+import { Route as JudgeRouteImport } from "./routes/judge";
+import { Route as ForgotPasswordRouteImport } from "./routes/forgot-password";
+import { Route as EmailVerifiedRouteImport } from "./routes/email-verified";
+import { Route as CoachRouteImport } from "./routes/coach";
+import { Route as AthleteRouteImport } from "./routes/athlete";
+import { Route as AdminRouteImport } from "./routes/admin";
+import { Route as AboutRouteImport } from "./routes/about";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as CoachIndexRouteImport } from "./routes/coach.index";
+import { Route as AthleteIndexRouteImport } from "./routes/athlete.index";
+import { Route as AdminIndexRouteImport } from "./routes/admin.index";
+import { Route as TournamentsIdRouteImport } from "./routes/tournaments.$id";
+import { Route as TatamiTokenRouteImport } from "./routes/tatami.$token";
+import { Route as LiveWallTournamentIdRouteImport } from "./routes/live-wall.$tournamentId";
+import { Route as JudgeTokenRouteImport } from "./routes/judge.$token";
+import { Route as DisplayTournamentIdRouteImport } from "./routes/display.$tournamentId";
+import { Route as CoachTournamentsRouteImport } from "./routes/coach.tournaments";
+import { Route as CoachProfileRouteImport } from "./routes/coach.profile";
+import { Route as CoachOnboardingRouteImport } from "./routes/coach.onboarding";
+import { Route as CoachNotificationsRouteImport } from "./routes/coach.notifications";
+import { Route as CoachClubRouteImport } from "./routes/coach.club";
+import { Route as CoachAthletesRouteImport } from "./routes/coach.athletes";
+import { Route as CoachApplicationsRouteImport } from "./routes/coach.applications";
+import { Route as CoachAnalyticsRouteImport } from "./routes/coach.analytics";
+import { Route as AthleteTournamentsRouteImport } from "./routes/athlete.tournaments";
+import { Route as AthleteResultsRouteImport } from "./routes/athlete.results";
+import { Route as AthleteProfileRouteImport } from "./routes/athlete.profile";
+import { Route as AthleteOnboardingRouteImport } from "./routes/athlete.onboarding";
+import { Route as AthleteNotificationsRouteImport } from "./routes/athlete.notifications";
+import { Route as AthleteMatchesRouteImport } from "./routes/athlete.matches";
+import { Route as AdminUsersRouteImport } from "./routes/admin.users";
+import { Route as AdminTournamentsRouteImport } from "./routes/admin.tournaments";
+import { Route as AdminSettingsRouteImport } from "./routes/admin.settings";
+import { Route as AdminReportsRouteImport } from "./routes/admin.reports";
+import { Route as AdminRatingsRouteImport } from "./routes/admin.ratings";
+import { Route as AdminProtocolsRouteImport } from "./routes/admin.protocols";
+import { Route as AdminNotificationsRouteImport } from "./routes/admin.notifications";
+import { Route as AdminMatchesRouteImport } from "./routes/admin.matches";
+import { Route as AdminClubsRouteImport } from "./routes/admin.clubs";
+import { Route as AdminAuditRouteImport } from "./routes/admin.audit";
+import { Route as AdminApplicationsRouteImport } from "./routes/admin.applications";
+import { Route as AdminAnalyticsRouteImport } from "./routes/admin.analytics";
+import { Route as CoachTournamentsIdRouteImport } from "./routes/coach.tournaments.$id";
+import { Route as CoachAthletesIdRouteImport } from "./routes/coach.athletes.$id";
+import { Route as CoachApplicationsIdRouteImport } from "./routes/coach.applications.$id";
+import { Route as AthleteMatchesIdRouteImport } from "./routes/athlete.matches.$id";
+import { Route as AdminUsersIdRouteImport } from "./routes/admin.users.$id";
+import { Route as AdminTournamentsIdRouteImport } from "./routes/admin.tournaments.$id";
+import { Route as AdminClubsIdRouteImport } from "./routes/admin.clubs.$id";
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
+  id: "/verify-email",
+  path: "/verify-email",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const TournamentsRoute = TournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
+  id: "/tournaments",
+  path: "/tournaments",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+  id: "/reset-password",
+  path: "/reset-password",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const RankingsRoute = RankingsRouteImport.update({
-  id: '/rankings',
-  path: '/rankings',
+  id: "/rankings",
+  path: "/rankings",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProtocolRoute = ProtocolRouteImport.update({
-  id: '/protocol',
-  path: '/protocol',
+  id: "/protocol",
+  path: "/protocol",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const JudgeRoute = JudgeRouteImport.update({
-  id: '/judge',
-  path: '/judge',
+  id: "/judge",
+  path: "/judge",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+  id: "/forgot-password",
+  path: "/forgot-password",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const EmailVerifiedRoute = EmailVerifiedRouteImport.update({
-  id: '/email-verified',
-  path: '/email-verified',
+  id: "/email-verified",
+  path: "/email-verified",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const CoachRoute = CoachRouteImport.update({
-  id: '/coach',
-  path: '/coach',
+  id: "/coach",
+  path: "/coach",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AthleteRoute = AthleteRouteImport.update({
-  id: '/athlete',
-  path: '/athlete',
+  id: "/athlete",
+  path: "/athlete",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+  id: "/admin",
+  path: "/admin",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+  id: "/about",
+  path: "/about",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const CoachIndexRoute = CoachIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const AthleteIndexRoute = AthleteIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const TournamentsIdRoute = TournamentsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => TournamentsRoute,
-} as any)
+} as any);
 const TatamiTokenRoute = TatamiTokenRouteImport.update({
-  id: '/tatami/$token',
-  path: '/tatami/$token',
+  id: "/tatami/$token",
+  path: "/tatami/$token",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LiveWallTournamentIdRoute = LiveWallTournamentIdRouteImport.update({
-  id: '/live-wall/$tournamentId',
-  path: '/live-wall/$tournamentId',
+  id: "/live-wall/$tournamentId",
+  path: "/live-wall/$tournamentId",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const JudgeTokenRoute = JudgeTokenRouteImport.update({
-  id: '/$token',
-  path: '/$token',
+  id: "/$token",
+  path: "/$token",
   getParentRoute: () => JudgeRoute,
-} as any)
+} as any);
 const DisplayTournamentIdRoute = DisplayTournamentIdRouteImport.update({
-  id: '/display/$tournamentId',
-  path: '/display/$tournamentId',
+  id: "/display/$tournamentId",
+  path: "/display/$tournamentId",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const CoachTournamentsRoute = CoachTournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
+  id: "/tournaments",
+  path: "/tournaments",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachProfileRoute = CoachProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+  id: "/profile",
+  path: "/profile",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachOnboardingRoute = CoachOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+  id: "/onboarding",
+  path: "/onboarding",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachNotificationsRoute = CoachNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+  id: "/notifications",
+  path: "/notifications",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachClubRoute = CoachClubRouteImport.update({
-  id: '/club',
-  path: '/club',
+  id: "/club",
+  path: "/club",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachAthletesRoute = CoachAthletesRouteImport.update({
-  id: '/athletes',
-  path: '/athletes',
+  id: "/athletes",
+  path: "/athletes",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
 const CoachApplicationsRoute = CoachApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
+  id: "/applications",
+  path: "/applications",
   getParentRoute: () => CoachRoute,
-} as any)
+} as any);
+const CoachAnalyticsRoute = CoachAnalyticsRouteImport.update({
+  id: "/analytics",
+  path: "/analytics",
+  getParentRoute: () => CoachRoute,
+} as any);
 const AthleteTournamentsRoute = AthleteTournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
+  id: "/tournaments",
+  path: "/tournaments",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AthleteResultsRoute = AthleteResultsRouteImport.update({
-  id: '/results',
-  path: '/results',
+  id: "/results",
+  path: "/results",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AthleteProfileRoute = AthleteProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+  id: "/profile",
+  path: "/profile",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AthleteOnboardingRoute = AthleteOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+  id: "/onboarding",
+  path: "/onboarding",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AthleteNotificationsRoute = AthleteNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+  id: "/notifications",
+  path: "/notifications",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AthleteMatchesRoute = AthleteMatchesRouteImport.update({
-  id: '/matches',
-  path: '/matches',
+  id: "/matches",
+  path: "/matches",
   getParentRoute: () => AthleteRoute,
-} as any)
+} as any);
 const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+  id: "/users",
+  path: "/users",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminTournamentsRoute = AdminTournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
+  id: "/tournaments",
+  path: "/tournaments",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+  id: "/settings",
+  path: "/settings",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminReportsRoute = AdminReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
+  id: "/reports",
+  path: "/reports",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminRatingsRoute = AdminRatingsRouteImport.update({
-  id: '/ratings',
-  path: '/ratings',
+  id: "/ratings",
+  path: "/ratings",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminProtocolsRoute = AdminProtocolsRouteImport.update({
-  id: '/protocols',
-  path: '/protocols',
+  id: "/protocols",
+  path: "/protocols",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+  id: "/notifications",
+  path: "/notifications",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminMatchesRoute = AdminMatchesRouteImport.update({
-  id: '/matches',
-  path: '/matches',
+  id: "/matches",
+  path: "/matches",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminClubsRoute = AdminClubsRouteImport.update({
-  id: '/clubs',
-  path: '/clubs',
+  id: "/clubs",
+  path: "/clubs",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminAuditRoute = AdminAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
+  id: "/audit",
+  path: "/audit",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminApplicationsRoute = AdminApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
+  id: "/applications",
+  path: "/applications",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+  id: "/analytics",
+  path: "/analytics",
   getParentRoute: () => AdminRoute,
-} as any)
+} as any);
 const CoachTournamentsIdRoute = CoachTournamentsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => CoachTournamentsRoute,
-} as any)
+} as any);
 const CoachAthletesIdRoute = CoachAthletesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => CoachAthletesRoute,
-} as any)
+} as any);
 const CoachApplicationsIdRoute = CoachApplicationsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => CoachApplicationsRoute,
-} as any)
+} as any);
 const AthleteMatchesIdRoute = AthleteMatchesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => AthleteMatchesRoute,
-} as any)
+} as any);
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => AdminUsersRoute,
-} as any)
+} as any);
 const AdminTournamentsIdRoute = AdminTournamentsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => AdminTournamentsRoute,
-} as any)
+} as any);
 const AdminClubsIdRoute = AdminClubsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => AdminClubsRoute,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/athlete': typeof AthleteRouteWithChildren
-  '/coach': typeof CoachRouteWithChildren
-  '/email-verified': typeof EmailVerifiedRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/judge': typeof JudgeRouteWithChildren
-  '/login': typeof LoginRoute
-  '/protocol': typeof ProtocolRoute
-  '/rankings': typeof RankingsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRouteWithChildren
-  '/verify-email': typeof VerifyEmailRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/applications': typeof AdminApplicationsRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/clubs': typeof AdminClubsRouteWithChildren
-  '/admin/matches': typeof AdminMatchesRoute
-  '/admin/notifications': typeof AdminNotificationsRoute
-  '/admin/protocols': typeof AdminProtocolsRoute
-  '/admin/ratings': typeof AdminRatingsRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
-  '/admin/users': typeof AdminUsersRouteWithChildren
-  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
-  '/athlete/notifications': typeof AthleteNotificationsRoute
-  '/athlete/onboarding': typeof AthleteOnboardingRoute
-  '/athlete/profile': typeof AthleteProfileRoute
-  '/athlete/results': typeof AthleteResultsRoute
-  '/athlete/tournaments': typeof AthleteTournamentsRoute
-  '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRouteWithChildren
-  '/coach/club': typeof CoachClubRoute
-  '/coach/notifications': typeof CoachNotificationsRoute
-  '/coach/onboarding': typeof CoachOnboardingRoute
-  '/coach/profile': typeof CoachProfileRoute
-  '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
-  '/display/$tournamentId': typeof DisplayTournamentIdRoute
-  '/judge/$token': typeof JudgeTokenRoute
-  '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
-  '/tatami/$token': typeof TatamiTokenRoute
-  '/tournaments/$id': typeof TournamentsIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/athlete/': typeof AthleteIndexRoute
-  '/coach/': typeof CoachIndexRoute
-  '/admin/clubs/$id': typeof AdminClubsIdRoute
-  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
-  '/admin/users/$id': typeof AdminUsersIdRoute
-  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
-  '/coach/applications/$id': typeof CoachApplicationsIdRoute
-  '/coach/athletes/$id': typeof CoachAthletesIdRoute
-  '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/admin": typeof AdminRouteWithChildren;
+  "/athlete": typeof AthleteRouteWithChildren;
+  "/coach": typeof CoachRouteWithChildren;
+  "/email-verified": typeof EmailVerifiedRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/judge": typeof JudgeRouteWithChildren;
+  "/login": typeof LoginRoute;
+  "/protocol": typeof ProtocolRoute;
+  "/rankings": typeof RankingsRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/tournaments": typeof TournamentsRouteWithChildren;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/admin/analytics": typeof AdminAnalyticsRoute;
+  "/admin/applications": typeof AdminApplicationsRoute;
+  "/admin/audit": typeof AdminAuditRoute;
+  "/admin/clubs": typeof AdminClubsRouteWithChildren;
+  "/admin/matches": typeof AdminMatchesRoute;
+  "/admin/notifications": typeof AdminNotificationsRoute;
+  "/admin/protocols": typeof AdminProtocolsRoute;
+  "/admin/ratings": typeof AdminRatingsRoute;
+  "/admin/reports": typeof AdminReportsRoute;
+  "/admin/settings": typeof AdminSettingsRoute;
+  "/admin/tournaments": typeof AdminTournamentsRouteWithChildren;
+  "/admin/users": typeof AdminUsersRouteWithChildren;
+  "/athlete/matches": typeof AthleteMatchesRouteWithChildren;
+  "/athlete/notifications": typeof AthleteNotificationsRoute;
+  "/athlete/onboarding": typeof AthleteOnboardingRoute;
+  "/athlete/profile": typeof AthleteProfileRoute;
+  "/athlete/results": typeof AthleteResultsRoute;
+  "/athlete/tournaments": typeof AthleteTournamentsRoute;
+  "/coach/analytics": typeof CoachAnalyticsRoute;
+  "/coach/applications": typeof CoachApplicationsRouteWithChildren;
+  "/coach/athletes": typeof CoachAthletesRouteWithChildren;
+  "/coach/club": typeof CoachClubRoute;
+  "/coach/notifications": typeof CoachNotificationsRoute;
+  "/coach/onboarding": typeof CoachOnboardingRoute;
+  "/coach/profile": typeof CoachProfileRoute;
+  "/coach/tournaments": typeof CoachTournamentsRouteWithChildren;
+  "/display/$tournamentId": typeof DisplayTournamentIdRoute;
+  "/judge/$token": typeof JudgeTokenRoute;
+  "/live-wall/$tournamentId": typeof LiveWallTournamentIdRoute;
+  "/tatami/$token": typeof TatamiTokenRoute;
+  "/tournaments/$id": typeof TournamentsIdRoute;
+  "/admin/": typeof AdminIndexRoute;
+  "/athlete/": typeof AthleteIndexRoute;
+  "/coach/": typeof CoachIndexRoute;
+  "/admin/clubs/$id": typeof AdminClubsIdRoute;
+  "/admin/tournaments/$id": typeof AdminTournamentsIdRoute;
+  "/admin/users/$id": typeof AdminUsersIdRoute;
+  "/athlete/matches/$id": typeof AthleteMatchesIdRoute;
+  "/coach/applications/$id": typeof CoachApplicationsIdRoute;
+  "/coach/athletes/$id": typeof CoachAthletesIdRoute;
+  "/coach/tournaments/$id": typeof CoachTournamentsIdRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/email-verified': typeof EmailVerifiedRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/judge': typeof JudgeRouteWithChildren
-  '/login': typeof LoginRoute
-  '/protocol': typeof ProtocolRoute
-  '/rankings': typeof RankingsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRouteWithChildren
-  '/verify-email': typeof VerifyEmailRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/applications': typeof AdminApplicationsRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/clubs': typeof AdminClubsRouteWithChildren
-  '/admin/matches': typeof AdminMatchesRoute
-  '/admin/notifications': typeof AdminNotificationsRoute
-  '/admin/protocols': typeof AdminProtocolsRoute
-  '/admin/ratings': typeof AdminRatingsRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
-  '/admin/users': typeof AdminUsersRouteWithChildren
-  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
-  '/athlete/notifications': typeof AthleteNotificationsRoute
-  '/athlete/onboarding': typeof AthleteOnboardingRoute
-  '/athlete/profile': typeof AthleteProfileRoute
-  '/athlete/results': typeof AthleteResultsRoute
-  '/athlete/tournaments': typeof AthleteTournamentsRoute
-  '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRouteWithChildren
-  '/coach/club': typeof CoachClubRoute
-  '/coach/notifications': typeof CoachNotificationsRoute
-  '/coach/onboarding': typeof CoachOnboardingRoute
-  '/coach/profile': typeof CoachProfileRoute
-  '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
-  '/display/$tournamentId': typeof DisplayTournamentIdRoute
-  '/judge/$token': typeof JudgeTokenRoute
-  '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
-  '/tatami/$token': typeof TatamiTokenRoute
-  '/tournaments/$id': typeof TournamentsIdRoute
-  '/admin': typeof AdminIndexRoute
-  '/athlete': typeof AthleteIndexRoute
-  '/coach': typeof CoachIndexRoute
-  '/admin/clubs/$id': typeof AdminClubsIdRoute
-  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
-  '/admin/users/$id': typeof AdminUsersIdRoute
-  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
-  '/coach/applications/$id': typeof CoachApplicationsIdRoute
-  '/coach/athletes/$id': typeof CoachAthletesIdRoute
-  '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/email-verified": typeof EmailVerifiedRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/judge": typeof JudgeRouteWithChildren;
+  "/login": typeof LoginRoute;
+  "/protocol": typeof ProtocolRoute;
+  "/rankings": typeof RankingsRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/tournaments": typeof TournamentsRouteWithChildren;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/admin/analytics": typeof AdminAnalyticsRoute;
+  "/admin/applications": typeof AdminApplicationsRoute;
+  "/admin/audit": typeof AdminAuditRoute;
+  "/admin/clubs": typeof AdminClubsRouteWithChildren;
+  "/admin/matches": typeof AdminMatchesRoute;
+  "/admin/notifications": typeof AdminNotificationsRoute;
+  "/admin/protocols": typeof AdminProtocolsRoute;
+  "/admin/ratings": typeof AdminRatingsRoute;
+  "/admin/reports": typeof AdminReportsRoute;
+  "/admin/settings": typeof AdminSettingsRoute;
+  "/admin/tournaments": typeof AdminTournamentsRouteWithChildren;
+  "/admin/users": typeof AdminUsersRouteWithChildren;
+  "/athlete/matches": typeof AthleteMatchesRouteWithChildren;
+  "/athlete/notifications": typeof AthleteNotificationsRoute;
+  "/athlete/onboarding": typeof AthleteOnboardingRoute;
+  "/athlete/profile": typeof AthleteProfileRoute;
+  "/athlete/results": typeof AthleteResultsRoute;
+  "/athlete/tournaments": typeof AthleteTournamentsRoute;
+  "/coach/analytics": typeof CoachAnalyticsRoute;
+  "/coach/applications": typeof CoachApplicationsRouteWithChildren;
+  "/coach/athletes": typeof CoachAthletesRouteWithChildren;
+  "/coach/club": typeof CoachClubRoute;
+  "/coach/notifications": typeof CoachNotificationsRoute;
+  "/coach/onboarding": typeof CoachOnboardingRoute;
+  "/coach/profile": typeof CoachProfileRoute;
+  "/coach/tournaments": typeof CoachTournamentsRouteWithChildren;
+  "/display/$tournamentId": typeof DisplayTournamentIdRoute;
+  "/judge/$token": typeof JudgeTokenRoute;
+  "/live-wall/$tournamentId": typeof LiveWallTournamentIdRoute;
+  "/tatami/$token": typeof TatamiTokenRoute;
+  "/tournaments/$id": typeof TournamentsIdRoute;
+  "/admin": typeof AdminIndexRoute;
+  "/athlete": typeof AthleteIndexRoute;
+  "/coach": typeof CoachIndexRoute;
+  "/admin/clubs/$id": typeof AdminClubsIdRoute;
+  "/admin/tournaments/$id": typeof AdminTournamentsIdRoute;
+  "/admin/users/$id": typeof AdminUsersIdRoute;
+  "/athlete/matches/$id": typeof AthleteMatchesIdRoute;
+  "/coach/applications/$id": typeof CoachApplicationsIdRoute;
+  "/coach/athletes/$id": typeof CoachAthletesIdRoute;
+  "/coach/tournaments/$id": typeof CoachTournamentsIdRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/athlete': typeof AthleteRouteWithChildren
-  '/coach': typeof CoachRouteWithChildren
-  '/email-verified': typeof EmailVerifiedRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/judge': typeof JudgeRouteWithChildren
-  '/login': typeof LoginRoute
-  '/protocol': typeof ProtocolRoute
-  '/rankings': typeof RankingsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRouteWithChildren
-  '/verify-email': typeof VerifyEmailRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/applications': typeof AdminApplicationsRoute
-  '/admin/audit': typeof AdminAuditRoute
-  '/admin/clubs': typeof AdminClubsRouteWithChildren
-  '/admin/matches': typeof AdminMatchesRoute
-  '/admin/notifications': typeof AdminNotificationsRoute
-  '/admin/protocols': typeof AdminProtocolsRoute
-  '/admin/ratings': typeof AdminRatingsRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tournaments': typeof AdminTournamentsRouteWithChildren
-  '/admin/users': typeof AdminUsersRouteWithChildren
-  '/athlete/matches': typeof AthleteMatchesRouteWithChildren
-  '/athlete/notifications': typeof AthleteNotificationsRoute
-  '/athlete/onboarding': typeof AthleteOnboardingRoute
-  '/athlete/profile': typeof AthleteProfileRoute
-  '/athlete/results': typeof AthleteResultsRoute
-  '/athlete/tournaments': typeof AthleteTournamentsRoute
-  '/coach/applications': typeof CoachApplicationsRouteWithChildren
-  '/coach/athletes': typeof CoachAthletesRouteWithChildren
-  '/coach/club': typeof CoachClubRoute
-  '/coach/notifications': typeof CoachNotificationsRoute
-  '/coach/onboarding': typeof CoachOnboardingRoute
-  '/coach/profile': typeof CoachProfileRoute
-  '/coach/tournaments': typeof CoachTournamentsRouteWithChildren
-  '/display/$tournamentId': typeof DisplayTournamentIdRoute
-  '/judge/$token': typeof JudgeTokenRoute
-  '/live-wall/$tournamentId': typeof LiveWallTournamentIdRoute
-  '/tatami/$token': typeof TatamiTokenRoute
-  '/tournaments/$id': typeof TournamentsIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/athlete/': typeof AthleteIndexRoute
-  '/coach/': typeof CoachIndexRoute
-  '/admin/clubs/$id': typeof AdminClubsIdRoute
-  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
-  '/admin/users/$id': typeof AdminUsersIdRoute
-  '/athlete/matches/$id': typeof AthleteMatchesIdRoute
-  '/coach/applications/$id': typeof CoachApplicationsIdRoute
-  '/coach/athletes/$id': typeof CoachAthletesIdRoute
-  '/coach/tournaments/$id': typeof CoachTournamentsIdRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/admin": typeof AdminRouteWithChildren;
+  "/athlete": typeof AthleteRouteWithChildren;
+  "/coach": typeof CoachRouteWithChildren;
+  "/email-verified": typeof EmailVerifiedRoute;
+  "/forgot-password": typeof ForgotPasswordRoute;
+  "/judge": typeof JudgeRouteWithChildren;
+  "/login": typeof LoginRoute;
+  "/protocol": typeof ProtocolRoute;
+  "/rankings": typeof RankingsRoute;
+  "/reset-password": typeof ResetPasswordRoute;
+  "/tournaments": typeof TournamentsRouteWithChildren;
+  "/verify-email": typeof VerifyEmailRoute;
+  "/admin/analytics": typeof AdminAnalyticsRoute;
+  "/admin/applications": typeof AdminApplicationsRoute;
+  "/admin/audit": typeof AdminAuditRoute;
+  "/admin/clubs": typeof AdminClubsRouteWithChildren;
+  "/admin/matches": typeof AdminMatchesRoute;
+  "/admin/notifications": typeof AdminNotificationsRoute;
+  "/admin/protocols": typeof AdminProtocolsRoute;
+  "/admin/ratings": typeof AdminRatingsRoute;
+  "/admin/reports": typeof AdminReportsRoute;
+  "/admin/settings": typeof AdminSettingsRoute;
+  "/admin/tournaments": typeof AdminTournamentsRouteWithChildren;
+  "/admin/users": typeof AdminUsersRouteWithChildren;
+  "/athlete/matches": typeof AthleteMatchesRouteWithChildren;
+  "/athlete/notifications": typeof AthleteNotificationsRoute;
+  "/athlete/onboarding": typeof AthleteOnboardingRoute;
+  "/athlete/profile": typeof AthleteProfileRoute;
+  "/athlete/results": typeof AthleteResultsRoute;
+  "/athlete/tournaments": typeof AthleteTournamentsRoute;
+  "/coach/analytics": typeof CoachAnalyticsRoute;
+  "/coach/applications": typeof CoachApplicationsRouteWithChildren;
+  "/coach/athletes": typeof CoachAthletesRouteWithChildren;
+  "/coach/club": typeof CoachClubRoute;
+  "/coach/notifications": typeof CoachNotificationsRoute;
+  "/coach/onboarding": typeof CoachOnboardingRoute;
+  "/coach/profile": typeof CoachProfileRoute;
+  "/coach/tournaments": typeof CoachTournamentsRouteWithChildren;
+  "/display/$tournamentId": typeof DisplayTournamentIdRoute;
+  "/judge/$token": typeof JudgeTokenRoute;
+  "/live-wall/$tournamentId": typeof LiveWallTournamentIdRoute;
+  "/tatami/$token": typeof TatamiTokenRoute;
+  "/tournaments/$id": typeof TournamentsIdRoute;
+  "/admin/": typeof AdminIndexRoute;
+  "/athlete/": typeof AthleteIndexRoute;
+  "/coach/": typeof CoachIndexRoute;
+  "/admin/clubs/$id": typeof AdminClubsIdRoute;
+  "/admin/tournaments/$id": typeof AdminTournamentsIdRoute;
+  "/admin/users/$id": typeof AdminUsersIdRoute;
+  "/athlete/matches/$id": typeof AthleteMatchesIdRoute;
+  "/coach/applications/$id": typeof CoachApplicationsIdRoute;
+  "/coach/athletes/$id": typeof CoachAthletesIdRoute;
+  "/coach/tournaments/$id": typeof CoachTournamentsIdRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
-    | '/'
-    | '/about'
-    | '/admin'
-    | '/athlete'
-    | '/coach'
-    | '/email-verified'
-    | '/forgot-password'
-    | '/judge'
-    | '/login'
-    | '/protocol'
-    | '/rankings'
-    | '/reset-password'
-    | '/tournaments'
-    | '/verify-email'
-    | '/admin/analytics'
-    | '/admin/applications'
-    | '/admin/audit'
-    | '/admin/clubs'
-    | '/admin/matches'
-    | '/admin/notifications'
-    | '/admin/protocols'
-    | '/admin/ratings'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/tournaments'
-    | '/admin/users'
-    | '/athlete/matches'
-    | '/athlete/notifications'
-    | '/athlete/onboarding'
-    | '/athlete/profile'
-    | '/athlete/results'
-    | '/athlete/tournaments'
-    | '/coach/applications'
-    | '/coach/athletes'
-    | '/coach/club'
-    | '/coach/notifications'
-    | '/coach/onboarding'
-    | '/coach/profile'
-    | '/coach/tournaments'
-    | '/display/$tournamentId'
-    | '/judge/$token'
-    | '/live-wall/$tournamentId'
-    | '/tatami/$token'
-    | '/tournaments/$id'
-    | '/admin/'
-    | '/athlete/'
-    | '/coach/'
-    | '/admin/clubs/$id'
-    | '/admin/tournaments/$id'
-    | '/admin/users/$id'
-    | '/athlete/matches/$id'
-    | '/coach/applications/$id'
-    | '/coach/athletes/$id'
-    | '/coach/tournaments/$id'
-  fileRoutesByTo: FileRoutesByTo
+    | "/"
+    | "/about"
+    | "/admin"
+    | "/athlete"
+    | "/coach"
+    | "/email-verified"
+    | "/forgot-password"
+    | "/judge"
+    | "/login"
+    | "/protocol"
+    | "/rankings"
+    | "/reset-password"
+    | "/tournaments"
+    | "/verify-email"
+    | "/admin/analytics"
+    | "/admin/applications"
+    | "/admin/audit"
+    | "/admin/clubs"
+    | "/admin/matches"
+    | "/admin/notifications"
+    | "/admin/protocols"
+    | "/admin/ratings"
+    | "/admin/reports"
+    | "/admin/settings"
+    | "/admin/tournaments"
+    | "/admin/users"
+    | "/athlete/matches"
+    | "/athlete/notifications"
+    | "/athlete/onboarding"
+    | "/athlete/profile"
+    | "/athlete/results"
+    | "/athlete/tournaments"
+    | "/coach/analytics"
+    | "/coach/applications"
+    | "/coach/athletes"
+    | "/coach/club"
+    | "/coach/notifications"
+    | "/coach/onboarding"
+    | "/coach/profile"
+    | "/coach/tournaments"
+    | "/display/$tournamentId"
+    | "/judge/$token"
+    | "/live-wall/$tournamentId"
+    | "/tatami/$token"
+    | "/tournaments/$id"
+    | "/admin/"
+    | "/athlete/"
+    | "/coach/"
+    | "/admin/clubs/$id"
+    | "/admin/tournaments/$id"
+    | "/admin/users/$id"
+    | "/athlete/matches/$id"
+    | "/coach/applications/$id"
+    | "/coach/athletes/$id"
+    | "/coach/tournaments/$id";
+  fileRoutesByTo: FileRoutesByTo;
   to:
-    | '/'
-    | '/about'
-    | '/email-verified'
-    | '/forgot-password'
-    | '/judge'
-    | '/login'
-    | '/protocol'
-    | '/rankings'
-    | '/reset-password'
-    | '/tournaments'
-    | '/verify-email'
-    | '/admin/analytics'
-    | '/admin/applications'
-    | '/admin/audit'
-    | '/admin/clubs'
-    | '/admin/matches'
-    | '/admin/notifications'
-    | '/admin/protocols'
-    | '/admin/ratings'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/tournaments'
-    | '/admin/users'
-    | '/athlete/matches'
-    | '/athlete/notifications'
-    | '/athlete/onboarding'
-    | '/athlete/profile'
-    | '/athlete/results'
-    | '/athlete/tournaments'
-    | '/coach/applications'
-    | '/coach/athletes'
-    | '/coach/club'
-    | '/coach/notifications'
-    | '/coach/onboarding'
-    | '/coach/profile'
-    | '/coach/tournaments'
-    | '/display/$tournamentId'
-    | '/judge/$token'
-    | '/live-wall/$tournamentId'
-    | '/tatami/$token'
-    | '/tournaments/$id'
-    | '/admin'
-    | '/athlete'
-    | '/coach'
-    | '/admin/clubs/$id'
-    | '/admin/tournaments/$id'
-    | '/admin/users/$id'
-    | '/athlete/matches/$id'
-    | '/coach/applications/$id'
-    | '/coach/athletes/$id'
-    | '/coach/tournaments/$id'
+    | "/"
+    | "/about"
+    | "/email-verified"
+    | "/forgot-password"
+    | "/judge"
+    | "/login"
+    | "/protocol"
+    | "/rankings"
+    | "/reset-password"
+    | "/tournaments"
+    | "/verify-email"
+    | "/admin/analytics"
+    | "/admin/applications"
+    | "/admin/audit"
+    | "/admin/clubs"
+    | "/admin/matches"
+    | "/admin/notifications"
+    | "/admin/protocols"
+    | "/admin/ratings"
+    | "/admin/reports"
+    | "/admin/settings"
+    | "/admin/tournaments"
+    | "/admin/users"
+    | "/athlete/matches"
+    | "/athlete/notifications"
+    | "/athlete/onboarding"
+    | "/athlete/profile"
+    | "/athlete/results"
+    | "/athlete/tournaments"
+    | "/coach/analytics"
+    | "/coach/applications"
+    | "/coach/athletes"
+    | "/coach/club"
+    | "/coach/notifications"
+    | "/coach/onboarding"
+    | "/coach/profile"
+    | "/coach/tournaments"
+    | "/display/$tournamentId"
+    | "/judge/$token"
+    | "/live-wall/$tournamentId"
+    | "/tatami/$token"
+    | "/tournaments/$id"
+    | "/admin"
+    | "/athlete"
+    | "/coach"
+    | "/admin/clubs/$id"
+    | "/admin/tournaments/$id"
+    | "/admin/users/$id"
+    | "/athlete/matches/$id"
+    | "/coach/applications/$id"
+    | "/coach/athletes/$id"
+    | "/coach/tournaments/$id";
   id:
-    | '__root__'
-    | '/'
-    | '/about'
-    | '/admin'
-    | '/athlete'
-    | '/coach'
-    | '/email-verified'
-    | '/forgot-password'
-    | '/judge'
-    | '/login'
-    | '/protocol'
-    | '/rankings'
-    | '/reset-password'
-    | '/tournaments'
-    | '/verify-email'
-    | '/admin/analytics'
-    | '/admin/applications'
-    | '/admin/audit'
-    | '/admin/clubs'
-    | '/admin/matches'
-    | '/admin/notifications'
-    | '/admin/protocols'
-    | '/admin/ratings'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/tournaments'
-    | '/admin/users'
-    | '/athlete/matches'
-    | '/athlete/notifications'
-    | '/athlete/onboarding'
-    | '/athlete/profile'
-    | '/athlete/results'
-    | '/athlete/tournaments'
-    | '/coach/applications'
-    | '/coach/athletes'
-    | '/coach/club'
-    | '/coach/notifications'
-    | '/coach/onboarding'
-    | '/coach/profile'
-    | '/coach/tournaments'
-    | '/display/$tournamentId'
-    | '/judge/$token'
-    | '/live-wall/$tournamentId'
-    | '/tatami/$token'
-    | '/tournaments/$id'
-    | '/admin/'
-    | '/athlete/'
-    | '/coach/'
-    | '/admin/clubs/$id'
-    | '/admin/tournaments/$id'
-    | '/admin/users/$id'
-    | '/athlete/matches/$id'
-    | '/coach/applications/$id'
-    | '/coach/athletes/$id'
-    | '/coach/tournaments/$id'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/about"
+    | "/admin"
+    | "/athlete"
+    | "/coach"
+    | "/email-verified"
+    | "/forgot-password"
+    | "/judge"
+    | "/login"
+    | "/protocol"
+    | "/rankings"
+    | "/reset-password"
+    | "/tournaments"
+    | "/verify-email"
+    | "/admin/analytics"
+    | "/admin/applications"
+    | "/admin/audit"
+    | "/admin/clubs"
+    | "/admin/matches"
+    | "/admin/notifications"
+    | "/admin/protocols"
+    | "/admin/ratings"
+    | "/admin/reports"
+    | "/admin/settings"
+    | "/admin/tournaments"
+    | "/admin/users"
+    | "/athlete/matches"
+    | "/athlete/notifications"
+    | "/athlete/onboarding"
+    | "/athlete/profile"
+    | "/athlete/results"
+    | "/athlete/tournaments"
+    | "/coach/analytics"
+    | "/coach/applications"
+    | "/coach/athletes"
+    | "/coach/club"
+    | "/coach/notifications"
+    | "/coach/onboarding"
+    | "/coach/profile"
+    | "/coach/tournaments"
+    | "/display/$tournamentId"
+    | "/judge/$token"
+    | "/live-wall/$tournamentId"
+    | "/tatami/$token"
+    | "/tournaments/$id"
+    | "/admin/"
+    | "/athlete/"
+    | "/coach/"
+    | "/admin/clubs/$id"
+    | "/admin/tournaments/$id"
+    | "/admin/users/$id"
+    | "/athlete/matches/$id"
+    | "/coach/applications/$id"
+    | "/coach/athletes/$id"
+    | "/coach/tournaments/$id";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
-  AdminRoute: typeof AdminRouteWithChildren
-  AthleteRoute: typeof AthleteRouteWithChildren
-  CoachRoute: typeof CoachRouteWithChildren
-  EmailVerifiedRoute: typeof EmailVerifiedRoute
-  ForgotPasswordRoute: typeof ForgotPasswordRoute
-  JudgeRoute: typeof JudgeRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  ProtocolRoute: typeof ProtocolRoute
-  RankingsRoute: typeof RankingsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  TournamentsRoute: typeof TournamentsRouteWithChildren
-  VerifyEmailRoute: typeof VerifyEmailRoute
-  DisplayTournamentIdRoute: typeof DisplayTournamentIdRoute
-  LiveWallTournamentIdRoute: typeof LiveWallTournamentIdRoute
-  TatamiTokenRoute: typeof TatamiTokenRoute
+  IndexRoute: typeof IndexRoute;
+  AboutRoute: typeof AboutRoute;
+  AdminRoute: typeof AdminRouteWithChildren;
+  AthleteRoute: typeof AthleteRouteWithChildren;
+  CoachRoute: typeof CoachRouteWithChildren;
+  EmailVerifiedRoute: typeof EmailVerifiedRoute;
+  ForgotPasswordRoute: typeof ForgotPasswordRoute;
+  JudgeRoute: typeof JudgeRouteWithChildren;
+  LoginRoute: typeof LoginRoute;
+  ProtocolRoute: typeof ProtocolRoute;
+  RankingsRoute: typeof RankingsRoute;
+  ResetPasswordRoute: typeof ResetPasswordRoute;
+  TournamentsRoute: typeof TournamentsRouteWithChildren;
+  VerifyEmailRoute: typeof VerifyEmailRoute;
+  DisplayTournamentIdRoute: typeof DisplayTournamentIdRoute;
+  LiveWallTournamentIdRoute: typeof LiveWallTournamentIdRoute;
+  TatamiTokenRoute: typeof TatamiTokenRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tournaments': {
-      id: '/tournaments'
-      path: '/tournaments'
-      fullPath: '/tournaments'
-      preLoaderRoute: typeof TournamentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rankings': {
-      id: '/rankings'
-      path: '/rankings'
-      fullPath: '/rankings'
-      preLoaderRoute: typeof RankingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/protocol': {
-      id: '/protocol'
-      path: '/protocol'
-      fullPath: '/protocol'
-      preLoaderRoute: typeof ProtocolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/judge': {
-      id: '/judge'
-      path: '/judge'
-      fullPath: '/judge'
-      preLoaderRoute: typeof JudgeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email-verified': {
-      id: '/email-verified'
-      path: '/email-verified'
-      fullPath: '/email-verified'
-      preLoaderRoute: typeof EmailVerifiedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coach': {
-      id: '/coach'
-      path: '/coach'
-      fullPath: '/coach'
-      preLoaderRoute: typeof CoachRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/athlete': {
-      id: '/athlete'
-      path: '/athlete'
-      fullPath: '/athlete'
-      preLoaderRoute: typeof AthleteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coach/': {
-      id: '/coach/'
-      path: '/'
-      fullPath: '/coach/'
-      preLoaderRoute: typeof CoachIndexRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/athlete/': {
-      id: '/athlete/'
-      path: '/'
-      fullPath: '/athlete/'
-      preLoaderRoute: typeof AthleteIndexRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/tournaments/$id': {
-      id: '/tournaments/$id'
-      path: '/$id'
-      fullPath: '/tournaments/$id'
-      preLoaderRoute: typeof TournamentsIdRouteImport
-      parentRoute: typeof TournamentsRoute
-    }
-    '/tatami/$token': {
-      id: '/tatami/$token'
-      path: '/tatami/$token'
-      fullPath: '/tatami/$token'
-      preLoaderRoute: typeof TatamiTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/live-wall/$tournamentId': {
-      id: '/live-wall/$tournamentId'
-      path: '/live-wall/$tournamentId'
-      fullPath: '/live-wall/$tournamentId'
-      preLoaderRoute: typeof LiveWallTournamentIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/judge/$token': {
-      id: '/judge/$token'
-      path: '/$token'
-      fullPath: '/judge/$token'
-      preLoaderRoute: typeof JudgeTokenRouteImport
-      parentRoute: typeof JudgeRoute
-    }
-    '/display/$tournamentId': {
-      id: '/display/$tournamentId'
-      path: '/display/$tournamentId'
-      fullPath: '/display/$tournamentId'
-      preLoaderRoute: typeof DisplayTournamentIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coach/tournaments': {
-      id: '/coach/tournaments'
-      path: '/tournaments'
-      fullPath: '/coach/tournaments'
-      preLoaderRoute: typeof CoachTournamentsRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/profile': {
-      id: '/coach/profile'
-      path: '/profile'
-      fullPath: '/coach/profile'
-      preLoaderRoute: typeof CoachProfileRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/onboarding': {
-      id: '/coach/onboarding'
-      path: '/onboarding'
-      fullPath: '/coach/onboarding'
-      preLoaderRoute: typeof CoachOnboardingRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/notifications': {
-      id: '/coach/notifications'
-      path: '/notifications'
-      fullPath: '/coach/notifications'
-      preLoaderRoute: typeof CoachNotificationsRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/club': {
-      id: '/coach/club'
-      path: '/club'
-      fullPath: '/coach/club'
-      preLoaderRoute: typeof CoachClubRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/athletes': {
-      id: '/coach/athletes'
-      path: '/athletes'
-      fullPath: '/coach/athletes'
-      preLoaderRoute: typeof CoachAthletesRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/coach/applications': {
-      id: '/coach/applications'
-      path: '/applications'
-      fullPath: '/coach/applications'
-      preLoaderRoute: typeof CoachApplicationsRouteImport
-      parentRoute: typeof CoachRoute
-    }
-    '/athlete/tournaments': {
-      id: '/athlete/tournaments'
-      path: '/tournaments'
-      fullPath: '/athlete/tournaments'
-      preLoaderRoute: typeof AthleteTournamentsRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/athlete/results': {
-      id: '/athlete/results'
-      path: '/results'
-      fullPath: '/athlete/results'
-      preLoaderRoute: typeof AthleteResultsRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/athlete/profile': {
-      id: '/athlete/profile'
-      path: '/profile'
-      fullPath: '/athlete/profile'
-      preLoaderRoute: typeof AthleteProfileRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/athlete/onboarding': {
-      id: '/athlete/onboarding'
-      path: '/onboarding'
-      fullPath: '/athlete/onboarding'
-      preLoaderRoute: typeof AthleteOnboardingRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/athlete/notifications': {
-      id: '/athlete/notifications'
-      path: '/notifications'
-      fullPath: '/athlete/notifications'
-      preLoaderRoute: typeof AthleteNotificationsRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/athlete/matches': {
-      id: '/athlete/matches'
-      path: '/matches'
-      fullPath: '/athlete/matches'
-      preLoaderRoute: typeof AthleteMatchesRouteImport
-      parentRoute: typeof AthleteRoute
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/tournaments': {
-      id: '/admin/tournaments'
-      path: '/tournaments'
-      fullPath: '/admin/tournaments'
-      preLoaderRoute: typeof AdminTournamentsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/reports': {
-      id: '/admin/reports'
-      path: '/reports'
-      fullPath: '/admin/reports'
-      preLoaderRoute: typeof AdminReportsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/ratings': {
-      id: '/admin/ratings'
-      path: '/ratings'
-      fullPath: '/admin/ratings'
-      preLoaderRoute: typeof AdminRatingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/protocols': {
-      id: '/admin/protocols'
-      path: '/protocols'
-      fullPath: '/admin/protocols'
-      preLoaderRoute: typeof AdminProtocolsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/notifications': {
-      id: '/admin/notifications'
-      path: '/notifications'
-      fullPath: '/admin/notifications'
-      preLoaderRoute: typeof AdminNotificationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/matches': {
-      id: '/admin/matches'
-      path: '/matches'
-      fullPath: '/admin/matches'
-      preLoaderRoute: typeof AdminMatchesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/clubs': {
-      id: '/admin/clubs'
-      path: '/clubs'
-      fullPath: '/admin/clubs'
-      preLoaderRoute: typeof AdminClubsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/audit': {
-      id: '/admin/audit'
-      path: '/audit'
-      fullPath: '/admin/audit'
-      preLoaderRoute: typeof AdminAuditRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/applications': {
-      id: '/admin/applications'
-      path: '/applications'
-      fullPath: '/admin/applications'
-      preLoaderRoute: typeof AdminApplicationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/analytics': {
-      id: '/admin/analytics'
-      path: '/analytics'
-      fullPath: '/admin/analytics'
-      preLoaderRoute: typeof AdminAnalyticsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/coach/tournaments/$id': {
-      id: '/coach/tournaments/$id'
-      path: '/$id'
-      fullPath: '/coach/tournaments/$id'
-      preLoaderRoute: typeof CoachTournamentsIdRouteImport
-      parentRoute: typeof CoachTournamentsRoute
-    }
-    '/coach/athletes/$id': {
-      id: '/coach/athletes/$id'
-      path: '/$id'
-      fullPath: '/coach/athletes/$id'
-      preLoaderRoute: typeof CoachAthletesIdRouteImport
-      parentRoute: typeof CoachAthletesRoute
-    }
-    '/coach/applications/$id': {
-      id: '/coach/applications/$id'
-      path: '/$id'
-      fullPath: '/coach/applications/$id'
-      preLoaderRoute: typeof CoachApplicationsIdRouteImport
-      parentRoute: typeof CoachApplicationsRoute
-    }
-    '/athlete/matches/$id': {
-      id: '/athlete/matches/$id'
-      path: '/$id'
-      fullPath: '/athlete/matches/$id'
-      preLoaderRoute: typeof AthleteMatchesIdRouteImport
-      parentRoute: typeof AthleteMatchesRoute
-    }
-    '/admin/users/$id': {
-      id: '/admin/users/$id'
-      path: '/$id'
-      fullPath: '/admin/users/$id'
-      preLoaderRoute: typeof AdminUsersIdRouteImport
-      parentRoute: typeof AdminUsersRoute
-    }
-    '/admin/tournaments/$id': {
-      id: '/admin/tournaments/$id'
-      path: '/$id'
-      fullPath: '/admin/tournaments/$id'
-      preLoaderRoute: typeof AdminTournamentsIdRouteImport
-      parentRoute: typeof AdminTournamentsRoute
-    }
-    '/admin/clubs/$id': {
-      id: '/admin/clubs/$id'
-      path: '/$id'
-      fullPath: '/admin/clubs/$id'
-      preLoaderRoute: typeof AdminClubsIdRouteImport
-      parentRoute: typeof AdminClubsRoute
-    }
+    "/verify-email": {
+      id: "/verify-email";
+      path: "/verify-email";
+      fullPath: "/verify-email";
+      preLoaderRoute: typeof VerifyEmailRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/tournaments": {
+      id: "/tournaments";
+      path: "/tournaments";
+      fullPath: "/tournaments";
+      preLoaderRoute: typeof TournamentsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/reset-password": {
+      id: "/reset-password";
+      path: "/reset-password";
+      fullPath: "/reset-password";
+      preLoaderRoute: typeof ResetPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/rankings": {
+      id: "/rankings";
+      path: "/rankings";
+      fullPath: "/rankings";
+      preLoaderRoute: typeof RankingsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/protocol": {
+      id: "/protocol";
+      path: "/protocol";
+      fullPath: "/protocol";
+      preLoaderRoute: typeof ProtocolRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/login": {
+      id: "/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/judge": {
+      id: "/judge";
+      path: "/judge";
+      fullPath: "/judge";
+      preLoaderRoute: typeof JudgeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/forgot-password": {
+      id: "/forgot-password";
+      path: "/forgot-password";
+      fullPath: "/forgot-password";
+      preLoaderRoute: typeof ForgotPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/email-verified": {
+      id: "/email-verified";
+      path: "/email-verified";
+      fullPath: "/email-verified";
+      preLoaderRoute: typeof EmailVerifiedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/coach": {
+      id: "/coach";
+      path: "/coach";
+      fullPath: "/coach";
+      preLoaderRoute: typeof CoachRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/athlete": {
+      id: "/athlete";
+      path: "/athlete";
+      fullPath: "/athlete";
+      preLoaderRoute: typeof AthleteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/admin": {
+      id: "/admin";
+      path: "/admin";
+      fullPath: "/admin";
+      preLoaderRoute: typeof AdminRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/about": {
+      id: "/about";
+      path: "/about";
+      fullPath: "/about";
+      preLoaderRoute: typeof AboutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/coach/": {
+      id: "/coach/";
+      path: "/";
+      fullPath: "/coach/";
+      preLoaderRoute: typeof CoachIndexRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/athlete/": {
+      id: "/athlete/";
+      path: "/";
+      fullPath: "/athlete/";
+      preLoaderRoute: typeof AthleteIndexRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/admin/": {
+      id: "/admin/";
+      path: "/";
+      fullPath: "/admin/";
+      preLoaderRoute: typeof AdminIndexRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/tournaments/$id": {
+      id: "/tournaments/$id";
+      path: "/$id";
+      fullPath: "/tournaments/$id";
+      preLoaderRoute: typeof TournamentsIdRouteImport;
+      parentRoute: typeof TournamentsRoute;
+    };
+    "/tatami/$token": {
+      id: "/tatami/$token";
+      path: "/tatami/$token";
+      fullPath: "/tatami/$token";
+      preLoaderRoute: typeof TatamiTokenRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/live-wall/$tournamentId": {
+      id: "/live-wall/$tournamentId";
+      path: "/live-wall/$tournamentId";
+      fullPath: "/live-wall/$tournamentId";
+      preLoaderRoute: typeof LiveWallTournamentIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/judge/$token": {
+      id: "/judge/$token";
+      path: "/$token";
+      fullPath: "/judge/$token";
+      preLoaderRoute: typeof JudgeTokenRouteImport;
+      parentRoute: typeof JudgeRoute;
+    };
+    "/display/$tournamentId": {
+      id: "/display/$tournamentId";
+      path: "/display/$tournamentId";
+      fullPath: "/display/$tournamentId";
+      preLoaderRoute: typeof DisplayTournamentIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/coach/tournaments": {
+      id: "/coach/tournaments";
+      path: "/tournaments";
+      fullPath: "/coach/tournaments";
+      preLoaderRoute: typeof CoachTournamentsRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/profile": {
+      id: "/coach/profile";
+      path: "/profile";
+      fullPath: "/coach/profile";
+      preLoaderRoute: typeof CoachProfileRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/onboarding": {
+      id: "/coach/onboarding";
+      path: "/onboarding";
+      fullPath: "/coach/onboarding";
+      preLoaderRoute: typeof CoachOnboardingRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/notifications": {
+      id: "/coach/notifications";
+      path: "/notifications";
+      fullPath: "/coach/notifications";
+      preLoaderRoute: typeof CoachNotificationsRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/club": {
+      id: "/coach/club";
+      path: "/club";
+      fullPath: "/coach/club";
+      preLoaderRoute: typeof CoachClubRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/athletes": {
+      id: "/coach/athletes";
+      path: "/athletes";
+      fullPath: "/coach/athletes";
+      preLoaderRoute: typeof CoachAthletesRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/applications": {
+      id: "/coach/applications";
+      path: "/applications";
+      fullPath: "/coach/applications";
+      preLoaderRoute: typeof CoachApplicationsRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/coach/analytics": {
+      id: "/coach/analytics";
+      path: "/analytics";
+      fullPath: "/coach/analytics";
+      preLoaderRoute: typeof CoachAnalyticsRouteImport;
+      parentRoute: typeof CoachRoute;
+    };
+    "/athlete/tournaments": {
+      id: "/athlete/tournaments";
+      path: "/tournaments";
+      fullPath: "/athlete/tournaments";
+      preLoaderRoute: typeof AthleteTournamentsRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/athlete/results": {
+      id: "/athlete/results";
+      path: "/results";
+      fullPath: "/athlete/results";
+      preLoaderRoute: typeof AthleteResultsRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/athlete/profile": {
+      id: "/athlete/profile";
+      path: "/profile";
+      fullPath: "/athlete/profile";
+      preLoaderRoute: typeof AthleteProfileRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/athlete/onboarding": {
+      id: "/athlete/onboarding";
+      path: "/onboarding";
+      fullPath: "/athlete/onboarding";
+      preLoaderRoute: typeof AthleteOnboardingRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/athlete/notifications": {
+      id: "/athlete/notifications";
+      path: "/notifications";
+      fullPath: "/athlete/notifications";
+      preLoaderRoute: typeof AthleteNotificationsRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/athlete/matches": {
+      id: "/athlete/matches";
+      path: "/matches";
+      fullPath: "/athlete/matches";
+      preLoaderRoute: typeof AthleteMatchesRouteImport;
+      parentRoute: typeof AthleteRoute;
+    };
+    "/admin/users": {
+      id: "/admin/users";
+      path: "/users";
+      fullPath: "/admin/users";
+      preLoaderRoute: typeof AdminUsersRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/tournaments": {
+      id: "/admin/tournaments";
+      path: "/tournaments";
+      fullPath: "/admin/tournaments";
+      preLoaderRoute: typeof AdminTournamentsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/settings": {
+      id: "/admin/settings";
+      path: "/settings";
+      fullPath: "/admin/settings";
+      preLoaderRoute: typeof AdminSettingsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/reports": {
+      id: "/admin/reports";
+      path: "/reports";
+      fullPath: "/admin/reports";
+      preLoaderRoute: typeof AdminReportsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/ratings": {
+      id: "/admin/ratings";
+      path: "/ratings";
+      fullPath: "/admin/ratings";
+      preLoaderRoute: typeof AdminRatingsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/protocols": {
+      id: "/admin/protocols";
+      path: "/protocols";
+      fullPath: "/admin/protocols";
+      preLoaderRoute: typeof AdminProtocolsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/notifications": {
+      id: "/admin/notifications";
+      path: "/notifications";
+      fullPath: "/admin/notifications";
+      preLoaderRoute: typeof AdminNotificationsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/matches": {
+      id: "/admin/matches";
+      path: "/matches";
+      fullPath: "/admin/matches";
+      preLoaderRoute: typeof AdminMatchesRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/clubs": {
+      id: "/admin/clubs";
+      path: "/clubs";
+      fullPath: "/admin/clubs";
+      preLoaderRoute: typeof AdminClubsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/audit": {
+      id: "/admin/audit";
+      path: "/audit";
+      fullPath: "/admin/audit";
+      preLoaderRoute: typeof AdminAuditRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/applications": {
+      id: "/admin/applications";
+      path: "/applications";
+      fullPath: "/admin/applications";
+      preLoaderRoute: typeof AdminApplicationsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/admin/analytics": {
+      id: "/admin/analytics";
+      path: "/analytics";
+      fullPath: "/admin/analytics";
+      preLoaderRoute: typeof AdminAnalyticsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
+    "/coach/tournaments/$id": {
+      id: "/coach/tournaments/$id";
+      path: "/$id";
+      fullPath: "/coach/tournaments/$id";
+      preLoaderRoute: typeof CoachTournamentsIdRouteImport;
+      parentRoute: typeof CoachTournamentsRoute;
+    };
+    "/coach/athletes/$id": {
+      id: "/coach/athletes/$id";
+      path: "/$id";
+      fullPath: "/coach/athletes/$id";
+      preLoaderRoute: typeof CoachAthletesIdRouteImport;
+      parentRoute: typeof CoachAthletesRoute;
+    };
+    "/coach/applications/$id": {
+      id: "/coach/applications/$id";
+      path: "/$id";
+      fullPath: "/coach/applications/$id";
+      preLoaderRoute: typeof CoachApplicationsIdRouteImport;
+      parentRoute: typeof CoachApplicationsRoute;
+    };
+    "/athlete/matches/$id": {
+      id: "/athlete/matches/$id";
+      path: "/$id";
+      fullPath: "/athlete/matches/$id";
+      preLoaderRoute: typeof AthleteMatchesIdRouteImport;
+      parentRoute: typeof AthleteMatchesRoute;
+    };
+    "/admin/users/$id": {
+      id: "/admin/users/$id";
+      path: "/$id";
+      fullPath: "/admin/users/$id";
+      preLoaderRoute: typeof AdminUsersIdRouteImport;
+      parentRoute: typeof AdminUsersRoute;
+    };
+    "/admin/tournaments/$id": {
+      id: "/admin/tournaments/$id";
+      path: "/$id";
+      fullPath: "/admin/tournaments/$id";
+      preLoaderRoute: typeof AdminTournamentsIdRouteImport;
+      parentRoute: typeof AdminTournamentsRoute;
+    };
+    "/admin/clubs/$id": {
+      id: "/admin/clubs/$id";
+      path: "/$id";
+      fullPath: "/admin/clubs/$id";
+      preLoaderRoute: typeof AdminClubsIdRouteImport;
+      parentRoute: typeof AdminClubsRoute;
+    };
   }
 }
 
 interface AdminClubsRouteChildren {
-  AdminClubsIdRoute: typeof AdminClubsIdRoute
+  AdminClubsIdRoute: typeof AdminClubsIdRoute;
 }
 
 const AdminClubsRouteChildren: AdminClubsRouteChildren = {
   AdminClubsIdRoute: AdminClubsIdRoute,
-}
+};
 
-const AdminClubsRouteWithChildren = AdminClubsRoute._addFileChildren(
-  AdminClubsRouteChildren,
-)
+const AdminClubsRouteWithChildren = AdminClubsRoute._addFileChildren(AdminClubsRouteChildren);
 
 interface AdminTournamentsRouteChildren {
-  AdminTournamentsIdRoute: typeof AdminTournamentsIdRoute
+  AdminTournamentsIdRoute: typeof AdminTournamentsIdRoute;
 }
 
 const AdminTournamentsRouteChildren: AdminTournamentsRouteChildren = {
   AdminTournamentsIdRoute: AdminTournamentsIdRoute,
-}
+};
 
-const AdminTournamentsRouteWithChildren =
-  AdminTournamentsRoute._addFileChildren(AdminTournamentsRouteChildren)
+const AdminTournamentsRouteWithChildren = AdminTournamentsRoute._addFileChildren(
+  AdminTournamentsRouteChildren,
+);
 
 interface AdminUsersRouteChildren {
-  AdminUsersIdRoute: typeof AdminUsersIdRoute
+  AdminUsersIdRoute: typeof AdminUsersIdRoute;
 }
 
 const AdminUsersRouteChildren: AdminUsersRouteChildren = {
   AdminUsersIdRoute: AdminUsersIdRoute,
-}
+};
 
-const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
-  AdminUsersRouteChildren,
-)
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(AdminUsersRouteChildren);
 
 interface AdminRouteChildren {
-  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
-  AdminApplicationsRoute: typeof AdminApplicationsRoute
-  AdminAuditRoute: typeof AdminAuditRoute
-  AdminClubsRoute: typeof AdminClubsRouteWithChildren
-  AdminMatchesRoute: typeof AdminMatchesRoute
-  AdminNotificationsRoute: typeof AdminNotificationsRoute
-  AdminProtocolsRoute: typeof AdminProtocolsRoute
-  AdminRatingsRoute: typeof AdminRatingsRoute
-  AdminReportsRoute: typeof AdminReportsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminTournamentsRoute: typeof AdminTournamentsRouteWithChildren
-  AdminUsersRoute: typeof AdminUsersRouteWithChildren
-  AdminIndexRoute: typeof AdminIndexRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute;
+  AdminApplicationsRoute: typeof AdminApplicationsRoute;
+  AdminAuditRoute: typeof AdminAuditRoute;
+  AdminClubsRoute: typeof AdminClubsRouteWithChildren;
+  AdminMatchesRoute: typeof AdminMatchesRoute;
+  AdminNotificationsRoute: typeof AdminNotificationsRoute;
+  AdminProtocolsRoute: typeof AdminProtocolsRoute;
+  AdminRatingsRoute: typeof AdminRatingsRoute;
+  AdminReportsRoute: typeof AdminReportsRoute;
+  AdminSettingsRoute: typeof AdminSettingsRoute;
+  AdminTournamentsRoute: typeof AdminTournamentsRouteWithChildren;
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren;
+  AdminIndexRoute: typeof AdminIndexRoute;
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -1137,30 +1153,30 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminTournamentsRoute: AdminTournamentsRouteWithChildren,
   AdminUsersRoute: AdminUsersRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
-}
+};
 
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren);
 
 interface AthleteMatchesRouteChildren {
-  AthleteMatchesIdRoute: typeof AthleteMatchesIdRoute
+  AthleteMatchesIdRoute: typeof AthleteMatchesIdRoute;
 }
 
 const AthleteMatchesRouteChildren: AthleteMatchesRouteChildren = {
   AthleteMatchesIdRoute: AthleteMatchesIdRoute,
-}
+};
 
 const AthleteMatchesRouteWithChildren = AthleteMatchesRoute._addFileChildren(
   AthleteMatchesRouteChildren,
-)
+);
 
 interface AthleteRouteChildren {
-  AthleteMatchesRoute: typeof AthleteMatchesRouteWithChildren
-  AthleteNotificationsRoute: typeof AthleteNotificationsRoute
-  AthleteOnboardingRoute: typeof AthleteOnboardingRoute
-  AthleteProfileRoute: typeof AthleteProfileRoute
-  AthleteResultsRoute: typeof AthleteResultsRoute
-  AthleteTournamentsRoute: typeof AthleteTournamentsRoute
-  AthleteIndexRoute: typeof AthleteIndexRoute
+  AthleteMatchesRoute: typeof AthleteMatchesRouteWithChildren;
+  AthleteNotificationsRoute: typeof AthleteNotificationsRoute;
+  AthleteOnboardingRoute: typeof AthleteOnboardingRoute;
+  AthleteProfileRoute: typeof AthleteProfileRoute;
+  AthleteResultsRoute: typeof AthleteResultsRoute;
+  AthleteTournamentsRoute: typeof AthleteTournamentsRoute;
+  AthleteIndexRoute: typeof AthleteIndexRoute;
 }
 
 const AthleteRouteChildren: AthleteRouteChildren = {
@@ -1171,57 +1187,60 @@ const AthleteRouteChildren: AthleteRouteChildren = {
   AthleteResultsRoute: AthleteResultsRoute,
   AthleteTournamentsRoute: AthleteTournamentsRoute,
   AthleteIndexRoute: AthleteIndexRoute,
-}
+};
 
-const AthleteRouteWithChildren =
-  AthleteRoute._addFileChildren(AthleteRouteChildren)
+const AthleteRouteWithChildren = AthleteRoute._addFileChildren(AthleteRouteChildren);
 
 interface CoachApplicationsRouteChildren {
-  CoachApplicationsIdRoute: typeof CoachApplicationsIdRoute
+  CoachApplicationsIdRoute: typeof CoachApplicationsIdRoute;
 }
 
 const CoachApplicationsRouteChildren: CoachApplicationsRouteChildren = {
   CoachApplicationsIdRoute: CoachApplicationsIdRoute,
-}
+};
 
-const CoachApplicationsRouteWithChildren =
-  CoachApplicationsRoute._addFileChildren(CoachApplicationsRouteChildren)
+const CoachApplicationsRouteWithChildren = CoachApplicationsRoute._addFileChildren(
+  CoachApplicationsRouteChildren,
+);
 
 interface CoachAthletesRouteChildren {
-  CoachAthletesIdRoute: typeof CoachAthletesIdRoute
+  CoachAthletesIdRoute: typeof CoachAthletesIdRoute;
 }
 
 const CoachAthletesRouteChildren: CoachAthletesRouteChildren = {
   CoachAthletesIdRoute: CoachAthletesIdRoute,
-}
+};
 
 const CoachAthletesRouteWithChildren = CoachAthletesRoute._addFileChildren(
   CoachAthletesRouteChildren,
-)
+);
 
 interface CoachTournamentsRouteChildren {
-  CoachTournamentsIdRoute: typeof CoachTournamentsIdRoute
+  CoachTournamentsIdRoute: typeof CoachTournamentsIdRoute;
 }
 
 const CoachTournamentsRouteChildren: CoachTournamentsRouteChildren = {
   CoachTournamentsIdRoute: CoachTournamentsIdRoute,
-}
+};
 
-const CoachTournamentsRouteWithChildren =
-  CoachTournamentsRoute._addFileChildren(CoachTournamentsRouteChildren)
+const CoachTournamentsRouteWithChildren = CoachTournamentsRoute._addFileChildren(
+  CoachTournamentsRouteChildren,
+);
 
 interface CoachRouteChildren {
-  CoachApplicationsRoute: typeof CoachApplicationsRouteWithChildren
-  CoachAthletesRoute: typeof CoachAthletesRouteWithChildren
-  CoachClubRoute: typeof CoachClubRoute
-  CoachNotificationsRoute: typeof CoachNotificationsRoute
-  CoachOnboardingRoute: typeof CoachOnboardingRoute
-  CoachProfileRoute: typeof CoachProfileRoute
-  CoachTournamentsRoute: typeof CoachTournamentsRouteWithChildren
-  CoachIndexRoute: typeof CoachIndexRoute
+  CoachAnalyticsRoute: typeof CoachAnalyticsRoute;
+  CoachApplicationsRoute: typeof CoachApplicationsRouteWithChildren;
+  CoachAthletesRoute: typeof CoachAthletesRouteWithChildren;
+  CoachClubRoute: typeof CoachClubRoute;
+  CoachNotificationsRoute: typeof CoachNotificationsRoute;
+  CoachOnboardingRoute: typeof CoachOnboardingRoute;
+  CoachProfileRoute: typeof CoachProfileRoute;
+  CoachTournamentsRoute: typeof CoachTournamentsRouteWithChildren;
+  CoachIndexRoute: typeof CoachIndexRoute;
 }
 
 const CoachRouteChildren: CoachRouteChildren = {
+  CoachAnalyticsRoute: CoachAnalyticsRoute,
   CoachApplicationsRoute: CoachApplicationsRouteWithChildren,
   CoachAthletesRoute: CoachAthletesRouteWithChildren,
   CoachClubRoute: CoachClubRoute,
@@ -1230,31 +1249,29 @@ const CoachRouteChildren: CoachRouteChildren = {
   CoachProfileRoute: CoachProfileRoute,
   CoachTournamentsRoute: CoachTournamentsRouteWithChildren,
   CoachIndexRoute: CoachIndexRoute,
-}
+};
 
-const CoachRouteWithChildren = CoachRoute._addFileChildren(CoachRouteChildren)
+const CoachRouteWithChildren = CoachRoute._addFileChildren(CoachRouteChildren);
 
 interface JudgeRouteChildren {
-  JudgeTokenRoute: typeof JudgeTokenRoute
+  JudgeTokenRoute: typeof JudgeTokenRoute;
 }
 
 const JudgeRouteChildren: JudgeRouteChildren = {
   JudgeTokenRoute: JudgeTokenRoute,
-}
+};
 
-const JudgeRouteWithChildren = JudgeRoute._addFileChildren(JudgeRouteChildren)
+const JudgeRouteWithChildren = JudgeRoute._addFileChildren(JudgeRouteChildren);
 
 interface TournamentsRouteChildren {
-  TournamentsIdRoute: typeof TournamentsIdRoute
+  TournamentsIdRoute: typeof TournamentsIdRoute;
 }
 
 const TournamentsRouteChildren: TournamentsRouteChildren = {
   TournamentsIdRoute: TournamentsIdRoute,
-}
+};
 
-const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(
-  TournamentsRouteChildren,
-)
+const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(TournamentsRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1274,17 +1291,17 @@ const rootRouteChildren: RootRouteChildren = {
   DisplayTournamentIdRoute: DisplayTournamentIdRoute,
   LiveWallTournamentIdRoute: LiveWallTournamentIdRoute,
   TatamiTokenRoute: TatamiTokenRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { startInstance } from "./start.ts";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>;
   }
 }
