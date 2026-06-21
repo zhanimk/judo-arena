@@ -16,10 +16,11 @@ import {
   Scale,
   CalendarDays,
   Users,
+  FileText,
 } from "lucide-react";
 import { coachNav as nav } from "@/components/dashboard/coach-nav";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, mediaUrl } from "@/lib/api";
 import type { User } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -27,6 +28,9 @@ import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { Avatar } from "@/components/ui/avatar-image";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocumentList } from "@/components/documents/DocumentViewer";
 
 export const Route = createFileRoute("/coach/athletes")({
   head: () => ({ meta: [{ title: "Спортшылар — Judo-Arena" }] }),
@@ -47,6 +51,7 @@ function CoachAthletes() {
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState<"ALL" | "MALE" | "FEMALE">("ALL");
   const [sortBy, setSortBy] = useState<"ageWeight" | "weight" | "name">("ageWeight");
+  const [viewingDocsAthlete, setViewingDocsAthlete] = useState<User | null>(null);
 
   const membersQuery = useQuery({
     queryKey: ["club-members", clubId],
@@ -191,9 +196,28 @@ function CoachAthletes() {
               onSearch={setSearch}
               onGender={setGender}
               onSort={setSortBy}
+              onViewDocs={setViewingDocsAthlete}
             />
           )}
         </Panel>
+
+        {viewingDocsAthlete && (
+          <Dialog
+            open={!!viewingDocsAthlete}
+            onOpenChange={(open) => !open && setViewingDocsAthlete(null)}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {t("documents.title")} - {viewingDocsAthlete.surname} {viewingDocsAthlete.name}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <DocumentList documents={(viewingDocsAthlete as any).documents ?? []} />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </DashboardShell>
   );
@@ -209,6 +233,7 @@ function AthletesBoard({
   onSearch,
   onGender,
   onSort,
+  onViewDocs,
 }: {
   athletes: User[];
   total: number;
@@ -219,6 +244,7 @@ function AthletesBoard({
   onSearch: (value: string) => void;
   onGender: (value: "ALL" | "MALE" | "FEMALE") => void;
   onSort: (value: "ageWeight" | "weight" | "name") => void;
+  onViewDocs: (athlete: User) => void;
 }) {
   const { t } = useTranslation();
   const groups = useMemo(() => groupByAgeBand(athletes, t), [athletes, t]);
@@ -310,7 +336,7 @@ function AthletesBoard({
 
               <div className="divide-y divide-border/35">
                 {group.items.map((a: User) => (
-                  <AthleteRow key={a.id} athlete={a} />
+                  <AthleteRow key={a.id} athlete={a} onViewDocs={() => onViewDocs(a)} />
                 ))}
               </div>
             </section>
@@ -321,20 +347,27 @@ function AthletesBoard({
   );
 }
 
-function AthleteRow({ athlete }: { athlete: User }) {
+function AthleteRow({ athlete, onViewDocs }: { athlete: User; onViewDocs: () => void }) {
   const { t } = useTranslation();
   const age = athlete.dateOfBirth ? getAge(athlete.dateOfBirth) : null;
   return (
     <Link
       to="/coach/athletes/$id"
       params={{ id: athlete.id }}
-      className="grid gap-3 px-4 py-3 text-sm transition-colors hover:bg-gold/5 md:grid-cols-[minmax(180px,1.3fr)_90px_100px_110px_1fr]"
+      className="grid gap-3 px-4 py-3 text-sm transition-colors hover:bg-gold/5 md:grid-cols-[minmax(200px,1.5fr)_90px_100px_90px_40px]"
     >
-      <div className="min-w-0">
-        <div className="truncate font-semibold">
-          {athlete.surname} {athlete.name}
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar
+          src={athlete.avatarUrl ? mediaUrl(athlete.avatarUrl) : null}
+          name={`${athlete.name} ${athlete.surname}`}
+          size={36}
+        />
+        <div className="min-w-0">
+          <div className="truncate font-semibold">
+            {athlete.surname} {athlete.name}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">{athlete.email}</div>
         </div>
-        <div className="truncate text-xs text-muted-foreground">{athlete.email}</div>
       </div>
       <Cell
         label={t("common.gender")}
@@ -346,7 +379,20 @@ function AthleteRow({ athlete }: { athlete: User }) {
         value={athlete.weightKg ? `${athlete.weightKg} кг` : "—"}
         strong
       />
-      <Cell label={t("common.belt")} value={athlete.beltRank ?? "—"} gold />
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onViewDocs();
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 text-muted-foreground hover:bg-gold/10 hover:text-gold transition-colors"
+          title={t("documents.title")}
+        >
+          <FileText className="h-4 w-4" />
+        </button>
+      </div>
     </Link>
   );
 }
@@ -374,7 +420,15 @@ function Cell({
   );
 }
 
-function MiniMetric({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function MiniMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-lg border border-border/60 bg-background/30 p-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
