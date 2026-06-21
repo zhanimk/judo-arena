@@ -350,6 +350,9 @@
     "mark_all_read": "Отметить все прочитанными",
     "empty": "Уведомлений нет",
     "empty_hint": "Здесь появятся обновления турниров",
+    "tournament_cancelled_title": "Турнир отменён",
+    "tournament_cancelled_body": "Сожалеем, но турнир был отменён.",
+    "count_label": "Уведомлений: {{count}}",
     "types": {
       "application_approved": "Заявка одобрена",
       "application_rejected": "Заявка отклонена",
@@ -357,6 +360,10 @@
       "tournament_update": "Турнир обновлён",
       "announcement": "Объявление"
     }
+  },
+  "notifications": {
+    "defense_live_title": "Защита в эфире",
+    "defense_live_body": "Подключайтесь к трансляции!"
   },
   "weigh_in": {
     "title": "Взвешивание",

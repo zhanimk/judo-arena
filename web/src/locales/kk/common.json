@@ -338,6 +338,9 @@
     "mark_all_read": "Барлығын оқылды деп белгілеу",
     "empty": "Хабарландырулар жоқ",
     "empty_hint": "Жарыс жаңартулары осы жерде шығады",
+    "tournament_cancelled_title": "Жарыс тоқтатылды",
+    "tournament_cancelled_body": "Өкінішке орай, жарыс тоқтатылды.",
+    "count_label": "{{count}} хабарландыру",
     "types": {
       "application_approved": "Өтінім бекітілді",
       "application_rejected": "Өтінім қайтарылды",
@@ -345,6 +348,10 @@
       "tournament_update": "Жарыс жаңартылды",
       "announcement": "Хабарлама"
     }
+  },
+  "notifications": {
+    "defense_live_title": "Қорғау тікелей эфирде",
+    "defense_live_body": "Трансляцияға қосылыңыз!"
   },
   "weigh_in": {
     "title": "Таразылау",

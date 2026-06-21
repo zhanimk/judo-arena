@@ -87,7 +87,10 @@ function AthleteNotifications() {
       accentTitle={`${t("dashboard.notifications")}${unread > 0 ? ` (${unread})` : ""}`}
     >
       <Panel
-        title={`${items.length} ${t("dashboard.notifications").toLowerCase()}`}
+        title={t("notification.count_label", {
+          count: items.length,
+          defaultValue: `${items.length} ${t("dashboard.notifications").toLowerCase()}`,
+        })}
         action={
           unread > 0 && (
             <button
@@ -129,8 +132,10 @@ function AthleteNotifications() {
                 className={`glass rounded-md p-4 flex justify-between items-start gap-3 ${n.read ? "opacity-60" : "border-gold/30"}`}
               >
                 <div>
-                  <div className="font-medium text-sm">{n.titleKey}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{n.bodyKey}</div>
+                  <div className="font-medium text-sm">{t(n.titleKey, n.titleKey)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {t(n.bodyKey, n.bodyKey)}
+                  </div>
                   <div className="text-[10px] text-muted-foreground mt-2">
                     {new Date(n.createdAt).toLocaleString()}
                   </div>
