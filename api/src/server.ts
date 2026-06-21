@@ -356,6 +356,31 @@ async function buildServer() {
     health: "/health",
   }));
 
+  app.get("/api/seed-admin", async (_req, reply) => {
+    const bcrypt = await import("bcryptjs");
+    const { prisma } = await import("./lib/prisma.js");
+    const { UserRole } = await import("@prisma/client");
+
+    const passwordHash = await bcrypt.default.hash("password123", 12);
+    await prisma.user.upsert({
+      where: { email: "admin@judo-arena.kz" },
+      update: { role: UserRole.ADMIN, passwordHash, isActive: true },
+      create: {
+        email: "admin@judo-arena.kz",
+        passwordHash,
+        role: UserRole.ADMIN,
+        name: "Admin",
+        surname: "System",
+        isActive: true,
+      },
+    });
+    return reply.send({
+      success: true,
+      email: "admin@judo-arena.kz",
+      password: "password123",
+    });
+  });
+
   app.post(
     "/api/system/backup",
     {
