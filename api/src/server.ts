@@ -356,25 +356,6 @@ async function buildServer() {
     health: "/health",
   }));
 
-  // ВРЕМЕННЫЙ ЭНДПОИНТ ДЛЯ СБРОСА БАЗЫ ДАННЫХ НА RENDER
-  app.get("/api/force-sync-db", async (_req, reply) => {
-    try {
-      const { execSync } = await import("node:child_process");
-      // Используем db push --force-reset, чтобы удалить все данные и 100% подогнать схему
-      const output = execSync("npx prisma db push --force-reset", {
-        encoding: "utf-8",
-      });
-      return reply.send({ success: true, output });
-    } catch (e: any) {
-      return reply.code(500).send({
-        success: false,
-        error: e.message,
-        stdout: e.stdout,
-        stderr: e.stderr,
-      });
-    }
-  });
-
   app.post(
     "/api/system/backup",
     {
