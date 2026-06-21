@@ -374,6 +374,99 @@ async function createDefenseRatings() {
   return created;
 }
 
+async function createFinishedTournament() {
+  // Create a completely finished tournament
+  const finishedId = "demo-finished-2026";
+  const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+
+  await prisma.tournament.upsert({
+    where: { id: finishedId },
+    update: {
+      status: "COMPLETED",
+      isFeatured: false,
+    },
+    create: {
+      id: finishedId,
+      name: {
+        ru: "Весенний Кубок (Завершенный)",
+        kk: "Көктемгі Кубок (Аяқталған)",
+        en: "Spring Cup (Completed)",
+      },
+      description: {
+        ru: "Пример полностью завершенного турнира с начисленным рейтингом.",
+        kk: "Рейтинг есептелген толық аяқталған турнир мысалы.",
+        en: "Example of a fully completed tournament with awarded ratings.",
+      },
+      location: "Judo Arena Demo Hall",
+      city: "Астана",
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+      applicationDeadline: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      mapUrl: "https://www.google.com/maps",
+      weighInLocation: "Зал B",
+      weighInStart: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
+      weighInEnd: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      status: "COMPLETED",
+      tatamiCount: 3,
+      primaryLocale: "ru",
+      entryFeeKzt: 5000,
+      isFeatured: false,
+      createdById: admin?.id ?? "",
+      posterUrl: "/uploads/demo/defense-tournament-poster.jpg",
+    },
+  });
+
+  // Create a dummy category
+  const cat = await prisma.category.upsert({
+    where: { id: "cat-finished-1" },
+    update: { tournamentId: finishedId },
+    create: {
+      id: "cat-finished-1",
+      tournamentId: finishedId,
+      name: { ru: "Юноши -60кг", kk: "Ұлдар -60кг", en: "Boys -60kg" },
+      gender: "MALE",
+      ageMin: 14,
+      ageMax: 17,
+      weightMin: 55,
+      weightMax: 60,
+      matchDurationSec: 240,
+      format: "SE_IJF",
+    },
+  });
+
+  // Get some athletes to give them ratings in this finished tournament
+  const athletes = await prisma.user.findMany({
+    where: { role: "ATHLETE" },
+    take: 4,
+  });
+
+  if (athletes.length > 0) {
+    const places = [1, 2, 3, 3];
+    const pointsMap = [100, 80, 50, 50];
+
+    for (let i = 0; i < athletes.length; i++) {
+      await prisma.ratingEntry.upsert({
+        where: {
+          athleteId_tournamentId_categoryId: {
+            athleteId: athletes[i]!.id,
+            tournamentId: finishedId,
+            categoryId: cat.id,
+          },
+        },
+        update: {},
+        create: {
+          athleteId: athletes[i]!.id,
+          tournamentId: finishedId,
+          categoryId: cat.id,
+          place: places[i],
+          points: pointsMap[i] ?? 0,
+          awardedAt: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+}
+
 async function createNotifications(
   liveMatches: Awaited<ReturnType<typeof startLiveMatches>>,
 ) {
@@ -459,6 +552,7 @@ async function main() {
   const liveMatches = await startLiveMatches(tournament.tatamiCount);
   await normalizeQueues(tournament.tatamiCount);
   const ratings = await createDefenseRatings();
+  await createFinishedTournament();
   await createNotifications(liveMatches);
 
   const admin = await prisma.user.findFirst({
