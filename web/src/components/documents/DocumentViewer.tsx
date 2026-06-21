@@ -195,12 +195,14 @@ export function DocumentViewer({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (objectUrl) {
+              import("@/lib/api").then(({ apiBaseUrl, getAccessToken }) => {
+                const url = `${apiBaseUrl}/api/auth/documents/${document.id}/download?token=${getAccessToken()}`;
                 const a = globalThis.document.createElement("a");
-                a.href = objectUrl;
+                a.href = url;
                 a.download = document.originalName || `document-${document.id}`;
+                a.target = "_blank";
                 a.click();
-              }
+              });
             }}
             title={t("documents.download")}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 hover:text-white"
@@ -240,11 +242,31 @@ export function DocumentViewer({
         {!docLoading && !docError && objectUrl && (
           <>
             {isPdf ? (
-              <iframe
-                src={objectUrl}
-                className="h-full w-full max-w-3xl rounded-lg border border-white/10"
-                title={document.originalName || "document"}
-              />
+              <div className="flex flex-col items-center gap-4 text-white/60">
+                <FileText className="h-16 w-16 text-gold opacity-80" />
+                <div className="text-center">
+                  <div className="text-sm font-medium text-white">
+                    {document.originalName || "PDF Document"}
+                  </div>
+                  <div className="mt-1 text-xs">PDF format</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    import("@/lib/api").then(({ apiBaseUrl, getAccessToken }) => {
+                      const url = `${apiBaseUrl}/api/auth/documents/${document.id}/download?token=${getAccessToken()}`;
+                      const a = globalThis.document.createElement("a");
+                      a.href = url;
+                      a.download = document.originalName || `document-${document.id}`;
+                      a.target = "_blank";
+                      a.click();
+                    });
+                  }}
+                  className="mt-2 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                >
+                  {t("documents.download")}
+                </button>
+              </div>
             ) : isImage ? (
               <img
                 src={objectUrl}

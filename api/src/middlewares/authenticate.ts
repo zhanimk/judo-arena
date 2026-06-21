@@ -30,10 +30,20 @@ export async function invalidateUserCache(userId: string): Promise<void> {
   await redis.del(`user-cache:${userId}`);
 }
 
-export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const auth = request.headers.authorization;
+export async function authenticate(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  let auth = request.headers.authorization;
+
+  if (!auth && (request.query as any)?.token) {
+    auth = `Bearer ${(request.query as any).token}`;
+  }
+
   if (!auth || !auth.startsWith("Bearer ")) {
-    return reply.code(401).send({ error: "MISSING_TOKEN", message: "Отсутствует Bearer токен" });
+    return reply
+      .code(401)
+      .send({ error: "MISSING_TOKEN", message: "Отсутствует Bearer токен" });
   }
 
   const token = auth.slice("Bearer ".length).trim();
@@ -41,11 +51,22 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   try {
     payload = verifyAccessToken(token);
   } catch {
-    return reply.code(401).send({ error: "INVALID_TOKEN", message: "Невалидный или просроченный токен" });
+    return reply
+      .code(401)
+      .send({
+        error: "INVALID_TOKEN",
+        message: "Невалидный или просроченный токен",
+      });
   }
 
   // Подтягиваем актуальные данные пользователя (с кэшированием в Redis)
-  type CachedUser = { id: string; email: string; role: string; clubId: string | null; isActive: boolean };
+  type CachedUser = {
+    id: string;
+    email: string;
+    role: string;
+    clubId: string | null;
+    isActive: boolean;
+  };
 
   const cacheKey = `user-cache:${payload.sub}`;
   let user: CachedUser | null = null;
@@ -62,7 +83,13 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   if (!user) {
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, clubId: true, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        clubId: true,
+        isActive: true,
+      },
     });
     if (dbUser) {
       user = dbUser;
@@ -75,7 +102,9 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
 
   if (!user) {
-    return reply.code(401).send({ error: "USER_NOT_FOUND", message: "Пользователь не найден" });
+    return reply
+      .code(401)
+      .send({ error: "USER_NOT_FOUND", message: "Пользователь не найден" });
   }
   if (!user.isActive) {
     try {
@@ -83,12 +112,16 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     } catch {
       // Если Redis недоступен, кэш устареет сам по TTL
     }
-    return reply.code(403).send({ error: "USER_INACTIVE", message: "Аккаунт деактивирован" });
+    return reply
+      .code(403)
+      .send({ error: "USER_INACTIVE", message: "Аккаунт деактивирован" });
   }
 
   const role = user.role as AccessTokenPayload["role"];
   if (!Object.values(UserRole).includes(role as UserRole)) {
-    return reply.code(401).send({ error: "INVALID_TOKEN", message: "Невалидная роль в токене" });
+    return reply
+      .code(401)
+      .send({ error: "INVALID_TOKEN", message: "Невалидная роль в токене" });
   }
 
   request.user = {
