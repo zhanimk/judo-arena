@@ -52,7 +52,7 @@ function CoachAnalytics() {
     <DashboardShell
       role={t("coach.role_label")}
       navItems={nav}
-      title={t("coach_analytics.title", "Аналитика клуба")}
+      accentTitle={t("coach_analytics.title", "Аналитика клуба")}
     >
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
         {isLoading ? (

@@ -61,6 +61,7 @@ interface CategoryInfo {
   weightMin?: number;
   ageMin?: number;
   ageMax?: number;
+  matchDurationSec?: number;
 }
 
 interface ScoreSnap {
@@ -136,9 +137,7 @@ function DisplayPage() {
     () => buildTatamiState(matches, tatamiCount) as TatamiState<MatchAny>[],
     [matches, tatamiCount],
   );
-  const tatamis = filterTatami
-    ? allTatamis.filter((ts) => ts.number === filterTatami)
-    : allTatamis;
+  const tatamis = filterTatami ? allTatamis.filter((ts) => ts.number === filterTatami) : allTatamis;
 
   const tName = useMemo(() => {
     const n = tournament?.name;
@@ -232,12 +231,12 @@ function SingleTatamiDisplay({
   const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = computeElapsed(score?.clock, now);
   const isGS = score?.isGoldenScore;
-  const displaySec = isGS ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
+  const displaySec = isGS
+    ? Math.max(0, elapsedSec - durationSec)
+    : Math.max(0, durationSec - elapsedSec);
   const pending = score?.pendingResult;
 
-  const catLabel = match?.bracket?.category
-    ? categoryLabel(match.bracket.category)
-    : "";
+  const catLabel = match?.bracket?.category ? categoryLabel(match.bracket.category) : "";
 
   return (
     <div
@@ -271,10 +270,26 @@ function SingleTatamiDisplay({
       </div>
 
       {match && match.status !== "COMPLETED" ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 24px", gap: 12 }}>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            padding: "16px 24px",
+            gap: 12,
+          }}
+        >
           {/* Golden Score indicator */}
           {isGS && (
-            <div style={{ textAlign: "center", color: "#fbbf24", fontWeight: 900, fontSize: 20, letterSpacing: 4 }}>
+            <div
+              style={{
+                textAlign: "center",
+                color: "#fbbf24",
+                fontWeight: 900,
+                fontSize: 20,
+                letterSpacing: 4,
+              }}
+            >
               ⚡ GOLDEN SCORE
             </div>
           )}
@@ -458,7 +473,9 @@ function TatamiCard({ ts, now }: { ts: TatamiState<MatchAny>; now: number }) {
   const durationSec = match?.bracket?.category?.matchDurationSec ?? 240;
   const elapsedSec = computeElapsed(score?.clock, now);
   const isGS = score?.isGoldenScore;
-  const displaySec = isGS ? Math.max(0, elapsedSec - durationSec) : Math.max(0, durationSec - elapsedSec);
+  const displaySec = isGS
+    ? Math.max(0, elapsedSec - durationSec)
+    : Math.max(0, durationSec - elapsedSec);
   const pending = score?.pendingResult;
 
   return (
@@ -499,9 +516,7 @@ function TatamiCard({ ts, now }: { ts: TatamiState<MatchAny>; now: number }) {
             {formatTime(displaySec)}
           </span>
         )}
-        {isGS && (
-          <span style={{ color: "#fbbf24", fontSize: 11, fontWeight: 700 }}>GS</span>
-        )}
+        {isGS && <span style={{ color: "#fbbf24", fontSize: 11, fontWeight: 700 }}>GS</span>}
       </div>
 
       {match && match.status !== "COMPLETED" ? (
@@ -588,9 +603,7 @@ function LargeAthletePanel({
         <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: 1, lineHeight: 1.1 }}>
           {athlete?.surname ?? "—"}
         </div>
-        <div style={{ fontSize: 16, color: "#9ca3af", fontWeight: 500 }}>
-          {athlete?.name ?? ""}
-        </div>
+        <div style={{ fontSize: 16, color: "#9ca3af", fontWeight: 500 }}>{athlete?.name ?? ""}</div>
       </div>
 
       {/* Scores */}
@@ -690,22 +703,60 @@ function ScoreRow({
       </span>
       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         {hasOsaekomi && (
-          <span style={{ background: "#dc2626", color: "#fff", fontSize: 9, padding: "1px 5px", borderRadius: 2, fontWeight: 700 }}>
+          <span
+            style={{
+              background: "#dc2626",
+              color: "#fff",
+              fontSize: 9,
+              padding: "1px 5px",
+              borderRadius: 2,
+              fontWeight: 700,
+            }}
+          >
             OSA
           </span>
         )}
         {(score?.ippon ?? 0) > 0 && (
-          <span style={{ background: "#D4AF37", color: "#111", fontSize: 11, padding: "1px 6px", borderRadius: 2, fontWeight: 900 }}>
+          <span
+            style={{
+              background: "#D4AF37",
+              color: "#111",
+              fontSize: 11,
+              padding: "1px 6px",
+              borderRadius: 2,
+              fontWeight: 900,
+            }}
+          >
             IP
           </span>
         )}
         {Array.from({ length: score?.wazaari ?? 0 }).map((_, i) => (
-          <span key={i} style={{ background: "#f59e0b", color: "#111", fontSize: 11, padding: "1px 6px", borderRadius: 2, fontWeight: 900 }}>
+          <span
+            key={i}
+            style={{
+              background: "#f59e0b",
+              color: "#111",
+              fontSize: 11,
+              padding: "1px 6px",
+              borderRadius: 2,
+              fontWeight: 900,
+            }}
+          >
             W
           </span>
         ))}
         {Array.from({ length: score?.shido ?? 0 }).map((_, i) => (
-          <span key={i} style={{ background: "#dc2626", color: "#fff", fontSize: 11, padding: "1px 6px", borderRadius: 2, fontWeight: 700 }}>
+          <span
+            key={i}
+            style={{
+              background: "#dc2626",
+              color: "#fff",
+              fontSize: 11,
+              padding: "1px 6px",
+              borderRadius: 2,
+              fontWeight: 700,
+            }}
+          >
             C
           </span>
         ))}
@@ -716,15 +767,7 @@ function ScoreRow({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function ScoreBadge({
-  label,
-  color,
-  bg,
-}: {
-  label: string;
-  color: string;
-  bg?: string;
-}) {
+function ScoreBadge({ label, color, bg }: { label: string; color: string; bg?: string }) {
   return (
     <span
       style={{
@@ -748,7 +791,13 @@ function LiveClock() {
 
   useEffect(() => {
     const tick = () => {
-      setTime(new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setTime(
+        new Date().toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -756,7 +805,15 @@ function LiveClock() {
   }, []);
 
   return (
-    <div style={{ color: "#6b8ab0", fontSize: 14, fontVariantNumeric: "tabular-nums", minWidth: 80, textAlign: "right" }}>
+    <div
+      style={{
+        color: "#6b8ab0",
+        fontSize: 14,
+        fontVariantNumeric: "tabular-nums",
+        minWidth: 80,
+        textAlign: "right",
+      }}
+    >
       {time}
     </div>
   );
@@ -768,10 +825,7 @@ function formatTime(sec: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function computeElapsed(
-  clock?: ScoreSnap["clock"],
-  now?: number,
-): number {
+function computeElapsed(clock?: ScoreSnap["clock"], now?: number): number {
   if (!clock) return 0;
   const base = Math.max(0, Math.floor(clock.elapsedSec ?? 0));
   if (!clock.running || !clock.runningStartedAt || !now) return base;

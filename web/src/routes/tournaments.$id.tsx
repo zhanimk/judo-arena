@@ -85,6 +85,7 @@ interface TCategory {
   weightMin?: number | null;
   weightMax?: number | null;
   format?: string | null;
+  matchDate?: string | null;
 }
 
 interface TBracket {
@@ -279,7 +280,11 @@ function TournamentDetail() {
               <h1 className="mt-5 max-w-4xl font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl text-foreground drop-shadow-sm">
                 {name}
               </h1>
-              {desc && <p className="mt-4 max-w-3xl text-lg text-muted-foreground font-medium leading-relaxed drop-shadow-sm">{desc}</p>}
+              {desc && (
+                <p className="mt-4 max-w-3xl text-lg text-muted-foreground font-medium leading-relaxed drop-shadow-sm">
+                  {desc}
+                </p>
+              )}
 
               <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <Metric
@@ -356,7 +361,9 @@ function TournamentDetail() {
                     className="max-h-full max-w-full object-contain transition duration-700 group-hover:scale-105"
                   />
                 </div>
-                <div className="relative mt-3 px-1 text-sm font-bold text-foreground transition-colors group-hover:text-gold">{name}</div>
+                <div className="relative mt-3 px-1 text-sm font-bold text-foreground transition-colors group-hover:text-gold">
+                  {name}
+                </div>
                 <div className="relative mt-1 px-1 text-xs font-medium text-muted-foreground/80">
                   Фотоны толық көру үшін басыңыз
                 </div>
@@ -677,7 +684,9 @@ function TournamentDetail() {
                         : "border-border/50 bg-card/40 hover:border-gold/40 hover:bg-card/60"
                     }`}
                   >
-                    <div className={`absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent transition-opacity duration-500 ${selectedCategoryId === category.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent transition-opacity duration-500 ${selectedCategoryId === category.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    />
                     <div className="relative flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <h3 className="font-display text-2xl font-bold leading-tight drop-shadow-sm transition-colors group-hover:text-gold">
@@ -690,7 +699,9 @@ function TournamentDetail() {
                             </span>
                           )}
                           <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-foreground/80">
-                            {category.gender === "MALE" ? "🚹 " + t("tournament.gender_male_short") : "🚺 " + t("tournament.gender_female_short")}
+                            {category.gender === "MALE"
+                              ? "🚹 " + t("tournament.gender_male_short")
+                              : "🚺 " + t("tournament.gender_female_short")}
                           </span>
                           <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-foreground/80">
                             🎂 {category.ageMin}-{category.ageMax} {t("common.years_short")}
@@ -1607,8 +1618,12 @@ function Metric({
     <div className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-gold/40 hover:bg-card/60 hover:shadow-lg hover:shadow-gold/5">
       <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gold/10 blur-2xl transition-all duration-500 group-hover:scale-150 group-hover:bg-gold/20" />
       <Icon className="mb-3 h-6 w-6 text-gold drop-shadow-[0_0_8px_rgba(234,179,8,0.4)] transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1" />
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">{label}</div>
-      <div className="mt-1.5 font-display text-xl font-bold leading-tight text-foreground drop-shadow-sm">{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+        {label}
+      </div>
+      <div className="mt-1.5 font-display text-xl font-bold leading-tight text-foreground drop-shadow-sm">
+        {value}
+      </div>
     </div>
   );
 }
@@ -1617,7 +1632,9 @@ function SmallMetric({ label, value }: { label: string; value: string | number }
   return (
     <div className="rounded-xl border border-border/50 bg-card/40 px-3 py-2 backdrop-blur-md">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground/80">{label}</div>
-      <div className="font-display text-xl font-bold text-gradient-gold drop-shadow-sm">{value}</div>
+      <div className="font-display text-xl font-bold text-gradient-gold drop-shadow-sm">
+        {value}
+      </div>
     </div>
   );
 }
@@ -1625,8 +1642,12 @@ function SmallMetric({ label, value }: { label: string; value: string | number }
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="group rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:bg-card/60 hover:shadow-lg hover:shadow-gold/5">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{label}</div>
-      <div className="mt-1.5 font-display text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-gold">{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+        {label}
+      </div>
+      <div className="mt-1.5 font-display text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-gold">
+        {value}
+      </div>
     </div>
   );
 }

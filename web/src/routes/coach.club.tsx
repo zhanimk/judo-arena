@@ -14,12 +14,7 @@ import {
   Trash2,
   Upload,
   UserPlus,
-  Users,
   X,
-  Phone,
-  Mail,
-  MapPin,
-  Instagram,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
 import {
@@ -35,6 +30,13 @@ import { Avatar, LazyImage } from "@/components/ui/avatar-image";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
+
+const COUNTRIES = [
+  { code: "KZ", name: "Қазақстан", flag: "🇰🇿" },
+  { code: "UZ", name: "Өзбекстан", flag: "🇺🇿" },
+  { code: "KG", name: "Қырғызстан", flag: "🇰🇬" },
+  { code: "RU", name: "Ресей", flag: "🇷🇺" },
+];
 
 export const Route = createFileRoute("/coach/club")({
   head: () => ({ meta: [{ title: "Клуб — Judo-Arena" }] }),

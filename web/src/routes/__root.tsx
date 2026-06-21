@@ -21,7 +21,6 @@ import { usePWA } from "@/hooks/usePWA";
 import { EmailVerificationBanner } from "@/components/ui/EmailVerificationBanner";
 import { useTranslation } from "react-i18next";
 
-
 // Initialise Sentry as early as possible
 initSentry();
 
@@ -64,7 +63,7 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
           <div className="absolute inset-3 rounded-full border border-gold/35" />
           <div className="absolute inset-6 rounded-full bg-card shadow-elegant" />
           <img
-            src={emblem}
+            src="/main-logo.png"
             alt=""
             className="absolute inset-7 h-14 w-14 rounded-full object-cover shadow-gold"
           />
@@ -95,7 +94,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4">
       <div className="absolute inset-0 grid-bg opacity-25" />
       <div className="relative max-w-md rounded-2xl border border-gold/25 bg-card/70 p-8 text-center shadow-elegant backdrop-blur">
-        <img src="/main-logo.png" alt="" className="mx-auto mb-5 h-16 w-16 rounded-full object-cover" />
+        <img
+          src="/main-logo.png"
+          alt=""
+          className="mx-auto mb-5 h-16 w-16 rounded-full object-cover"
+        />
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {error.message || "Бетті қайта жүктеп көріңіз."}
