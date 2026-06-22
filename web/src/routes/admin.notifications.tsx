@@ -279,9 +279,20 @@ function AdminBroadcasts() {
         )}
 
         {tab === "new" && (
-          <Panel title={t("admin.broadcast_new", { defaultValue: "Создание рассылки" })}>
-            <BroadcastForm onSuccess={() => setTab("history")} />
-          </Panel>
+          <div className="glass rounded-xl p-6 sm:p-8 border border-border/50 shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-gold/5 blur-3xl rounded-full pointer-events-none" />
+            <div className="relative z-10">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-foreground">
+                  {t("admin.broadcast_new", { defaultValue: "Создание рассылки" })}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Отправка мгновенного PUSH-уведомления и сообщения на платформе.
+                </p>
+              </div>
+              <BroadcastForm onSuccess={() => setTab("history")} />
+            </div>
+          </div>
         )}
       </div>
     </DashboardShell>
@@ -328,13 +339,13 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-foreground">Аудитория</label>
+          <label className="block text-sm font-medium mb-2 text-foreground/90">Аудитория</label>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as any)}
-            className="w-full rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+            className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
           >
             <option value="all">Всем пользователям</option>
             <option value="role">Определенной роли</option>
@@ -343,14 +354,14 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         {kind === "role" && (
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-foreground">
+          <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+            <label className="block text-sm font-medium mb-2 text-foreground/90">
               Выберите роль
             </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as any)}
-              className="w-full rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+              className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
             >
               <option value="ATHLETE">Спортсмены</option>
               <option value="COACH">Тренеры</option>
@@ -360,14 +371,14 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         )}
 
         {kind === "club" && (
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-foreground">
+          <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+            <label className="block text-sm font-medium mb-2 text-foreground/90">
               Выберите клуб
             </label>
             <select
               value={clubId}
               onChange={(e) => setClubId(e.target.value)}
-              className="w-full rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+              className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
               required
             >
               <option value="">-- Выберите клуб --</option>
@@ -381,12 +392,12 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-foreground">Заголовок</label>
+          <label className="block text-sm font-medium mb-2 text-foreground/90">Заголовок</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+            className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
             placeholder="Важное объявление"
             required
             maxLength={100}
@@ -394,14 +405,14 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5 text-foreground">
+          <label className="block text-sm font-medium mb-2 text-foreground/90">
             Текст уведомления
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            rows={4}
-            className="w-full rounded-md border border-border/50 bg-background/50 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+            rows={5}
+            className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80 resize-y"
             placeholder="Введите текст рассылки..."
             required
             maxLength={2000}
@@ -409,11 +420,11 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2 border-t border-border/40">
+      <div className="flex justify-end pt-4 mt-8 border-t border-border/20">
         <button
           type="submit"
           disabled={sendBroadcast.isPending || (kind === "club" && !clubId)}
-          className="inline-flex items-center gap-2 rounded-md bg-gold px-6 py-2.5 text-sm font-medium text-gold-foreground hover:bg-gold/90 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-gold px-8 py-3 text-sm font-bold tracking-wide text-gold-foreground hover:bg-gold/90 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-md"
         >
           {sendBroadcast.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
