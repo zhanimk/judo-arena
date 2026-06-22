@@ -292,23 +292,20 @@ function CoachClub() {
                   </Panel>
                 )}
 
-                {incomingAthleteRequestsQuery.data &&
-                  incomingAthleteRequestsQuery.data.length > 0 && (
-                    <Panel
-                      title={`${t("coach.join_requests", { defaultValue: "Заявки на вступление" })} ${incomingAthleteRequestsQuery.data.length}`}
-                    >
-                      <IncomingAthleteRequests
-                        requests={incomingAthleteRequestsQuery.data}
-                        isLoading={incomingAthleteRequestsQuery.isLoading}
-                        onChanged={async () => {
-                          await Promise.all([
-                            qc.invalidateQueries({ queryKey: ["coach-join-requests"] }),
-                            qc.invalidateQueries({ queryKey: ["club-members", clubId] }),
-                          ]);
-                        }}
-                      />
-                    </Panel>
-                  )}
+                <Panel
+                  title={`${t("coach_club.athlete_requests")} ${incomingAthleteRequestsQuery.data?.length ?? 0}`}
+                >
+                  <IncomingAthleteRequests
+                    requests={incomingAthleteRequestsQuery.data ?? []}
+                    isLoading={incomingAthleteRequestsQuery.isLoading}
+                    onChanged={async () => {
+                      await Promise.all([
+                        qc.invalidateQueries({ queryKey: ["coach-join-requests"] }),
+                        qc.invalidateQueries({ queryKey: ["club-members", clubId] }),
+                      ]);
+                    }}
+                  />
+                </Panel>
               </div>
             </div>
           )}
@@ -1176,7 +1173,13 @@ function IncomingAthleteRequests({
   });
 
   if (isLoading) return <LoadingState />;
-  if (requests.length === 0) return null;
+  if (requests.length === 0)
+    return (
+      <EmptyState
+        title={t("coach_club.no_athlete_requests")}
+        hint={t("coach_club.no_athlete_requests_hint")}
+      />
+    );
 
   return (
     <div className="space-y-2">
