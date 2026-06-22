@@ -288,10 +288,7 @@ function Login() {
                     : t("auth.hero_champion_line_2")}
                 </span>
               </h1>
-              <p
-                className="mt-5 text-base font-semibold leading-relaxed max-w-[300px]"
-                style={{ color: "rgba(255,255,255,0.78)" }}
-              >
+              <p className="mt-5 text-base font-semibold leading-relaxed max-w-[300px] text-foreground/80">
                 {t("auth.hero_subtitle")}
               </p>
 
@@ -302,10 +299,7 @@ function Login() {
                   ["8,500+", t("auth.stat_athletes")],
                 ].map(([n, l]) => (
                   <div key={l} className="lp-chip rounded-2xl px-5 py-3.5">
-                    <div
-                      className="text-[11px] font-bold uppercase tracking-widest mb-1.5"
-                      style={{ color: "rgba(255,255,255,0.55)" }}
-                    >
+                    <div className="text-[11px] font-bold uppercase tracking-widest mb-1.5 text-muted-foreground">
                       {l}
                     </div>
                     <div className="text-2xl font-black leading-none" style={{ color: "#e8a93a" }}>
