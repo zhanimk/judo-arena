@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { useState, type InputHTMLAttributes } from "react";
+import { useState, useEffect, type InputHTMLAttributes } from "react";
 import { DocumentViewer } from "@/components/documents/DocumentViewer";
 import { api, ApiError, mediaUrl } from "@/lib/api";
 import type { Club, UserDocument } from "@/lib/api-types";
@@ -595,7 +595,7 @@ function Profile() {
                   </div>
                 </div>
               ) : (
-                <ClubJoinSection userId={user.id} />
+                <ClubJoinSection userId={user.id} refreshMe={refreshMe} />
               )}
             </Panel>
 
@@ -820,7 +820,13 @@ function NextLevelCard({ beltRank }: { beltRank?: string | null }) {
   );
 }
 
-function ClubJoinSection({ userId }: { userId: string }) {
+function ClubJoinSection({
+  userId,
+  refreshMe,
+}: {
+  userId: string;
+  refreshMe: () => Promise<void>;
+}) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -829,7 +835,15 @@ function ClubJoinSection({ userId }: { userId: string }) {
   const requestsQuery = useQuery({
     queryKey: ["my-join-requests"],
     queryFn: () => api.joinRequests.myList(),
+    refetchInterval: (q) =>
+      (q.state.data ?? []).some((r: { status: string }) => r.status === "PENDING") ? 10_000 : false,
   });
+
+  useEffect(() => {
+    if ((requestsQuery.data ?? []).some((r: { status: string }) => r.status === "APPROVED")) {
+      refreshMe();
+    }
+  }, [requestsQuery.data, refreshMe]);
 
   const clubsQuery = useQuery({
     queryKey: ["clubs-search", search],
@@ -843,7 +857,13 @@ function ClubJoinSection({ userId }: { userId: string }) {
       setClubError("");
       qc.invalidateQueries({ queryKey: ["my-join-requests"] });
     },
-    onError: (e: unknown) => setClubError(e instanceof ApiError ? e.message : t("error.generic")),
+    onError: async (e: unknown) => {
+      if (e instanceof ApiError && e.code === "ALREADY_IN_CLUB") {
+        await refreshMe();
+        return;
+      }
+      setClubError(e instanceof ApiError ? e.message : t("error.generic"));
+    },
   });
 
   const cancelRequest = useMutation({
