@@ -143,7 +143,7 @@ export function DashboardShell({
             <Link
               to={dashboardRoot(user?.role)}
               title="JUDO·CHILD·LEAGUE"
-              className="group flex items-center justify-center"
+              className="group flex items-center justify-center w-full"
             >
               <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center">
                 <span className="absolute inset-0 rounded-full conic-gold opacity-60 blur-[6px] transition-opacity group-hover:opacity-100" />
@@ -158,17 +158,17 @@ export function DashboardShell({
           ) : (
             <Link
               to={dashboardRoot(user?.role)}
-              className="group flex h-16 items-center gap-3 border-b border-border/40 px-6 transition-colors hover:bg-gold/5"
+              className="group flex flex-1 items-center gap-3 min-w-0 transition-colors hover:text-gold"
             >
               <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-gold/30 bg-white shadow-gold transition-all group-hover:ring-gold/60 group-hover:scale-105">
                 <img src="/jcl-logo.jpg" alt="JCL" className="h-full w-full object-cover" />
               </span>
-              <div className="flex flex-col">
-                <span className="font-display text-sm font-bold tracking-tight">
+              <div className="flex flex-col min-w-0">
+                <span className="font-display text-xs lg:text-sm font-bold tracking-tight truncate">
                   JUDO<span className="text-gradient-gold">·</span>CHILD
                   <span className="text-gradient-gold">·</span>LEAGUE
                 </span>
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span className="text-[9px] lg:text-[10px] uppercase tracking-widest text-muted-foreground truncate">
                   Management
                 </span>
               </div>
@@ -178,8 +178,8 @@ export function DashboardShell({
           {/* Desktop collapse toggle */}
           <button
             onClick={toggleCollapsed}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+            title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+            className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors ml-auto"
           >
             {collapsed ? (
               <PanelLeftOpen className="h-4 w-4" />
