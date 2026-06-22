@@ -364,7 +364,7 @@ function DocumentUploadRow({
 
   return (
     <div className="rounded-lg border border-border/60 bg-background/35 p-3">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <FileText className="h-4 w-4 text-gold" />
@@ -398,7 +398,7 @@ function DocumentUploadRow({
           )}
           {error && <div className="mt-2 text-xs text-destructive">{error}</div>}
         </div>
-        <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+        <label className="inline-flex shrink-0 w-full sm:w-auto justify-center cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
           {upload.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

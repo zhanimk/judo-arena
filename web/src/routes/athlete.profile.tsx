@@ -296,8 +296,8 @@ function Profile() {
         {/* ── Hero card ── */}
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky-500/5 pointer-events-none" />
-          <div className="relative flex flex-wrap items-center gap-5">
-            <div className="relative shrink-0">
+          <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="relative shrink-0 self-center sm:self-auto">
               <ProfilePhoto
                 src={user.avatarUrl ? mediaUrl(user.avatarUrl) : null}
                 name={fullName}
@@ -309,14 +309,14 @@ function Profile() {
                 />
               )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 text-center sm:text-left">
               <h2 className="text-xl font-display font-bold leading-tight">{fullName}</h2>
               {(user.nameLatin || user.surnameLatin) && (
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {user.nameLatin} {user.surnameLatin}
                 </p>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3 sm:mt-2 flex flex-wrap justify-center sm:justify-start gap-2">
                 {user.beltRank && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium">
                     {beltEntry && (
@@ -347,12 +347,12 @@ function Profile() {
                 )}
               </div>
             </div>
-            <div className="flex gap-2 shrink-0 self-start">
+            <div className="flex gap-2 shrink-0 self-stretch sm:self-start mt-2 sm:mt-0">
               {editing ? (
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                  className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" /> {t("common.cancel")}
                 </button>
@@ -360,7 +360,7 @@ function Profile() {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="rounded-md bg-gradient-gold px-3 py-1.5 text-sm font-medium text-gold-foreground shadow-gold"
+                  className="w-full sm:w-auto justify-center inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-sm font-medium text-gold-foreground shadow-gold"
                 >
                   {t("common.edit")}
                 </button>
@@ -721,7 +721,7 @@ function DocumentUploadRow({
 
   return (
     <div className="rounded-lg border border-border/60 bg-background/35 p-3">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <FileText className="h-4 w-4 text-gold" />
@@ -755,7 +755,7 @@ function DocumentUploadRow({
           )}
           {error && <div className="mt-2 text-xs text-destructive">{error}</div>}
         </div>
-        <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+        <label className="inline-flex shrink-0 w-full sm:w-auto justify-center cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
           {upload.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -864,7 +864,7 @@ function ClubJoinSection({ userId }: { userId: string }) {
           {pending.map((r) => (
             <div
               key={r.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3"
             >
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-gold shrink-0" />
@@ -878,9 +878,10 @@ function ClubJoinSection({ userId }: { userId: string }) {
               <button
                 onClick={() => cancelRequest.mutate(r.id)}
                 disabled={cancelRequest.isPending}
-                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/20 sm:border-transparent py-2 sm:py-0 text-xs text-destructive sm:text-muted-foreground hover:text-destructive transition-colors"
               >
                 <XCircle className="h-4 w-4" />
+                <span className="sm:hidden">{t("common.cancel")}</span>
               </button>
             </div>
           ))}
@@ -923,7 +924,7 @@ function ClubJoinSection({ userId }: { userId: string }) {
             return (
               <div
                 key={club.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-input/40 p-3"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-2 rounded-lg border border-border bg-input/40 p-3"
               >
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -933,12 +934,14 @@ function ClubJoinSection({ userId }: { userId: string }) {
                   </div>
                 </div>
                 {alreadySent ? (
-                  <span className="text-xs text-gold">{t("profile.request_sent")}</span>
+                  <span className="text-xs text-gold text-center sm:text-left">
+                    {t("profile.request_sent")}
+                  </span>
                 ) : (
                   <button
                     onClick={() => sendRequest.mutate(club.id)}
                     disabled={sendRequest.isPending}
-                    className="text-xs bg-gradient-gold text-gold-foreground px-3 py-1.5 rounded-md shadow-gold disabled:opacity-50"
+                    className="w-full sm:w-auto inline-flex justify-center items-center text-xs bg-gradient-gold text-gold-foreground px-3 py-2 sm:py-1.5 rounded-md shadow-gold disabled:opacity-50"
                   >
                     {t("profile.send_request")}
                   </button>

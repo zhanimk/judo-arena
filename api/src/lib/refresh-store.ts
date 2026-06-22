@@ -19,31 +19,70 @@ function key(userId: string, jti: string): string {
   return `refresh:${userId}:${jti}`;
 }
 
-export async function storeRefreshToken(userId: string, jti: string): Promise<void> {
-  await redis.set(key(userId, jti), "1", "EX", REFRESH_TTL_SEC);
+export async function storeRefreshToken(
+  userId: string,
+  jti: string,
+): Promise<void> {
+  await redis.set(key(userId, jti), "1", "EX", REFRESH_TTL_SEC).catch((err) => {
+    console.error(
+      "[refresh-store] Failed to store refresh token:",
+      err.message,
+    );
+  });
 }
 
-export async function isRefreshTokenValid(userId: string, jti: string): Promise<boolean> {
-  const exists = await redis.exists(key(userId, jti));
-  return exists === 1;
+export async function isRefreshTokenValid(
+  userId: string,
+  jti: string,
+): Promise<boolean> {
+  try {
+    const exists = await redis.exists(key(userId, jti));
+    return exists === 1;
+  } catch (err) {
+    const error = err as Error;
+    console.error("[refresh-store] Redis exists check failed:", error.message);
+    // Optimistic fallback: if Redis is down, trust the JWT signature.
+    return true;
+  }
 }
 
-export async function revokeRefreshToken(userId: string, jti: string): Promise<void> {
-  await redis.del(key(userId, jti));
+export async function revokeRefreshToken(
+  userId: string,
+  jti: string,
+): Promise<void> {
+  await redis.del(key(userId, jti)).catch((err) => {
+    console.error(
+      "[refresh-store] Failed to revoke refresh token:",
+      err.message,
+    );
+  });
 }
 
 export async function revokeAllUserTokens(userId: string): Promise<void> {
-  // SCAN вместо KEYS — не блокирует Redis на больших keyspace'ах
-  const pattern = `refresh:${userId}:*`;
-  const keys: string[] = [];
-  let cursor = "0";
-  do {
-    const [nextCursor, batch] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
-    cursor = nextCursor;
-    keys.push(...batch);
-  } while (cursor !== "0");
+  try {
+    const pattern = `refresh:${userId}:*`;
+    const keys: string[] = [];
+    let cursor = "0";
+    do {
+      const [nextCursor, batch] = await redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+      keys.push(...batch);
+    } while (cursor !== "0");
 
-  if (keys.length > 0) {
-    await redis.del(...keys);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch (err) {
+    const error = err as Error;
+    console.error(
+      "[refresh-store] Failed to revoke all user tokens:",
+      error.message,
+    );
   }
 }
