@@ -157,7 +157,7 @@ function AdminUsers() {
               value={clubFilter}
               onChange={(e) => setClubFilter(e.target.value)}
               aria-label={t("common.all_clubs")}
-              className="text-sm bg-input border border-border rounded px-2 py-1.5"
+              className="text-sm glass border border-border/60 hover:border-gold/40 rounded-md px-3 py-1.5 transition-colors focus:border-gold focus:outline-none outline-none cursor-pointer"
             >
               <option value="">{t("common.all_clubs")}</option>
               {(clubsQuery.data?.items ?? []).map((c: Club) => (
@@ -170,7 +170,7 @@ function AdminUsers() {
               value={activeOnly}
               onChange={(e) => setActiveOnly(e.target.value)}
               aria-label={t("common.status")}
-              className="text-sm bg-input border border-border rounded px-2 py-1.5"
+              className="text-sm glass border border-border/60 hover:border-gold/40 rounded-md px-3 py-1.5 transition-colors focus:border-gold focus:outline-none outline-none cursor-pointer"
             >
               <option value="">{t("common.all")}</option>
               <option value="true">{t("common.active")}</option>

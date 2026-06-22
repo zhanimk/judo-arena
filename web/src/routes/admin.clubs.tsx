@@ -639,7 +639,7 @@ function UsersTab() {
               }}
               className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded bg-gradient-gold text-gold-foreground shadow-gold"
             >
-              <Plus className="h-4 w-4" /> {t("admin.users_title")}
+              <Plus className="h-4 w-4" /> {t("common.add", { defaultValue: "Добавить" })}
             </button>
             <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5">
               {(
@@ -680,9 +680,9 @@ function UsersTab() {
                 setClubFilter(e.target.value);
                 setPage(0);
               }}
-              className="text-sm bg-input border border-border rounded px-2 py-1.5"
+              className="text-sm glass border border-border/60 hover:border-gold/40 rounded-md px-3 py-1.5 transition-colors focus:border-gold focus:outline-none outline-none cursor-pointer"
             >
-              <option value="">{t("admin.clubs_title")}</option>
+              <option value="">{t("common.all_clubs")}</option>
               {(clubsQuery.data?.items ?? []).map((c: Club) => (
                 <option key={c.id} value={c.id}>
                   {localizeName(c.name)}
@@ -695,7 +695,7 @@ function UsersTab() {
                 setActiveOnly(e.target.value);
                 setPage(0);
               }}
-              className="text-sm bg-input border border-border rounded px-2 py-1.5"
+              className="text-sm glass border border-border/60 hover:border-gold/40 rounded-md px-3 py-1.5 transition-colors focus:border-gold focus:outline-none outline-none cursor-pointer"
             >
               <option value="">{t("admin.users_all")}</option>
               <option value="true">{t("admin.active")}</option>
