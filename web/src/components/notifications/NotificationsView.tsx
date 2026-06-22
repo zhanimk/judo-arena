@@ -194,7 +194,7 @@ export function NotificationsView({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                     <h3
                       className={`text-base font-semibold leading-tight ${n.read ? "text-muted-foreground" : "text-foreground"}`}
                     >
@@ -219,7 +219,7 @@ export function NotificationsView({
                 {!n.read && (
                   <button
                     onClick={() => markOne.mutate(n.id)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-all duration-300 hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-100 sm:opacity-0 transition-all duration-300 hover:bg-muted hover:text-foreground group-hover:opacity-100"
                     title={t("notification.mark_read", { defaultValue: "Прочитать" })}
                   >
                     <Check className="h-4 w-4" />
