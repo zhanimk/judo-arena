@@ -37,17 +37,10 @@ export interface BroadcastInput {
     | { kind: "all" };
 }
 
-/** Создать одно или несколько уведомлений по target. Только админ. */
-export async function broadcast(actorUserId: string, input: BroadcastInput) {
-  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new NotificationError(
-      "FORBIDDEN",
-      "Тек әкімші хабарландыру жасай алады",
-      403,
-    );
-  }
-
+/** Внутренняя функция для отправки системных уведомлений без проверки прав */
+export async function sendSystemNotification(
+  input: BroadcastInput & { actorId?: string },
+) {
   // Собираем список получателей вместе с их предпочтительной локалью
   let recipients: { id: string; locale: "kk" | "ru" | "en" }[] = [];
 
@@ -86,7 +79,6 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
       break;
     }
     case "tournament": {
-      // Всем у кого есть APPROVED заявка на турнир (тренеры + спортсмены через ApplicationEntry)
       const entries = await prisma.applicationEntry.findMany({
         where: {
           application: {
@@ -141,7 +133,6 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     campaignId,
   };
 
-  // Создаём уведомления batch'ем с учётом preferred locale каждого получателя
   const data = recipients.map(({ id: userId, locale }) => ({
     userId,
     type: input.type,
@@ -150,12 +141,12 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     payload: campaignPayload,
     locale,
   }));
+
   const created =
     data.length > 0
       ? await prisma.notification.createMany({ data })
       : { count: 0 };
 
-  // N2: Socket.IO push в личную комнату каждого получателя
   for (const item of data) {
     emitToUser(item.userId, "notification:new", {
       type: item.type,
@@ -165,23 +156,45 @@ export async function broadcast(actorUserId: string, input: BroadcastInput) {
     });
   }
 
-  await logAudit({
-    actorUserId,
-    action: "notification.broadcast",
-    targetEntity: "NotificationBroadcast",
-    targetId: campaignId,
-    metadata: {
-      title: input.titleKey,
-      body: input.bodyKey,
-      type: input.type,
-      target: input.target,
-      count: created.count,
-    },
+  if (input.actorId) {
+    await logAudit({
+      actorUserId: input.actorId,
+      action: "notification.system",
+      targetEntity: "NotificationBroadcast",
+      targetId: campaignId,
+      metadata: {
+        title: input.titleKey,
+        body: input.bodyKey,
+        type: input.type,
+        target: input.target as any,
+        count: created.count,
+      },
+    });
+  }
+
+  return { id: campaignId, count: created.count };
+}
+
+/** Создать одно или несколько уведомлений по target. Только админ. */
+export async function broadcast(actorUserId: string, input: BroadcastInput) {
+  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
+  if (!actor || actor.role !== UserRole.ADMIN) {
+    throw new NotificationError(
+      "FORBIDDEN",
+      "Тек әкімші хабарландыру жасай алады",
+      403,
+    );
+  }
+
+  // Используем внутреннюю функцию
+  const result = await sendSystemNotification({
+    ...input,
+    actorId: actorUserId,
   });
 
   return {
-    id: campaignId,
-    count: created.count,
+    id: result.id,
+    count: result.count,
     title: input.titleKey,
     body: input.bodyKey,
     type: input.type,

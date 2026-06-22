@@ -15,9 +15,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth, logout as doLogout } from "@/lib/auth-store";
 import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
+import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
 import { ThemeToggle } from "@/components/site/ThemeToggle";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRealtime } from "@/lib/socket";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 export interface NavItem {
@@ -68,9 +70,18 @@ export function DashboardShell({
 
   // N2: подписка на личную Socket.IO комнату — мгновенно обновляет бейдж уведомлений
   useRealtime(user?.id ? [`user:${user.id}`] : [], {
-    "notification:new": () => {
+    "notification:new": (payload: any) => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
       qc.invalidateQueries({ queryKey: ["unread-count"] });
+
+      if (payload && payload.titleKey) {
+        toast.info(t(payload.titleKey, { defaultValue: payload.titleKey }), {
+          description: payload.bodyKey
+            ? t(payload.bodyKey, { defaultValue: payload.bodyKey })
+            : undefined,
+          duration: 5000,
+        });
+      }
     },
   });
 
@@ -308,24 +319,7 @@ export function DashboardShell({
               {(() => {
                 const notifNav = navItems.find((n) => n.label === "dashboard.notifications");
                 if (!notifNav) return null;
-                return (
-                  <Link
-                    to={notifNav.to}
-                    aria-label={navLabel(notifNav.label)}
-                    title={navLabel(notifNav.label)}
-                    className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    <Bell className="h-4 w-4" />
-                    {unreadCount > 0 && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white"
-                      >
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                );
+                return <NotificationsPopover unreadCount={unreadCount} notifUrl={notifNav.to} />;
               })()}
 
               <div className="hidden lg:flex">
