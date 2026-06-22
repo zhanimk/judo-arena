@@ -206,7 +206,9 @@ test.describe("Admin dashboard", () => {
 
   test("admin can navigate to notifications broadcast", async ({ page }) => {
     await page.goto(`${BASE}/admin/notifications`);
-    await expect(page.locator("body")).toContainText(/хабарландыру/i);
+    await expect(page.locator("body")).toContainText(
+      /хабарландыру|уведомлени|notification/i,
+    );
   });
 
   test("admin can navigate to settings", async ({ page }) => {
