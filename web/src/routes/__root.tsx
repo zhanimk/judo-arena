@@ -17,7 +17,6 @@ import { bootstrap } from "@/lib/auth-store";
 // initCsrf moved to auth-store bootstrap
 import { initSentry, Sentry } from "@/lib/sentry";
 import { initWebVitals } from "@/lib/web-vitals";
-import { usePWA } from "@/hooks/usePWA";
 import { EmailVerificationBanner } from "@/components/ui/EmailVerificationBanner";
 import { useTranslation } from "react-i18next";
 
