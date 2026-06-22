@@ -60,7 +60,8 @@
     "panel": "Панель",
     "coaches": "Тренеры",
     "coach": "Тренер",
-    "hello": "Привет"
+    "hello": "Привет",
+    "broadcasts": "Рассылки"
   },
   "status": {
     "DRAFT": "Черновик",
@@ -1214,7 +1215,13 @@
     "backup_creating": "Создаётся…",
     "backup_success": "Резервная копия создана ✓",
     "backup_error": "Ошибка. Проверьте логи.",
-    "backup_last": "Последняя: {{filename}} ({{size}} МБ)"
+    "backup_last": "Последняя: {{filename}} ({{size}} МБ)",
+    "broadcasts_desc": "Управление системными уведомлениями",
+    "broadcast_history": "История рассылок",
+    "broadcast_new": "Новая рассылка",
+    "broadcast_deleted": "Рассылка удалена",
+    "confirm_delete_broadcast": "Удалить эту рассылку из истории?",
+    "broadcast_sent": "Рассылка успешно отправлена!"
   },
   "profile": {
     "city": "Город",

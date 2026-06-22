@@ -49,7 +49,8 @@
     "coaches": "Coaches",
     "coach": "Coach",
     "hello": "Hello",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "broadcasts": "Broadcasts"
   },
   "status": {
     "DRAFT": "Draft",
@@ -1193,7 +1194,13 @@
     "backup_creating": "Creating backup…",
     "backup_success": "Backup created ✓",
     "backup_error": "Error. Check logs.",
-    "backup_last": "Last: {{filename}} ({{size}} MB)"
+    "backup_last": "Last: {{filename}} ({{size}} MB)",
+    "broadcasts_desc": "Manage system broadcast notifications",
+    "broadcast_history": "Broadcast History",
+    "broadcast_new": "New Broadcast",
+    "broadcast_deleted": "Broadcast deleted",
+    "confirm_delete_broadcast": "Delete this broadcast from history?",
+    "broadcast_sent": "Broadcast sent successfully!"
   },
   "profile": {
     "city": "City",

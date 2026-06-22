@@ -54,6 +54,7 @@ import { Route as AdminProtocolsRouteImport } from "./routes/admin.protocols";
 import { Route as AdminNotificationsRouteImport } from "./routes/admin.notifications";
 import { Route as AdminMatchesRouteImport } from "./routes/admin.matches";
 import { Route as AdminClubsRouteImport } from "./routes/admin.clubs";
+import { Route as AdminBroadcastsRouteImport } from "./routes/admin.broadcasts";
 import { Route as AdminAuditRouteImport } from "./routes/admin.audit";
 import { Route as AdminApplicationsRouteImport } from "./routes/admin.applications";
 import { Route as AdminAnalyticsRouteImport } from "./routes/admin.analytics";
@@ -290,6 +291,11 @@ const AdminClubsRoute = AdminClubsRouteImport.update({
   path: "/clubs",
   getParentRoute: () => AdminRoute,
 } as any);
+const AdminBroadcastsRoute = AdminBroadcastsRouteImport.update({
+  id: "/broadcasts",
+  path: "/broadcasts",
+  getParentRoute: () => AdminRoute,
+} as any);
 const AdminAuditRoute = AdminAuditRouteImport.update({
   id: "/audit",
   path: "/audit",
@@ -359,6 +365,7 @@ export interface FileRoutesByFullPath {
   "/admin/analytics": typeof AdminAnalyticsRoute;
   "/admin/applications": typeof AdminApplicationsRoute;
   "/admin/audit": typeof AdminAuditRoute;
+  "/admin/broadcasts": typeof AdminBroadcastsRoute;
   "/admin/clubs": typeof AdminClubsRouteWithChildren;
   "/admin/matches": typeof AdminMatchesRoute;
   "/admin/notifications": typeof AdminNotificationsRoute;
@@ -413,6 +420,7 @@ export interface FileRoutesByTo {
   "/admin/analytics": typeof AdminAnalyticsRoute;
   "/admin/applications": typeof AdminApplicationsRoute;
   "/admin/audit": typeof AdminAuditRoute;
+  "/admin/broadcasts": typeof AdminBroadcastsRoute;
   "/admin/clubs": typeof AdminClubsRouteWithChildren;
   "/admin/matches": typeof AdminMatchesRoute;
   "/admin/notifications": typeof AdminNotificationsRoute;
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   "/admin/analytics": typeof AdminAnalyticsRoute;
   "/admin/applications": typeof AdminApplicationsRoute;
   "/admin/audit": typeof AdminAuditRoute;
+  "/admin/broadcasts": typeof AdminBroadcastsRoute;
   "/admin/clubs": typeof AdminClubsRouteWithChildren;
   "/admin/matches": typeof AdminMatchesRoute;
   "/admin/notifications": typeof AdminNotificationsRoute;
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | "/admin/analytics"
     | "/admin/applications"
     | "/admin/audit"
+    | "/admin/broadcasts"
     | "/admin/clubs"
     | "/admin/matches"
     | "/admin/notifications"
@@ -584,6 +594,7 @@ export interface FileRouteTypes {
     | "/admin/analytics"
     | "/admin/applications"
     | "/admin/audit"
+    | "/admin/broadcasts"
     | "/admin/clubs"
     | "/admin/matches"
     | "/admin/notifications"
@@ -641,6 +652,7 @@ export interface FileRouteTypes {
     | "/admin/analytics"
     | "/admin/applications"
     | "/admin/audit"
+    | "/admin/broadcasts"
     | "/admin/clubs"
     | "/admin/matches"
     | "/admin/notifications"
@@ -1018,6 +1030,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AdminClubsRouteImport;
       parentRoute: typeof AdminRoute;
     };
+    "/admin/broadcasts": {
+      id: "/admin/broadcasts";
+      path: "/broadcasts";
+      fullPath: "/admin/broadcasts";
+      preLoaderRoute: typeof AdminBroadcastsRouteImport;
+      parentRoute: typeof AdminRoute;
+    };
     "/admin/audit": {
       id: "/admin/audit";
       path: "/audit";
@@ -1127,6 +1146,7 @@ interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute;
   AdminApplicationsRoute: typeof AdminApplicationsRoute;
   AdminAuditRoute: typeof AdminAuditRoute;
+  AdminBroadcastsRoute: typeof AdminBroadcastsRoute;
   AdminClubsRoute: typeof AdminClubsRouteWithChildren;
   AdminMatchesRoute: typeof AdminMatchesRoute;
   AdminNotificationsRoute: typeof AdminNotificationsRoute;
@@ -1143,6 +1163,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApplicationsRoute: AdminApplicationsRoute,
   AdminAuditRoute: AdminAuditRoute,
+  AdminBroadcastsRoute: AdminBroadcastsRoute,
   AdminClubsRoute: AdminClubsRouteWithChildren,
   AdminMatchesRoute: AdminMatchesRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,

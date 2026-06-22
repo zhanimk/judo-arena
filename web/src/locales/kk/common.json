@@ -49,7 +49,8 @@
     "panel": "Панель",
     "coaches": "Жаттықтырушылар",
     "coach": "Жаттықтырушы",
-    "hello": "Сәлем"
+    "hello": "Сәлем",
+    "broadcasts": "Хабарлама тарату"
   },
   "status": {
     "DRAFT": "Жоба",
@@ -1202,7 +1203,13 @@
     "backup_creating": "Жасалуда…",
     "backup_success": "Резервтік көшірме жасалды ✓",
     "backup_error": "Қате. Журналдарды тексеріңіз.",
-    "backup_last": "Соңғысы: {{filename}} ({{size}} МБ)"
+    "backup_last": "Соңғысы: {{filename}} ({{size}} МБ)",
+    "broadcasts_desc": "Жүйелік хабарландыруларды басқару",
+    "broadcast_history": "Тарату тарихы",
+    "broadcast_new": "Жаңа хабарлама тарату",
+    "broadcast_deleted": "Хабарлама тарату жойылды",
+    "confirm_delete_broadcast": "Бұл хабарлама таратуды тарихтан жою керек пе?",
+    "broadcast_sent": "Хабарлама сәтті таралды!"
   },
   "profile": {
     "city": "Қала",
