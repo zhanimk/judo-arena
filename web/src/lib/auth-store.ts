@@ -66,7 +66,10 @@ function getSnapshot(): AuthState {
 // ============================================================
 
 export function useAuth(): AuthState & {
-  login: (email: string, password: string) => Promise<User | { totpRequired: true; challengeToken: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<User | { totpRequired: true; challengeToken: string }>;
   register: (data: Parameters<typeof api.auth.register>[0]) => Promise<User>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
@@ -140,6 +143,9 @@ export async function bootstrap(): Promise<void> {
   }, 8000);
 
   try {
+    const { initCsrf } = await import("./api");
+    await initCsrf();
+
     const newToken = await api.auth.refresh();
     if (!newToken) {
       setState({ user: null, status: "unauthenticated" });

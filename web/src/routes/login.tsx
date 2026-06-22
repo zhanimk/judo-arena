@@ -245,7 +245,7 @@ function Login() {
         </div>
       </div>
 
-      <div className="relative min-h-screen grid pt-20 lg:grid-cols-[minmax(0,1fr)_480px] lg:pt-0 xl:grid-cols-[minmax(0,1fr)_540px]">
+      <div className="relative min-h-[100dvh] flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_480px] xl:grid-cols-[minmax(0,1fr)_540px]">
         {/* ══════════════════ LEFT – SHOWCASE ══════════════════ */}
         <div className="relative hidden lg:flex flex-col justify-between overflow-hidden px-14 pb-10 pt-28">
           {/* grid lines */}
@@ -502,7 +502,7 @@ function Login() {
         </div>
 
         {/* ══════════════════ RIGHT – FORM PANEL ══════════════════ */}
-        <div className="lp-right relative flex min-h-screen items-center justify-center px-4 pb-6 pt-4 lg:px-8 lg:pb-8 lg:pt-24">
+        <div className="lp-right relative flex flex-1 items-center justify-center px-4 pb-6 pt-24 lg:px-8 lg:pb-8">
           <div className="lp-right-glow absolute inset-0 pointer-events-none" />
 
           <div

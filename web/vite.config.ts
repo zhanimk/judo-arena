@@ -64,9 +64,9 @@ export default defineConfig({
         },
       },
     },
-    // Enable source maps for Sentry (only in production build)
+    // Disable source maps for production client to fix browser loading errors
     build: {
-      sourcemap: true,
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks(id: string) {

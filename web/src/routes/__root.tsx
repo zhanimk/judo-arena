@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import { hydrateLocaleFromStorage } from "@/lib/i18n";
 import { hydrateThemeFromStorage } from "@/lib/theme";
 import { bootstrap } from "@/lib/auth-store";
-import { initCsrf } from "@/lib/api";
+// initCsrf moved to auth-store bootstrap
 import { initSentry, Sentry } from "@/lib/sentry";
 import { initWebVitals } from "@/lib/web-vitals";
 import { usePWA } from "@/hooks/usePWA";
@@ -424,15 +424,19 @@ function RootComponent() {
 /** При первой загрузке приложения — пробуем восстановить сессию через /auth/refresh. */
 function AuthBootstrap() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Выполняем один раз при монтировании
   useEffect(() => {
     hydrateThemeFromStorage();
     hydrateLocaleFromStorage();
-    // Инициализируем CSRF токен сразу при загрузке
-    initCsrf();
-    // Web Vitals — запускаем после гидратации, динамический импорт не блокирует
     initWebVitals();
-    if (pathname === "/login") return;
+  }, []);
+
+  // При смене пути гарантируем, что bootstrap запустится
+  // (внутри auth-store есть защита от повторных вызовов)
+  useEffect(() => {
     bootstrap();
   }, [pathname]);
+
   return null;
 }
