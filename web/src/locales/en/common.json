@@ -1937,6 +1937,7 @@
   "documents": {
     "title": "Documents",
     "coach_documents": "Coach documents",
+    "load_error": "Failed to load document",
     "birth_certificate": "Birth certificate",
     "birth_certificate_hint": "Upload a PDF or image to confirm the athlete age.",
     "study_certificate": "Study certificate",

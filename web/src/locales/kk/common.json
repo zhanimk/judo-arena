@@ -1936,6 +1936,7 @@
   "documents": {
     "title": "Құжаттар",
     "coach_documents": "Жаттықтырушы құжаттары",
+    "load_error": "Құжатты жүктеу мүмкін болмады",
     "birth_certificate": "Туу туралы куәлік",
     "birth_certificate_hint": "Спортшының жасын растау үшін PDF немесе сурет жүктеңіз.",
     "study_certificate": "Оқу орнынан анықтама",
