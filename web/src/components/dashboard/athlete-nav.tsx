@@ -1,4 +1,4 @@
-import { Activity, Bell, LayoutDashboard, Swords, Trophy, User } from "lucide-react";
+import { Activity, Bell, LayoutDashboard, Trophy, User } from "lucide-react";
 
 export const athleteNav = [
   { to: "/athlete", label: "dashboard.overview", icon: LayoutDashboard },

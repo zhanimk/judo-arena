@@ -228,7 +228,7 @@ function ApplicationDetail() {
       accentTitle={localizeName(app.tournament?.name) || t("applications.title")}
     >
       <Link
-        to="/coach/applications"
+        to="/coach/tournaments"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> {t("applications.all_applications")}

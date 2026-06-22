@@ -4,12 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useTranslation } from "react-i18next";
 import { adminNav as nav } from "@/components/dashboard/admin-nav";
-import {
-  DashboardShell,
-  Panel,
-  LoadingState,
-  EmptyState,
-} from "@/components/dashboard/DashboardShell";
+import { DashboardShell, LoadingState, EmptyState } from "@/components/dashboard/DashboardShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { toast } from "sonner";

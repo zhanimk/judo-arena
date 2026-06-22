@@ -195,7 +195,7 @@ function CoachOverview() {
             <span className="ml-2 text-muted-foreground">— {t("coach.rejected_apps_hint")}</span>
           </div>
           <Link
-            to="/coach/applications"
+            to="/coach/tournaments"
             className="shrink-0 rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
           >
             {t("coach.go_to_applications")}
@@ -337,7 +337,7 @@ function CoachOverview() {
           <Panel
             title={t("coach.recent_applications")}
             action={
-              <Link to="/coach/applications" className="text-xs text-gold hover:underline">
+              <Link to="/coach/tournaments" className="text-xs text-gold hover:underline">
                 {t("common.all")} →
               </Link>
             }

@@ -79,7 +79,7 @@ function AthleteMatchDetails() {
       accentTitle={t("matches.match_detail")}
     >
       <div className="mb-4">
-        <Link to="/athlete/matches" className="text-sm text-muted-foreground hover:text-gold">
+        <Link to="/athlete/results" className="text-sm text-muted-foreground hover:text-gold">
           ← {t("matches.back_to_list")}
         </Link>
       </div>
