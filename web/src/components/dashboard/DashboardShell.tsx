@@ -8,7 +8,6 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
-  Bell,
   PackageOpen,
   AlertTriangle,
 } from "lucide-react";

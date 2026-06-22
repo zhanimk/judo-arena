@@ -957,7 +957,7 @@ export const api = {
 
   // --- NOTIFICATIONS ---
   notifications: {
-    list: (params?: { type?: string; unreadOnly?: boolean }) =>
+    list: (params?: { type?: string; unreadOnly?: boolean; limit?: number }) =>
       request<Notification[]>(`/api/notifications${qs(params as any)}`),
     unreadCount: () => request<{ count: number }>("/api/notifications/unread-count"),
     markAllRead: () => request<void>("/api/notifications/mark-read", { method: "POST" }),

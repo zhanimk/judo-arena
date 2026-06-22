@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Bell, Check, Trash2, CalendarDays, Megaphone, Info } from "lucide-react";
+import { Bell, Check, CalendarDays, Megaphone, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Notification } from "@/lib/api-types";

@@ -1192,10 +1192,7 @@ function IncomingAthleteRequests({
             <div className="truncate text-sm font-semibold">
               {request.athlete?.name} {request.athlete?.surname}
             </div>
-            <div className="truncate text-xs text-muted-foreground">
-              {request.athlete?.email}
-              {request.athlete?.phone ? ` · ${request.athlete.phone}` : ""}
-            </div>
+            <div className="truncate text-xs text-muted-foreground">{request.athlete?.email}</div>
           </div>
           <div className="flex gap-2">
             <button
