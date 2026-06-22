@@ -762,7 +762,8 @@
     "stat_pending": "На рассмотрении",
     "stat_approved": "Одобрено",
     "i_applied": "Я заявлен",
-    "no_tournaments_hint": "Здесь появятся новые турниры."
+    "no_tournaments_hint": "Здесь появятся новые турниры.",
+    "tournament_results": "Турнирные результаты"
   },
   "coach": {
     "role_label": "Тренер",

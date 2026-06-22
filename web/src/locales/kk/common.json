@@ -855,7 +855,8 @@
     "no_tournaments_hint": "Жаңа жарыс жарияланғанда осы жерде көрінеді.",
     "remove_entry": "Жазбамды алып тастау",
     "confirm_remove_entry": "Осы өтінімнен жазбаңызды алып тастайсыз ба?",
-    "download_certificate": "Сертификат жүктеу"
+    "download_certificate": "Сертификат жүктеу",
+    "tournament_results": "Турнирлік нәтижелер"
   },
   "coach": {
     "role_label": "Жаттықтырушы",

@@ -761,7 +761,8 @@
     "stat_pending": "Қарауда",
     "stat_approved": "Бекітілді",
     "i_applied": "Мен заявлен",
-    "no_tournaments_hint": "Жаңа жарыс жарияланғанда осы жерде көрінеді."
+    "no_tournaments_hint": "Жаңа жарыс жарияланғанда осы жерде көрінеді.",
+    "tournament_results": "Турнирлік нәтижелер"
   },
   "coach": {
     "role_label": "Жаттықтырушы",

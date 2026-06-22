@@ -867,7 +867,8 @@
     "no_tournaments_hint": "Здесь появятся новые турниры.",
     "remove_entry": "Убрать мою запись",
     "confirm_remove_entry": "Убрать вашу запись из этой заявки?",
-    "download_certificate": "Скачать сертификат"
+    "download_certificate": "Скачать сертификат",
+    "tournament_results": "Турнирные результаты"
   },
   "coach": {
     "role_label": "Тренер",

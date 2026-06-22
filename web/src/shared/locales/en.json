@@ -762,7 +762,8 @@
     "stat_pending": "Pending",
     "stat_approved": "Approved",
     "i_applied": "I applied",
-    "no_tournaments_hint": "New tournaments will appear here."
+    "no_tournaments_hint": "New tournaments will appear here.",
+    "tournament_results": "Tournament results"
   },
   "coach": {
     "role_label": "Coach",

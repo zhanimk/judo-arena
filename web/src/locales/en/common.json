@@ -844,7 +844,8 @@
     "no_tournaments_hint": "New tournaments will appear here.",
     "remove_entry": "Remove my entry",
     "confirm_remove_entry": "Remove your entry from this application?",
-    "download_certificate": "Download certificate"
+    "download_certificate": "Download certificate",
+    "tournament_results": "Tournament results"
   },
   "coach": {
     "role_label": "Coach",
