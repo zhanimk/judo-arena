@@ -287,7 +287,9 @@ function AdminBroadcasts() {
                   {t("admin.broadcast_new", { defaultValue: "Создание рассылки" })}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Отправка мгновенного PUSH-уведомления и сообщения на платформе.
+                  {t("admin.broadcast_new_desc", {
+                    defaultValue: "Отправка мгновенного PUSH-уведомления и сообщения на платформе.",
+                  })}
                 </p>
               </div>
               <BroadcastForm onSuccess={() => setTab("history")} />
@@ -341,31 +343,43 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-5">
         <div>
-          <label className="block text-sm font-medium mb-2 text-foreground/90">Аудитория</label>
+          <label className="block text-sm font-medium mb-2 text-foreground/90">
+            {t("admin.audience", { defaultValue: "Аудитория" })}
+          </label>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as any)}
             className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
           >
-            <option value="all">Всем пользователям</option>
-            <option value="role">Определенной роли</option>
-            <option value="club">Определенному клубу</option>
+            <option value="all">
+              {t("admin.target_all", { defaultValue: "Всем пользователям" })}
+            </option>
+            <option value="role">
+              {t("admin.target_role", { defaultValue: "Определенной роли" })}
+            </option>
+            <option value="club">
+              {t("admin.target_club", { defaultValue: "Определенному клубу" })}
+            </option>
           </select>
         </div>
 
         {kind === "role" && (
           <div className="animate-in slide-in-from-top-2 fade-in duration-300">
             <label className="block text-sm font-medium mb-2 text-foreground/90">
-              Выберите роль
+              {t("admin.select_role", { defaultValue: "Выберите роль" })}
             </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as any)}
               className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
             >
-              <option value="ATHLETE">Спортсмены</option>
-              <option value="COACH">Тренеры</option>
-              <option value="ADMIN">Администраторы</option>
+              <option value="ATHLETE">
+                {t("admin.role_athlete", { defaultValue: "Спортсмены" })}
+              </option>
+              <option value="COACH">{t("admin.role_coach", { defaultValue: "Тренеры" })}</option>
+              <option value="ADMIN">
+                {t("admin.role_admin", { defaultValue: "Администраторы" })}
+              </option>
             </select>
           </div>
         )}
@@ -373,7 +387,7 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         {kind === "club" && (
           <div className="animate-in slide-in-from-top-2 fade-in duration-300">
             <label className="block text-sm font-medium mb-2 text-foreground/90">
-              Выберите клуб
+              {t("admin.select_club", { defaultValue: "Выберите клуб" })}
             </label>
             <select
               value={clubId}
@@ -381,7 +395,9 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
               className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
               required
             >
-              <option value="">-- Выберите клуб --</option>
+              <option value="">
+                {t("admin.select_club_placeholder", { defaultValue: "-- Выберите клуб --" })}
+              </option>
               {clubsQuery.data?.items.map((c) => (
                 <option key={c.id} value={c.id}>
                   {localizeName(c.name)}
@@ -392,13 +408,15 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-2 text-foreground/90">Заголовок</label>
+          <label className="block text-sm font-medium mb-2 text-foreground/90">
+            {t("admin.title_label", { defaultValue: "Заголовок" })}
+          </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80"
-            placeholder="Важное объявление"
+            placeholder={t("admin.title_placeholder", { defaultValue: "Важное объявление" })}
             required
             maxLength={100}
           />
@@ -406,14 +424,14 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
 
         <div>
           <label className="block text-sm font-medium mb-2 text-foreground/90">
-            Текст уведомления
+            {t("admin.body_label", { defaultValue: "Текст уведомления" })}
           </label>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={5}
             className="w-full rounded-lg border border-border/40 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold transition-all shadow-inner hover:border-border/80 resize-y"
-            placeholder="Введите текст рассылки..."
+            placeholder={t("admin.body_placeholder", { defaultValue: "Введите текст рассылки..." })}
             required
             maxLength={2000}
           />
@@ -431,7 +449,7 @@ function BroadcastForm({ onSuccess }: { onSuccess: () => void }) {
           ) : (
             <Megaphone className="h-4 w-4" />
           )}
-          Отправить рассылку
+          {t("admin.send_broadcast", { defaultValue: "Отправить рассылку" })}
         </button>
       </div>
     </form>
