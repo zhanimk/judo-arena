@@ -42,13 +42,17 @@ export function ProtectedRoute({
   }, [mounted, status, user, allowedRoles, navigate]);
 
   useEffect(() => {
-    if (!mounted || status !== "authenticated" || user?.role !== "ATHLETE") return;
+    if (!mounted || status !== "authenticated") return;
+    if (user?.role !== "ATHLETE" && user?.role !== "COACH") return;
 
     let alive = true;
     setHasClubRequest(null);
     setCheckingOnboarding(true);
-    api.joinRequests
-      .myList()
+
+    const fetchPromise =
+      user.role === "ATHLETE" ? api.joinRequests.myList() : api.coachClubRequests.myList();
+
+    fetchPromise
       .then((requests) => {
         if (!alive) return;
         const hasPendingOrApproved = requests.some(
@@ -72,30 +76,30 @@ export function ProtectedRoute({
   useEffect(() => {
     if (!mounted || status !== "authenticated" || !user || user.role !== "ATHLETE") return;
     if (checkingOnboarding) return;
+    if (hasClubRequest === null) return;
 
     const profileComplete = isAthleteProfileComplete(user);
-    if (hasClubRequest === null) return;
     const onboardingComplete = hasClubRequest && profileComplete;
     const onOnboarding = path === "/athlete/onboarding";
 
     if (!onboardingComplete && !onOnboarding) {
       navigate({ to: "/athlete/onboarding" });
     }
-    if (onboardingComplete && onOnboarding) {
-      navigate({ to: "/athlete" });
-    }
   }, [mounted, status, user, checkingOnboarding, hasClubRequest, path, navigate]);
 
   useEffect(() => {
     if (!mounted || status !== "authenticated" || !user || user.role !== "COACH") return;
-    // Onboarding is complete once the coach has a club — localStorage rules flag is only
-    // for the onboarding wizard itself (to require agreement before finishing).
-    const onboardingDone = Boolean(user.clubId);
+    if (checkingOnboarding) return;
+    if (hasClubRequest === null) return;
+
+    const onboardingDone = hasClubRequest;
     const onboardingPaths = ["/coach/onboarding", "/coach/club", "/coach/profile"];
-    if (!onboardingDone && !onboardingPaths.includes(path)) {
+    const onOnboarding = onboardingPaths.includes(path);
+
+    if (!onboardingDone && !onOnboarding) {
       navigate({ to: "/coach/onboarding" });
     }
-  }, [mounted, status, user, path, navigate]);
+  }, [mounted, status, user, checkingOnboarding, hasClubRequest, path, navigate]);
 
   if (!mounted) return null;
 
