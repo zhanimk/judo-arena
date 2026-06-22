@@ -112,15 +112,24 @@ function StatsTab() {
   if (stats.isLoading) return <LoadingState />;
 
   const tournamentByStatus = (stats.data?.tournaments ?? []).reduce(
-    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({ ...acc, [item.status]: item._count.id }),
+    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({
+      ...acc,
+      [item.status]: item._count.id,
+    }),
     {},
   );
   const usersByRole = (stats.data?.users ?? []).reduce(
-    (acc: Record<string, number>, item: { role: string; _count: { id: number } }) => ({ ...acc, [item.role]: item._count.id }),
+    (acc: Record<string, number>, item: { role: string; _count: { id: number } }) => ({
+      ...acc,
+      [item.role]: item._count.id,
+    }),
     {},
   );
   const matchesByStatus = (stats.data?.matches ?? []).reduce(
-    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({ ...acc, [item.status]: item._count.id }),
+    (acc: Record<string, number>, item: { status: string; _count: { id: number } }) => ({
+      ...acc,
+      [item.status]: item._count.id,
+    }),
     {},
   );
 
@@ -135,13 +144,19 @@ function StatsTab() {
         <StatCard
           label={t("reports.stat_tournaments")}
           value={String(
-            (stats.data?.tournaments ?? []).reduce((s: number, item: { _count: { id: number } }) => s + item._count.id, 0),
+            (stats.data?.tournaments ?? []).reduce(
+              (s: number, item: { _count: { id: number } }) => s + item._count.id,
+              0,
+            ),
           )}
         />
         <StatCard
           label={t("reports.stat_matches")}
           value={String(
-            (stats.data?.matches ?? []).reduce((s: number, item: { _count: { id: number } }) => s + item._count.id, 0),
+            (stats.data?.matches ?? []).reduce(
+              (s: number, item: { _count: { id: number } }) => s + item._count.id,
+              0,
+            ),
           )}
         />
         <StatCard
@@ -202,7 +217,10 @@ function StatsTab() {
               ] as [string, string][]
             ).map(([k, l]) => {
               const count = matchesByStatus[k] ?? 0;
-              const total = Object.values(matchesByStatus).reduce((s: number, x: number) => s + x, 0);
+              const total = Object.values(matchesByStatus).reduce(
+                (s: number, x: number) => s + x,
+                0,
+              );
               const pct = total ? Math.round((count / total) * 100) : 0;
               return <Bar key={k} label={l} value={count} pct={pct} />;
             })}
@@ -324,28 +342,26 @@ function TournamentProtocolCard({
         <div className="flex shrink-0 items-center gap-3">
           <TournamentStatusBadge status={tourney.status} />
           {isCompleted && (
-            <a
-              href={api.admin.protocolPdfUrl(tourney.id)}
-              target="_blank"
-              rel="noopener"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await import("@/lib/api").then((m) =>
+                    m.downloadWithAuth(
+                      `/api/pdf/protocol?tournamentId=${tourney.id}`,
+                      `protocol-${tourney.id}.pdf`,
+                    ),
+                  );
+                } catch (err) {
+                  console.error(err);
+                  alert(t("DOWNLOAD_ERROR"));
+                }
+              }}
               className="inline-flex items-center gap-1.5 rounded-md bg-gradient-gold px-3 py-1.5 text-xs font-medium text-gold-foreground shadow-gold"
             >
               <Download className="h-3.5 w-3.5" />
               {t("admin.protocol_pdf")}
-            </a>
-          )}
-          {isCompleted && (
-            <a
-              href={api.admin.excelExportUrl(tourney.id)}
-              target="_blank"
-              rel="noopener"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-500/20 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Excel
-            </a>
+            </button>
           )}
           <Link
             to="/admin/tournaments/$id"
@@ -417,15 +433,26 @@ function TournamentProtocolCard({
                           <FileText className="h-3.5 w-3.5" />
                           {isShowingBracket ? t("common.close") : t("reports.bracket_btn")}
                         </button>
-                        <a
-                          href={api.admin.bracketPdfUrl(b.id)}
-                          target="_blank"
-                          rel="noopener"
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await import("@/lib/api").then((m) =>
+                                m.downloadWithAuth(
+                                  `/api/pdf/bracket?bracketId=${b.id}`,
+                                  `bracket-${b.id}.pdf`,
+                                ),
+                              );
+                            } catch (err) {
+                              console.error(err);
+                              alert(t("DOWNLOAD_ERROR"));
+                            }
+                          }}
                           className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold"
                         >
                           <Download className="h-3.5 w-3.5" />
                           PDF
-                        </a>
+                        </button>
                       </div>
                     </div>
 
@@ -687,7 +714,9 @@ function statusDot(status: string): string {
   return "bg-amber-400";
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";
@@ -695,9 +724,24 @@ function localizeName(n: import("@/lib/api-types").LocalizedName | string | null
 
 // ── Analytics Tab (вынесена из admin.analytics.tsx) ───────────────────────────
 
-const GENDER_COLORS: Record<string, string> = { MALE: "#3b82f6", FEMALE: "#ec4899", UNKNOWN: "#9ca3af" };
-const CHART_COLORS = ["#c9a84c","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#84cc16"];
-function monthLabel(year: number, month: number) { return `${String(month).padStart(2,"0")}.${String(year).slice(2)}`; }
+const GENDER_COLORS: Record<string, string> = {
+  MALE: "#3b82f6",
+  FEMALE: "#ec4899",
+  UNKNOWN: "#9ca3af",
+};
+const CHART_COLORS = [
+  "#c9a84c",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#84cc16",
+];
+function monthLabel(year: number, month: number) {
+  return `${String(month).padStart(2, "0")}.${String(year).slice(2)}`;
+}
 
 function AnalyticsTab() {
   const { t } = useTranslation();
@@ -707,18 +751,48 @@ function AnalyticsTab() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const athletesByMonth = useMemo(() => (data?.athletes.byMonth ?? []).map((r) => ({ label: monthLabel(r.year, r.month), count: r.count })), [data]);
-  const matchesByMonth  = useMemo(() => (data?.matches.byMonth ?? []).map((r) => ({ label: monthLabel(r.year, r.month), count: r.count })), [data]);
-  const totalAthletes   = useMemo(() => data?.athletes.byGender.reduce((s, g) => s + g.count, 0) ?? 0, [data]);
-  const genderPie       = useMemo(() => (data?.athletes.byGender ?? []).map((g) => ({
-    name: g.gender === "MALE" ? t("common.male") : g.gender === "FEMALE" ? t("tatami.female_short") : "—",
-    value: g.count,
-    color: GENDER_COLORS[g.gender] ?? "#9ca3af",
-  })), [data, t]);
-  const weightClasses   = useMemo(() => (data?.categories.popularWeightClasses ?? []).slice(0, 10).map((w) => ({
-    label: `${w.gender === "MALE" ? "♂" : "♀"} ${w.weightMax >= 200 ? "+" : "-"}${w.weightMax}kg`,
-    count: w.count,
-  })), [data]);
+  const athletesByMonth = useMemo(
+    () =>
+      (data?.athletes.byMonth ?? []).map((r) => ({
+        label: monthLabel(r.year, r.month),
+        count: r.count,
+      })),
+    [data],
+  );
+  const matchesByMonth = useMemo(
+    () =>
+      (data?.matches.byMonth ?? []).map((r) => ({
+        label: monthLabel(r.year, r.month),
+        count: r.count,
+      })),
+    [data],
+  );
+  const totalAthletes = useMemo(
+    () => data?.athletes.byGender.reduce((s, g) => s + g.count, 0) ?? 0,
+    [data],
+  );
+  const genderPie = useMemo(
+    () =>
+      (data?.athletes.byGender ?? []).map((g) => ({
+        name:
+          g.gender === "MALE"
+            ? t("common.male")
+            : g.gender === "FEMALE"
+              ? t("tatami.female_short")
+              : "—",
+        value: g.count,
+        color: GENDER_COLORS[g.gender] ?? "#9ca3af",
+      })),
+    [data, t],
+  );
+  const weightClasses = useMemo(
+    () =>
+      (data?.categories.popularWeightClasses ?? []).slice(0, 10).map((w) => ({
+        label: `${w.gender === "MALE" ? "♂" : "♀"} ${w.weightMax >= 200 ? "+" : "-"}${w.weightMax}kg`,
+        count: w.count,
+      })),
+    [data],
+  );
 
   if (isLoading || !data) return <LoadingState />;
 
@@ -728,26 +802,52 @@ function AnalyticsTab() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: t("analytics.total_athletes"), value: totalAthletes, color: "#3b82f6" },
-          { label: t("analytics.tournaments_this_year"), value: data.tournaments.completedThisYear.length, color: "#c9a84c" },
-          { label: t("analytics.matches_total"), value: data.matches.byMonth.reduce((s,m)=>s+m.count,0), color: "#10b981" },
-          { label: t("analytics.clubs_active"), value: data.athletes.topClubs.length, color: "#8b5cf6" },
+          {
+            label: t("analytics.tournaments_this_year"),
+            value: data.tournaments.completedThisYear.length,
+            color: "#c9a84c",
+          },
+          {
+            label: t("analytics.matches_total"),
+            value: data.matches.byMonth.reduce((s, m) => s + m.count, 0),
+            color: "#10b981",
+          },
+          {
+            label: t("analytics.clubs_active"),
+            value: data.athletes.topClubs.length,
+            color: "#8b5cf6",
+          },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border bg-card p-4">
-            <div className="text-2xl font-bold" style={{ color: kpi.color }}>{kpi.value.toLocaleString()}</div>
+            <div className="text-2xl font-bold" style={{ color: kpi.color }}>
+              {kpi.value.toLocaleString()}
+            </div>
             <div className="text-xs text-muted-foreground mt-1">{kpi.label}</div>
           </div>
         ))}
       </div>
 
       {/* Registration trend */}
-      <Panel title={t("analytics.athlete_registrations")} action={<span className="text-xs text-muted-foreground">{t("analytics.last_24_months")}</span>}>
+      <Panel
+        title={t("analytics.athlete_registrations")}
+        action={
+          <span className="text-xs text-muted-foreground">{t("analytics.last_24_months")}</span>
+        }
+      >
         <ResponsiveContainer width="100%" height={200}>
-          <RLineChart data={athletesByMonth} margin={{ top:4, right:16, left:0, bottom:0 }}>
+          <RLineChart data={athletesByMonth} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="label" tick={{ fontSize:11 }} />
-            <YAxis tick={{ fontSize:11 }} allowDecimals={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
             <RTooltip />
-            <RLine type="monotone" dataKey="count" stroke="#c9a84c" strokeWidth={2} dot={false} name={t("analytics.athletes")} />
+            <RLine
+              type="monotone"
+              dataKey="count"
+              stroke="#c9a84c"
+              strokeWidth={2}
+              dot={false}
+              name={t("analytics.athletes")}
+            />
           </RLineChart>
         </ResponsiveContainer>
       </Panel>
@@ -758,22 +858,37 @@ function AnalyticsTab() {
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={160}>
               <RPieChart>
-                <RPie data={genderPie} dataKey="value" innerRadius={45} outerRadius={70} paddingAngle={3}>
-                  {genderPie.map((e,i) => <Cell key={i} fill={e.color} />)}
+                <RPie
+                  data={genderPie}
+                  dataKey="value"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={3}
+                >
+                  {genderPie.map((e, i) => (
+                    <Cell key={i} fill={e.color} />
+                  ))}
                 </RPie>
-                <RTooltip formatter={(v:number)=>[v,""]} />
+                <RTooltip formatter={(v: number) => [v, ""]} />
               </RPieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-2 flex-1">
-              {genderPie.map((g,i) => (
+              {genderPie.map((g, i) => (
                 <div key={i} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ background: g.color }} />{g.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ background: g.color }} />
+                    {g.name}
+                  </div>
                   <span className="font-semibold">{g.value.toLocaleString()}</span>
                 </div>
               ))}
-              {data.athletes.avgAgeByGender.map((a,i) => (
+              {data.athletes.avgAgeByGender.map((a, i) => (
                 <div key={i} className="text-xs text-muted-foreground">
-                  {a.gender === "MALE" ? t("common.male") : t("tatami.female_short")} — {t("analytics.avg_age")}: <strong>{a.avgAge} {t("common.years")}</strong>
+                  {a.gender === "MALE" ? t("common.male") : t("tatami.female_short")} —{" "}
+                  {t("analytics.avg_age")}:{" "}
+                  <strong>
+                    {a.avgAge} {t("common.years")}
+                  </strong>
                 </div>
               ))}
             </div>
@@ -783,12 +898,17 @@ function AnalyticsTab() {
         {/* Matches per month */}
         <Panel title={t("analytics.matches_per_month")}>
           <ResponsiveContainer width="100%" height={160}>
-            <RBarChart data={matchesByMonth} margin={{ top:4, right:8, left:0, bottom:0 }}>
+            <RBarChart data={matchesByMonth} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="label" tick={{ fontSize:10 }} />
-              <YAxis tick={{ fontSize:10 }} allowDecimals={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
               <RTooltip />
-              <RBar dataKey="count" fill="#3b82f6" radius={[3,3,0,0]} name={t("analytics.matches")} />
+              <RBar
+                dataKey="count"
+                fill="#3b82f6"
+                radius={[3, 3, 0, 0]}
+                name={t("analytics.matches")}
+              />
             </RBarChart>
           </ResponsiveContainer>
         </Panel>
@@ -798,12 +918,21 @@ function AnalyticsTab() {
         {/* Athletes by city */}
         <Panel title={t("analytics.athletes_by_city")}>
           <ResponsiveContainer width="100%" height={180}>
-            <RBarChart data={data.athletes.byCity} layout="vertical" margin={{ top:4, right:16, left:50, bottom:0 }}>
+            <RBarChart
+              data={data.athletes.byCity}
+              layout="vertical"
+              margin={{ top: 4, right: 16, left: 50, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" tick={{ fontSize:10 }} allowDecimals={false} />
-              <YAxis type="category" dataKey="city" tick={{ fontSize:10 }} width={50} />
+              <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="city" tick={{ fontSize: 10 }} width={50} />
               <RTooltip />
-              <RBar dataKey="count" fill="#10b981" radius={[0,3,3,0]} name={t("analytics.athletes")} />
+              <RBar
+                dataKey="count"
+                fill="#10b981"
+                radius={[0, 3, 3, 0]}
+                name={t("analytics.athletes")}
+              />
             </RBarChart>
           </ResponsiveContainer>
         </Panel>
@@ -811,13 +940,19 @@ function AnalyticsTab() {
         {/* Popular weight classes */}
         <Panel title={t("analytics.popular_weight_classes")}>
           <ResponsiveContainer width="100%" height={180}>
-            <RBarChart data={weightClasses} layout="vertical" margin={{ top:4, right:16, left:80, bottom:0 }}>
+            <RBarChart
+              data={weightClasses}
+              layout="vertical"
+              margin={{ top: 4, right: 16, left: 80, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" tick={{ fontSize:10 }} allowDecimals={false} />
-              <YAxis type="category" dataKey="label" tick={{ fontSize:10 }} width={80} />
+              <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="label" tick={{ fontSize: 10 }} width={80} />
               <RTooltip />
-              <RBar dataKey="count" radius={[0,3,3,0]} name={t("analytics.entries")}>
-                {weightClasses.map((_,i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              <RBar dataKey="count" radius={[0, 3, 3, 0]} name={t("analytics.entries")}>
+                {weightClasses.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
               </RBar>
             </RBarChart>
           </ResponsiveContainer>
@@ -827,16 +962,18 @@ function AnalyticsTab() {
       {/* Top clubs */}
       <Panel title={t("analytics.top_clubs")}>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-muted-foreground text-xs uppercase">
-            <th className="pb-2 text-left w-8">#</th>
-            <th className="pb-2 text-left">{t("analytics.club")}</th>
-            <th className="pb-2 text-left">{t("common.city")}</th>
-            <th className="pb-2 text-right">{t("analytics.athletes")}</th>
-          </tr></thead>
+          <thead>
+            <tr className="border-b border-border text-muted-foreground text-xs uppercase">
+              <th className="pb-2 text-left w-8">#</th>
+              <th className="pb-2 text-left">{t("analytics.club")}</th>
+              <th className="pb-2 text-left">{t("common.city")}</th>
+              <th className="pb-2 text-right">{t("analytics.athletes")}</th>
+            </tr>
+          </thead>
           <tbody>
-            {data.athletes.topClubs.map((c,i) => (
+            {data.athletes.topClubs.map((c, i) => (
               <tr key={c.clubId} className="border-b border-border/40 hover:bg-muted/30">
-                <td className="py-1.5 text-muted-foreground">{i+1}</td>
+                <td className="py-1.5 text-muted-foreground">{i + 1}</td>
                 <td className="py-1.5 font-medium">{localizeName(c.name)}</td>
                 <td className="py-1.5 text-muted-foreground">{c.city}</td>
                 <td className="py-1.5 text-right font-semibold">{c.count}</td>
@@ -847,21 +984,32 @@ function AnalyticsTab() {
       </Panel>
 
       {/* Top athletes */}
-      <Panel title={t("analytics.top_athletes_year")} action={<span className="text-xs text-muted-foreground">{new Date().getFullYear()}</span>}>
+      <Panel
+        title={t("analytics.top_athletes_year")}
+        action={<span className="text-xs text-muted-foreground">{new Date().getFullYear()}</span>}
+      >
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-border text-muted-foreground text-xs uppercase">
-            <th className="pb-2 text-left w-8">#</th>
-            <th className="pb-2 text-left">{t("analytics.athlete")}</th>
-            <th className="pb-2 text-left">{t("common.city")}</th>
-            <th className="pb-2 text-right">{t("analytics.points")}</th>
-          </tr></thead>
+          <thead>
+            <tr className="border-b border-border text-muted-foreground text-xs uppercase">
+              <th className="pb-2 text-left w-8">#</th>
+              <th className="pb-2 text-left">{t("analytics.athlete")}</th>
+              <th className="pb-2 text-left">{t("common.city")}</th>
+              <th className="pb-2 text-right">{t("analytics.points")}</th>
+            </tr>
+          </thead>
           <tbody>
-            {data.ratings.topAthletesThisYear.map((a,i) => (
+            {data.ratings.topAthletesThisYear.map((a, i) => (
               <tr key={a.athleteId} className="border-b border-border/40 hover:bg-muted/30">
-                <td className="py-1.5 font-bold">{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
-                <td className="py-1.5 font-medium">{a.surname} {a.name}</td>
+                <td className="py-1.5 font-bold">
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                </td>
+                <td className="py-1.5 font-medium">
+                  {a.surname} {a.name}
+                </td>
                 <td className="py-1.5 text-muted-foreground">{a.clubCity ?? "—"}</td>
-                <td className="py-1.5 text-right font-semibold text-amber-400">{a.total.toLocaleString()}</td>
+                <td className="py-1.5 text-right font-semibold text-amber-400">
+                  {a.total.toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>
