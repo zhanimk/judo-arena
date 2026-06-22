@@ -110,8 +110,8 @@ function Login() {
 
   const redirectToDashboard = (userRole: string, userClubId?: string | null) => {
     if (userRole === "ADMIN") navigate({ to: "/admin" });
-    else if (userRole === "COACH") navigate({ to: userClubId ? "/coach" : "/coach/onboarding" });
-    else navigate({ to: "/athlete/onboarding" });
+    else if (userRole === "COACH") navigate({ to: "/coach" });
+    else navigate({ to: "/athlete" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
