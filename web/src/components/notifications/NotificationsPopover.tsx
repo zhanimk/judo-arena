@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Bell, Check, CalendarDays, Megaphone, Info } from "lucide-react";
+import { PopoverClose } from "@radix-ui/react-popover";
+import { Bell, Check, CalendarDays, Megaphone, Info, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Notification } from "@/lib/api-types";
@@ -78,16 +79,22 @@ export function NotificationsPopover({
       <PopoverContent className="w-80 p-0 shadow-gold/10" align="end">
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
           <div className="font-semibold">{t("dashboard.notifications")}</div>
-          {unreadCount > 0 && (
-            <button
-              onClick={() => markAllRead.mutate()}
-              disabled={markAllRead.isPending}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              <Check className="h-3 w-3" />
-              {t("notification.mark_all_read", { defaultValue: "Прочитать всё" })}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                <Check className="h-3 w-3" />
+                {t("notification.mark_all_read", { defaultValue: "Прочитать всё" })}
+              </button>
+            )}
+            <PopoverClose className="text-muted-foreground hover:text-foreground transition-colors rounded-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </PopoverClose>
+          </div>
         </div>
 
         <div className="max-h-[300px] overflow-y-auto p-1">
