@@ -1936,6 +1936,9 @@
   "documents": {
     "title": "Құжаттар",
     "coach_documents": "Жаттықтырушы құжаттары",
+    "upload_reminder_title": "Құжаттар қажет",
+    "upload_reminder_desc": "Турнирлерге қатысу үшін профильде құжаттарыңызды жүктеңіз.",
+    "upload_now": "Жүктеу",
     "load_error": "Құжатты жүктеу мүмкін болмады",
     "birth_certificate": "Туу туралы куәлік",
     "birth_certificate_hint": "Спортшының жасын растау үшін PDF немесе сурет жүктеңіз.",

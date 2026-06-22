@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   Bell,
   PackageOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, logout as doLogout } from "@/lib/auth-store";
@@ -366,6 +367,30 @@ export function DashboardShell({
             })}
           </nav>
         </header>
+
+        {user && user.role !== "ADMIN" && (!user.documents || user.documents.length === 0) && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 lg:px-10 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-500">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div className="text-sm text-amber-500/90">
+                <span className="font-semibold block">
+                  {t("documents.upload_reminder_title", { defaultValue: "Необходимы документы" })}
+                </span>
+                {t("documents.upload_reminder_desc", {
+                  defaultValue: "Пожалуйста, загрузите ваши документы в профиле.",
+                })}
+              </div>
+            </div>
+            <Link
+              to={profileRoot(user.role)}
+              className="shrink-0 inline-flex items-center justify-center rounded-md bg-amber-500 px-4 py-2 text-xs font-medium text-black hover:bg-amber-600 transition-colors"
+            >
+              {t("documents.upload_now", { defaultValue: "Загрузить" })}
+            </Link>
+          </div>
+        )}
 
         <div className="p-4 sm:p-6 lg:p-10">{children}</div>
       </main>

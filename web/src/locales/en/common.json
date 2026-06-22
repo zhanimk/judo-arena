@@ -1937,6 +1937,9 @@
   "documents": {
     "title": "Documents",
     "coach_documents": "Coach documents",
+    "upload_reminder_title": "Documents required",
+    "upload_reminder_desc": "Please upload your documents in the profile to participate in tournaments.",
+    "upload_now": "Upload now",
     "load_error": "Failed to load document",
     "birth_certificate": "Birth certificate",
     "birth_certificate_hint": "Upload a PDF or image to confirm the athlete age.",

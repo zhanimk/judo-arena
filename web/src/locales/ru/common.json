@@ -1960,6 +1960,9 @@
   "documents": {
     "title": "Документы",
     "coach_documents": "Документы тренера",
+    "upload_reminder_title": "Необходимы документы",
+    "upload_reminder_desc": "Пожалуйста, загрузите ваши документы в профиле для участия в турнирах.",
+    "upload_now": "Загрузить",
     "birth_certificate": "Свидетельство о рождении",
     "birth_certificate_hint": "Загрузите PDF или изображение для подтверждения возраста спортсмена.",
     "study_certificate": "Справка с места учебы",
