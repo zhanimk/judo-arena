@@ -1,639 +1,318 @@
-# Judo-Arena
+<div align="center">
+  <img src="web/public/jcl-logo.jpg" alt="Judo Child League Logo" width="120" height="120" style="border-radius: 50%;" />
+  <h1>🥋 Judo Child League (Judo Arena)</h1>
+  <p><strong>Production-ready платформа для проведения соревнований по дзюдо нового поколения.</strong></p>
 
-Judo-Arena - production-ready платформа для проведения соревнований по дзюдо: регистрация, клубные заявки, взвешивание, сетки, судейство, live-результаты, рейтинги, уведомления и PDF-протоколы в одном рабочем процессе.
+  <p>
+    <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+    <img src="https://img.shields.io/badge/Fastify-000000?style=for-the-badge&logo=fastify&logoColor=white" alt="Fastify" />
+    <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
+    <img src="https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white" alt="Prisma" />
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/Render-46E3B7?style=flat-square&logo=render&logoColor=white" alt="Render" />
+    <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/Socket.io-010101?style=flat-square&logo=socket.io&logoColor=white" alt="Socket.io" />
+  </p>
+</div>
 
-Документ является единой технической и операционной документацией проекта. Все команды, правила запуска, деплой, production-проверки и основные требования собраны здесь, чтобы в репозитории не было разрозненных ТЗ, планов и временных заметок.
+<hr />
 
-## Contents
+Этот документ является **единой технической и операционной базой знаний проекта**. В нём собрана исчерпывающая информация по запуску, архитектуре, ролевой модели, тестированию и production-деплою.
 
-- [Features](#возможности)
-- [Screenshots](#скриншоты)
-- [Architecture](#архитектура)
-- [Tech Stack](#технологический-стек)
-- [Project Structure](#структура-проекта)
-- [Roles and Access](#роли-и-доступы)
-- [Local Development](#локальный-запуск)
-- [Daily Commands](#ежедневные-команды)
-- [Testing and Quality](#тестирование-и-качество)
-- [Environment Variables](#переменные-окружения)
-- [Deployment](#деплой)
-- [Production checklist](#production-checklist)
-- [Backup and Restore](#backup-и-restore)
-- [Rollback](#rollback)
-- [Demo accounts](#demo-accounts)
-- [Troubleshooting](#troubleshooting)
+## 📋 Оглавление
 
-## Возможности
+- [✨ Возможности](#-возможности)
+- [📸 Интерфейс (Screenshots)](#-интерфейс-screenshots)
+- [🏗 Архитектура и Стек](#-архитектура-и-стек)
+- [📂 Структура проекта](#-структура-проекта)
+- [🔐 Роли и доступы](#-роли-и-доступы)
+- [🚀 Локальный запуск (Local Development)](#-локальный-запуск-local-development)
+- [🛠 Повседневные команды](#-повседневные-команды)
+- [🧪 Тестирование (QA & E2E)](#-тестирование-qa--e2e)
+- [⚙️ Переменные окружения (.env)](#-переменные-окружения-env)
+- [🚢 Деплой (Deployment)](#-деплой-deployment)
+- [🚨 Production Checklist](#-production-checklist)
+- [💾 Backup и Restore](#-backup-и-restore)
+- [🚑 Troubleshooting](#-troubleshooting)
 
-- Полный lifecycle турнира: черновик, регистрация, проведение, завершение и архив.
-- Клубы, тренеры, спортсмены, заявки в клуб и заявки на турнир.
-- Категории по полу, возрасту, весу и уровню.
-- Взвешивание и допуск спортсменов.
-- Генерация сеток: single elimination, IJF repechage и round-robin.
-- Судейская зона без постоянного аккаунта через защищенный токен сессии.
-- Реaltime-матчи: счет, shido, osaekomi, golden score, подтверждение результата.
-- Tatami queue и live-обновления через Socket.IO.
-- Рейтинги спортсменов и клубов.
-- PDF-протоколы, сетки и итоговые документы.
-- Загрузка файлов, документов и изображений.
-- Email-уведомления, production-логирование, аудит и backup.
-- Интерфейс на казахском, русском и английском языках.
+---
 
-## Скриншоты
+## ✨ Возможности
 
-| Home                              | Login                              | Tournaments                              |
-| --------------------------------- | ---------------------------------- | ---------------------------------------- |
-| ![](docs/screenshots/01-home.png) | ![](docs/screenshots/02-login.png) | ![](docs/screenshots/03-tournaments.png) |
+Платформа закрывает **полный жизненный цикл** спортивного турнира:
 
-| Rankings                              | Mobile home                              | Mobile login                              |
-| ------------------------------------- | ---------------------------------------- | ----------------------------------------- |
-| ![](docs/screenshots/04-rankings.png) | ![](docs/screenshots/05-mobile-home.png) | ![](docs/screenshots/06-mobile-login.png) |
+- **Управление турниром:** Черновик ➔ Регистрация ➔ Проведение ➔ Завершение ➔ Архив.
+- **Участники:** Клубы, тренеры, спортсмены. Модуль заявок в клуб и на турнир.
+- **Категории:** Гибкая настройка по полу, возрасту, весу и уровню подготовки.
+- **Взвешивание:** Контроль допуска спортсменов перед турниром.
+- **Генерация сеток:** Поддержка _Single Elimination_, _IJF Repechage_ и _Round-Robin_.
+- **Судейство:** Отдельная судейская зона, работающая без постоянного аккаунта (через защищенный `session token`).
+- **Real-time матчи:** Очки (Ippon, Waza-ari), наказания (Shido), удержания (Osaekomi), Golden Score. Синхронизация через **Socket.IO**.
+- **Live татами:** Экраны для зрителей с очередью матчей и живым обновлением счета.
+- **Рейтинги:** Автоматический расчет очков для клубов и спортсменов.
+- **Документация:** Генерация красивых PDF-протоколов, сеток и итоговых отчетов.
+- **Уведомления:** Email-рассылки, production-логирование (Sentry) и аудит.
+- **i18n:** Полная поддержка трех языков (🇰🇿 Казахский, 🇷🇺 Русский, 🇬🇧 Английский).
 
-## Архитектура
+---
 
-```text
-Browser
-  -> Cloudflare Worker (React/TanStack Start web)
-  -> Render API (Fastify)
-  -> PostgreSQL + Redis
-       -> Resend / SMTP
-       -> S3 or Cloudflare R2
-       -> Sentry
+## 📸 Интерфейс (Screenshots)
+
+|                        Главная                        |                   Вход / Регистрация                   |                           Турниры                            |
+| :---------------------------------------------------: | :----------------------------------------------------: | :----------------------------------------------------------: |
+| <img src="docs/screenshots/01-home.png" width="300"/> | <img src="docs/screenshots/02-login.png" width="300"/> | <img src="docs/screenshots/03-tournaments.png" width="300"/> |
+
+|                         Рейтинги                          |                      Мобильная Главная                       |                        Мобильный Вход                         |
+| :-------------------------------------------------------: | :----------------------------------------------------------: | :-----------------------------------------------------------: |
+| <img src="docs/screenshots/04-rankings.png" width="300"/> | <img src="docs/screenshots/05-mobile-home.png" width="150"/> | <img src="docs/screenshots/06-mobile-login.png" width="150"/> |
+
+---
+
+## 🏗 Архитектура и Стек
+
+```mermaid
+graph LR
+  A[Browser / PWA] -->|HTTPS| B(Cloudflare Workers<br>React + TanStack Start)
+  A -->|WebSocket| C
+  B -->|API Fetch| C(Render API<br>Fastify + Node.js)
+  C <--> D[(PostgreSQL 16)]
+  C <--> E[(Redis Cache)]
+  C --> F[S3 / Cloudflare R2]
+  C --> G[Resend SMTP]
 ```
 
-Основной production-путь:
+### Технологический стек
 
-1. Frontend деплоится как Cloudflare Worker из `web/wrangler.jsonc`.
-2. Backend деплоится на Render из `render.yaml`.
-3. PostgreSQL и Redis-compatible Key Value создаются Render Blueprint.
-4. CI должен пройти полностью до production deploy.
-5. Deploy workflow запускается только после успешного CI на `main`.
+| Слой               | Технологии                                                                  |
+| ------------------ | --------------------------------------------------------------------------- |
+| **Frontend**       | React 19, Vite, TanStack Router, TanStack Query, Tailwind CSS, Lucide Icons |
+| **Backend**        | Node.js 22, Fastify, TypeScript, Prisma ORM, Zod                            |
+| **DB & Cache**     | PostgreSQL 16, Redis (Key-Value)                                            |
+| **Realtime**       | Socket.IO                                                                   |
+| **Инфраструктура** | Cloudflare Workers, Render, AWS S3 / R2, Sentry, Resend                     |
+| **QA / CI**        | Vitest, Playwright E2E, GitHub Actions                                      |
 
-## Технологический стек
+> **Требования к среде:** Рекомендуется использовать Node.js версии, зафиксированной в `.nvmrc` (`nvm use`).
 
-| Слой     | Технологии                                                    |
-| -------- | ------------------------------------------------------------- |
-| Web      | React 19, Vite, TanStack Router, TanStack Query, Tailwind CSS |
-| API      | Fastify, TypeScript, Prisma                                   |
-| DB/cache | PostgreSQL 16, Redis-compatible Key Value                     |
-| Realtime | Socket.IO                                                     |
-| Файлы    | S3/R2 compatible storage                                      |
-| Email    | Resend или внешний SMTP                                       |
-| Тесты    | Vitest, Playwright                                            |
-| CI/CD    | GitHub Actions                                                |
-| Deploy   | Cloudflare Workers, Render                                    |
+---
 
-Требуемая версия Node.js зафиксирована в `.nvmrc`:
+## 📂 Структура проекта
 
-```bash
-nvm use
-```
-
-Сейчас проект рассчитан на Node.js `22.22.1`.
-
-## Структура проекта
+Проект представляет собой монорепозиторий на базе NPM Workspaces:
 
 ```text
 judo-arena/
-├── api/                  Fastify API, Prisma schema, services, tests
-├── web/                  React frontend and route-based dashboards
-├── e2e/                  Playwright smoke/a11y tests
-├── packages/             Shared packages
-├── scripts/              Smoke, load, backup, OpenAPI and dev utility scripts
-├── docs/screenshots/     README screenshots
-├── .github/workflows/    CI and deploy pipelines
-├── docker-compose.yml    Local PostgreSQL, Redis and Mailpit
-├── render.yaml           Render Blueprint
-└── README.md             Single source of project documentation
+├── api/                  # Backend: Fastify API, Prisma schema, services, tests
+├── web/                  # Frontend: React, Tailwind, маршруты и страницы
+├── e2e/                  # E2E-тесты (Playwright: smoke, a11y)
+├── packages/             # Общие пакеты (типы, утилиты)
+├── scripts/              # Скрипты (Smoke tests, Load tests, Backup, OpenAPI)
+├── docs/                 # Документация и скриншоты
+├── .github/workflows/    # CI/CD пайплайны GitHub Actions
+├── docker-compose.yml    # Инфраструктура для локальной разработки
+├── render.yaml           # Конфигурация деплоя бэкенда на Render (Blueprint)
+└── README.md             # Этот документ
 ```
 
-## Роли и доступы
+---
 
-| Роль    | Назначение                                                                        |
-| ------- | --------------------------------------------------------------------------------- |
-| Public  | Просмотр публичных турниров, рейтингов и информации без входа                     |
-| Athlete | Профиль спортсмена, клуб, заявки, турниры, результаты, уведомления                |
-| Coach   | Управление клубом, спортсменами, заявками и оплатами                              |
-| Admin   | Полное управление турнирами, пользователями, сетками, матчами, отчетами и аудитом |
-| Judge   | Судейство конкретной сессии по токену, без постоянного аккаунта                   |
-| Tatami  | Экран татами, очередь матчей и live-состояние площадки                            |
+## 🔐 Роли и доступы
 
-Критичные правила безопасности:
+Система использует строгую ролевую модель безопасности (RBAC):
 
-- Admin-действия доступны только роли `ADMIN`.
-- Judge и Tatami работают через ограниченные session tokens.
-- Production JWT secrets должны быть разными и длиннее 32 символов.
-- Production `CORS_ORIGIN` и `APP_URL` не должны указывать на localhost.
-- Demo-пароли нельзя использовать в production.
+| Роль           | Права доступа                                                                 |
+| -------------- | ----------------------------------------------------------------------------- |
+| 👁 **Public**  | Просмотр публичных турниров, рейтингов, сеток матчей без авторизации.         |
+| 🥋 **Athlete** | Профиль спортсмена, вступление в клуб, подача заявок, просмотр своих матчей.  |
+| 📋 **Coach**   | Создание/управление клубом, управление спортсменами, оплата взносов.          |
+| 👑 **Admin**   | Полный контроль над турнирами, сетками, матчами, судьями и платформой.        |
+| ⚖️ **Judge**   | Ограниченный доступ к конкретному татами по временному токену (без аккаунта). |
+| 📺 **Tatami**  | Экран-табло для отображения live-статуса площадки и текущего матча.           |
 
-## Локальный запуск
+> **Критично для Production:**
+>
+> - Пароли и JWT-секреты должны быть `>= 32` символов.
+> - Доступ судей строго по session tokens с ограниченным сроком жизни.
+> - Обязательная настройка `CORS_ORIGIN`.
 
-### Быстрый старт
+---
+
+## 🚀 Локальный запуск (Local Development)
+
+### Способ 1: Быстрый старт (с демо-данными)
+
+Убедитесь, что запущен **Docker Desktop**, затем выполните:
 
 ```bash
 nvm use
-npm start
-```
-
-Команда `npm start` поднимает локальные сервисы, устанавливает зависимости при необходимости, применяет миграции и запускает API вместе с frontend.
-
-Запуск с demo-данными:
-
-```bash
 npm run start:seed
 ```
 
-### Ручной запуск по шагам
+_Эта команда поднимет Docker-контейнеры, накатит миграции БД, создаст тестовые данные и запустит API и Web._
 
-1. Запустить Docker Desktop.
-2. Поднять PostgreSQL, Redis и Mailpit:
+### Способ 2: Ручной поэтапный запуск
+
+1. **Запуск инфраструктуры:**
 
 ```bash
 docker compose up -d
-docker ps
 ```
 
-Ожидаемые контейнеры:
+Поднимутся: PostgreSQL (`5433`), Redis (`6379`), Mailpit (`1025`, `8025`).
 
-| Контейнер       | Назначение      | Порт           |
-| --------------- | --------------- | -------------- |
-| `judo-postgres` | PostgreSQL      | `5433`         |
-| `judo-redis`    | Redis           | `6379`         |
-| `judo-mailpit`  | Локальная почта | `1025`, `8025` |
-
-3. Запустить API:
+2. **Запуск Backend API:**
 
 ```bash
 npm run dev:api
 ```
 
-4. Запустить frontend:
+3. **Запуск Frontend Web:**
 
 ```bash
 npm run dev:web
 ```
 
-5. При необходимости открыть Prisma Studio:
+4. **Работа с базой данных (Prisma Studio):**
 
 ```bash
 npm run db:studio
 ```
 
-Локальные адреса:
+### Локальные адреса:
 
-| Что           | URL                                                                          |
-| ------------- | ---------------------------------------------------------------------------- |
-| Web           | `http://localhost:5173`                                                      |
-| API           | `http://localhost:4000`                                                      |
-| API health    | `http://localhost:4000/health`                                               |
-| Prisma Studio | `http://localhost:5555`                                                      |
-| Mailpit       | `http://localhost:8025`                                                      |
-| PostgreSQL    | `localhost:5433`, user `judo`, password `judo_dev_password`, db `judo_arena` |
+- **Web App:** `http://localhost:5173`
+- **API Server:** `http://localhost:4000`
+- **Prisma Studio:** `http://localhost:5555`
+- **Mailpit (Локальная почта):** `http://localhost:8025`
 
-## Ежедневные команды
+### 🔑 Demo Аккаунты
 
-Запустить проект:
+| Роль        | Email                            | Password      |
+| ----------- | -------------------------------- | ------------- |
+| **Admin**   | `admin@judo-arena.kz`            | `password123` |
+| **Coach**   | `coach.almaty@judo-arena.kz`     | `password123` |
+| **Athlete** | `m0-0@almaty-judo.judo-arena.kz` | `password123` |
 
-```bash
-nvm use
-npm start
-```
+---
 
-Запустить проект с demo seed:
+## 🛠 Повседневные команды
 
-```bash
-npm run start:seed
-```
+| Описание                           | Команда                             |
+| ---------------------------------- | ----------------------------------- |
+| Обычный запуск                     | `npm start`                         |
+| Применить миграции БД              | `npm run db:migrate`                |
+| Сгенерировать Prisma Client        | `npm run prisma:generate -w api`    |
+| Очистить БД и залить demo-данные   | `npm run db:seed`                   |
+| Остановить Docker                  | `docker compose stop`               |
+| Удалить данные Docker (Hard reset) | `docker compose down -v`            |
+| Проверить API Health               | `curl http://localhost:4000/health` |
+| Сгенерировать OpenAPI доки         | `npm run gen:openapi`               |
 
-Остановить локальные контейнеры без удаления данных:
+---
 
-```bash
-docker compose stop
-```
+## 🧪 Тестирование (QA & E2E)
 
-Полностью удалить локальную БД и Redis volume:
-
-```bash
-docker compose down -v
-```
-
-Применить новую миграцию в dev:
+Перед каждым коммитом и деплоем обязательно проверяйте код:
 
 ```bash
-npm run db:migrate
-```
-
-Сгенерировать Prisma client:
-
-```bash
-npm run prisma:generate -w api
-```
-
-Засеять demo-данные:
-
-```bash
-npm run db:seed
-```
-
-Открыть PostgreSQL через `psql`:
-
-```bash
-docker exec -it judo-postgres psql -U judo -d judo_arena
-```
-
-Проверить API:
-
-```bash
-curl http://localhost:4000/health
-```
-
-Логин demo-admin:
-
-```bash
-curl -X POST http://localhost:4000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@judo-arena.kz","password":"password123"}'
-```
-
-## Тестирование и качество
-
-Перед коммитом и перед деплоем:
-
-```bash
-nvm use
 npm run verify:local
 ```
 
-`verify:local` выполняет:
+Команда прогоняет линтеры, Unit/Integration тесты и проверяет сборку (Build).
 
-- API lint с `--max-warnings 0`
-- Web lint
-- API tests
-- API build
-- Web build
-- Bundle size check
+**Специфичные тесты:**
 
-Отдельные проверки:
+- **Запуск API тестов:** `npm run test -w @judo-arena/api`
+- **E2E Playwright:** `npm run test:e2e` (Для открытия браузера используйте `npm run test:e2e:headed`)
 
-```bash
-npm run lint -w @judo-arena/api -- --max-warnings 0
-npm run lint -w tanstack_start_ts
-npm run test -w @judo-arena/api
-npm run build -w @judo-arena/api
-npm run build -w tanstack_start_ts
-npm run check:bundle
-```
-
-E2E:
-
-```bash
-npm run test:e2e
-npm run test:e2e:a11y
-npm run test:e2e:headed
-```
-
-Production smoke test требует уже поднятые production/staging URL:
-
-```bash
-API_URL=https://api.example.kz \
-WEB_URL=https://app.example.kz \
-SMOKE_ADMIN_EMAIL=admin@judo-arena.kz \
-SMOKE_ADMIN_PASSWORD='...' \
-npm run prod:smoke
-```
-
-Load tests:
+**Нагрузочное тестирование (Load Tests):**
 
 ```bash
 API_URL=https://api.example.kz LOAD_CONCURRENCY=50 LOAD_DURATION_SEC=120 npm run load:api
 WS_URL=https://api.example.kz SOCKET_CLIENTS=100 SOCKET_DURATION_SEC=120 npm run load:socket
 ```
 
-OpenAPI:
+---
 
-```bash
-npm run gen:openapi
-```
+## ⚙️ Переменные окружения (.env)
 
-## Переменные окружения
+Локальные конфиги находятся в файле `.env.example`. Скопируйте его: `cp .env.example api/.env`.
 
-Локальные значения описаны в `.env.example`. Для локального API нужен `api/.env`; если файла нет:
+### Важные Production переменные (Backend)
 
-```bash
-cp .env.example api/.env
-```
+- `NODE_ENV=production`
+- `DATABASE_URL` / `REDIS_URL` — Строки подключения к БД и кэшу.
+- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — Надежные секретные ключи.
+- `CORS_ORIGIN` / `APP_URL` — Ссылка на production фронтенд.
+- `RESEND_API_KEY` — Ключ для отправки email.
+- `S3_PRIVATE_BUCKET` / `S3_PUBLIC_URL` — Настройки файлового хранилища.
+- `SENTRY_DSN` — Трекинг ошибок на сервере.
 
-### Backend production
+### Frontend переменные
 
-| Variable                   | Required         | Notes                                   |
-| -------------------------- | ---------------- | --------------------------------------- |
-| `NODE_ENV`                 | yes              | `production`                            |
-| `DATABASE_URL`             | yes              | Auto from Render PostgreSQL             |
-| `REDIS_URL`                | yes              | Auto from Render Key Value              |
-| `JWT_ACCESS_SECRET`        | yes              | Random, 32+ chars                       |
-| `JWT_REFRESH_SECRET`       | yes              | Different from access secret            |
-| `JWT_ACCESS_TTL`           | no               | Default `15m`                           |
-| `JWT_REFRESH_TTL`          | no               | Default `7d`                            |
-| `CORS_ORIGIN`              | yes              | Exact frontend origin                   |
-| `APP_URL`                  | yes              | Exact frontend origin                   |
-| `RESEND_API_KEY`           | yes              | Or production SMTP config               |
-| `EMAIL_FROM`               | yes              | Verified sender domain                  |
-| `KASPI_CALLBACK_SECRET`    | yes              | Required for production callback safety |
-| `SENTRY_DSN`               | recommended      | API error tracking                      |
-| `S3_PRIVATE_BUCKET`        | yes              | Private docs and backups                |
-| `S3_BUCKET`                | recommended      | Public images/avatars                   |
-| `S3_ENDPOINT`              | if S3/R2         | R2/MinIO endpoint                       |
-| `S3_PUBLIC_URL`            | if public bucket | CDN/base public URL                     |
-| `AWS_ACCESS_KEY_ID`        | if S3/R2         | Storage credential                      |
-| `AWS_SECRET_ACCESS_KEY`    | if S3/R2         | Storage credential                      |
-| `BACKUP_TRIGGER_SECRET`    | yes              | Random, 32+ chars                       |
-| `BACKUP_SCHEDULER_ENABLED` | no               | `false` on Render; cron job is primary  |
+- `VITE_API_URL` — Ссылка на публичный API.
+- `VITE_WS_URL` — Ссылка на WebSocket.
 
-### Frontend production
+---
 
-| Variable          | Required    | Notes                              |
-| ----------------- | ----------- | ---------------------------------- |
-| `VITE_API_URL`    | yes         | Public API URL                     |
-| `VITE_WS_URL`     | yes         | WebSocket URL, usually same as API |
-| `VITE_SENTRY_DSN` | recommended | Web error tracking                 |
+## 🚢 Деплой (Deployment)
 
-### GitHub Actions secrets
+Пайплайны настроены через **GitHub Actions**.
 
-Required for real deploy:
+1. **Backend (Render):** Деплоится автоматически через Render Blueprint (`render.yaml`). База данных PostgreSQL и Redis создаются там же.
+2. **Frontend (Cloudflare Workers):** Деплоится экшеном при пуше в ветку `main`, если CI-проверки пройдены успешно.
 
-| Secret                   | Used by                   |
-| ------------------------ | ------------------------- |
-| `RENDER_DEPLOY_HOOK_URL` | Trigger Render API deploy |
-| `CLOUDFLARE_API_TOKEN`   | Deploy Cloudflare Worker  |
-| `CLOUDFLARE_ACCOUNT_ID`  | Deploy Cloudflare Worker  |
-| `VITE_API_URL`           | Build web                 |
-| `VITE_WS_URL`            | Build web                 |
-| `VITE_SENTRY_DSN`        | Optional web Sentry       |
+> **Внимание:** Деплой в production заблокирован, если тесты в CI упали.
 
-Without these secrets CI can pass, but deploy workflow will fail at the guarded `test -n` checks.
+---
 
-## Деплой
+## 🚨 Production Checklist
 
-### Первый deploy API на Render
+Перед запуском реального турнира обязательно проверьте:
 
-1. Render -> New -> Blueprint.
-2. Select repository `judo-arena`.
-3. Render reads `render.yaml`.
-4. Fill every `sync: false` variable.
-5. Apply Blueprint.
+- [ ] CI/CD зеленого цвета на ветке `main`.
+- [ ] Переменные `CORS_ORIGIN` и `APP_URL` настроены корректно.
+- [ ] Секреты JWT длинные и уникальные.
+- [ ] Email-провайдер работает (письма доходят).
+- [ ] S3/R2 Bucket настроен, загрузка файлов работает.
+- [ ] `/health` API возвращает статус `ok`.
+- [ ] Проведен `npm run prod:smoke` без ошибок.
+- [ ] Проведен стресс-тест отсоединения сети у судьи (Network Recovery Test).
 
-Render creates:
+---
 
-- `judo-arena-api`
-- `judo-backup` cron job
-- `judo-arena-db`
-- `judo-arena-redis`
+## 💾 Backup и Restore
 
-`DATABASE_URL` and `REDIS_URL` are injected automatically by Render. Do not set them manually in Render unless intentionally replacing the managed services.
+Бэкапы БД выполняются автоматически через Render Cron Job (`api/Dockerfile.backup`) и сохраняются в `S3_PRIVATE_BUCKET`.
 
-Expected API URL:
-
-```text
-https://judo-arena-api.onrender.com
-```
-
-### Первый deploy web на Cloudflare Workers
-
-1. Create Cloudflare API token with Workers Scripts edit permission.
-2. Add GitHub Actions secrets listed above.
-3. Push to `main`.
-4. Wait for CI.
-5. Deploy workflow runs `wrangler deploy`.
-
-Worker name is configured in `web/wrangler.jsonc`.
-
-### После первого deploy
-
-Update Render API environment:
-
-```text
-CORS_ORIGIN=https://your-worker-or-domain
-APP_URL=https://your-worker-or-domain
-```
-
-Save changes and let Render restart the API.
-
-### Автоматический deploy
-
-```text
-git push origin main
-  -> CI
-  -> deploy.yml after successful CI
-  -> Render deploy hook
-  -> Cloudflare Worker deploy
-```
-
-Production deploy blocked if CI fails.
-
-## Production checklist
-
-Перед реальным турниром:
-
-1. `main` содержит только готовый код.
-2. GitHub Actions CI проходит полностью.
-3. GitHub Actions production secrets заполнены.
-4. Render `sync: false` variables заполнены.
-5. `CORS_ORIGIN` и `APP_URL` указывают на production frontend.
-6. JWT secrets разные и длинные.
-7. Email отправляется через Resend или production SMTP.
-8. S3/R2 buckets доступны, private bucket не публичный.
-9. Backup cron прошел успешно.
-10. Restore проверен на non-production базе.
-11. Sentry включен для API и web.
-12. `/health` возвращает `status: ok`.
-13. `npm run prod:smoke` проходит без ошибок.
-14. API и Socket.IO load tests выдерживают минимум 2x ожидаемой нагрузки.
-15. Проведен полный rehearsal турнира.
-
-Full tournament rehearsal:
-
-1. Admin creates tournament.
-2. Admin creates categories.
-3. Admin opens registration.
-4. Coach submits application with athletes.
-5. Admin approves applications.
-6. Admin runs weigh-in and admits athletes.
-7. Admin generates brackets.
-8. Admin creates judge and tatami sessions.
-9. Judge starts match and records score.
-10. Match result propagates to bracket.
-11. Tournament is completed.
-12. Ratings are generated.
-13. PDF bracket and final protocol download successfully.
-
-Bad network rehearsal:
-
-1. Open judge/tatami page.
-2. Start a match.
-3. Disconnect network for 10-20 seconds.
-4. Reconnect.
-5. Confirm the UI recovers.
-6. Score after reconnect.
-7. Confirm live bracket and tournament room update.
-
-During event day keep open:
-
-- Render API logs
-- Render PostgreSQL metrics
-- Redis metrics
-- Cloudflare Workers deployment status
-- Sentry API and Web issues
-- `/health`
-
-Stop the live event flow if DB or Redis is degraded.
-
-## Backup и restore
-
-Manual local backup:
+**Создать локальный бэкап вручную:**
 
 ```bash
 docker compose --profile backup run --rm backup
 ```
 
-Output:
+_Файл появится в папке `./backups/`._
 
-```text
-./backups/backup_YYYYMMDD_HHMMSS.sql.gz
-```
-
-Restore:
+**Восстановить из бэкапа:**
 
 ```bash
 ./scripts/restore.sh ./backups/backup_YYYYMMDD_HHMMSS.sql.gz
 ```
 
-Production backup:
+---
 
-- Render cron uses `api/Dockerfile.backup`.
-- Backups are stored in `S3_PRIVATE_BUCKET`.
-- `BACKUP_TRIGGER_SECRET` is for manual fallback trigger.
-- Backup before tournament day, before manual DB changes and after final protocols are generated.
+## 🚑 Troubleshooting
 
-## Rollback
+- **Порт 5433 или 6379 занят:** `lsof -i :5433` / `lsof -i :6379`. Убейте зависший процесс или измените порт в `docker-compose.yml`.
+- **API не видит DATABASE_URL:** Убедитесь, что скопировали `.env.example` в `api/.env`.
+- **Ошибки CI Deploy:** Проверьте наличие секретов в репозитории GitHub (`RENDER_DEPLOY_HOOK_URL`, `CLOUDFLARE_API_TOKEN` и др.).
+- **Статус Health Degraded:** Откройте `http://localhost:4000/health`. Если БД, Redis или S3 отдают ошибку — почините инфраструктуру перед продолжением турнира.
 
-Frontend:
+---
 
-```text
-Cloudflare Workers -> judo-arena -> Deployments -> Rollback
-```
-
-Backend:
-
-```bash
-git revert HEAD
-git push origin main
-```
-
-Or use Render dashboard:
-
-```text
-Render -> API service -> Deploys -> previous deploy -> Redeploy
-```
-
-## Demo accounts
-
-| Role    | Email                            | Password      |
-| ------- | -------------------------------- | ------------- |
-| Admin   | `admin@judo-arena.kz`            | `password123` |
-| Coach   | `coach.almaty@judo-arena.kz`     | `password123` |
-| Athlete | `m0-0@almaty-judo.judo-arena.kz` | `password123` |
-
-Demo accounts are for local and staging checks only.
-
-## Troubleshooting
-
-### Docker daemon is not running
-
-Open Docker Desktop and wait until containers can start:
-
-```bash
-docker ps
-```
-
-### Port 5433 or 6379 is busy
-
-Check the process:
-
-```bash
-lsof -i :5433
-lsof -i :6379
-```
-
-Stop the conflicting local service or change local ports in `docker-compose.yml`.
-
-### Port 4000 is busy
-
-```bash
-lsof -ti:4000 | xargs kill -9
-```
-
-Then restart API:
-
-```bash
-npm run dev:api
-```
-
-### API cannot find `DATABASE_URL`
-
-Create `api/.env`:
-
-```bash
-cp .env.example api/.env
-```
-
-Then run:
-
-```bash
-npm run db:migrate
-npm run db:seed
-```
-
-### PostgreSQL container does not start
-
-Check logs:
-
-```bash
-docker logs judo-postgres
-```
-
-If local data can be deleted:
-
-```bash
-docker compose down -v
-docker compose up -d
-npm run db:migrate
-npm run db:seed
-```
-
-### Production deploy failed after CI success
-
-Check GitHub Actions -> Deploy. Common causes:
-
-- Missing `RENDER_DEPLOY_HOOK_URL`.
-- Missing `CLOUDFLARE_API_TOKEN`.
-- Missing `CLOUDFLARE_ACCOUNT_ID`.
-- Missing `VITE_API_URL` or `VITE_WS_URL`.
-- Render `sync: false` variables are not filled.
-
-### `/health` is degraded
-
-Expected healthy response:
-
-```json
-{
-  "status": "ok",
-  "checks": {
-    "db": "ok",
-    "redis": "ok",
-    "s3": "ok",
-    "email": "resend"
-  }
-}
-```
-
-If status is `degraded`, check DB, Redis, S3 and email provider before continuing a live event.
+<div align="center">
+  <sub>Built with ❤️ by the Judo Arena Team</sub>
+</div>
