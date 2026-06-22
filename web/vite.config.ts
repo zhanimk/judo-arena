@@ -47,18 +47,18 @@ export default defineConfig({
         // Forward /api/* and /socket.io/* to the Fastify API in dev.
         // This makes refresh-token cookies work (same origin, no SameSite issues).
         "/api": {
-          target: "http://localhost:4000",
+          target: process.env.VITE_API_URL || "http://127.0.0.1:4000",
           changeOrigin: true,
           secure: false,
         },
         "/socket.io": {
-          target: "http://localhost:4000",
+          target: process.env.VITE_WS_URL || "http://127.0.0.1:4000",
           changeOrigin: true,
           ws: true,
           secure: false,
         },
         "/uploads": {
-          target: "http://localhost:4000",
+          target: process.env.VITE_API_URL || "http://127.0.0.1:4000",
           changeOrigin: true,
           secure: false,
         },

@@ -289,18 +289,18 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://judo:judo_e2e@localhost:5433/judo_arena_e2e
-      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: postgresql://judo:judo_e2e@127.0.0.1:5433/judo_arena_e2e
+      REDIS_URL: redis://127.0.0.1:6379
       JWT_ACCESS_SECRET: e2e_access_secret_at_least_32_chars_long_x
       JWT_REFRESH_SECRET: e2e_refresh_secret_at_least_32_chars_long_x
       JWT_ACCESS_TTL: 15m
       JWT_REFRESH_TTL: 7d
       NODE_ENV: development
       API_PORT: 4000
-      CORS_ORIGIN: http://localhost:8080
-      APP_URL: http://localhost:8080
-      VITE_API_URL: http://localhost:4000
-      VITE_WS_URL: ws://localhost:4000
+      CORS_ORIGIN: http://127.0.0.1:8080
+      APP_URL: http://127.0.0.1:8080
+      VITE_API_URL: http://127.0.0.1:4000
+      VITE_WS_URL: ws://127.0.0.1:4000
       AUTH_LOGIN_RATE_LIMIT_MAX: 100
 
     steps:
@@ -344,26 +344,26 @@ jobs:
         run: node dist/server.js &
 
       - name: Wait for API to be ready
-        run: npx wait-on http://localhost:4000/health --timeout 30000 --interval 1000
+        run: npx wait-on http://127.0.0.1:4000/health --timeout 30000 --interval 1000
 
       # Start frontend dev server after API is confirmed up
       - name: Start web dev server
-        run: npm run dev -w tanstack_start_ts -- --host 0.0.0.0 --port 8080 &
+        run: npm run dev -w tanstack_start_ts -- --host 127.0.0.1 --port 8080 &
 
       - name: Wait for web to be ready
-        run: npx wait-on http://localhost:8080 --timeout 120000 --interval 2000
+        run: npx wait-on http://127.0.0.1:8080 --timeout 120000 --interval 2000
 
       - name: Run E2E smoke tests
         run: npx playwright test e2e/smoke.test.ts --reporter=github
         env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:4000
+          BASE_URL: http://127.0.0.1:8080
+          API_URL: http://127.0.0.1:4000
 
       - name: Run a11y tests
         run: npx playwright test e2e/a11y.test.ts --reporter=github
         env:
-          BASE_URL: http://localhost:8080
-          API_URL: http://localhost:4000
+          BASE_URL: http://127.0.0.1:8080
+          API_URL: http://127.0.0.1:4000
 
       - name: Upload Playwright report
         if: failure()
