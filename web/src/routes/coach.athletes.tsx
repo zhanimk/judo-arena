@@ -28,6 +28,18 @@ import { useMemo, useState, type InputHTMLAttributes } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import {
+  PieChart,
+  Pie,
+  Cell as RechartsCell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { Avatar } from "@/components/ui/avatar-image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DocumentList } from "@/components/documents/DocumentViewer";
@@ -268,6 +280,77 @@ function AthletesBoard({
           label={`${t("common.male")} / ${t("common.female")}`}
           value={`${stats.male} / ${stats.female}`}
         />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 mt-6 mb-8">
+        <Panel
+          title={t("coach.gender_distribution", { defaultValue: "Гендерное распределение" })}
+          className="p-4 h-[250px]"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={[
+                  { name: t("common.male"), value: stats.male, color: "#3b82f6" },
+                  { name: t("common.female"), value: stats.female, color: "#ec4899" },
+                ].filter((d) => d.value > 0)}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                { }
+                {(([] as any[]).map
+                  ? [
+                      { name: t("common.male"), value: stats.male, color: "#3b82f6" },
+                      { name: t("common.female"), value: stats.female, color: "#ec4899" },
+                    ].filter((d) => d.value > 0)
+                  : []
+                ).map((entry, index) => (
+                  <RechartsCell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel
+          title={t("coach.age_groups", { defaultValue: "Возрастные группы" })}
+          className="p-4 h-[250px]"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={groups} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="currentColor"
+                className="opacity-10"
+              />
+              <XAxis
+                dataKey="title"
+                tick={{ fontSize: 12 }}
+                stroke="currentColor"
+                className="opacity-50"
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 12 }}
+                stroke="currentColor"
+                className="opacity-50"
+              />
+              <Tooltip cursor={{ fill: "currentColor", opacity: 0.05 }} />
+              <Bar
+                dataKey="count"
+                name={t("coach.stat_athletes")}
+                fill="#d4af37"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Panel>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_220px]">
