@@ -73,13 +73,13 @@ function makePendingMatch(overrides: Record<string, any> = {}) {
     id: "match-1",
     tournamentId: "t-1",
     bracketId: "b-1",
-    bracketSection: null,   // null → propagateWinner returns early (no DB needed)
+    bracketSection: null, // null → propagateWinner returns early (no DB needed)
     round: 1,
     position: 0,
     status: "PENDING",
     redAthleteId: "red-id",
     blueAthleteId: "blue-id",
-    tatamiNumber: null,     // null → skip tatami-busy check
+    tatamiNumber: null, // null → skip tatami-busy check
     queuePosition: null,
     scoreSnapshot: null,
     winnerId: null,
@@ -104,11 +104,15 @@ function makeRunningMatch(overrides: Record<string, any> = {}) {
     status: "IN_PROGRESS",
     startedAt: new Date(),
     scoreSnapshot: {
-      red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+      red: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
       blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
       isGoldenScore: false,
       osaekomi: null,
-      clock: { running: true, elapsedSec: 30, runningStartedAt: new Date().toISOString() },
+      clock: {
+        running: true,
+        elapsedSec: 30,
+        runningStartedAt: new Date().toISOString(),
+      },
       pendingResult: null,
     },
     ...overrides,
@@ -119,7 +123,7 @@ function makeRunningMatch(overrides: Record<string, any> = {}) {
 function makeMatchWithPending(winnerSide: "RED" | "BLUE" = "RED") {
   return makeRunningMatch({
     scoreSnapshot: {
-      red:  { ippon: 1, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+      red: { ippon: 1, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
       blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
       isGoldenScore: false,
       osaekomi: null,
@@ -159,7 +163,9 @@ beforeEach(() => {
   vi.mocked(prisma.matchEvent.create).mockResolvedValue(stubEvent as any);
   vi.mocked(prisma.match.update).mockResolvedValue(makeUpdatedMatch() as any);
   vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 1 } as any);
-  vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(makeUpdatedMatch() as any);
+  vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(
+    makeUpdatedMatch() as any,
+  );
   vi.mocked(prisma.match.findMany).mockResolvedValue([]);
 });
 
@@ -182,7 +188,8 @@ describe("startMatch()", () => {
     expect(prisma.matchEvent.create).toHaveBeenCalledOnce();
 
     // Check that HAJIME event was created
-    const createCall = vi.mocked(prisma.matchEvent.create).mock.calls[0]![0] as any;
+    const createCall = vi.mocked(prisma.matchEvent.create).mock
+      .calls[0]![0] as any;
     expect(createCall.data.type).toBe("HAJIME");
     expect(createCall.data.matchId).toBe("match-1");
   });
@@ -190,7 +197,7 @@ describe("startMatch()", () => {
   it("resumes a paused IN_PROGRESS match (clock stopped → restart)", async () => {
     const paused = makeRunningMatch({
       scoreSnapshot: {
-        red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        red: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         isGoldenScore: false,
         osaekomi: null,
@@ -205,9 +212,13 @@ describe("startMatch()", () => {
   });
 
   it("throws ALREADY_RUNNING when clock is already running", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
-    await expect(startMatch("match-1")).rejects.toMatchObject({ code: "ALREADY_RUNNING" });
+    await expect(startMatch("match-1")).rejects.toMatchObject({
+      code: "ALREADY_RUNNING",
+    });
     expect(prisma.match.update).not.toHaveBeenCalled();
   });
 
@@ -216,7 +227,9 @@ describe("startMatch()", () => {
       makePendingMatch({ status: "COMPLETED" }) as any,
     );
 
-    await expect(startMatch("match-1")).rejects.toMatchObject({ code: "ALREADY_COMPLETED" });
+    await expect(startMatch("match-1")).rejects.toMatchObject({
+      code: "ALREADY_COMPLETED",
+    });
   });
 
   it("throws INCOMPLETE_PAIRING when red athlete is missing", async () => {
@@ -224,19 +237,27 @@ describe("startMatch()", () => {
       makePendingMatch({ redAthleteId: null }) as any,
     );
 
-    await expect(startMatch("match-1")).rejects.toMatchObject({ code: "INCOMPLETE_PAIRING" });
+    await expect(startMatch("match-1")).rejects.toMatchObject({
+      code: "INCOMPLETE_PAIRING",
+    });
   });
 
   it("throws RESULT_PENDING if a result is awaiting confirmation", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeMatchWithPending() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeMatchWithPending() as any,
+    );
 
-    await expect(startMatch("match-1")).rejects.toMatchObject({ code: "RESULT_PENDING" });
+    await expect(startMatch("match-1")).rejects.toMatchObject({
+      code: "RESULT_PENDING",
+    });
   });
 
   it("throws MATCH_NOT_FOUND for unknown matchId", async () => {
     vi.mocked(prisma.match.findUnique).mockResolvedValue(null);
 
-    await expect(startMatch("unknown")).rejects.toMatchObject({ code: "MATCH_NOT_FOUND" });
+    await expect(startMatch("unknown")).rejects.toMatchObject({
+      code: "MATCH_NOT_FOUND",
+    });
   });
 });
 
@@ -246,19 +267,26 @@ describe("startMatch()", () => {
 
 describe("pauseMatch()", () => {
   it("pauses a running match — emits MATE event", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await pauseMatch("match-1", "judge-1");
 
     expect(prisma.match.update).toHaveBeenCalledOnce();
-    const createCall = vi.mocked(prisma.matchEvent.create).mock.calls[0]![0] as any;
+    const createCall = vi.mocked(prisma.matchEvent.create).mock
+      .calls[0]![0] as any;
     expect(createCall.data.type).toBe("MATE");
   });
 
   it("throws NOT_RUNNING when match is not IN_PROGRESS", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
 
-    await expect(pauseMatch("match-1")).rejects.toMatchObject({ code: "NOT_RUNNING" });
+    await expect(pauseMatch("match-1")).rejects.toMatchObject({
+      code: "NOT_RUNNING",
+    });
   });
 
   it("throws ALREADY_PAUSED when clock is not running", async () => {
@@ -274,7 +302,9 @@ describe("pauseMatch()", () => {
     });
     vi.mocked(prisma.match.findUnique).mockResolvedValue(paused as any);
 
-    await expect(pauseMatch("match-1")).rejects.toMatchObject({ code: "ALREADY_PAUSED" });
+    await expect(pauseMatch("match-1")).rejects.toMatchObject({
+      code: "ALREADY_PAUSED",
+    });
   });
 });
 
@@ -284,11 +314,14 @@ describe("pauseMatch()", () => {
 
 describe("enterGoldenScore()", () => {
   it("sets isGoldenScore=true and emits GOLDEN_SCORE event", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await enterGoldenScore("match-1", "judge-1");
 
-    const createCall = vi.mocked(prisma.matchEvent.create).mock.calls[0]![0] as any;
+    const createCall = vi.mocked(prisma.matchEvent.create).mock
+      .calls[0]![0] as any;
     expect(createCall.data.type).toBe("GOLDEN_SCORE");
 
     const updateCall = vi.mocked(prisma.match.update).mock.calls[0]![0] as any;
@@ -296,8 +329,12 @@ describe("enterGoldenScore()", () => {
   });
 
   it("throws NOT_RUNNING when match is PENDING", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
-    await expect(enterGoldenScore("match-1")).rejects.toMatchObject({ code: "NOT_RUNNING" });
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
+    await expect(enterGoldenScore("match-1")).rejects.toMatchObject({
+      code: "NOT_RUNNING",
+    });
   });
 });
 
@@ -309,7 +346,9 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   // ── IPPON → immediate win ─────────────────────────────────────────────────
 
   it("IPPON for RED → autoFinished=true, winnerId=redAthleteId, pendingResult set", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "IPPON", "RED", "judge-1");
 
@@ -317,21 +356,25 @@ describe("addScoreEvent() — IJF scoring rules", () => {
     expect(result.winnerId).toBe("red-id");
 
     // scoreSnapshot passed to updateMany must contain red.ippon=1 and pendingResult
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.red.ippon).toBe(1);
     expect(updateCall.data.scoreSnapshot.pendingResult).not.toBeNull();
     expect(updateCall.data.scoreSnapshot.pendingResult.winnerSide).toBe("RED");
   });
 
   it("IPPON for BLUE → autoFinished=true, winnerId=blueAthleteId", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "IPPON", "BLUE");
 
     expect(result.autoFinished).toBe(true);
     expect(result.winnerId).toBe("blue-id");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.blue.ippon).toBe(1);
     expect(updateCall.data.scoreSnapshot.pendingResult.winnerSide).toBe("BLUE");
   });
@@ -342,51 +385,64 @@ describe("addScoreEvent() — IJF scoring rules", () => {
     // First WAZA_ARI already in score
     const matchWithOneWazaAri = makeRunningMatch({
       scoreSnapshot: {
-        red:  { ippon: 0, wazaari: 1, yuko: 0, shido: 0, hansoku: false },
+        red: { ippon: 0, wazaari: 1, yuko: 0, shido: 0, hansoku: false },
         blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         isGoldenScore: false,
         osaekomi: null,
-        clock: { running: true, elapsedSec: 60, runningStartedAt: new Date().toISOString() },
+        clock: {
+          running: true,
+          elapsedSec: 60,
+          runningStartedAt: new Date().toISOString(),
+        },
         pendingResult: null,
       },
     });
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithOneWazaAri as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      matchWithOneWazaAri as any,
+    );
 
     const result = await addScoreEvent("match-1", "WAZA_ARI", "RED");
 
     expect(result.autoFinished).toBe(true);
     expect(result.winnerId).toBe("red-id");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     const snap = updateCall.data.scoreSnapshot;
     expect(snap.red.wazaari).toBe(2);
-    expect(snap.red.ippon).toBe(1);                    // upgraded to IPPON
+    expect(snap.red.ippon).toBe(1); // upgraded to IPPON
     expect(snap.pendingResult.reason).toBe("WAZA_ARI");
   });
 
   it("first WAZA_ARI alone does NOT finish the match", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "WAZA_ARI", "RED");
 
     expect(result.autoFinished).toBe(false);
     expect(result.winnerId).toBeNull();
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.pendingResult).toBeNull();
   });
 
   // ── YUKO ─────────────────────────────────────────────────────────────────
 
   it("YUKO increments counter but does NOT auto-finish the match", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "YUKO", "RED");
 
     expect(result.autoFinished).toBe(false);
     expect(result.winnerId).toBeNull();
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.red.yuko).toBe(1);
     expect(updateCall.data.scoreSnapshot.pendingResult).toBeNull();
   });
@@ -396,22 +452,29 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   it("third SHIDO for RED triggers Hansoku-make → BLUE wins", async () => {
     const matchWithTwoShido = makeRunningMatch({
       scoreSnapshot: {
-        red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 2, hansoku: false },
+        red: { ippon: 0, wazaari: 0, yuko: 0, shido: 2, hansoku: false },
         blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         isGoldenScore: false,
         osaekomi: null,
-        clock: { running: true, elapsedSec: 90, runningStartedAt: new Date().toISOString() },
+        clock: {
+          running: true,
+          elapsedSec: 90,
+          runningStartedAt: new Date().toISOString(),
+        },
         pendingResult: null,
       },
     });
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithTwoShido as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      matchWithTwoShido as any,
+    );
 
     const result = await addScoreEvent("match-1", "SHIDO", "RED");
 
     expect(result.autoFinished).toBe(true);
-    expect(result.winnerId).toBe("blue-id");           // opponent wins
+    expect(result.winnerId).toBe("blue-id"); // opponent wins
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     const snap = updateCall.data.scoreSnapshot;
     expect(snap.red.shido).toBe(3);
     expect(snap.red.hansoku).toBe(true);
@@ -419,7 +482,9 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   });
 
   it("two SHIDO do NOT cause auto-finish", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "SHIDO", "RED");
     expect(result.autoFinished).toBe(false);
@@ -430,14 +495,17 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   // ── HANSOKU_MAKE — direct disqualification ─────────────────────────────────
 
   it("HANSOKU_MAKE for RED → BLUE wins immediately", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     const result = await addScoreEvent("match-1", "HANSOKU_MAKE", "RED");
 
     expect(result.autoFinished).toBe(true);
     expect(result.winnerId).toBe("blue-id");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.red.hansoku).toBe(true);
     expect(updateCall.data.scoreSnapshot.pendingResult.winnerSide).toBe("BLUE");
   });
@@ -445,18 +513,26 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   // ── Error guards ─────────────────────────────────────────────────────────
 
   it("throws NOT_RUNNING when match is PENDING", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
 
-    await expect(addScoreEvent("match-1", "IPPON", "RED")).rejects.toMatchObject({
+    await expect(
+      addScoreEvent("match-1", "IPPON", "RED"),
+    ).rejects.toMatchObject({
       code: "NOT_RUNNING",
     });
     expect(prisma.match.update).not.toHaveBeenCalled();
   });
 
   it("throws RESULT_PENDING when a result already awaits confirmation", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeMatchWithPending() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeMatchWithPending() as any,
+    );
 
-    await expect(addScoreEvent("match-1", "WAZA_ARI", "BLUE")).rejects.toMatchObject({
+    await expect(
+      addScoreEvent("match-1", "WAZA_ARI", "BLUE"),
+    ).rejects.toMatchObject({
       code: "RESULT_PENDING",
     });
     expect(prisma.match.update).not.toHaveBeenCalled();
@@ -465,7 +541,7 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   it("throws ALREADY_IPPON when trying to add WAZA_ARI after IPPON was scored", async () => {
     const matchWithIppon = makeRunningMatch({
       scoreSnapshot: {
-        red:  { ippon: 1, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        red: { ippon: 1, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         isGoldenScore: false,
         osaekomi: null,
@@ -475,7 +551,9 @@ describe("addScoreEvent() — IJF scoring rules", () => {
     });
     vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithIppon as any);
 
-    await expect(addScoreEvent("match-1", "WAZA_ARI", "RED")).rejects.toMatchObject({
+    await expect(
+      addScoreEvent("match-1", "WAZA_ARI", "RED"),
+    ).rejects.toMatchObject({
       code: "ALREADY_IPPON",
     });
   });
@@ -483,7 +561,9 @@ describe("addScoreEvent() — IJF scoring rules", () => {
   it("throws MATCH_NOT_FOUND for unknown id", async () => {
     vi.mocked(prisma.match.findUnique).mockResolvedValue(null);
 
-    await expect(addScoreEvent("unknown", "IPPON", "RED")).rejects.toMatchObject({
+    await expect(
+      addScoreEvent("unknown", "IPPON", "RED"),
+    ).rejects.toMatchObject({
       code: "MATCH_NOT_FOUND",
     });
   });
@@ -495,26 +575,34 @@ describe("addScoreEvent() — IJF scoring rules", () => {
 
 describe("finishMatchManually()", () => {
   it("sets pendingResult for RED winning side and stops the clock", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await finishMatchManually("match-1", "RED", "Судья шешімі", "judge-1");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     const snap = updateCall.data.scoreSnapshot;
     expect(snap.pendingResult).not.toBeNull();
     expect(snap.pendingResult.winnerSide).toBe("RED");
     expect(snap.pendingResult.winnerId).toBe("red-id");
-    expect(snap.clock.running).toBe(false);             // clock stopped
+    expect(snap.clock.running).toBe(false); // clock stopped
   });
 
   it("sets pendingResult for BLUE winning side", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await finishMatchManually("match-1", "BLUE");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.pendingResult.winnerSide).toBe("BLUE");
-    expect(updateCall.data.scoreSnapshot.pendingResult.winnerId).toBe("blue-id");
+    expect(updateCall.data.scoreSnapshot.pendingResult.winnerId).toBe(
+      "blue-id",
+    );
   });
 
   it("throws ALREADY_COMPLETED if match is done", async () => {
@@ -528,7 +616,9 @@ describe("finishMatchManually()", () => {
   });
 
   it("throws RESULT_PENDING when a result is already pending", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeMatchWithPending() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeMatchWithPending() as any,
+    );
 
     await expect(finishMatchManually("match-1", "BLUE")).rejects.toMatchObject({
       code: "RESULT_PENDING",
@@ -553,7 +643,9 @@ describe("finishMatchManually()", () => {
 describe("confirmMatchResult()", () => {
   it("confirms result → sets status=COMPLETED, winnerId, clears pendingResult", async () => {
     const matchWithPending = makeMatchWithPending("RED");
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithPending as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      matchWithPending as any,
+    );
     // Atomic confirmation returns the refreshed row after updateMany.
     vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(
       makePendingMatch({
@@ -569,14 +661,17 @@ describe("confirmMatchResult()", () => {
     expect(updated.status).toBe("COMPLETED");
     expect(updated.winnerId).toBe("red-id");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.status).toBe("COMPLETED");
     expect(updateCall.data.winnerId).toBe("red-id");
     expect(updateCall.data.scoreSnapshot.pendingResult).toBeNull();
   });
 
   it("throws NO_PENDING_RESULT when there is nothing to confirm", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await expect(confirmMatchResult("match-1")).rejects.toMatchObject({
       code: "NO_PENDING_RESULT",
@@ -601,7 +696,9 @@ describe("confirmMatchResult()", () => {
 
 describe("cancelPendingResult()", () => {
   it("clears pendingResult — match stays IN_PROGRESS for judge correction", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeMatchWithPending() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeMatchWithPending() as any,
+    );
     vi.mocked(prisma.match.update).mockResolvedValue(makeUpdatedMatch() as any);
 
     await cancelPendingResult("match-1", "judge-1");
@@ -610,13 +707,16 @@ describe("cancelPendingResult()", () => {
     expect(updateCall.data.scoreSnapshot.pendingResult).toBeNull();
 
     // The MATE event that marks cancellation
-    const createCall = vi.mocked(prisma.matchEvent.create).mock.calls[0]![0] as any;
+    const createCall = vi.mocked(prisma.matchEvent.create).mock
+      .calls[0]![0] as any;
     expect(createCall.data.type).toBe("MATE");
     expect(createCall.data.meta.cancelledPendingResult).toBe(true);
   });
 
   it("throws NO_PENDING_RESULT when nothing to cancel", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await expect(cancelPendingResult("match-1")).rejects.toMatchObject({
       code: "NO_PENDING_RESULT",
@@ -624,7 +724,9 @@ describe("cancelPendingResult()", () => {
   });
 
   it("throws NOT_RUNNING when match is not IN_PROGRESS", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
 
     await expect(cancelPendingResult("match-1")).rejects.toMatchObject({
       code: "NOT_RUNNING",
@@ -638,7 +740,9 @@ describe("cancelPendingResult()", () => {
 
 describe("undoLastScoreEvent()", () => {
   it("restores score from previous event snapshot — removes last event", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     // Two scoring events; undo should revert to first event's snapshot
     const prevSnapshot = {
@@ -655,8 +759,20 @@ describe("undoLastScoreEvent()", () => {
     };
 
     vi.mocked(prisma.matchEvent.findMany).mockResolvedValue([
-      { id: "evt-prev", type: "WAZA_ARI", side: "RED", scoreSnapshot: prevSnapshot, occurredAt: new Date(Date.now() - 10000) },
-      { id: "evt-last", type: "WAZA_ARI", side: "RED", scoreSnapshot: lastSnapshot, occurredAt: new Date() },
+      {
+        id: "evt-prev",
+        type: "WAZA_ARI",
+        side: "RED",
+        scoreSnapshot: prevSnapshot,
+        occurredAt: new Date(Date.now() - 10000),
+      },
+      {
+        id: "evt-last",
+        type: "WAZA_ARI",
+        side: "RED",
+        scoreSnapshot: lastSnapshot,
+        occurredAt: new Date(),
+      },
     ] as any);
 
     vi.mocked(prisma.matchEvent.delete).mockResolvedValue({} as any);
@@ -666,7 +782,8 @@ describe("undoLastScoreEvent()", () => {
     await undoLastScoreEvent("match-1", "judge-1");
 
     // Should have deleted the last event
-    const deleteCall = vi.mocked(prisma.matchEvent.delete).mock.calls[0]![0] as any;
+    const deleteCall = vi.mocked(prisma.matchEvent.delete).mock
+      .calls[0]![0] as any;
     expect(deleteCall.where.id).toBe("evt-last");
 
     // Should have restored score to prevSnapshot (wazaari back to 0)
@@ -676,14 +793,19 @@ describe("undoLastScoreEvent()", () => {
   });
 
   it("reverts to empty score when undoing the very first scoring event", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     vi.mocked(prisma.matchEvent.findMany).mockResolvedValue([
       {
         id: "evt-only",
         type: "SHIDO",
         side: "RED",
-        scoreSnapshot: { red: { ippon: 0, wazaari: 0, yuko: 0, shido: 1, hansoku: false }, blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false } },
+        scoreSnapshot: {
+          red: { ippon: 0, wazaari: 0, yuko: 0, shido: 1, hansoku: false },
+          blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        },
         occurredAt: new Date(),
       },
     ] as any);
@@ -701,7 +823,9 @@ describe("undoLastScoreEvent()", () => {
   });
 
   it("throws NO_EVENTS when there are no undoable scoring events", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
     vi.mocked(prisma.matchEvent.findMany).mockResolvedValue([]);
 
     await expect(undoLastScoreEvent("match-1")).rejects.toMatchObject({
@@ -711,7 +835,9 @@ describe("undoLastScoreEvent()", () => {
   });
 
   it("throws NOT_RUNNING when match is not IN_PROGRESS", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
 
     await expect(undoLastScoreEvent("match-1")).rejects.toMatchObject({
       code: "NOT_RUNNING",
@@ -725,15 +851,19 @@ describe("undoLastScoreEvent()", () => {
 
 describe("startOsaekomi()", () => {
   it("records osaekomi start for RED — emits OSAEKOMI event", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await startOsaekomi("match-1", "RED", "judge-1");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.osaekomi).not.toBeNull();
     expect(updateCall.data.scoreSnapshot.osaekomi.side).toBe("RED");
 
-    const createCall = vi.mocked(prisma.matchEvent.create).mock.calls[0]![0] as any;
+    const createCall = vi.mocked(prisma.matchEvent.create).mock
+      .calls[0]![0] as any;
     expect(createCall.data.type).toBe("OSAEKOMI");
     expect(createCall.data.side).toBe("RED");
   });
@@ -741,11 +871,13 @@ describe("startOsaekomi()", () => {
   it("throws OSAEKOMI_ALREADY when hold-down is already active", async () => {
     const matchWithOsaekomi = makeRunningMatch({
       scoreSnapshot: {
-        ...makeRunningMatch().scoreSnapshot,
+        ...(makeRunningMatch().scoreSnapshot as any),
         osaekomi: { side: "BLUE", startedAt: new Date().toISOString() },
       },
     });
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(matchWithOsaekomi as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      matchWithOsaekomi as any,
+    );
 
     await expect(startOsaekomi("match-1", "RED")).rejects.toMatchObject({
       code: "OSAEKOMI_ALREADY",
@@ -753,7 +885,9 @@ describe("startOsaekomi()", () => {
   });
 
   it("throws NOT_RUNNING when match is not IN_PROGRESS", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makePendingMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makePendingMatch() as any,
+    );
 
     await expect(startOsaekomi("match-1", "RED")).rejects.toMatchObject({
       code: "NOT_RUNNING",
@@ -763,16 +897,25 @@ describe("startOsaekomi()", () => {
 
 describe("endOsaekomi()", () => {
   /** Build a running match that has an active osaekomi started N seconds ago. */
-  function makeMatchWithOsaekomi(side: "RED" | "BLUE", startedSecondsAgo: number) {
-    const startedAt = new Date(Date.now() - startedSecondsAgo * 1000).toISOString();
+  function makeMatchWithOsaekomi(
+    side: "RED" | "BLUE",
+    startedSecondsAgo: number,
+  ) {
+    const startedAt = new Date(
+      Date.now() - startedSecondsAgo * 1000,
+    ).toISOString();
     return {
       ...makeRunningMatch({
         scoreSnapshot: {
-          red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+          red: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
           blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
           isGoldenScore: false,
           osaekomi: { side, startedAt },
-          clock: { running: true, elapsedSec: 30, runningStartedAt: new Date().toISOString() },
+          clock: {
+            running: true,
+            elapsedSec: 30,
+            runningStartedAt: new Date().toISOString(),
+          },
           pendingResult: null,
         },
       }),
@@ -791,7 +934,8 @@ describe("endOsaekomi()", () => {
     expect(result.scoredType).toBe("WAZA_ARI");
     expect(result.autoFinished).toBe(false);
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.red.wazaari).toBe(1);
     expect(updateCall.data.scoreSnapshot.osaekomi).toBeNull();
   });
@@ -807,7 +951,8 @@ describe("endOsaekomi()", () => {
     expect(result.autoFinished).toBe(true);
     expect(result.winnerId).toBe("blue-id");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.scoreSnapshot.blue.ippon).toBe(1);
     expect(updateCall.data.scoreSnapshot.pendingResult.winnerSide).toBe("BLUE");
   });
@@ -824,7 +969,9 @@ describe("endOsaekomi()", () => {
   });
 
   it("throws NO_OSAEKOMI when hold-down is not active", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await expect(endOsaekomi("match-1", "TOKETA")).rejects.toMatchObject({
       code: "NO_OSAEKOMI",
@@ -838,17 +985,24 @@ describe("endOsaekomi()", () => {
 
 describe("Optimistic locking — CONCURRENT_MODIFICATION", () => {
   it("addScoreEvent with stale version → throws CONCURRENT_MODIFICATION (409)", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
     // Simulate another judge already updated the match (version mismatch → count=0)
     vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 0 } as any);
 
     await expect(
       addScoreEvent("match-1", "IPPON", "RED", "judge-1", 0),
-    ).rejects.toMatchObject({ code: "CONCURRENT_MODIFICATION", httpStatus: 409 });
+    ).rejects.toMatchObject({
+      code: "CONCURRENT_MODIFICATION",
+      httpStatus: 409,
+    });
   });
 
   it("addScoreEvent without expectedVersion → never throws CONCURRENT_MODIFICATION", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
     vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 0 } as any);
 
     // No expectedVersion passed — count=0 is silently ignored
@@ -857,29 +1011,42 @@ describe("Optimistic locking — CONCURRENT_MODIFICATION", () => {
   });
 
   it("finishMatchManually with stale version → throws CONCURRENT_MODIFICATION", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
     vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 0 } as any);
 
     await expect(
       finishMatchManually("match-1", "RED", "override", "judge-1", 5),
-    ).rejects.toMatchObject({ code: "CONCURRENT_MODIFICATION", httpStatus: 409 });
+    ).rejects.toMatchObject({
+      code: "CONCURRENT_MODIFICATION",
+      httpStatus: 409,
+    });
   });
 
   it("startOsaekomi with stale version → throws CONCURRENT_MODIFICATION", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
     vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 0 } as any);
 
     await expect(
       startOsaekomi("match-1", "RED", "judge-1", 2),
-    ).rejects.toMatchObject({ code: "CONCURRENT_MODIFICATION", httpStatus: 409 });
+    ).rejects.toMatchObject({
+      code: "CONCURRENT_MODIFICATION",
+      httpStatus: 409,
+    });
   });
 
   it("version increments: updateMany called with version: { increment: 1 }", async () => {
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(makeRunningMatch() as any);
+    vi.mocked(prisma.match.findUnique).mockResolvedValue(
+      makeRunningMatch() as any,
+    );
 
     await addScoreEvent("match-1", "YUKO", "RED");
 
-    const updateCall = vi.mocked(prisma.match.updateMany).mock.calls[0]![0] as any;
+    const updateCall = vi.mocked(prisma.match.updateMany).mock
+      .calls[0]![0] as any;
     expect(updateCall.data.version).toEqual({ increment: 1 });
   });
 });
@@ -893,14 +1060,16 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
     // 1. Start
     const pendingMatch = makePendingMatch();
     vi.mocked(prisma.match.findUnique)
-      .mockResolvedValueOnce(pendingMatch as any)   // startMatch lookup
-      .mockResolvedValueOnce(                        // addScoreEvent lookup
+      .mockResolvedValueOnce(pendingMatch as any) // startMatch lookup
+      .mockResolvedValueOnce(
+        // addScoreEvent lookup
         makeRunningMatch({ status: "IN_PROGRESS" }) as any,
       )
       .mockResolvedValueOnce(makeMatchWithPending("RED") as any); // confirmMatchResult lookup
 
-    vi.mocked(prisma.match.update)
-      .mockResolvedValueOnce(makeUpdatedMatch({ status: "IN_PROGRESS" }) as any);
+    vi.mocked(prisma.match.update).mockResolvedValueOnce(
+      makeUpdatedMatch({ status: "IN_PROGRESS" }) as any,
+    );
     vi.mocked(prisma.match.findUniqueOrThrow).mockResolvedValue(
       makePendingMatch({
         status: "COMPLETED",
@@ -927,11 +1096,15 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
       isGoldenScore: true,
       // scoreSnapshot.isGoldenScore тоже должен быть true — именно его читает normalizeScore()
       scoreSnapshot: {
-        red:  { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+        red: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
         isGoldenScore: true,
         osaekomi: null,
-        clock: { running: true, elapsedSec: 240, runningStartedAt: new Date().toISOString() },
+        clock: {
+          running: true,
+          elapsedSec: 240,
+          runningStartedAt: new Date().toISOString(),
+        },
         pendingResult: null,
       },
     });
@@ -940,9 +1113,14 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
       fn({
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          findUniqueOrThrow: vi.fn().mockResolvedValue(
-            makeUpdatedMatch({ status: "IN_PROGRESS", isGoldenScore: true }) as any,
-          ),
+          findUniqueOrThrow: vi
+            .fn()
+            .mockResolvedValue(
+              makeUpdatedMatch({
+                status: "IN_PROGRESS",
+                isGoldenScore: true,
+              }) as any,
+            ),
         },
         matchEvent: { create: vi.fn().mockResolvedValue({ id: "ev-gs" }) },
       } as any),
@@ -969,26 +1147,37 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
   it("start → addScoreEvent(IPPON) → cancelPendingResult → addScoreEvent(IPPON)", async () => {
     // Judge presses IPPON by mistake, cancels, then re-scores correctly for BLUE
     vi.mocked(prisma.match.findUnique)
-      .mockResolvedValueOnce(makeRunningMatch() as any)        // addScoreEvent #1
+      .mockResolvedValueOnce(makeRunningMatch() as any) // addScoreEvent #1
       .mockResolvedValueOnce(makeMatchWithPending("RED") as any) // cancelPendingResult
-      .mockResolvedValueOnce(makeRunningMatch() as any);        // addScoreEvent #2 (after cancel)
+      .mockResolvedValueOnce(makeRunningMatch() as any); // addScoreEvent #2 (after cancel)
 
-    vi.mocked(prisma.match.update)
-      .mockResolvedValue(makeUpdatedMatch() as any);
+    vi.mocked(prisma.match.update).mockResolvedValue(makeUpdatedMatch() as any);
 
     // Score IPPON for RED (mistake)
-    const wrongScore = await addScoreEvent("match-1", "IPPON", "RED", "judge-1");
+    const wrongScore = await addScoreEvent(
+      "match-1",
+      "IPPON",
+      "RED",
+      "judge-1",
+    );
     expect(wrongScore.autoFinished).toBe(true);
 
     // Cancel the pending result
     await cancelPendingResult("match-1", "judge-1");
-    const cancelCall = vi.mocked(prisma.matchEvent.create).mock.calls.find(
-      (c) => c[0].data.meta?.cancelledPendingResult === true,
-    );
+    const cancelCall = vi
+      .mocked(prisma.matchEvent.create)
+      .mock.calls.find(
+        (c) => (c[0].data.meta as any)?.cancelledPendingResult === true,
+      );
     expect(cancelCall).toBeDefined();
 
     // Score correct IPPON for BLUE
-    const correctScore = await addScoreEvent("match-1", "IPPON", "BLUE", "judge-1");
+    const correctScore = await addScoreEvent(
+      "match-1",
+      "IPPON",
+      "BLUE",
+      "judge-1",
+    );
     expect(correctScore.autoFinished).toBe(true);
     expect(correctScore.winnerId).toBe("blue-id");
   });

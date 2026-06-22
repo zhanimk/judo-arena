@@ -84,7 +84,7 @@ describe("subscribe ACL — tatami:* rooms", () => {
   });
 
   it("блокирует COACH подписку на tatami:*", () => {
-    const role = "COACH";
+    const role = "COACH" as string;
     const userId = "coach-001";
     expect(!userId || role !== "ADMIN").toBe(true);
   });

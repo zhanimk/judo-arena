@@ -66,6 +66,9 @@ function tournamentInput(overrides = {}) {
     startDate: start,
     endDate: new Date(start.getTime() + 2 * 24 * 60 * 60 * 1000),
     applicationDeadline: new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000),
+    tatamiCount: 3,
+    primaryLocale: "ru" as const,
+    entryFeeKzt: 0,
     ...overrides,
   };
 }
@@ -229,6 +232,10 @@ describe("category management", () => {
       ageMax: 35,
       weightMin: 60,
       weightMax: 66,
+      matchDurationSec: 180,
+      goldenScoreSec: 120,
+      format: "SE_IJF" as const,
+      allowYuko: false,
     });
 
     const row = await db.category.findUnique({ where: { id: cat.id } });

@@ -75,6 +75,7 @@ describe("register", () => {
       surname: "Сейткали",
       dateOfBirth: new Date("2000-06-15"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
 
     const row = await db.user.findUnique({
@@ -99,6 +100,7 @@ describe("register", () => {
       surname: "Юзер",
       dateOfBirth: new Date("2002-01-01"),
       gender: "FEMALE",
+      preferredLocale: "ru",
     });
 
     expect(user.email).toBe(email.toLowerCase());
@@ -116,6 +118,7 @@ describe("register", () => {
       surname: "Юзер",
       dateOfBirth: new Date("2000-01-01"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
 
     await expect(
@@ -127,6 +130,7 @@ describe("register", () => {
         surname: "Юзер",
         dateOfBirth: new Date("2000-01-01"),
         gender: "MALE",
+        preferredLocale: "ru",
       }),
     ).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
 
@@ -143,6 +147,7 @@ describe("register", () => {
         surname: "Юзер",
         dateOfBirth: new Date("2000-01-01"),
         gender: "MALE",
+        preferredLocale: "ru",
         clubId: "nonexistent-club-id",
       }),
     ).rejects.toMatchObject({ code: "CLUB_NOT_FOUND" });
@@ -161,6 +166,7 @@ describe("register", () => {
       surname: "Клубный",
       dateOfBirth: new Date("2001-03-10"),
       gender: "MALE",
+      preferredLocale: "ru",
       clubId: club.id,
     });
 
@@ -180,6 +186,7 @@ describe("login", () => {
       surname: "Тест",
       dateOfBirth: new Date("1999-05-20"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
 
     const result = await login({ email, password: "Password123!" });
@@ -201,6 +208,7 @@ describe("login", () => {
       surname: "Тест",
       dateOfBirth: new Date("1999-05-20"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
 
     await expect(
@@ -226,6 +234,7 @@ describe("login", () => {
       surname: "Юзер",
       dateOfBirth: new Date("1998-01-01"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
 
     await db.user.update({ where: { id: user.id }, data: { isActive: false } });
@@ -249,6 +258,7 @@ describe("refresh token rotation", () => {
       surname: "Тест",
       dateOfBirth: new Date("2000-01-01"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
     const { tokens } = await login({ email, password: "Password123!" });
     const newTokens = await refresh(tokens.refreshToken);
@@ -274,6 +284,7 @@ describe("logout", () => {
       surname: "Тест",
       dateOfBirth: new Date("2000-01-01"),
       gender: "MALE",
+      preferredLocale: "ru",
     });
     const { tokens } = await login({ email, password: "Password123!" });
     const payload = verifyRefreshToken(tokens.refreshToken);
