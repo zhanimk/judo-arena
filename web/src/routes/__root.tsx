@@ -198,23 +198,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PWAUpdateBanner() {
-  const { needRefresh, updateServiceWorker } = usePWA();
-  const { t } = useTranslation();
-  if (!needRefresh) return null;
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border border-border rounded-lg px-4 py-3 shadow-lg text-sm">
-      <span>{t("pwa.update_available")}</span>
-      <button
-        onClick={updateServiceWorker}
-        className="bg-gradient-gold text-gold-foreground px-3 py-1 rounded font-medium text-xs"
-      >
-        {t("pwa.update_action")}
-      </button>
-    </div>
-  );
-}
-
 function SplashScreen() {
   const [phase, setPhase] = useState<"visible" | "fading" | "done">("visible");
 
@@ -399,9 +382,7 @@ function RootComponent() {
       <PageTransition>
         <Outlet />
       </PageTransition>
-      <ClientOnly>
-        <PWAUpdateBanner />
-      </ClientOnly>
+
       <ClientOnly>
         <Toaster
           position="top-right"
