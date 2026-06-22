@@ -136,13 +136,7 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
 
     if (status === "authenticated" && user) {
       const target =
-        user.role === "ADMIN"
-          ? "/admin"
-          : user.role === "COACH"
-            ? user.clubId
-              ? "/coach"
-              : "/coach/onboarding"
-            : "/athlete/onboarding";
+        user.role === "ADMIN" ? "/admin" : user.role === "COACH" ? "/coach" : "/athlete";
       navigate({ to: target });
     }
   }, [mounted, status, user, navigate]);
