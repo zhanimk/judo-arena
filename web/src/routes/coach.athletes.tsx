@@ -259,7 +259,13 @@ function AthletesBoard({
   onViewDocs: (athlete: User) => void;
 }) {
   const { t } = useTranslation();
-  const groups = useMemo(() => groupByAgeBand(athletes, t), [athletes, t]);
+  const groups = useMemo(() => {
+    return groupByAgeBand(athletes, t).map((g) => ({
+      ...g,
+      count: g.items.length,
+      labelTitle: g.label,
+    }));
+  }, [athletes, t]);
 
   return (
     <div className="mt-4 space-y-5">
@@ -301,7 +307,7 @@ function AthletesBoard({
                 paddingAngle={5}
                 dataKey="value"
               >
-                { }
+                {}
                 {(([] as any[]).map
                   ? [
                       { name: t("common.male"), value: stats.male, color: "#3b82f6" },
@@ -330,7 +336,7 @@ function AthletesBoard({
                 className="opacity-10"
               />
               <XAxis
-                dataKey="title"
+                dataKey="labelTitle"
                 tick={{ fontSize: 12 }}
                 stroke="currentColor"
                 className="opacity-50"

@@ -849,6 +849,8 @@
   },
   "coach": {
     "role_label": "Coach",
+    "gender_distribution": "Gender distribution",
+    "age_groups": "Age groups",
     "overview_title": "Overview",
     "stat_athletes": "Athletes",
     "stat_applications": "Applications",
@@ -1940,7 +1942,7 @@
     "upload_reminder_title": "Documents required",
     "upload_reminder_desc": "Please upload your documents in the profile to participate in tournaments.",
     "upload_now": "Upload now",
-    "load_error": "Failed to load document",
+    "load_error": "Document not uploaded",
     "birth_certificate": "Birth certificate",
     "birth_certificate_hint": "Upload a PDF or image to confirm the athlete age.",
     "study_certificate": "Study certificate",

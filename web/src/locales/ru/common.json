@@ -872,6 +872,8 @@
   },
   "coach": {
     "role_label": "Тренер",
+    "gender_distribution": "Гендерное распределение",
+    "age_groups": "Возрастные группы",
     "overview_title": "Обзор",
     "stat_athletes": "Спортсменов",
     "stat_applications": "Заявок",

@@ -111,6 +111,12 @@ function CoachClub() {
     enabled: !!clubId && isOwner,
   });
 
+  const incomingAthleteRequestsQuery = useQuery({
+    queryKey: ["coach-join-requests"],
+    queryFn: () => api.joinRequests.coachList(),
+    enabled: !!clubId,
+  });
+
   const formInitial = useMemo(() => toClubForm(clubQuery.data), [clubQuery.data]);
   const [isEditing, setIsEditing] = useState(false);
   const [noClubTab, setNoClubTab] = useState<"join" | "create">("join");
@@ -285,6 +291,24 @@ function CoachClub() {
                     />
                   </Panel>
                 )}
+
+                {incomingAthleteRequestsQuery.data &&
+                  incomingAthleteRequestsQuery.data.length > 0 && (
+                    <Panel
+                      title={`${t("coach.join_requests", { defaultValue: "Заявки на вступление" })} ${incomingAthleteRequestsQuery.data.length}`}
+                    >
+                      <IncomingAthleteRequests
+                        requests={incomingAthleteRequestsQuery.data}
+                        isLoading={incomingAthleteRequestsQuery.isLoading}
+                        onChanged={async () => {
+                          await Promise.all([
+                            qc.invalidateQueries({ queryKey: ["coach-join-requests"] }),
+                            qc.invalidateQueries({ queryKey: ["club-members", clubId] }),
+                          ]);
+                        }}
+                      />
+                    </Panel>
+                  )}
               </div>
             </div>
           )}
@@ -1131,6 +1155,67 @@ function CoachJoinClubPanel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function IncomingAthleteRequests({
+  requests,
+  isLoading,
+  onChanged,
+}: {
+  requests: ClubJoinRequest[];
+  isLoading: boolean;
+  onChanged: () => void | Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const review = useMutation({
+    mutationFn: ({ id, approve }: { id: string; approve: boolean }) =>
+      api.joinRequests.review(id, approve),
+    onSuccess: onChanged,
+  });
+
+  if (isLoading) return <LoadingState />;
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {requests.map((request) => (
+        <div
+          key={request.id}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 bg-background/30 p-3"
+        >
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">
+              {request.athlete?.name} {request.athlete?.surname}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {request.athlete?.email}
+              {request.athlete?.phone ? ` · ${request.athlete.phone}` : ""}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={review.isPending}
+              onClick={() => review.mutate({ id: request.id, approve: true })}
+              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+            >
+              <Check className="h-4 w-4" />
+              {t("common.approve")}
+            </button>
+            <button
+              type="button"
+              disabled={review.isPending}
+              onClick={() => review.mutate({ id: request.id, approve: false })}
+              className="inline-flex items-center gap-1.5 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive hover:bg-destructive/20 disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+              {t("common.reject")}
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

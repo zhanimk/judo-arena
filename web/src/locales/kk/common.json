@@ -859,9 +859,11 @@
     "tournament_results": "Турнирлік нәтижелер"
   },
   "coach": {
-    "role_label": "Жаттықтырушы",
+    "role_label": "Тренер",
+    "gender_distribution": "Гендерлік үлестірім",
+    "age_groups": "Жас ерекшелік топтары",
     "overview_title": "Шолу",
-    "stat_athletes": "Спортшы",
+    "stat_athletes": "Спортшылар",
     "stat_applications": "Өтінім",
     "stat_approved": "Бекітілді",
     "stat_pending": "Күтуде",
@@ -1939,7 +1941,7 @@
     "upload_reminder_title": "Құжаттар қажет",
     "upload_reminder_desc": "Турнирлерге қатысу үшін профильде құжаттарыңызды жүктеңіз.",
     "upload_now": "Жүктеу",
-    "load_error": "Құжатты жүктеу мүмкін болмады",
+    "load_error": "Құжат жүктелмеген",
     "birth_certificate": "Туу туралы куәлік",
     "birth_certificate_hint": "Спортшының жасын растау үшін PDF немесе сурет жүктеңіз.",
     "study_certificate": "Оқу орнынан анықтама",
