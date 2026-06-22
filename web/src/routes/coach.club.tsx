@@ -163,22 +163,24 @@ function CoachClub() {
 
       {!clubId && (
         <div className="mx-auto max-w-2xl mt-4">
-          <div className="flex gap-1 p-1 bg-muted/40 rounded-lg mb-6 w-fit mx-auto border border-border/50">
-            <button
-              onClick={() => setNoClubTab("join")}
-              className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "join" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {t("coach_club.join_club")}
-            </button>
-            <button
-              onClick={() => setNoClubTab("create")}
-              className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "create" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {t("coach_club.create_club")}
-            </button>
-          </div>
+          {!coachRequestsQuery.data?.some((r) => r.status === "PENDING") && (
+            <div className="flex gap-1 p-1 bg-muted/40 rounded-lg mb-6 w-fit mx-auto border border-border/50">
+              <button
+                onClick={() => setNoClubTab("join")}
+                className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "join" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {t("coach_club.join_club")}
+              </button>
+              <button
+                onClick={() => setNoClubTab("create")}
+                className={`px-6 py-2.5 text-sm font-medium rounded-md transition-all ${noClubTab === "create" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {t("coach_club.create_club")}
+              </button>
+            </div>
+          )}
 
-          {noClubTab === "join" ? (
+          {noClubTab === "join" || coachRequestsQuery.data?.some((r) => r.status === "PENDING") ? (
             <Panel title={t("coach_club.join_club")}>
               <CoachJoinClubPanel
                 requests={coachRequestsQuery.data ?? []}
