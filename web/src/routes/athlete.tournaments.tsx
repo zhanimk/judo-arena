@@ -16,6 +16,7 @@ import {
   MapPin,
   Trash2,
   Users,
+  Search,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -98,7 +99,20 @@ function AthleteTournaments() {
               </div>
             </div>
           ) : (
-            <EmptyState title={t("athlete.no_club")} hint={t("athlete.no_club_hint")} />
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Building2 className="h-8 w-8 mb-3 text-muted-foreground/30" />
+              <div className="font-medium text-foreground mb-1">{t("athlete.no_club")}</div>
+              <div className="text-sm text-muted-foreground max-w-xs mx-auto mb-5">
+                Клубқа қосылу үшін өтінім жіберіңіз немесе бапкердің сізді қосуын күтіңіз.
+              </div>
+              <Link
+                to="/athlete/profile"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-gold px-4 py-2.5 text-sm font-medium text-gold-foreground shadow-gold hover:opacity-90 transition-opacity"
+              >
+                <Search className="h-4 w-4" />
+                {t("profile.search_club") || "Клуб іздеу"}
+              </Link>
+            </div>
           )}
         </Panel>
         <Panel title={t("athlete.my_applications")}>
