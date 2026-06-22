@@ -537,12 +537,60 @@ export async function getClubAnalytics(actorUserId: string, clubId: string) {
   const club = await prisma.club.findUnique({ where: { id: clubId } });
   if (!club) throw new ClubError("CLUB_NOT_FOUND", "Клуб не найден", 404);
 
-  // Return mock analytics data for now so the app builds and runs
+  // Fetch all athletes in the club with their rating entries
+  const athletes = await prisma.user.findMany({
+    where: { clubId, role: UserRole.ATHLETE },
+    select: {
+      id: true,
+      name: true,
+      surname: true,
+      avatarUrl: true,
+      ratingEntries: { select: { points: true, place: true } },
+    },
+  });
+
+  let totalPoints = 0;
+  let gold = 0;
+  let silver = 0;
+  let bronze = 0;
+
+  const athletesWithPoints = athletes.map((a) => {
+    let aPoints = 0;
+    for (const re of a.ratingEntries) {
+      aPoints += re.points;
+      totalPoints += re.points;
+      if (re.place === 1) gold++;
+      else if (re.place === 2) silver++;
+      else if (re.place === 3) bronze++;
+    }
+    return {
+      id: a.id,
+      name: a.name,
+      surname: a.surname,
+      avatarUrl: a.avatarUrl,
+      points: aPoints,
+    };
+  });
+
+  const topAthletes = athletesWithPoints
+    .filter((a) => a.points > 0)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 10);
+
+  const totalAthletes = athletes.length;
+  const averageRating =
+    totalAthletes > 0 ? Math.round(totalPoints / totalAthletes) : 0;
+
   return {
-    totalAthletes: 0,
-    averageRating: 0,
-    totalPoints: 0,
-    medals: { total: 0, gold: 0, silver: 0, bronze: 0 },
-    topAthletes: [],
+    totalAthletes,
+    averageRating,
+    totalPoints,
+    medals: {
+      total: gold + silver + bronze,
+      gold,
+      silver,
+      bronze,
+    },
+    topAthletes,
   };
 }
