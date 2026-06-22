@@ -8,7 +8,7 @@ import {
 } from "@/components/dashboard/DashboardShell";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { RatingEntry, Match } from "@/lib/api-types";
+import type { RatingEntry } from "@/lib/api-types";
 import { useAuth } from "@/lib/auth-store";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { athleteNav as nav } from "@/components/dashboard/athlete-nav";
@@ -42,12 +42,6 @@ function Results() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const matchesQuery = useQuery({
-    queryKey: ["my-matches", athleteId],
-    queryFn: () => api.matches.list({ athleteId, limit: 200 }),
-    enabled: !!athleteId,
-  });
-
   return (
     <DashboardShell
       role={t("roles.ATHLETE")}
@@ -59,7 +53,7 @@ function Results() {
           {statsQuery.data && <AthleteStatsPanel stats={statsQuery.data} t={t} />}
         </div>
 
-        <div className="mt-5 grid items-start gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mt-5 space-y-5 max-w-3xl">
           <Panel title={t("athlete.tournament_results") || "Жарыс нәтижелері"}>
             {ratingQuery.isLoading ? (
               <LoadingState />
@@ -91,46 +85,6 @@ function Results() {
                     </div>
                   </li>
                 ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title={`${t("dashboard.matches")}: ${matchesQuery.data?.length ?? 0}`}>
-            {matchesQuery.isLoading ? (
-              <LoadingState />
-            ) : (matchesQuery.data ?? []).length === 0 ? (
-              <EmptyState title={t("athlete.no_matches")} hint={t("athlete.no_matches_hint")} />
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {(matchesQuery.data ?? []).map((m: Match) => {
-                  const opp = m.redAthlete?.id === athleteId ? m.blueAthlete : m.redAthlete;
-                  const won = m.winnerId === athleteId;
-                  return (
-                    <li key={m.id} className="flex justify-between glass rounded-md p-3">
-                      <div>
-                        <Link
-                          to="/athlete/matches/$id"
-                          params={{ id: m.id }}
-                          className="font-medium hover:text-gold"
-                        >
-                          vs {opp?.name ?? "TBD"} {opp?.surname ?? ""}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">
-                          {m.round}-{t("matches.round").toLowerCase()}
-                        </div>
-                      </div>
-                      <span
-                        className={`text-xs ${won ? "text-gold" : m.status === "COMPLETED" ? "text-destructive" : "text-muted-foreground"}`}
-                      >
-                        {m.status === "COMPLETED"
-                          ? won
-                            ? t("matches.win")
-                            : t("matches.loss")
-                          : String(t(`status.${m.status}`, m.status))}
-                      </span>
-                    </li>
-                  );
-                })}
               </ul>
             )}
           </Panel>
