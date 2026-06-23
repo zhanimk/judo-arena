@@ -159,7 +159,7 @@ export async function sendSystemNotification(
   if (input.actorId) {
     await logAudit({
       actorUserId: input.actorId,
-      action: "notification.system",
+      action: "notification.broadcast",
       targetEntity: "NotificationBroadcast",
       targetId: campaignId,
       metadata: {
@@ -217,7 +217,7 @@ export async function listBroadcasts(actorUserId: string, limit = 50) {
   await assertAdmin(actorUserId);
   const logs = await prisma.auditLog.findMany({
     where: {
-      action: "notification.broadcast",
+      action: { in: ["notification.broadcast", "notification.system"] },
       targetEntity: "NotificationBroadcast",
     },
     orderBy: { createdAt: "desc" },
@@ -250,7 +250,7 @@ export async function updateBroadcast(
   await assertAdmin(actorUserId);
   const log = await prisma.auditLog.findFirst({
     where: {
-      action: "notification.broadcast",
+      action: { in: ["notification.broadcast", "notification.system"] },
       targetEntity: "NotificationBroadcast",
       targetId: campaignId,
     },
@@ -300,7 +300,7 @@ export async function deleteBroadcast(actorUserId: string, campaignId: string) {
   await assertAdmin(actorUserId);
   const log = await prisma.auditLog.findFirst({
     where: {
-      action: "notification.broadcast",
+      action: { in: ["notification.broadcast", "notification.system"] },
       targetEntity: "NotificationBroadcast",
       targetId: campaignId,
     },
