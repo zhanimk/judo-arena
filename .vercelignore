@@ -11,6 +11,8 @@ api/tests/
 api/coverage/
 api/dist/
 api/*.ts
+api/*.js
+api/*.mjs
 api/prisma/*.ts
 e2e/
 playwright-report/
