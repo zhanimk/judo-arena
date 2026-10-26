@@ -15,6 +15,7 @@ let connected = 0;
 let connectErrors = 0;
 let reconnects = 0;
 let subscribeErrors = 0;
+const subscribedSockets = new Set();
 
 const sockets = [];
 
@@ -29,7 +30,10 @@ function openSocket(index) {
 
   socket.on("connect", () => {
     connected += 1;
-    socket.emit("subscribe", [ROOM, `bracket:smoke-${index % 8}`]);
+    socket.timeout(5000).emit("subscribe", [ROOM], (error, responseError) => {
+      if (error || responseError) subscribeErrors += 1;
+      else if (socket.connected) subscribedSockets.add(socket);
+    });
   });
   socket.on("connect_error", () => {
     connectErrors += 1;
@@ -42,6 +46,7 @@ function openSocket(index) {
   });
   socket.on("disconnect", () => {
     connected = Math.max(0, connected - 1);
+    subscribedSockets.delete(socket);
   });
 
   sockets[index] = socket;
@@ -60,14 +65,17 @@ const reconnectTimer = setInterval(() => {
 
 await new Promise((resolve) => setTimeout(resolve, DURATION_SEC * 1000));
 clearInterval(reconnectTimer);
+const connectedAtEnd = connected;
+const subscribedAtEnd = subscribedSockets.size;
 for (const socket of sockets) socket.disconnect();
 
 console.log(
   `Socket load test: clients=${CLIENTS}, duration=${DURATION_SEC}s, room=${ROOM}`,
 );
-console.log(`Connected at end: ${connected}`);
+console.log(`Connected at end: ${connectedAtEnd}`);
+console.log(`Subscribed at end: ${subscribedAtEnd}`);
 console.log(`Connect errors: ${connectErrors}`);
 console.log(`Reconnect attempts: ${reconnects}`);
 console.log(`Subscribe errors: ${subscribeErrors}`);
 
-if (connectErrors > CLIENTS * 0.1 || subscribeErrors > 0) process.exit(1);
+if (connectedAtEnd < CLIENTS * 0.9 || subscribedAtEnd < CLIENTS * 0.9 || connectErrors > CLIENTS * 0.1 || subscribeErrors > 0) process.exit(1);

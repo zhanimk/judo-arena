@@ -17,7 +17,11 @@
  *   and the top-2 athletes are placed into their playoff slots.
  */
 
-import { buildRoundRobin } from "./round-robin.js";
+import {
+  computeStandings,
+  type RRMatchResult,
+  buildRoundRobin,
+} from "./round-robin.js";
 import { nextPowerOfTwo } from "./seeding.js";
 
 export type GroupLabel = string; // "A", "B", "C", …
@@ -157,7 +161,18 @@ function splitSeedablesIntoGroups(
  *
  * @param athleteIds  seeded athlete IDs (ordered by seeding)
  */
+function validateAthletes(ids: string[]) {
+  if (
+    ids.length < 2 ||
+    ids.length > 128 ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !id)
+  )
+    throw new Error("Для MIXED нужно от 2 до 128 уникальных участников");
+}
+
 export function buildMixedBracket(athleteIds: string[]): MixedBracketPlan {
+  validateAthletes(athleteIds);
   const k = numGroups(athleteIds.length);
   const groups = splitIntoGroups(athleteIds, k);
   return buildMixedBracketFromGroups(groups);
@@ -167,6 +182,7 @@ export function buildMixedBracketFromAthletes(
   athletes: MixedSeedable[],
   seed: number,
 ): MixedBracketPlan {
+  validateAthletes(athletes.map((a) => a.id));
   const k = numGroups(athletes.length);
   const groups = splitSeedablesIntoGroups(athletes, k, seed);
   return buildMixedBracketFromGroups(groups);
@@ -231,6 +247,8 @@ export interface GroupMatchResult {
   redAthleteId: string;
   blueAthleteId: string;
   winnerId: string | null;
+  redScore?: RRMatchResult["redScore"];
+  blueScore?: RRMatchResult["blueScore"];
 }
 
 export interface GroupStanding {
@@ -238,59 +256,24 @@ export interface GroupStanding {
   wins: number;
   losses: number;
   place: number;
+  tied?: boolean;
 }
 
-/**
- * Compute group standings from completed matches.
- * Returns athletes sorted by place (1 = best).
- */
 export function computeGroupStandings(
   athleteIds: string[],
   results: GroupMatchResult[],
+  decisionOrder?: string[],
 ): GroupStanding[] {
-  const stats = new Map<string, { wins: number; losses: number }>(
-    athleteIds.map((id) => [id, { wins: 0, losses: 0 }]),
+  const zero = { ippon: 0, wazaari: 0, shido: 0 };
+  return computeStandings(
+    athleteIds,
+    results.map((m) => ({
+      ...m,
+      redScore: m.redScore ?? zero,
+      blueScore: m.blueScore ?? zero,
+    })),
+    decisionOrder,
   );
-
-  // Head-to-head results for tiebreaking
-  const h2h = new Map<string, string>(); // "A_vs_B" → winnerId
-
-  for (const r of results) {
-    const red = stats.get(r.redAthleteId);
-    const blue = stats.get(r.blueAthleteId);
-    if (!red || !blue) continue;
-
-    if (r.winnerId === r.redAthleteId) {
-      red.wins++;
-      blue.losses++;
-    } else if (r.winnerId === r.blueAthleteId) {
-      blue.wins++;
-      red.losses++;
-    }
-
-    const key = [r.redAthleteId, r.blueAthleteId].sort().join("|");
-    if (r.winnerId) h2h.set(key, r.winnerId);
-  }
-
-  const list: GroupStanding[] = Array.from(stats.entries()).map(([id, s]) => ({
-    athleteId: id,
-    ...s,
-    place: 0,
-  }));
-
-  list.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    // Head-to-head tiebreaker
-    const key = [a.athleteId, b.athleteId].sort().join("|");
-    const winner = h2h.get(key);
-    if (winner === a.athleteId) return -1;
-    if (winner === b.athleteId) return 1;
-    // Stable fallback
-    return a.athleteId.localeCompare(b.athleteId);
-  });
-
-  list.forEach((s, i) => (s.place = i + 1));
-  return list;
 }
 
 /**

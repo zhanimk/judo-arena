@@ -1,11 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { seedAthletes, nextPowerOfTwo } from "../../src/services/bracket-engine/seeding.js";
+import {
+  seedAthletes,
+  nextPowerOfTwo,
+} from "../../src/services/bracket-engine/seeding.js";
 import {
   buildSingleElimination,
   propagateResult,
   computePlaces,
 } from "../../src/services/bracket-engine/single-elimination.js";
-import { buildRoundRobin, computeStandings } from "../../src/services/bracket-engine/round-robin.js";
+import {
+  buildRoundRobin,
+  computeStandings,
+} from "../../src/services/bracket-engine/round-robin.js";
 import {
   planTatamiAssignments,
   compareMatches,
@@ -56,13 +62,21 @@ describe("seedAthletes", () => {
   });
 
   it("separates club-mates into different quarters", () => {
-    const sameClub = Array.from({ length: 4 }, (_, i) => ({ id: `a${i}`, clubId: "A" }));
-    const otherClub = Array.from({ length: 4 }, (_, i) => ({ id: `b${i}`, clubId: "B" }));
+    const sameClub = Array.from({ length: 4 }, (_, i) => ({
+      id: `a${i}`,
+      clubId: "A",
+    }));
+    const otherClub = Array.from({ length: 4 }, (_, i) => ({
+      id: `b${i}`,
+      clubId: "B",
+    }));
     const slots = seedAthletes([...sameClub, ...otherClub], 8, 100);
 
     for (let q = 0; q < 4; q++) {
       const quarter = slots.slice(q * 2, q * 2 + 2).filter(Boolean);
-      const clubs = new Set(quarter.map((id) => (id!.startsWith("a") ? "A" : "B")));
+      const clubs = new Set(
+        quarter.map((id) => (id!.startsWith("a") ? "A" : "B")),
+      );
       expect(quarter.length <= 1 || clubs.size === quarter.length).toBe(true);
     }
   });
@@ -86,16 +100,33 @@ describe("buildSingleElimination", () => {
     expect(matches).toHaveLength(4);
     expect(matches.filter((m) => m.bracketSection === "main")).toHaveLength(2);
     expect(matches.filter((m) => m.bracketSection === "final")).toHaveLength(1);
-    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(1);
+    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(
+      1,
+    );
   });
 
   it("creates correct match count for bracket of 8 with repechage", () => {
-    const matches = buildSingleElimination(["a", "b", "c", "d", "e", "f", "g", "h"]);
+    const matches = buildSingleElimination([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+    ]);
     expect(matches.filter((m) => m.bracketSection === "main")).toHaveLength(6);
     expect(matches.filter((m) => m.bracketSection === "final")).toHaveLength(1);
-    expect(matches.filter((m) => m.bracketSection === "repechage")).toHaveLength(2);
-    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(1);
-    expect(matches.filter((m) => m.bracketSection === "bronze2")).toHaveLength(1);
+    expect(
+      matches.filter((m) => m.bracketSection === "repechage"),
+    ).toHaveLength(2);
+    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(
+      1,
+    );
+    expect(matches.filter((m) => m.bracketSection === "bronze2")).toHaveLength(
+      1,
+    );
   });
 
   it("fills round 1 with athletes, leaves later rounds empty", () => {
@@ -127,7 +158,7 @@ describe("propagateResult", () => {
   it("routes semifinal loser to bronze (size=8)", () => {
     const props = propagateResult(2, 0, "main", "winner-id", "loser-id", 8);
     const toFinal = props.find((p) => p.section === "final");
-    const toBronze = props.find((p) => p.section === "bronze1");
+    const toBronze = props.find((p) => p.section === "bronze2");
     expect(toFinal!.athleteId).toBe("winner-id");
     expect(toBronze!.athleteId).toBe("loser-id");
   });
@@ -162,12 +193,27 @@ describe("buildRoundRobin", () => {
 describe("computeStandings", () => {
   it("ranks athletes by wins", () => {
     const matches = [
-      { redAthleteId: "a", blueAthleteId: "b", winnerId: "a",
-        redScore: { ippon: 1, wazaari: 0, shido: 0 }, blueScore: { ippon: 0, wazaari: 0, shido: 0 } },
-      { redAthleteId: "a", blueAthleteId: "c", winnerId: "a",
-        redScore: { ippon: 0, wazaari: 1, shido: 0 }, blueScore: { ippon: 0, wazaari: 0, shido: 0 } },
-      { redAthleteId: "b", blueAthleteId: "c", winnerId: "b",
-        redScore: { ippon: 0, wazaari: 1, shido: 0 }, blueScore: { ippon: 0, wazaari: 0, shido: 0 } },
+      {
+        redAthleteId: "a",
+        blueAthleteId: "b",
+        winnerId: "a",
+        redScore: { ippon: 1, wazaari: 0, shido: 0 },
+        blueScore: { ippon: 0, wazaari: 0, shido: 0 },
+      },
+      {
+        redAthleteId: "a",
+        blueAthleteId: "c",
+        winnerId: "a",
+        redScore: { ippon: 0, wazaari: 1, shido: 0 },
+        blueScore: { ippon: 0, wazaari: 0, shido: 0 },
+      },
+      {
+        redAthleteId: "b",
+        blueAthleteId: "c",
+        winnerId: "b",
+        redScore: { ippon: 0, wazaari: 1, shido: 0 },
+        blueScore: { ippon: 0, wazaari: 0, shido: 0 },
+      },
     ];
     const standings = computeStandings(["a", "b", "c"], matches);
     expect(standings[0]!.athleteId).toBe("a");
@@ -178,8 +224,13 @@ describe("computeStandings", () => {
 
   it("applies head-to-head tiebreaker", () => {
     const matches = [
-      { redAthleteId: "a", blueAthleteId: "b", winnerId: "b",
-        redScore: { ippon: 0, wazaari: 0, shido: 0 }, blueScore: { ippon: 1, wazaari: 0, shido: 0 } },
+      {
+        redAthleteId: "a",
+        blueAthleteId: "b",
+        winnerId: "b",
+        redScore: { ippon: 0, wazaari: 0, shido: 0 },
+        blueScore: { ippon: 1, wazaari: 0, shido: 0 },
+      },
     ];
     const s = computeStandings(["a", "b"], matches);
     expect(s[0]!.athleteId).toBe("b");
@@ -191,49 +242,86 @@ describe("computeStandings", () => {
 
 describe("planTatamiAssignments", () => {
   it("keeps every category on one tatami and balances load", () => {
-    const plan = planTatamiAssignments([
-      {
-        bracketId: "b1", categoryId: "u12-34", gender: "FEMALE",
-        ageMin: 10, ageMax: 11, weightMin: 30, weightMax: 34,
-        matches: [
-          { id: "m1", bracketSection: "main", round: 1, position: 0 },
-          { id: "m2", bracketSection: "final", round: 2, position: 0 },
-        ],
-      },
-      {
-        bracketId: "b2", categoryId: "u12-38", gender: "MALE",
-        ageMin: 10, ageMax: 11, weightMin: 34, weightMax: 38,
-        matches: [
-          { id: "m3", bracketSection: "main", round: 1, position: 0 },
-          { id: "m4", bracketSection: "main", round: 1, position: 1 },
-        ],
-      },
-    ], 2);
+    const plan = planTatamiAssignments(
+      [
+        {
+          bracketId: "b1",
+          categoryId: "u12-34",
+          gender: "FEMALE",
+          ageMin: 10,
+          ageMax: 11,
+          weightMin: 30,
+          weightMax: 34,
+          matches: [
+            { id: "m1", bracketSection: "main", round: 1, position: 0 },
+            { id: "m2", bracketSection: "final", round: 2, position: 0 },
+          ],
+        },
+        {
+          bracketId: "b2",
+          categoryId: "u12-38",
+          gender: "MALE",
+          ageMin: 10,
+          ageMax: 11,
+          weightMin: 34,
+          weightMax: 38,
+          matches: [
+            { id: "m3", bracketSection: "main", round: 1, position: 0 },
+            { id: "m4", bracketSection: "main", round: 1, position: 1 },
+          ],
+        },
+      ],
+      2,
+    );
 
-    const b1Tatamis = new Set(plan.assignments.filter((a) => ["m1", "m2"].includes(a.matchId)).map((a) => a.tatamiNumber));
-    const b2Tatamis = new Set(plan.assignments.filter((a) => ["m3", "m4"].includes(a.matchId)).map((a) => a.tatamiNumber));
+    const b1Tatamis = new Set(
+      plan.assignments
+        .filter((a) => ["m1", "m2"].includes(a.matchId))
+        .map((a) => a.tatamiNumber),
+    );
+    const b2Tatamis = new Set(
+      plan.assignments
+        .filter((a) => ["m3", "m4"].includes(a.matchId))
+        .map((a) => a.tatamiNumber),
+    );
     expect(b1Tatamis.size).toBe(1);
     expect(b2Tatamis.size).toBe(1);
     expect(plan.loads.map((l) => l.matches).sort()).toEqual([2, 2]);
   });
 
   it("orders matches as: main → repechage → bronze → final", () => {
-    const plan = planTatamiAssignments([
-      {
-        bracketId: "b1", categoryId: "u14-50", gender: "MALE",
-        ageMin: 12, ageMax: 13, weightMin: 46, weightMax: 50,
-        matches: [
-          { id: "final",  bracketSection: "final",     round: 3, position: 0 },
-          { id: "bronze", bracketSection: "bronze1",   round: 3, position: 0 },
-          { id: "rep",    bracketSection: "repechage", round: 2, position: 0 },
-          { id: "main2",  bracketSection: "main",      round: 2, position: 0 },
-          { id: "main1",  bracketSection: "main",      round: 1, position: 0 },
-        ],
-      },
-    ], 1);
+    const plan = planTatamiAssignments(
+      [
+        {
+          bracketId: "b1",
+          categoryId: "u14-50",
+          gender: "MALE",
+          ageMin: 12,
+          ageMax: 13,
+          weightMin: 46,
+          weightMax: 50,
+          matches: [
+            { id: "final", bracketSection: "final", round: 3, position: 0 },
+            { id: "bronze", bracketSection: "bronze1", round: 3, position: 0 },
+            { id: "rep", bracketSection: "repechage", round: 2, position: 0 },
+            { id: "main2", bracketSection: "main", round: 2, position: 0 },
+            { id: "main1", bracketSection: "main", round: 1, position: 0 },
+          ],
+        },
+      ],
+      1,
+    );
 
-    expect(plan.assignments.map((a) => a.matchId)).toEqual(["main1", "main2", "rep", "bronze", "final"]);
-    expect(plan.assignments.map((a) => a.queuePosition)).toEqual([1, 2, 3, 4, 5]);
+    expect(plan.assignments.map((a) => a.matchId)).toEqual([
+      "main1",
+      "main2",
+      "rep",
+      "bronze",
+      "final",
+    ]);
+    expect(plan.assignments.map((a) => a.queuePosition)).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
   });
 });
 
@@ -256,9 +344,15 @@ describe("buildSingleElimination — edge cases", () => {
   it("size=16: has repechage and two bronze matches", () => {
     const slots = Array.from({ length: 16 }, (_, i) => `a${i}`);
     const matches = buildSingleElimination(slots);
-    expect(matches.filter((m) => m.bracketSection === "repechage")).toHaveLength(2);
-    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(1);
-    expect(matches.filter((m) => m.bracketSection === "bronze2")).toHaveLength(1);
+    expect(
+      matches.filter((m) => m.bracketSection === "repechage"),
+    ).toHaveLength(2);
+    expect(matches.filter((m) => m.bracketSection === "bronze1")).toHaveLength(
+      1,
+    );
+    expect(matches.filter((m) => m.bracketSection === "bronze2")).toHaveLength(
+      1,
+    );
   });
 
   it("size=4: position 1 red slot in round 1 goes to final as blue", () => {
@@ -308,10 +402,10 @@ describe("buildSingleElimination — edge cases", () => {
     expect(repPos3!.slot).toBe("blue");
   });
 
-  it("size=8: semifinal loser position 1 goes to bronze2", () => {
+  it("size=8: semifinal loser position 1 crosses to bronze1", () => {
     // semisRound = totalRounds - 1 = 2
     const props = propagateResult(2, 1, "main", "W", "L", 8);
-    const toBronze = props.find((p) => p.section === "bronze2");
+    const toBronze = props.find((p) => p.section === "bronze1");
     expect(toBronze!.athleteId).toBe("L");
     expect(toBronze!.slot).toBe("blue");
   });
@@ -346,11 +440,15 @@ describe("buildSingleElimination — edge cases", () => {
 
   it("bye slots (null athletes) produce matches with null athlete IDs", () => {
     // 3 athletes → bracket of 4 → one bye
-    const slots = seedAthletes([
-      { id: "a1", clubId: "c1" },
-      { id: "a2", clubId: "c2" },
-      { id: "a3", clubId: "c3" },
-    ], 4, 1);
+    const slots = seedAthletes(
+      [
+        { id: "a1", clubId: "c1" },
+        { id: "a2", clubId: "c2" },
+        { id: "a3", clubId: "c3" },
+      ],
+      4,
+      1,
+    );
     expect(slots).toHaveLength(4);
     const nullCount = slots.filter((s) => s === null).length;
     expect(nullCount).toBe(1);
@@ -419,15 +517,20 @@ describe("computePlaces — SE bracket place calculation", () => {
 
 describe("computePlaces", () => {
   it("assigns places 1 and 2 from final", () => {
-    const places = computePlaces({ finalWinnerId: "gold", finalLoserId: "silver" });
+    const places = computePlaces({
+      finalWinnerId: "gold",
+      finalLoserId: "silver",
+    });
     expect(places["gold"]).toBe(1);
     expect(places["silver"]).toBe(2);
   });
 
   it("assigns place 3 to both bronze winners", () => {
     const places = computePlaces({
-      finalWinnerId: "g", finalLoserId: "s",
-      bronze1WinnerId: "b1", bronze2WinnerId: "b2",
+      finalWinnerId: "g",
+      finalLoserId: "s",
+      bronze1WinnerId: "b1",
+      bronze2WinnerId: "b2",
     });
     expect(places["b1"]).toBe(3);
     expect(places["b2"]).toBe(3);
@@ -435,7 +538,8 @@ describe("computePlaces", () => {
 
   it("assigns place 5 to repechage losers", () => {
     const places = computePlaces({
-      rep1LoserId: "r1", rep2LoserId: "r2",
+      rep1LoserId: "r1",
+      rep2LoserId: "r2",
     });
     expect(places["r1"]).toBe(5);
     expect(places["r2"]).toBe(5);
@@ -452,7 +556,9 @@ describe("computeStandings — tie-breakers", () => {
   it("handles draws (winnerId=null): increments draws for both", () => {
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "b", winnerId: null,
+        redAthleteId: "a",
+        blueAthleteId: "b",
+        winnerId: null,
         redScore: { ippon: 0, wazaari: 0, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
@@ -466,12 +572,16 @@ describe("computeStandings — tie-breakers", () => {
     // a and b both have 1 win but b has more ippons
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "c", winnerId: "a",
+        redAthleteId: "a",
+        blueAthleteId: "c",
+        winnerId: "a",
         redScore: { ippon: 0, wazaari: 1, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
       {
-        redAthleteId: "b", blueAthleteId: "c", winnerId: "b",
+        redAthleteId: "b",
+        blueAthleteId: "c",
+        winnerId: "b",
         redScore: { ippon: 1, wazaari: 0, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
@@ -488,12 +598,16 @@ describe("computeStandings — tie-breakers", () => {
   it("waza-ari tiebreaker when wins and ippons are equal", () => {
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "c", winnerId: "a",
+        redAthleteId: "a",
+        blueAthleteId: "c",
+        winnerId: "a",
         redScore: { ippon: 0, wazaari: 2, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
       {
-        redAthleteId: "b", blueAthleteId: "c", winnerId: "b",
+        redAthleteId: "b",
+        blueAthleteId: "c",
+        winnerId: "b",
         redScore: { ippon: 0, wazaari: 1, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
@@ -506,12 +620,16 @@ describe("computeStandings — tie-breakers", () => {
   it("net points tiebreaker when wins/ippons/wazaari all equal", () => {
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "c", winnerId: "a",
+        redAthleteId: "a",
+        blueAthleteId: "c",
+        winnerId: "a",
         redScore: { ippon: 0, wazaari: 0, shido: 0, yuko: 2 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0, yuko: 0 },
       },
       {
-        redAthleteId: "b", blueAthleteId: "c", winnerId: "b",
+        redAthleteId: "b",
+        blueAthleteId: "c",
+        winnerId: "b",
         redScore: { ippon: 0, wazaari: 0, shido: 0, yuko: 1 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0, yuko: 0 },
       },
@@ -524,7 +642,9 @@ describe("computeStandings — tie-breakers", () => {
   it("shido reduces net points", () => {
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "b", winnerId: "a",
+        redAthleteId: "a",
+        blueAthleteId: "b",
+        winnerId: "a",
         redScore: { ippon: 0, wazaari: 0, shido: 3 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
@@ -537,7 +657,9 @@ describe("computeStandings — tie-breakers", () => {
   it("ignores matches where athlete id is not in the stats map", () => {
     const matches = [
       {
-        redAthleteId: "unknown", blueAthleteId: "a", winnerId: "a",
+        redAthleteId: "unknown",
+        blueAthleteId: "a",
+        winnerId: "a",
         redScore: { ippon: 0, wazaari: 0, shido: 0 },
         blueScore: { ippon: 1, wazaari: 0, shido: 0 },
       },
@@ -562,30 +684,35 @@ describe("computeStandings — tie-breakers", () => {
     expect(matches[0]!.blueAthleteId).toBe("y");
   });
 
-  it("h2h tiebreaker: all three players have equal wins (circular) — both h2h branches exercised", () => {
+  it("a circular head-to-head tie shares a place until an explicit decision", () => {
     // Circular wins: a > c, b > a, c > b → all 1 win, all equal ippons
-    // Comparator will be called in both directions, exercising both return -1 and return 1
+    // Pairwise comparison cannot rank a cycle.
     const matches = [
       {
-        redAthleteId: "a", blueAthleteId: "c", winnerId: "a",
+        redAthleteId: "a",
+        blueAthleteId: "c",
+        winnerId: "a",
         redScore: { ippon: 1, wazaari: 0, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
       {
-        redAthleteId: "b", blueAthleteId: "a", winnerId: "b",
+        redAthleteId: "b",
+        blueAthleteId: "a",
+        winnerId: "b",
         redScore: { ippon: 1, wazaari: 0, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
       {
-        redAthleteId: "c", blueAthleteId: "b", winnerId: "c",
+        redAthleteId: "c",
+        blueAthleteId: "b",
+        winnerId: "c",
         redScore: { ippon: 1, wazaari: 0, shido: 0 },
         blueScore: { ippon: 0, wazaari: 0, shido: 0 },
       },
     ];
     const s = computeStandings(["a", "b", "c"], matches);
-    // Non-transitive tiebreaker → result order is deterministic via localeCompare fallback
     expect(s).toHaveLength(3);
-    expect(new Set(s.map((r) => r.place)).size).toBeGreaterThan(0);
+    expect(s.every((r) => r.place === 1 && r.tied)).toBe(true);
   });
 });
 
@@ -600,7 +727,18 @@ describe("planTatamiAssignments — edge cases", () => {
 
   it("skips categories with no matches", () => {
     const plan = planTatamiAssignments(
-      [{ bracketId: "b1", categoryId: "c1", gender: "MALE", ageMin: 10, ageMax: 12, weightMin: 30, weightMax: 40, matches: [] }],
+      [
+        {
+          bracketId: "b1",
+          categoryId: "c1",
+          gender: "MALE",
+          ageMin: 10,
+          ageMax: 12,
+          weightMin: 30,
+          weightMax: 40,
+          matches: [],
+        },
+      ],
       1,
     );
     expect(plan.categories).toHaveLength(0);
@@ -609,38 +747,125 @@ describe("planTatamiAssignments — edge cases", () => {
 
   it("null bracketSection sorts after all known sections", () => {
     const nullMatch = { id: "n", bracketSection: null, round: 1, position: 0 };
-    const mainMatch = { id: "m", bracketSection: "main", round: 1, position: 0 };
+    const mainMatch = {
+      id: "m",
+      bracketSection: "main",
+      round: 1,
+      position: 0,
+    };
     expect(compareMatches(nullMatch, mainMatch)).toBeGreaterThan(0);
     expect(compareMatches(mainMatch, nullMatch)).toBeLessThan(0);
   });
 
   it("unknown bracketSection falls back to order 9 (sorts last)", () => {
-    const unknownMatch = { id: "u", bracketSection: "unknown_section", round: 1, position: 0 };
-    const finalMatch = { id: "f", bracketSection: "final", round: 1, position: 0 };
+    const unknownMatch = {
+      id: "u",
+      bracketSection: "unknown_section",
+      round: 1,
+      position: 0,
+    };
+    const finalMatch = {
+      id: "f",
+      bracketSection: "final",
+      round: 1,
+      position: 0,
+    };
     expect(compareMatches(unknownMatch, finalMatch)).toBeGreaterThan(0);
   });
 
   it("compareCategories sorts by ageMin first", () => {
-    const young = { bracketId: "b1", categoryId: "c1", gender: "MALE" as const, ageMin: 8,  ageMax: 11, weightMin: 30, weightMax: 40, matches: [] };
-    const older = { bracketId: "b2", categoryId: "c2", gender: "MALE" as const, ageMin: 10, ageMax: 11, weightMin: 30, weightMax: 40, matches: [] };
+    const young = {
+      bracketId: "b1",
+      categoryId: "c1",
+      gender: "MALE" as const,
+      ageMin: 8,
+      ageMax: 11,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
+    const older = {
+      bracketId: "b2",
+      categoryId: "c2",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 11,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
     expect(compareCategories(young, older)).toBeLessThan(0);
   });
 
   it("compareCategories sorts by ageMax when ageMin is equal", () => {
-    const younger = { bracketId: "b1", categoryId: "c1", gender: "MALE" as const, ageMin: 10, ageMax: 11, weightMin: 30, weightMax: 40, matches: [] };
-    const older   = { bracketId: "b2", categoryId: "c2", gender: "MALE" as const, ageMin: 10, ageMax: 13, weightMin: 30, weightMax: 40, matches: [] };
+    const younger = {
+      bracketId: "b1",
+      categoryId: "c1",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 11,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
+    const older = {
+      bracketId: "b2",
+      categoryId: "c2",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 13,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
     expect(compareCategories(younger, older)).toBeLessThan(0);
   });
 
   it("compareCategories sorts by weightMin when age and gender equal", () => {
-    const lighter = { bracketId: "b1", categoryId: "c1", gender: "MALE" as const, ageMin: 10, ageMax: 12, weightMin: 30, weightMax: 40, matches: [] };
-    const heavier = { bracketId: "b2", categoryId: "c2", gender: "MALE" as const, ageMin: 10, ageMax: 12, weightMin: 40, weightMax: 60, matches: [] };
+    const lighter = {
+      bracketId: "b1",
+      categoryId: "c1",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 12,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
+    const heavier = {
+      bracketId: "b2",
+      categoryId: "c2",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 12,
+      weightMin: 40,
+      weightMax: 60,
+      matches: [],
+    };
     expect(compareCategories(lighter, heavier)).toBeLessThan(0);
   });
 
   it("compareCategories sorts MALE before FEMALE when age is equal", () => {
-    const male   = { bracketId: "b1", categoryId: "c1", gender: "MALE" as const,   ageMin: 10, ageMax: 12, weightMin: 30, weightMax: 40, matches: [] };
-    const female = { bracketId: "b2", categoryId: "c2", gender: "FEMALE" as const, ageMin: 10, ageMax: 12, weightMin: 30, weightMax: 40, matches: [] };
+    const male = {
+      bracketId: "b1",
+      categoryId: "c1",
+      gender: "MALE" as const,
+      ageMin: 10,
+      ageMax: 12,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
+    const female = {
+      bracketId: "b2",
+      categoryId: "c2",
+      gender: "FEMALE" as const,
+      ageMin: 10,
+      ageMax: 12,
+      weightMin: 30,
+      weightMax: 40,
+      matches: [],
+    };
     expect(compareCategories(male, female)).toBeLessThan(0);
   });
 });

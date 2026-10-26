@@ -52,6 +52,18 @@ enum TournamentStatus {
   CANCELLED
 }
 
+enum TournamentAudience {
+  CHILD
+  ADULT
+  MIXED
+}
+
+enum ApplicationSource {
+  CLUB
+  SELF
+  ADMIN
+}
+
 enum BracketFormat {
   SE_IJF // Single Elimination с IJF Repechage
   ROUND_ROBIN // Круговая
@@ -155,6 +167,7 @@ model User {
   // Связи
   createdClubs          Club[]                 @relation("ClubCreator")
   createdTournaments    Tournament[]           @relation("TournamentCreator")
+  individualApplications Application[] @relation("ApplicationApplicant")
   applicationEntries    ApplicationEntry[]
   weighedEntries        ApplicationEntry[]     @relation("WeighInReviewer")
   clubJoinRequests      ClubJoinRequest[]
@@ -269,6 +282,9 @@ model Tournament {
   weighInStart        DateTime?
   weighInEnd          DateTime?
   status              TournamentStatus @default(DRAFT)
+  audience            TournamentAudience @default(CHILD)
+  clubRegistrationEnabled Boolean @default(true)
+  selfRegistrationEnabled Boolean @default(false)
   tatamiCount         Int              @default(1)
   primaryLocale       Locale           @default(kk)
   posterUrl           String?
@@ -311,6 +327,8 @@ model Category {
   gender           Gender
   ageMin           Int
   ageMax           Int
+  birthYearMin     Int?
+  birthYearMax     Int?
   weightMin        Float
   weightMax        Float
   matchDurationSec Int           @default(240) // 4 минуты по умолчанию
@@ -337,8 +355,11 @@ model Application {
   id               String            @id @default(cuid())
   tournamentId     String
   tournament       Tournament        @relation(fields: [tournamentId], references: [id])
-  clubId           String
-  club             Club              @relation(fields: [clubId], references: [id])
+  clubId           String?
+  club             Club?             @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  applicantId      String?
+  applicant        User?             @relation("ApplicationApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
+  source           ApplicationSource @default(CLUB)
   status           ApplicationStatus @default(DRAFT)
   notes            String?
   submittedAt      DateTime?
@@ -357,6 +378,7 @@ model Application {
   updatedAt DateTime @updatedAt
 
   @@unique([tournamentId, clubId])
+  @@unique([tournamentId, applicantId])
   @@index([status])
   @@index([paymentStatus])
   @@index([paymentReference])
@@ -383,6 +405,7 @@ model ApplicationEntry {
   updatedAt DateTime @updatedAt
 
   @@unique([applicationId, athleteId, categoryId])
+  @@unique([athleteId, categoryId])
   @@index([categoryId])
   @@index([weighInStatus])
   @@index([weighedById])
@@ -460,6 +483,7 @@ model Match {
   @@index([tatamiNumber, queuePosition])
   @@index([tournamentId, status])
   @@index([tournamentId, tatamiNumber, queuePosition])
+  @@index([tournamentId, tatamiNumber, status])
   @@index([redAthleteId])
   @@index([blueAthleteId])
   @@index([winnerId])

@@ -10,6 +10,7 @@ import { logAudit } from "./audit.service.js";
 import {
   ApplicationError,
   assertCanManageApplication,
+  assertRegistrationMethodOpen,
   assertApplicationDeadlineOpen,
   localizeName,
 } from "./application-shared.js";
@@ -55,19 +56,34 @@ export async function initiateKaspiPayment(
       },
     },
   });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
   if (app.status !== "DRAFT") {
-    throw new ApplicationError("INVALID_STATUS", "Оплатить можно только черновик заявки", 409);
+    throw new ApplicationError(
+      "INVALID_STATUS",
+      "Оплатить можно только черновик заявки",
+      409,
+    );
   }
   if (app._count.entries === 0) {
-    throw new ApplicationError("EMPTY_APPLICATION", "Сначала добавьте спортсменов в заявку", 409);
+    throw new ApplicationError(
+      "EMPTY_APPLICATION",
+      "Сначала добавьте спортсменов в заявку",
+      409,
+    );
   }
   assertApplicationDeadlineOpen(
     app.tournament.applicationDeadline ?? app.tournament.startDate,
   );
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
+  await assertRegistrationMethodOpen(actorUserId, app);
 
-  const paymentAmountKzt = Math.max(0, app.tournament.entryFeeKzt) * app._count.entries;
+  const paymentAmountKzt =
+    Math.max(0, app.tournament.entryFeeKzt) * app._count.entries;
   if (paymentAmountKzt <= 0) {
     return prisma.application.update({
       where: { id: applicationId },
@@ -82,22 +98,30 @@ export async function initiateKaspiPayment(
     });
   }
   if (!app.tournament.kaspiPaymentUrl) {
-    throw new ApplicationError("KASPI_URL_REQUIRED", "Админ не указал Kaspi ссылку для этого турнира", 409);
+    throw new ApplicationError(
+      "KASPI_URL_REQUIRED",
+      "Админ не указал Kaspi ссылку для этого турнира",
+      409,
+    );
   }
 
-  const paymentReference = app.paymentReference ?? buildPaymentReference(app.id);
+  const paymentReference =
+    app.paymentReference ?? buildPaymentReference(app.id);
   const paymentUrl = buildKaspiPaymentUrl(app.tournament.kaspiPaymentUrl, {
     amountKzt: paymentAmountKzt,
     reference: paymentReference,
     comment: `Judo-Arena ${localizeName(app.tournament.name)} ${app._count.entries} athletes`,
   });
   const hasEnoughConfirmedPayment =
-    app.paymentStatus === PaymentStatus.PAID && app.paymentAmountKzt >= paymentAmountKzt;
+    app.paymentStatus === PaymentStatus.PAID &&
+    app.paymentAmountKzt >= paymentAmountKzt;
 
   const updated = await prisma.application.update({
     where: { id: applicationId },
     data: {
-      paymentStatus: hasEnoughConfirmedPayment ? PaymentStatus.PAID : PaymentStatus.PENDING,
+      paymentStatus: hasEnoughConfirmedPayment
+        ? PaymentStatus.PAID
+        : PaymentStatus.PENDING,
       paymentAmountKzt,
       paymentProvider: "KASPI",
       paymentReference,
@@ -110,7 +134,11 @@ export async function initiateKaspiPayment(
     action: "application.paymentKaspiStart",
     targetEntity: "Application",
     targetId: applicationId,
-    after: { paymentStatus: updated.paymentStatus, paymentAmountKzt, paymentReference },
+    after: {
+      paymentStatus: updated.paymentStatus,
+      paymentAmountKzt,
+      paymentReference,
+    },
   });
   return updated;
 }
@@ -122,12 +150,27 @@ export async function markPaymentPaid(
 ) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new ApplicationError("FORBIDDEN", "Только админ может подтверждать оплату", 403);
+    throw new ApplicationError(
+      "FORBIDDEN",
+      "Только админ может подтверждать оплату",
+      403,
+    );
   }
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
   if (app.paymentAmountKzt <= 0) {
-    throw new ApplicationError("PAYMENT_NOT_REQUIRED", "Для этой заявки оплата не требуется", 409);
+    throw new ApplicationError(
+      "PAYMENT_NOT_REQUIRED",
+      "Для этой заявки оплата не требуется",
+      409,
+    );
   }
   const updated = await prisma.application.update({
     where: { id: applicationId },
@@ -156,9 +199,18 @@ export async function confirmKaspiPayment(reference: string) {
   const app = await prisma.application.findFirst({
     where: { paymentReference: reference },
   });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка по платежу не найдена", 404);
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка по платежу не найдена",
+      404,
+    );
   if (app.paymentAmountKzt <= 0) {
-    throw new ApplicationError("PAYMENT_NOT_REQUIRED", "Для этой заявки оплата не требуется", 409);
+    throw new ApplicationError(
+      "PAYMENT_NOT_REQUIRED",
+      "Для этой заявки оплата не требуется",
+      409,
+    );
   }
   // Идемпотентность: если уже оплачена — возвращаем без повторного обновления
   if (app.paymentStatus === PaymentStatus.PAID) return app;

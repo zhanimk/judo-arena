@@ -24,7 +24,17 @@ export function Input({ label, value, onChange, className = "", ...rest }: any) 
   );
 }
 
-export function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[][] }) {
+export function Select({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[][];
+}) {
   return (
     <div>
       <label className="text-xs uppercase tracking-widest text-muted-foreground">{label}</label>
@@ -33,20 +43,33 @@ export function Select({ label, value, onChange, options }: { label: string; val
         onChange={(e) => onChange(e.target.value)}
         className="mt-1.5 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:border-gold focus:outline-none"
       >
-        {options.map(([v, labelText]) => <option key={v} value={v}>{labelText}</option>)}
+        {options.map(([v, labelText]) => (
+          <option key={v} value={v}>
+            {labelText}
+          </option>
+        ))}
       </select>
     </div>
   );
 }
 
-export function ApplicationMetric({ label, value, tone }: { label: string; value: string | number; tone?: "gold" | "green" | "red" }) {
-  const toneClass = tone === "gold"
-    ? "text-gold"
-    : tone === "green"
-      ? "text-emerald-300"
-      : tone === "red"
-        ? "text-destructive"
-        : "text-foreground";
+export function ApplicationMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  tone?: "gold" | "green" | "red";
+}) {
+  const toneClass =
+    tone === "gold"
+      ? "text-gold"
+      : tone === "green"
+        ? "text-emerald-300"
+        : tone === "red"
+          ? "text-destructive"
+          : "text-foreground";
 
   return (
     <div className="rounded-md border border-border/60 bg-background/30 p-3">
@@ -59,9 +82,17 @@ export function ApplicationMetric({ label, value, tone }: { label: string; value
 export function EntryCheckBadge({ issues }: { issues: string[] }) {
   const { t } = useTranslation();
   if (issues.length === 0) {
-    return <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">OK</span>;
+    return (
+      <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
+        OK
+      </span>
+    );
   }
-  return <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{issues.length} {t("tournament.issues")}</span>;
+  return (
+    <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">
+      {issues.length} {t("tournament.issues")}
+    </span>
+  );
 }
 
 export function StatusBadge({ status }: { status: string }) {
@@ -111,16 +142,19 @@ export function FormatBadge({ format }: { format: string }) {
     ROUND_ROBIN: "Round-robin",
     MIXED: "Mixed",
   };
-  return <span className="shrink-0 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{m[format] ?? format}</span>;
+  return (
+    <span className="shrink-0 rounded-full bg-gold/10 px-2 py-0.5 text-[10px] text-gold">
+      {m[format] ?? format}
+    </span>
+  );
 }
 
 export function categoryTitle(c: any, t?: any): string {
   if (!c) return t ? t("common.category") : "Category";
   const custom = localizeName(c.name);
   if (custom) return custom;
-  const gender = c.gender === "MALE"
-    ? (t ? t("common.male") : "M")
-    : (t ? t("tatami.female_short") : "F");
+  const gender =
+    c.gender === "MALE" ? (t ? t("common.male") : "M") : t ? t("tatami.female_short") : "F";
   const weightPart = weightLabel(c, t);
   return `${gender} ${c.ageMin}-${c.ageMax} ${t ? t("common.years_short") : "yrs"} ${weightPart}`;
 }
@@ -135,11 +169,15 @@ export function validateApplicationEntry(entry: any, t?: any): string[] {
     issues.push(t ? t("validate.gender_mismatch") : "gender mismatch");
   }
 
-  const age = athleteAge(athlete);
-  if (age === null) {
-    issues.push(t ? t("validate.no_age") : "no age");
-  } else if (age < Number(category.ageMin) || age > Number(category.ageMax)) {
-    issues.push(t ? `${t("validate.age")} ${age}, ${t("validate.need")} ${category.ageMin}-${category.ageMax}` : `age ${age}, need ${category.ageMin}-${category.ageMax}`);
+  const birthYear = athlete.dateOfBirth ? new Date(athlete.dateOfBirth).getUTCFullYear() : NaN;
+  if (!Number.isFinite(birthYear)) {
+    issues.push(t ? t("validate.no_age") : "no birth date");
+  } else if (
+    category.birthYearMin != null &&
+    category.birthYearMax != null &&
+    (birthYear < category.birthYearMin || birthYear > category.birthYearMax)
+  ) {
+    issues.push(`${birthYear}: ${category.birthYearMin}–${category.birthYearMax}`);
   }
 
   const weight = Number(athlete.weightKg);
@@ -153,9 +191,11 @@ export function validateApplicationEntry(entry: any, t?: any): string[] {
     const rangeLabel = isOpenCategory
       ? `>${wMin} ${t ? t("common.kg") : "kg"}`
       : `(${wMin}, ${wMax}] ${t ? t("common.kg") : "kg"}`;
-    issues.push(t
-      ? `${t("validate.weight")} ${weight} ${t("common.kg")}, ${t("validate.need")} ${rangeLabel}`
-      : `weight ${weight} kg, need ${rangeLabel}`);
+    issues.push(
+      t
+        ? `${t("validate.weight")} ${weight} ${t("common.kg")}, ${t("validate.need")} ${rangeLabel}`
+        : `weight ${weight} kg, need ${rangeLabel}`,
+    );
   }
 
   return issues;
@@ -167,7 +207,9 @@ export function athleteAge(athlete: any): number | null {
   if (Number.isNaN(dob.getTime())) return null;
   const now = new Date();
   let age = now.getFullYear() - dob.getFullYear();
-  const birthdayPassed = now.getMonth() > dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() >= dob.getDate());
+  const birthdayPassed =
+    now.getMonth() > dob.getMonth() ||
+    (now.getMonth() === dob.getMonth() && now.getDate() >= dob.getDate());
   if (!birthdayPassed) age -= 1;
   return age;
 }
@@ -214,11 +256,25 @@ export function formatWeighIn(tourney: any, t?: any): string {
   return `${place} · ${time}`;
 }
 
-export function localizeName(n: any): string { if (!n) return ""; if (typeof n === "string") return n; return n.kk || n.ru || n.en || ""; }
+export function localizeName(n: any): string {
+  if (!n) return "";
+  if (typeof n === "string") return n;
+  return n.kk || n.ru || n.en || "";
+}
 
-export function DurationEstimate({ categories, matches, tatamiCount }: { categories: any[]; matches: any[]; tatamiCount: number }) {
+export function DurationEstimate({
+  categories,
+  matches,
+  tatamiCount,
+}: {
+  categories: any[];
+  matches: any[];
+  tatamiCount: number;
+}) {
   const { t } = useTranslation();
-  const playable = matches.filter((m: any) => m.redAthlete && m.blueAthlete && m.status !== "CANCELLED");
+  const playable = matches.filter(
+    (m: any) => m.redAthlete && m.blueAthlete && m.status !== "CANCELLED",
+  );
   if (playable.length === 0) return null;
 
   const catDurations = new Map<string, number>();
@@ -243,7 +299,10 @@ export function DurationEstimate({ categories, matches, tatamiCount }: { categor
   const estimatedMinutes = Math.ceil(totalMatchMinutes / tatamiCount);
   const hours = Math.floor(estimatedMinutes / 60);
   const mins = estimatedMinutes % 60;
-  const durationStr = hours > 0 ? `~${hours} ${t("tournament.hours_short")} ${mins} ${t("tournament.min_short")}` : `~${mins} ${t("tournament.min_short")}`;
+  const durationStr =
+    hours > 0
+      ? `~${hours} ${t("tournament.hours_short")} ${mins} ${t("tournament.min_short")}`
+      : `~${mins} ${t("tournament.min_short")}`;
 
   return (
     <div className="mt-4 rounded-md border border-gold/30 bg-gold/5 p-4">

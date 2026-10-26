@@ -4,11 +4,13 @@
  * Содержит: addEntry, removeEntry, adminForceRemoveEntry, adminForceMoveEntry
  */
 
+import { isAdult } from "./category-age.js";
 import { prisma } from "../lib/prisma.js";
 import { ApplicationStatus, UserRole } from "@prisma/client";
 import {
   ApplicationError,
   assertCanManageApplication,
+  assertRegistrationMethodOpen,
   assertApplicationDeadlineOpen,
   validateAthleteFitsCategory,
 } from "./application-shared.js";
@@ -26,14 +28,23 @@ export async function addEntry(
     },
   });
   if (!app)
-    throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
   if (app.status !== ApplicationStatus.DRAFT) {
-    throw new ApplicationError("LOCKED", "Изменять можно только заявку в статусе DRAFT", 409);
+    throw new ApplicationError(
+      "LOCKED",
+      "Изменять можно только заявку в статусе DRAFT",
+      409,
+    );
   }
   assertApplicationDeadlineOpen(
     app.tournament.applicationDeadline ?? app.tournament.startDate,
   );
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
+  await assertRegistrationMethodOpen(actorUserId, app);
 
   const [athlete, category] = await Promise.all([
     prisma.user.findUnique({ where: { id: athleteId } }),
@@ -43,14 +54,24 @@ export async function addEntry(
   if (!athlete || athlete.role !== UserRole.ATHLETE) {
     throw new ApplicationError("ATHLETE_NOT_FOUND", "Спортсмен не найден", 404);
   }
-  if (athlete.clubId !== app.clubId) {
-    throw new ApplicationError("WRONG_CLUB", "Спортсмен не из вашего клуба", 409);
+  if (
+    app.clubId ? athlete.clubId !== app.clubId : athlete.id !== app.applicantId
+  ) {
+    throw new ApplicationError(
+      "WRONG_CLUB",
+      "Спортсмен не из вашего клуба",
+      409,
+    );
   }
   if (!category || category.tournamentId !== app.tournamentId) {
-    throw new ApplicationError("CATEGORY_MISMATCH", "Категория не из этого турнира", 409);
+    throw new ApplicationError(
+      "CATEGORY_MISMATCH",
+      "Категория не из этого турнира",
+      409,
+    );
   }
 
-  validateAthleteFitsCategory(athlete, category);
+  await validateAthleteFitsCategory(athlete, category);
 
   const duplicate = await prisma.applicationEntry.findFirst({
     where: {
@@ -60,7 +81,11 @@ export async function addEntry(
     },
   });
   if (duplicate) {
-    throw new ApplicationError("DUPLICATE_ENTRY", "Этот спортсмен уже заявлен в эту категорию", 409);
+    throw new ApplicationError(
+      "DUPLICATE_ENTRY",
+      "Этот спортсмен уже заявлен в эту категорию",
+      409,
+    );
   }
 
   return prisma.applicationEntry.create({
@@ -74,43 +99,78 @@ export async function removeEntry(
   applicationId: string,
   entryId: string,
 ) {
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
 
-  const entry = await prisma.applicationEntry.findUnique({ where: { id: entryId } });
+  const entry = await prisma.applicationEntry.findUnique({
+    where: { id: entryId },
+  });
   if (!entry || entry.applicationId !== applicationId)
     throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
 
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor) throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
+  if (!actor)
+    throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
 
-  const isAthleteSelf = actor.role === UserRole.ATHLETE && entry.athleteId === actorUserId;
+  const isAthleteSelf =
+    actor.role === UserRole.ATHLETE &&
+    entry.athleteId === actorUserId &&
+    app.source === "SELF" &&
+    app.applicantId === actorUserId &&
+    isAdult(actor.dateOfBirth);
 
   if (isAthleteSelf) {
     if (
       app.status === ApplicationStatus.APPROVED ||
       app.status === ApplicationStatus.WITHDRAWN
     ) {
-      throw new ApplicationError("LOCKED", "Убрать запись можно только до одобрения заявки", 409);
+      throw new ApplicationError(
+        "LOCKED",
+        "Убрать запись можно только до одобрения заявки",
+        409,
+      );
     }
   } else {
     if (app.status !== ApplicationStatus.DRAFT) {
       throw new ApplicationError("LOCKED", "Изменять можно только DRAFT", 409);
     }
-    await assertCanManageApplication(actorUserId, app.clubId);
+    await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
   }
 
-  await prisma.applicationEntry.delete({ where: { id: entryId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.applicationEntry.delete({ where: { id: entryId } });
+    if (isAthleteSelf)
+      await tx.application.update({
+        where: { id: applicationId },
+        data: { status: "DRAFT", submittedAt: null },
+      });
+  });
 }
 
 export async function adminForceRemoveEntry(
   applicationId: string,
   entryId: string,
 ): Promise<void> {
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
 
-  const entry = await prisma.applicationEntry.findUnique({ where: { id: entryId } });
+  const entry = await prisma.applicationEntry.findUnique({
+    where: { id: entryId },
+  });
   if (!entry || entry.applicationId !== applicationId) {
     throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
   }
@@ -122,8 +182,15 @@ export async function adminForceMoveEntry(
   entryId: string,
   newCategoryId: string,
 ) {
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) throw new ApplicationError("APPLICATION_NOT_FOUND", "Заявка не найдена", 404);
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
+  if (!app)
+    throw new ApplicationError(
+      "APPLICATION_NOT_FOUND",
+      "Заявка не найдена",
+      404,
+    );
 
   const entry = await prisma.applicationEntry.findUnique({
     where: { id: entryId },
@@ -133,9 +200,15 @@ export async function adminForceMoveEntry(
     throw new ApplicationError("ENTRY_NOT_FOUND", "Запись не найдена", 404);
   }
 
-  const category = await prisma.category.findUnique({ where: { id: newCategoryId } });
+  const category = await prisma.category.findUnique({
+    where: { id: newCategoryId },
+  });
   if (!category || category.tournamentId !== app.tournamentId) {
-    throw new ApplicationError("CATEGORY_MISMATCH", "Категория не из этого турнира", 409);
+    throw new ApplicationError(
+      "CATEGORY_MISMATCH",
+      "Категория не из этого турнира",
+      409,
+    );
   }
 
   const duplicate = await prisma.applicationEntry.findFirst({
@@ -147,13 +220,21 @@ export async function adminForceMoveEntry(
     },
   });
   if (duplicate) {
-    throw new ApplicationError("DUPLICATE_ENTRY", "Спортсмен уже записан в эту категорию", 409);
+    throw new ApplicationError(
+      "DUPLICATE_ENTRY",
+      "Спортсмен уже записан в эту категорию",
+      409,
+    );
   }
 
   return prisma.$transaction(async (tx) => {
     await tx.applicationEntry.delete({ where: { id: entryId } });
     return tx.applicationEntry.create({
-      data: { applicationId, athleteId: entry.athleteId, categoryId: newCategoryId },
+      data: {
+        applicationId,
+        athleteId: entry.athleteId,
+        categoryId: newCategoryId,
+      },
       include: { athlete: true, category: true },
     });
   });

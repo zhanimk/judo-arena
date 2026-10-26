@@ -1086,11 +1086,9 @@ function sortCategoriesByAgeWeight(a: Category, b: Category): number {
 
 function fitsCategory(athlete: User, category: Category): boolean {
   if (!athlete.dateOfBirth || !athlete.weightKg) return false;
-  const age = getAge(athlete.dateOfBirth);
   return (
     athlete.gender === category.gender &&
-    age >= category.ageMin &&
-    age <= category.ageMax &&
+    fitsBirthYear(athlete.dateOfBirth, category) &&
     athlete.weightKg > category.weightMin &&
     athlete.weightKg <= category.weightMax
   );
@@ -1114,7 +1112,7 @@ function categoryMismatchReason(
   if (!athlete.dateOfBirth) return t("coach.mismatch_no_dob");
   if (!athlete.weightKg) return t("coach.mismatch_no_weight");
   const age = getAge(athlete.dateOfBirth);
-  if (age < category.ageMin || age > category.ageMax)
+  if (!fitsBirthYear(athlete.dateOfBirth, category))
     return t("coach.mismatch_age", { age, min: category.ageMin, max: category.ageMax });
   if (athlete.weightKg <= category.weightMin || athlete.weightKg > category.weightMax) {
     return t("coach.mismatch_weight", {
@@ -1280,5 +1278,14 @@ function CompetitionRulesModal({ onAgree, onClose }: { onAgree: () => void; onCl
         </div>
       </div>
     </div>
+  );
+}
+
+function fitsBirthYear(dob: string, category: Category): boolean {
+  const year = new Date(dob).getUTCFullYear();
+  return (
+    Number.isFinite(year) &&
+    (category.birthYearMin == null || year >= category.birthYearMin) &&
+    (category.birthYearMax == null || year <= category.birthYearMax)
   );
 }

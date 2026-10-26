@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { decideStandings } from "../services/standings-decision.service.js";
 /**
  * Маршруты турнирных сеток.
  *
@@ -20,16 +22,19 @@ import {
 } from "../services/bracket.service.js";
 import { adminOnly, withRateLimit } from "../lib/route-guards.js";
 
-
 // Подключается с prefix "/api/tournaments"
-export async function bracketTournamentRoutes(app: FastifyInstance): Promise<void> {
+export async function bracketTournamentRoutes(
+  app: FastifyInstance,
+): Promise<void> {
   attachErrorHandler(app);
 
   app.post<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
     withRateLimit(adminOnly, { max: 10, timeWindow: "1 minute" }),
     async (
-      request: FastifyRequest<{ Params: { tournamentId: string; categoryId: string } }>,
+      request: FastifyRequest<{
+        Params: { tournamentId: string; categoryId: string };
+      }>,
       reply,
     ) => {
       const b = await generateBracket(
@@ -43,8 +48,15 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 
   app.get<{ Params: { tournamentId: string; categoryId: string } }>(
     "/:tournamentId/categories/:categoryId/bracket",
-    async (request: FastifyRequest<{ Params: { tournamentId: string; categoryId: string } }>) => {
-      return getBracketByCategory(request.params.tournamentId, request.params.categoryId);
+    async (
+      request: FastifyRequest<{
+        Params: { tournamentId: string; categoryId: string };
+      }>,
+    ) => {
+      return getBracketByCategory(
+        request.params.tournamentId,
+        request.params.categoryId,
+      );
     },
   );
 
@@ -58,8 +70,14 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
   app.post<{ Params: { tournamentId: string } }>(
     "/:tournamentId/brackets/prepare",
     withRateLimit(adminOnly, { max: 5, timeWindow: "1 minute" }),
-    async (request: FastifyRequest<{ Params: { tournamentId: string } }>, reply) => {
-      const result = await prepareTournamentDraw(request.user!.sub, request.params.tournamentId);
+    async (
+      request: FastifyRequest<{ Params: { tournamentId: string } }>,
+      reply,
+    ) => {
+      const result = await prepareTournamentDraw(
+        request.user!.sub,
+        request.params.tournamentId,
+      );
       return reply.code(201).send(result);
     },
   );
@@ -69,9 +87,36 @@ export async function bracketTournamentRoutes(app: FastifyInstance): Promise<voi
 export async function bracketDirectRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
 
-  app.get<{ Params: { id: string } }>("/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
-    return getBracket(request.params.id);
-  });
+  app.get<{ Params: { id: string } }>(
+    "/:id",
+    async (request: FastifyRequest<{ Params: { id: string } }>) => {
+      return getBracket(request.params.id);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/:id/standings/decision",
+    adminOnly,
+    async (request) => {
+      const input = z
+        .object({
+          section: z.string().min(1),
+          order: z.array(z.string().min(1)).min(2).max(8),
+          reason: z.string().trim().min(5).max(2000),
+          fingerprint: z.string().length(64),
+        })
+        .strict()
+        .parse(request.body);
+      return decideStandings(
+        request.user!.sub,
+        request.params.id,
+        input.section,
+        input.order,
+        input.reason,
+        input.fingerprint,
+      );
+    },
+  );
 
   app.delete<{ Params: { id: string } }>(
     "/:id",

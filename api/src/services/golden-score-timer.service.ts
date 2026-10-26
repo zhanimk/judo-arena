@@ -1,18 +1,9 @@
-/**
- * Серверный таймер golden score.
- *
- * Когда матч переходит в golden score и у категории задан goldenScoreSec > 0,
- * запускается этот таймер. По истечению времени:
- *   • Если один спортсмен ведёт по очкам — засчитывается победа ему.
- *   • Если ничья — матч остаётся на судье (логируем предупреждение).
- *
- * При рестарте сервера — restoreGoldenScoreTimers() восстанавливает активные таймеры.
- */
+/** Server alert for an optional local Golden Score limit; the judge decides the result. */
 
 import { prisma } from "../lib/prisma.js";
 import { MatchStatus } from "@prisma/client";
 import { emitMatchEvent } from "../sockets/io.js";
-import { normalizeScore, type ScoreSnapshot } from "./match-types.js";
+import { normalizeScore } from "./match-types.js";
 
 // matchId → { handle, goldenScoreSec, startedAt }
 const activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -34,7 +25,7 @@ export function scheduleGoldenScoreTimer(
 
   const handle = setTimeout(async () => {
     activeTimers.delete(matchId);
-    await triggerGoldenScoreTimeout(matchId);
+    await triggerGoldenScoreTimeout(matchId, startedAt);
   }, remaining * 1000);
 
   activeTimers.set(matchId, handle);
@@ -83,39 +74,17 @@ export async function restoreGoldenScoreTimers(): Promise<void> {
 
 // ---- внутренний триггер авто-завершения ----
 
-function determineLeader(
-  score: ScoreSnapshot,
-  redAthleteId: string,
-  blueAthleteId: string,
-): string | null {
-  const r = score.red;
-  const b = score.blue;
-
-  // Ippon / hansoku
-  if (r.ippon > b.ippon) return redAthleteId;
-  if (b.ippon > r.ippon) return blueAthleteId;
-
-  // Waza-ari
-  if (r.wazaari > b.wazaari) return redAthleteId;
-  if (b.wazaari > r.wazaari) return blueAthleteId;
-
-  // Yuko (если включён)
-  if (r.yuko > b.yuko) return redAthleteId;
-  if (b.yuko > r.yuko) return blueAthleteId;
-
-  // Shido (меньше — лучше)
-  if (r.shido < b.shido) return redAthleteId;
-  if (b.shido < r.shido) return blueAthleteId;
-
-  return null; // ничья
-}
-
-async function triggerGoldenScoreTimeout(matchId: string): Promise<void> {
+async function triggerGoldenScoreTimeout(
+  matchId: string,
+  startedAt: string,
+): Promise<void> {
   try {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
       select: {
         id: true,
+        version: true,
+        goldenScoreStartedAt: true,
         status: true,
         scoreSnapshot: true,
         redAthleteId: true,
@@ -125,34 +94,30 @@ async function triggerGoldenScoreTimeout(matchId: string): Promise<void> {
 
     if (!match || match.status !== MatchStatus.IN_PROGRESS) return;
     if (!match.redAthleteId || !match.blueAthleteId) return;
+    if (
+      match.goldenScoreStartedAt &&
+      match.goldenScoreStartedAt.toISOString() !== startedAt
+    )
+      return;
 
     const score = normalizeScore(match.scoreSnapshot);
     if (!score.isGoldenScore) return;
 
-    const winnerId = determineLeader(
-      score,
-      match.redAthleteId,
-      match.blueAthleteId,
+    if (score.pendingResult || !score.clock.running) return;
+    // A time limit is never a disqualification or a win on fewer shido.
+    // Stop and leave the decision to the judge for the configured local rules.
+    const { pauseMatch } = await import("./match-lifecycle.service.js");
+    const { match: updated } = await pauseMatch(
+      matchId,
+      undefined,
+      match.version,
     );
 
-    if (!winnerId) {
-      process.stderr.write(
-        `[golden-score-timer] Match ${matchId}: golden score timeout but scores are tied — judge must decide\n`,
-      );
-      return;
-    }
-
-    const forfeitSide = winnerId === match.redAthleteId ? "BLUE" : "RED";
-
-    // Lazy import to avoid circular dependency
-    const { forfeitMatch } = await import("./match-lifecycle.service.js");
-    const updated = await forfeitMatch(matchId, forfeitSide, "DISQUALIFIED");
-
     try {
-      emitMatchEvent(updated, "match:finished", {
+      emitMatchEvent(updated, "match:scoreUpdate", {
         matchId,
         reason: "golden_score_timeout",
-        winnerId,
+        requiresJudgeDecision: true,
       });
     } catch {
       // IO may not be ready — non-critical

@@ -6,6 +6,7 @@
  *           ↘──────────────────────── CANCELLED ────────────────────────↙
  */
 
+import { birthYearBounds } from "./category-age.js";
 import { prisma } from "../lib/prisma.js";
 import { redis } from "../lib/redis.js";
 import type {
@@ -153,6 +154,11 @@ export async function createTournament(
   const result = await prisma.tournament.create({
     data: {
       name: input.name,
+      audience: input.audience ?? "CHILD",
+      clubRegistrationEnabled: input.clubRegistrationEnabled ?? true,
+      selfRegistrationEnabled:
+        (input.audience ?? "CHILD") !== "CHILD" &&
+        (input.selfRegistrationEnabled ?? false),
       description: input.description ?? undefined,
       location: input.location,
       city: input.city,
@@ -232,9 +238,25 @@ export async function updateTournament(
     );
   }
 
+  const audience = input.audience ?? t.audience;
+  if (audience === "CHILD" && input.selfRegistrationEnabled) {
+    throw new TournamentError(
+      "CHILD_SELF_REGISTRATION",
+      "Детские заявки подаёт тренер или администратор",
+      400,
+    );
+  }
+  await invalidateTournamentListCache();
   return prisma.tournament.update({
     where: { id: tournamentId },
     data: {
+      ...(input.audience !== undefined && { audience: input.audience }),
+      ...(input.clubRegistrationEnabled !== undefined && {
+        clubRegistrationEnabled: input.clubRegistrationEnabled,
+      }),
+      selfRegistrationEnabled:
+        audience !== "CHILD" &&
+        (input.selfRegistrationEnabled ?? t.selfRegistrationEnabled),
       ...(input.name && { name: input.name }),
       ...(input.description && { description: input.description }),
       ...(input.location && { location: input.location }),
@@ -295,6 +317,17 @@ export async function changeStatus(
       `Нельзя перейти из ${t.status} в ${newStatus}. Разрешено: ${allowed.join(", ") || "никуда"}`,
       409,
     );
+  }
+
+  if (newStatus === TournamentStatus.COMPLETED) {
+    if (!actorUserId)
+      throw new TournamentError(
+        "FORBIDDEN",
+        "Для завершения турнира нужен администратор",
+        403,
+      );
+    const { finalizeTournament } = await import("./rating.service.js");
+    return (await finalizeTournament(actorUserId, tournamentId)).tournament;
   }
 
   // Бизнес-правила: чтобы открыть регистрацию — нужны категории
@@ -460,12 +493,13 @@ export async function createCategory(
       gender: input.gender,
       ageMin: input.ageMin,
       ageMax: input.ageMax,
+      ...checkedBirthYears(input, t.startDate),
       weightMin: input.weightMin,
       weightMax: input.weightMax,
       // IJF: U15 и младше → 3 мин; все остальные → 4 мин
       matchDurationSec:
         input.matchDurationSec ?? ijfMatchDuration(input.ageMax),
-      goldenScoreSec: input.goldenScoreSec ?? 0, // 0 = без лимита (стандарт IJF)
+      goldenScoreSec: 0, // 0 = без лимита (стандарт IJF)
       format: input.format,
       // Юко: только для категорий где ageMax <= 12 (некоторые региональные федерации)
       allowYuko: input.allowYuko ?? false,
@@ -529,10 +563,11 @@ export async function createCategoriesBulk(
         gender: category.gender,
         ageMin: category.ageMin,
         ageMax: category.ageMax,
+        ...checkedBirthYears(category, t.startDate),
         weightMin: category.weightMin,
         weightMax: category.weightMax,
         matchDurationSec: category.matchDurationSec,
-        goldenScoreSec: category.goldenScoreSec,
+        goldenScoreSec: 0,
         format: category.format,
         allowYuko: category.allowYuko,
       })),
@@ -572,7 +607,29 @@ export async function updateCategory(
       409,
     );
   }
-  return prisma.category.update({ where: { id: categoryId }, data: input });
+  const merged = { ...cat, ...input };
+  if (merged.ageMin > merged.ageMax || merged.weightMin >= merged.weightMax) {
+    throw new TournamentError(
+      "INVALID_RANGE",
+      "Некорректный диапазон возраста или веса",
+      400,
+    );
+  }
+  const ageChanged = input.ageMin !== undefined || input.ageMax !== undefined;
+  const bounds = checkedBirthYears(
+    {
+      ...merged,
+      birthYearMin:
+        input.birthYearMin ?? (ageChanged ? undefined : cat.birthYearMin),
+      birthYearMax:
+        input.birthYearMax ?? (ageChanged ? undefined : cat.birthYearMax),
+    },
+    cat.tournament.startDate,
+  );
+  return prisma.category.update({
+    where: { id: categoryId },
+    data: { ...input, ...bounds, goldenScoreSec: 0 },
+  });
 }
 
 export async function deleteCategory(categoryId: string) {
@@ -1108,6 +1165,7 @@ export async function createIjfCategories(
       gender: tpl.gender as any,
       ageMin: tpl.ageMin,
       ageMax: tpl.ageMax,
+      ...checkedBirthYears(tpl, t.startDate),
       weightMin: tpl.weightMin,
       // 999 → в БД храним как есть; UI показывает как "+" (открытая категория)
       weightMax: tpl.weightMax,
@@ -1120,4 +1178,19 @@ export async function createIjfCategories(
   });
 
   return { count: templates.length };
+}
+
+function checkedBirthYears(
+  category: Parameters<typeof birthYearBounds>[0],
+  startDate: Date,
+) {
+  const bounds = birthYearBounds(category, startDate);
+  if (bounds.birthYearMin > bounds.birthYearMax) {
+    throw new TournamentError(
+      "INVALID_BIRTH_YEARS",
+      "Начальный год рождения должен быть не позже конечного",
+      400,
+    );
+  }
+  return bounds;
 }

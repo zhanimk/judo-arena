@@ -33,7 +33,13 @@ function CategoryForm({
   tournamentYear?: number;
 }) {
   const { t } = useTranslation();
-  const tYear = tournamentYear ?? new Date().getFullYear();
+  const tYear =
+    tournamentYear ??
+    Number(
+      new Intl.DateTimeFormat("en", { timeZone: "Asia/Almaty", year: "numeric" }).format(
+        new Date(),
+      ),
+    );
 
   const [form, setForm] = useState({
     nameKk: initial?.name?.kk ?? "",
@@ -46,7 +52,8 @@ function CategoryForm({
     weightMin: String(initial?.weightMin ?? 0.1),
     weightMax: String(initial?.weightMax ?? 60),
     matchDurationSec: String(initial?.matchDurationSec ?? 120),
-    goldenScoreSec: String(initial?.goldenScoreSec ?? 60),
+    birthYearMin: String(initial?.birthYearMin ?? tYear - (initial?.ageMax ?? 15)),
+    birthYearMax: String(initial?.birthYearMax ?? tYear - (initial?.ageMin ?? 13)),
     format: initial?.format ?? "SE_IJF",
     allowYuko: Boolean(initial?.allowYuko ?? false),
   });
@@ -66,7 +73,8 @@ function CategoryForm({
       ageMin: String(preset.ageMin),
       ageMax: String(preset.ageMax),
       matchDurationSec: String(preset.matchDurationSec),
-      goldenScoreSec: String(preset.goldenScoreSec),
+      birthYearMin: String(birthFrom),
+      birthYearMax: String(birthTo),
       nameKk:
         f.nameKk ||
         `${preset.labelKk} ${gStr} ${label} ${t("common.kg")} (${birthFrom}–${birthTo})`,
@@ -86,7 +94,9 @@ function CategoryForm({
       weightMin: Number(form.weightMin),
       weightMax: Number(form.weightMax),
       matchDurationSec: Number(form.matchDurationSec),
-      goldenScoreSec: Number(form.goldenScoreSec),
+      goldenScoreSec: 0,
+      birthYearMin: Number(form.birthYearMin),
+      birthYearMax: Number(form.birthYearMax),
       format: form.format,
       allowYuko: form.allowYuko,
     });
@@ -164,11 +174,13 @@ function CategoryForm({
             label={t("categories.age_min")}
             type="number"
             value={form.ageMin}
-            onChange={(v: string) => setForm({ ...form, ageMin: v })}
+            onChange={(v: string) =>
+              setForm({ ...form, ageMin: v, birthYearMax: String(tYear - Number(v)) })
+            }
             required
           />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {t("categories.birth_year_le")} {tYear - Number(form.ageMin)}
+            {t("categories.birth_year_le")} {form.birthYearMax}
           </div>
         </div>
         <div>
@@ -176,14 +188,16 @@ function CategoryForm({
             label={t("categories.age_max")}
             type="number"
             value={form.ageMax}
-            onChange={(v: string) => setForm({ ...form, ageMax: v })}
+            onChange={(v: string) =>
+              setForm({ ...form, ageMax: v, birthYearMin: String(tYear - Number(v)) })
+            }
             required
           />
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {t("categories.birth_year_ge")} {tYear - Number(form.ageMax)}
+            {t("categories.birth_year_ge")} {form.birthYearMin}
             {form.ageMin !== form.ageMax && (
               <span className="ml-2 text-gold/80">
-                ({tYear - Number(form.ageMax)}–{tYear - Number(form.ageMin)})
+                ({form.birthYearMin}–{form.birthYearMax})
               </span>
             )}
           </div>
@@ -224,12 +238,30 @@ function CategoryForm({
           onChange={(matchDurationSec: string) => setForm({ ...form, matchDurationSec })}
           required
         />
+        <p className="self-center text-sm text-muted-foreground">
+          {t("registration.gs_unlimited")}
+        </p>
         <Input
-          label={t("categories.gs_sec")}
+          label={t("registration.birth_from")}
           type="number"
-          value={form.goldenScoreSec}
-          onChange={(goldenScoreSec: string) => setForm({ ...form, goldenScoreSec })}
+          value={form.birthYearMin}
+          onChange={(v: string) =>
+            setForm({ ...form, birthYearMin: v, ageMax: String(tYear - Number(v)) })
+          }
+          required
         />
+        <Input
+          label={t("registration.birth_to")}
+          type="number"
+          value={form.birthYearMax}
+          onChange={(v: string) =>
+            setForm({ ...form, birthYearMax: v, ageMin: String(tYear - Number(v)) })
+          }
+          required
+        />
+        <p className="text-xs text-muted-foreground md:col-span-3">
+          {t("registration.birth_hint")}
+        </p>
       </div>
 
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm select-none">
@@ -279,9 +311,12 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
   const [bulkGenders, setBulkGenders] = useState<("MALE" | "FEMALE")[]>(["MALE", "FEMALE"]);
   const [bulkAdding, setBulkAdding] = useState(false);
   const canEdit = tourney.status === "DRAFT";
-  const tournamentYear = tourney.startDate
-    ? new Date(tourney.startDate).getFullYear()
-    : new Date().getFullYear();
+  const tournamentYear = Number(
+    new Intl.DateTimeFormat("en", {
+      timeZone: "Asia/Almaty",
+      year: "numeric",
+    }).format(new Date(tourney.startDate ?? Date.now())),
+  );
 
   const create = useMutation({
     mutationFn: (data: any) => api.tournaments.addCategory(tourney.id, data),
@@ -541,7 +576,8 @@ export function TournamentCategoriesTab({ tournament: tourney }: { tournament: a
                           : `♀ ${t("tatami.female_short")}`}{" "}
                         · {c.ageMin}–{c.ageMax} {t("common.years_short")}{" "}
                         <span className="text-gold/60">
-                          ({tournamentYear - c.ageMax}–{tournamentYear - c.ageMin})
+                          ({c.birthYearMin ?? tournamentYear - c.ageMax}–
+                          {c.birthYearMax ?? tournamentYear - c.ageMin})
                         </span>{" "}
                         · ({c.weightMin}, {c.weightMax >= 999 ? "+∞" : c.weightMax}]{" "}
                         {t("common.kg")}

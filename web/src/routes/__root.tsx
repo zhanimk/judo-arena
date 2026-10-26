@@ -86,7 +86,7 @@ function AppLoadingScreen({ label = "Жүктелуде" }: { label?: string }) 
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   const { t } = useTranslation();
   Sentry.captureException(error);
@@ -101,7 +101,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         />
         <h1 className="font-display text-2xl font-semibold">{t("error.generic")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Бетті қайта жүктеп көріңіз."}
+          {(error instanceof Error ? error.message : "") || "Бетті қайта жүктеп көріңіз."}
         </p>
         <button
           onClick={() => {

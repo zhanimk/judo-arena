@@ -248,6 +248,24 @@ describe("login", () => {
 });
 
 describe("refresh token rotation", () => {
+  it("allows only one concurrent refresh for a token", async () => {
+    const user = await makeAdmin();
+    const { tokens } = await login({
+      email: user.email,
+      password: user.plainPassword,
+    });
+    const results = await Promise.allSettled([
+      refresh(tokens.refreshToken),
+      refresh(tokens.refreshToken),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      results.find((result) => result.status === "rejected"),
+    ).toMatchObject({ reason: { code: "REVOKED_REFRESH" } });
+  });
+
   it("issues new tokens and invalidates old refresh token", async () => {
     const email = uniqueEmail();
     await register({

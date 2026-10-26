@@ -30,7 +30,7 @@ import type { Tournament, Bracket, AuditLog, FederationAnalytics } from "@/lib/a
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { OlympicBracket } from "@/components/judo/OlympicBracket";
+import { LiveBracket } from "@/components/judo/LiveBracket";
 import {
   BarChart as RBarChart,
   Bar as RBar,
@@ -458,11 +458,7 @@ function TournamentProtocolCard({
 
                     {isShowingBracket && (
                       <div className="border-t border-border/40 p-4">
-                        <OlympicBracket
-                          matches={b.matches ?? []}
-                          size={b.size ?? 0}
-                          format={b.format}
-                        />
+                        <LiveBracket tournamentId={tourney.id} categoryId={b.categoryId} />
                       </div>
                     )}
                   </div>

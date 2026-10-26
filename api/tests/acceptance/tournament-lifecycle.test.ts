@@ -174,6 +174,9 @@ function makeApp(status: ApplicationStatus = ApplicationStatus.DRAFT) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  (prisma.tournament.findUnique as any).mockResolvedValue(
+    makeTournament(TournamentStatus.IN_PROGRESS),
+  );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -208,6 +211,7 @@ describe("Acceptance: Tournament creation & lifecycle", () => {
     const { finalizeTournament } =
       await import("../../src/services/rating.service.js");
     (prisma.user.findUnique as any).mockResolvedValue(COACH);
+    (prisma.$transaction as any).mockImplementation((fn: any) => fn(prisma));
 
     await expect(finalizeTournament("coach-1", "t-1")).rejects.toMatchObject({
       code: "FORBIDDEN",
@@ -299,10 +303,14 @@ describe("Acceptance: Application lifecycle", () => {
       ...makeApp(ApplicationStatus.DRAFT),
       _count: { entries: 1 },
       tournament: {
-        startDate: new Date("2026-07-01"),
+        startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         applicationDeadline: null,
       },
     };
+    (prisma.tournament.findUnique as any).mockResolvedValue({
+      ...makeTournament(TournamentStatus.REGISTRATION_OPEN),
+      clubRegistrationEnabled: true,
+    });
     (prisma.user.findUnique as any).mockResolvedValue(COACH);
     (prisma.application.findUnique as any).mockResolvedValue(app);
     (prisma.application.update as any).mockResolvedValue({
@@ -430,22 +438,21 @@ describe("Acceptance: Match scoring", () => {
       };
       const updatedMatch = { ...match, scoreSnapshot: result };
       const tx = {
+        tournament: prisma.tournament,
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUniqueOrThrow: vi.fn().mockResolvedValue(updatedMatch),
         },
         matchEvent: {
-          create: vi
-            .fn()
-            .mockResolvedValue({
-              id: "ev-1",
-              type: "IPPON",
-              side: "RED",
-              occurredAt: new Date(),
-              matchId: "m-1",
-              judgeSessionId: null,
-              scoreSnapshot: result,
-            }),
+          create: vi.fn().mockResolvedValue({
+            id: "ev-1",
+            type: "IPPON",
+            side: "RED",
+            occurredAt: new Date(),
+            matchId: "m-1",
+            judgeSessionId: null,
+            scoreSnapshot: result,
+          }),
         },
       };
       return fn(tx);
@@ -487,6 +494,7 @@ describe("Acceptance: Match scoring", () => {
         clock: match.scoreSnapshot.clock,
       };
       const tx = {
+        tournament: prisma.tournament,
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUniqueOrThrow: vi
@@ -532,6 +540,7 @@ describe("Acceptance: Match scoring", () => {
         clock: match.scoreSnapshot.clock,
       };
       const tx = {
+        tournament: prisma.tournament,
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUniqueOrThrow: vi
@@ -598,6 +607,7 @@ describe("Acceptance: Osaekomi flow", () => {
       id: "m-1",
       tournamentId: "t-1",
       bracketId: "b-1",
+      bracket: { category: { allowYuko: true } },
       tatamiNumber: 1,
       status: MatchStatus.IN_PROGRESS,
       redAthleteId: "ath-1",
@@ -632,6 +642,7 @@ describe("Acceptance: Osaekomi flow", () => {
         osaekomi: { side: "RED", startedAt },
       };
       const tx = {
+        tournament: prisma.tournament,
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUniqueOrThrow: vi
@@ -698,6 +709,7 @@ describe("Acceptance: Osaekomi flow", () => {
         },
       };
       const tx = {
+        tournament: prisma.tournament,
         match: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUniqueOrThrow: vi

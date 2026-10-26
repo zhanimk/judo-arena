@@ -13,31 +13,13 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { attachErrorHandler } from "../lib/error-handler.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
-
-// Convert draft-07 boolean exclusiveMinimum/Maximum to numeric form (AJV 8 compatible)
-function toSchema(
-  s: Parameters<typeof zodToJsonSchema>[0],
-): Record<string, unknown> {
-  function fix(node: unknown): unknown {
-    if (!node || typeof node !== "object") return node;
-    if (Array.isArray(node)) return node.map(fix);
-    const obj = { ...(node as Record<string, unknown>) };
-    for (const k of Object.keys(obj)) obj[k] = fix(obj[k]);
-    if (obj["exclusiveMinimum"] === true && "minimum" in obj) {
-      obj["exclusiveMinimum"] = obj["minimum"];
-      delete obj["minimum"];
-    }
-    if (obj["exclusiveMaximum"] === true && "maximum" in obj) {
-      obj["exclusiveMaximum"] = obj["maximum"];
-      delete obj["maximum"];
-    }
-    return obj;
-  }
-  return fix(zodToJsonSchema(s, { target: "openApi3" })) as Record<
-    string,
-    unknown
-  >;
+// Zod 4 exports JSON Schema directly; describe request inputs before coercion.
+function toSchema(schema: z.ZodType): Record<string, unknown> {
+  return z.toJSONSchema(schema, {
+    target: "draft-7",
+    io: "input",
+    unrepresentable: "any",
+  });
 }
 import {
   registerSchema,

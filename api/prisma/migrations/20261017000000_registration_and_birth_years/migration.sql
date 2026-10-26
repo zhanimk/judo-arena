@@ -1,0 +1,11 @@
+CREATE TYPE "TournamentAudience" AS ENUM ('CHILD', 'ADULT', 'MIXED');
+CREATE TYPE "ApplicationSource" AS ENUM ('CLUB', 'SELF', 'ADMIN');
+ALTER TABLE "Tournament" ADD COLUMN "audience" "TournamentAudience" NOT NULL DEFAULT 'CHILD', ADD COLUMN "clubRegistrationEnabled" BOOLEAN NOT NULL DEFAULT true, ADD COLUMN "selfRegistrationEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Category" ADD COLUMN "birthYearMin" INTEGER, ADD COLUMN "birthYearMax" INTEGER;
+UPDATE "Category" c SET "birthYearMin" = EXTRACT(YEAR FROM t."startDate" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Almaty')::INTEGER - c."ageMax", "birthYearMax" = EXTRACT(YEAR FROM t."startDate" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Almaty')::INTEGER - c."ageMin" FROM "Tournament" t WHERE c."tournamentId" = t.id;
+UPDATE "Category" SET "goldenScoreSec" = 0;
+ALTER TABLE "Category" ADD CONSTRAINT "Category_birth_year_range" CHECK ("birthYearMin" <= "birthYearMax");
+ALTER TABLE "Application" ALTER COLUMN "clubId" DROP NOT NULL, ADD COLUMN "applicantId" TEXT, ADD COLUMN "source" "ApplicationSource" NOT NULL DEFAULT 'CLUB';
+ALTER TABLE "Application" ADD CONSTRAINT "Application_applicantId_fkey" FOREIGN KEY ("applicantId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+CREATE UNIQUE INDEX "Application_tournamentId_applicantId_key" ON "Application"("tournamentId", "applicantId");
+ALTER TABLE "Application" ADD CONSTRAINT "Application_owner" CHECK (("clubId" IS NOT NULL AND "applicantId" IS NULL AND source = 'CLUB') OR ("clubId" IS NULL AND "applicantId" IS NOT NULL AND source IN ('SELF', 'ADMIN')));

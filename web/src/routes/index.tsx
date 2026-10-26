@@ -6,7 +6,7 @@ import { LazyImage, Avatar } from "@/components/ui/avatar-image";
 import { TatamiScene } from "@/components/home/TatamiScene";
 import { api, mediaUrl } from "@/lib/api";
 const emblem = "/jcl-logo.jpg";
-import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
+import heroKazakhstan from "@/assets/hero-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteWomanWhite from "@/assets/athlete-woman-white.jpg";
 import athleteBlue1 from "@/assets/athlete-blue-1.jpg";

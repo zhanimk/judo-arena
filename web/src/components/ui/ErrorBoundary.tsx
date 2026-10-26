@@ -52,7 +52,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
-      return <DefaultErrorUI error={this.state.error} onRetry={() => this.setState({ hasError: false, error: null })} />;
+      return (
+        <DefaultErrorUI
+          error={this.state.error}
+          onRetry={() => this.setState({ hasError: false, error: null })}
+        />
+      );
     }
     return this.props.children;
   }
@@ -145,10 +150,14 @@ function DefaultErrorUI({ error, onRetry }: { error: Error | null; onRetry: () =
  *     errorComponent: RouteErrorUI,
  *   });
  */
-export function RouteErrorUI({ error }: { error: Error }) {
+export function RouteErrorUI({ error }: { error: unknown }) {
   return (
     <DefaultErrorUI
-      error={error}
+      error={
+        error instanceof Error
+          ? error
+          : new Error(typeof error === "string" ? error : "Unknown error")
+      }
       onRetry={() => window.history.back()}
     />
   );

@@ -13,7 +13,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 const ADMIN_EMAIL = "admin@judo-arena.kz";
-const PASSWORD = "password123";
+const PASSWORD = process.env.E2E_PASSWORD ?? "JudoArenaAdmin2026!";
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,10 @@ async function analyzeA11y(page: Page) {
   // Log all violations for visibility even if test passes
   if (results.violations.length > 0) {
     const summary = results.violations
-      .map((v) => `  [${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} node(s))`)
+      .map(
+        (v) =>
+          `  [${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} node(s))`,
+      )
       .join("\n");
     console.warn(`\na11y violations on ${page.url()}:\n${summary}`);
   }

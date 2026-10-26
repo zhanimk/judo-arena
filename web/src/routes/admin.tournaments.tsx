@@ -1,3 +1,7 @@
+import {
+  RegistrationSettings,
+  type RegistrationSettingsValue,
+} from "@/components/tournament/RegistrationSettings";
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -378,6 +382,11 @@ function AdminTournaments() {
 }
 
 function CreateTournamentForm({ onDone }: { onDone: () => void }) {
+  const [registration, setRegistration] = useState<RegistrationSettingsValue>({
+    audience: "CHILD",
+    clubRegistrationEnabled: true,
+    selfRegistrationEnabled: false,
+  });
   const { t } = useTranslation();
   const [form, setForm] = useState({
     name: "",
@@ -395,6 +404,7 @@ function CreateTournamentForm({ onDone }: { onDone: () => void }) {
   const mut = useMutation({
     mutationFn: () =>
       api.tournaments.create({
+        ...registration,
         name: { kk: form.name, ru: form.name, en: form.name },
         location: form.location,
         city: form.city,
@@ -420,6 +430,7 @@ function CreateTournamentForm({ onDone }: { onDone: () => void }) {
       }}
       className="mt-4 mb-4 glass rounded-lg p-5"
     >
+      <RegistrationSettings value={registration} onChange={setRegistration} />
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <div className="grid gap-3 md:grid-cols-2">
           <Input

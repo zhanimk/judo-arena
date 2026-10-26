@@ -6,7 +6,7 @@
  */
 
 import { prisma } from "../lib/prisma.js";
-import { MatchStatus, type Match } from "@prisma/client";
+import { MatchStatus, type Match, type Prisma } from "@prisma/client";
 import { MatchError } from "./match-types.js";
 
 // ============================================================
@@ -20,9 +20,10 @@ import { MatchError } from "./match-types.js";
 export async function nextQueuePosition(
   tournamentId: string,
   tatamiNumber: number,
+  tx: Prisma.TransactionClient = prisma,
 ): Promise<number> {
-  const last = await prisma.match.findFirst({
-    where: { tournamentId, tatamiNumber },
+  const last = await tx.match.findFirst({
+    where: { tournamentId, tatamiNumber, queuePosition: { not: null } },
     orderBy: { queuePosition: "desc" },
     select: { queuePosition: true },
   });
@@ -126,10 +127,18 @@ export async function moveMatchToPosition(
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (!match.tatamiNumber) {
-    throw new MatchError("MATCH_NOT_ASSIGNED", "Матч не назначен на татами", 409);
+    throw new MatchError(
+      "MATCH_NOT_ASSIGNED",
+      "Матч не назначен на татами",
+      409,
+    );
   }
   if (match.status !== MatchStatus.PENDING) {
-    throw new MatchError("MATCH_NOT_PENDING", "Двигать можно только ожидающий матч", 409);
+    throw new MatchError(
+      "MATCH_NOT_PENDING",
+      "Двигать можно только ожидающий матч",
+      409,
+    );
   }
 
   const queue = await prisma.match.findMany({

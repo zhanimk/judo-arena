@@ -23,8 +23,8 @@
  *     Проигравшие в 1/4 финала (round=R-1) идут в repechage.
  *     Repechage A: ((R-1, 0) loser) vs ((R-1, 1) loser) → победитель в Bronze1
  *     Repechage B: ((R-1, 2) loser) vs ((R-1, 3) loser) → победитель в Bronze2
- *     Bronze1: winner(RepA) vs loser(semi1)
- *     Bronze2: winner(RepB) vs loser(semi2)
+ *     Bronze1: winner(RepA) vs loser(semi2)
+ *     Bronze2: winner(RepB) vs loser(semi1)
  */
 
 export interface SEMatch {
@@ -37,6 +37,9 @@ export interface SEMatch {
 
 export function buildSingleElimination(slots: (string | null)[]): SEMatch[] {
   const size = slots.length;
+  const athletes = slots.filter((id): id is string => id !== null);
+  if (new Set(athletes).size !== athletes.length || athletes.some((id) => !id))
+    throw new Error("Участники должны быть уникальными");
   if (size < 2 || (size & (size - 1)) !== 0) {
     throw new Error("Размер сетки должен быть степенью двойки ≥ 2");
   }
@@ -61,7 +64,13 @@ export function buildSingleElimination(slots: (string | null)[]): SEMatch[] {
         red = slots[position * 2]!;
         blue = slots[position * 2 + 1]!;
       }
-      matches.push({ round, position, bracketSection: section, redAthleteId: red, blueAthleteId: blue });
+      matches.push({
+        round,
+        position,
+        bracketSection: section,
+        redAthleteId: red,
+        blueAthleteId: blue,
+      });
     }
   }
 
@@ -133,19 +142,27 @@ export function propagateResult(
   const out: Propagation[] = [];
 
   // ---- Основная сетка ----
-  if (finishedSection === "main") {
+  if (finishedSection === "main" && finishedRound < totalRounds) {
     const nextRound = finishedRound + 1;
     const nextPosition = Math.floor(finishedPosition / 2);
     const slot: "red" | "blue" = finishedPosition % 2 === 0 ? "red" : "blue";
-    const nextSection: SEMatch["bracketSection"] = nextRound === totalRounds ? "final" : "main";
-    out.push({ round: nextRound, position: nextPosition, section: nextSection, slot, athleteId: winnerId });
+    const nextSection: SEMatch["bracketSection"] =
+      nextRound === totalRounds ? "final" : "main";
+    out.push({
+      round: nextRound,
+      position: nextPosition,
+      section: nextSection,
+      slot,
+      athleteId: winnerId,
+    });
 
     // Repechage routing: проигравший 1/4 финала идёт в Repechage A или B
     const quartersRound = totalRounds - 2;
     if (bracketSize >= 8 && finishedRound === quartersRound) {
       // positions 0,1 → Repechage A (position 0); positions 2,3 → Repechage B (position 1)
       const repPosition = finishedPosition < 2 ? 0 : 1;
-      const repSlot: "red" | "blue" = finishedPosition % 2 === 0 ? "red" : "blue";
+      const repSlot: "red" | "blue" =
+        finishedPosition % 2 === 0 ? "red" : "blue";
       out.push({
         round: quartersRound + 1,
         position: repPosition,
@@ -158,12 +175,13 @@ export function propagateResult(
     // Проигравший полуфинала идёт в Bronze1 / Bronze2
     const semisRound = totalRounds - 1;
     if (bracketSize >= 8 && finishedRound === semisRound) {
-      // position 0 → Bronze1, position 1 → Bronze2
+      // Cross halves: semifinal 0 → Bronze2, semifinal 1 → Bronze1.
       // Слот: blue (red — победитель из Repechage)
-      const bronzeSection: SEMatch["bracketSection"] = finishedPosition === 0 ? "bronze1" : "bronze2";
+      const bronzeSection: SEMatch["bracketSection"] =
+        finishedPosition === 0 ? "bronze2" : "bronze1";
       out.push({
         round: totalRounds,
-        position: finishedPosition,
+        position: finishedPosition === 0 ? 1 : 0,
         section: bronzeSection,
         slot: "blue",
         athleteId: loserId,
@@ -184,7 +202,8 @@ export function propagateResult(
 
   // ---- Repechage → Bronze ----
   if (finishedSection === "repechage") {
-    const bronzeSection: SEMatch["bracketSection"] = finishedPosition === 0 ? "bronze1" : "bronze2";
+    const bronzeSection: SEMatch["bracketSection"] =
+      finishedPosition === 0 ? "bronze1" : "bronze2";
     out.push({
       round: totalRounds,
       position: finishedPosition,

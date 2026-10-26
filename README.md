@@ -1,7 +1,7 @@
 <div align="center">
   <img src="web/public/jcl-logo.jpg" alt="Judo Child League Logo" width="120" height="120" style="border-radius: 50%;" />
   <h1>🥋 Judo Child League (Judo Arena)</h1>
-  <p><strong>Production-ready платформа для проведения соревнований по дзюдо нового поколения.</strong></p>
+  <p><strong>Платформа для проведения соревнований по дзюдо.</strong></p>
 
   <p>
     <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
@@ -21,6 +21,8 @@
 <hr />
 
 Этот документ является **единой технической и операционной базой знаний проекта**. В нём собрана исчерпывающая информация по запуску, архитектуре, ролевой модели, тестированию и production-деплою.
+
+Фактические результаты технических проверок и оставшиеся блокеры запуска: [аудит готовности к реальному турниру](docs/READINESS.md).
 
 ## 📋 Оглавление
 
@@ -125,7 +127,7 @@ judo-arena/
 
 | Роль           | Права доступа                                                                 |
 | -------------- | ----------------------------------------------------------------------------- |
-| 👁 **Public**  | Просмотр публичных турниров, рейтингов, сеток матчей без авторизации.         |
+| 👁 **Public**   | Просмотр публичных турниров, рейтингов, сеток матчей без авторизации.         |
 | 🥋 **Athlete** | Профиль спортсмена, вступление в клуб, подача заявок, просмотр своих матчей.  |
 | 📋 **Coach**   | Создание/управление клубом, управление спортсменами, оплата взносов.          |
 | 👑 **Admin**   | Полный контроль над турнирами, сетками, матчами, судьями и платформой.        |
@@ -190,13 +192,19 @@ npm run db:studio
 
 ### 🔑 Demo Аккаунты
 
-| Роль        | Email                            | Password      |
-| ----------- | -------------------------------- | ------------- |
-| **Admin**   | `admin@judo-arena.kz`            | `password123` |
-| **Coach**   | `coach.almaty@judo-arena.kz`     | `password123` |
-| **Athlete** | `m0-0@almaty-judo.judo-arena.kz` | `password123` |
+| Роль        | Email                                  | Password              |
+| ----------- | -------------------------------------- | --------------------- |
+| **Admin**   | `admin@judo-arena.kz`                  | `JudoArenaAdmin2026!` |
+| **Coach**   | `coach.almaty@judo-arena.kz`           | `JudoArenaAdmin2026!` |
+| **Athlete** | `rr.01@almaty-demo.demo.judo-arena.kz` | `JudoArenaAdmin2026!` |
 
 ---
+
+## Размещение на VPS
+
+Свежий аудит: [docs/AUDIT-2026-10-26.md](docs/AUDIT-2026-10-26.md).
+
+Инструкция для выбранного серверного размещения: [docs/VPS.md](docs/VPS.md). Конфигурация: `compose.vps.yml`, шаблон окружения: `deploy/vps.env.example`.
 
 ## 🛠 Повседневные команды
 
@@ -215,16 +223,23 @@ npm run db:studio
 
 ## 🧪 Тестирование (QA & E2E)
 
+Полная проверка турнирного движка и исправления: [docs/ENGINE.md](docs/ENGINE.md). Быстрые проверки: `npm run test:engine`; турниры на одноразовой БД: `npm run test:engine:db` (нужен Docker).
+
 Перед каждым коммитом и деплоем обязательно проверяйте код:
 
 ```bash
 npm run verify:local
 ```
 
-Команда прогоняет линтеры, Unit/Integration тесты и проверяет сборку (Build).
+Команда прогоняет линтеры, Unit/Integration тесты, обе сборки, проверку типов frontend и лимиты JS. Проверки с настоящей БД и браузерные E2E запускаются отдельно.
+
+Результаты аудита, исправления движка и условия допуска к соревнованию: [docs/READINESS.md](docs/READINESS.md).
+
+Настройка регистрации и возрастных групп: [docs/REGISTRATION.md](docs/REGISTRATION.md).
 
 **Специфичные тесты:**
 
+- **Проверка на отдельной тестовой БД:** `npm run test:db -w api` (явно задайте тестовые `DATABASE_URL` и `REDIS_URL`).
 - **Запуск API тестов:** `npm run test -w @judo-arena/api`
 - **E2E Playwright:** `npm run test:e2e` (Для открытия браузера используйте `npm run test:e2e:headed`)
 
@@ -239,7 +254,7 @@ WS_URL=https://api.example.kz SOCKET_CLIENTS=100 SOCKET_DURATION_SEC=120 npm run
 
 ## ⚙️ Переменные окружения (.env)
 
-Локальные конфиги находятся в файле `.env.example`. Скопируйте его: `cp .env.example api/.env`.
+Локальные настройки API загружаются из `.env` в корне репозитория: `cp .env.example .env`. Заполните значения перед запуском.
 
 ### Важные Production переменные (Backend)
 
@@ -307,7 +322,7 @@ _Файл появится в папке `./backups/`._
 ## 🚑 Troubleshooting
 
 - **Порт 5433 или 6379 занят:** `lsof -i :5433` / `lsof -i :6379`. Убейте зависший процесс или измените порт в `docker-compose.yml`.
-- **API не видит DATABASE_URL:** Убедитесь, что скопировали `.env.example` в `api/.env`.
+- **API не видит DATABASE_URL:** Убедитесь, что скопировали `.env.example` в `.env` в корне репозитория.
 - **Ошибки CI Deploy:** Проверьте наличие секретов в репозитории GitHub (`RENDER_DEPLOY_HOOK_URL`, `CLOUDFLARE_API_TOKEN` и др.).
 - **Статус Health Degraded:** Откройте `http://localhost:4000/health`. Если БД, Redis или S3 отдают ошибку — почините инфраструктуру перед продолжением турнира.
 

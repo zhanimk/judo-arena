@@ -27,7 +27,7 @@ import { LiveBracket } from "@/components/judo/LiveBracket";
 import { buildTatamiState } from "@/lib/tatami-state";
 import { useTranslation } from "react-i18next";
 import { mapEmbedUrl } from "@/components/tournament/shared";
-import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
+import heroKazakhstan from "@/assets/hero-judo.jpg";
 
 // ── Local types ─────────────────────────────────────────────────────────────
 

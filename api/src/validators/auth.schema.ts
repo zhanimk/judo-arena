@@ -64,9 +64,7 @@ export const registerSchema = z
     email: z.string().email("Невалидный email"),
     password: strongPassword,
     role: z.enum(["ATHLETE", "COACH"], {
-      errorMap: () => ({
-        message: "Можно зарегистрировать только спортсмена или тренера",
-      }),
+      error: "Можно зарегистрировать только спортсмена или тренера",
     }),
     name: nameField,
     surname: nameField,

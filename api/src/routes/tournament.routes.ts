@@ -34,6 +34,8 @@
  *     POST   /api/applications/:id/withdraw     — отозвать (COACH)
  */
 
+import { z } from "zod";
+import { registerIndividual } from "../services/individual-registration.service.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { attachErrorHandler } from "../lib/error-handler.js";
 import {
@@ -109,6 +111,7 @@ import {
   coachOrAdmin,
   coachOnly,
   athleteOnly,
+  authenticated,
 } from "../lib/route-guards.js";
 
 // ============================================================
@@ -117,6 +120,65 @@ import {
 
 export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
   attachErrorHandler(app);
+  app.post<{ Params: { id: string } }>(
+    "/:id/self-application",
+    athleteOnly,
+    async (request, reply) => {
+      const { categoryId } = z
+        .object({ categoryId: z.string().min(1) })
+        .strict()
+        .parse(request.body);
+      return reply
+        .code(201)
+        .send(
+          await registerIndividual(
+            request.user!.sub,
+            request.params.id,
+            categoryId,
+          ),
+        );
+    },
+  );
+  app.post<{ Params: { id: string } }>(
+    "/:id/manual-entry",
+    adminOnly,
+    async (request, reply) => {
+      const input = z
+        .object({
+          categoryId: z.string().min(1),
+          athleteId: z.string().min(1).optional(),
+          participant: z
+            .object({
+              name: z.string().trim().min(1).max(100),
+              surname: z.string().trim().min(1).max(100),
+              dateOfBirth: z.coerce
+                .date()
+                .refine((d) => d <= new Date(), "Дата рождения в будущем"),
+              gender: z.enum(["MALE", "FEMALE"]),
+              weightKg: z.number().positive().max(300),
+              email: z.string().email().optional(),
+            })
+            .strict()
+            .optional(),
+        })
+        .strict()
+        .refine(
+          (v) => Boolean(v.athleteId) !== Boolean(v.participant),
+          "Выберите существующего или нового участника",
+        )
+        .parse(request.body);
+      return reply
+        .code(201)
+        .send(
+          await registerIndividual(
+            request.user!.sub,
+            request.params.id,
+            input.categoryId,
+            input,
+          ),
+        );
+    },
+  );
 
   app.get("/", async (request, reply) => {
     const q = listTournamentsQuerySchema.parse(request.query);
@@ -210,7 +272,9 @@ export async function tournamentRoutes(app: FastifyInstance): Promise<void> {
                 weightKg: true,
                 beltRank: true,
                 avatarUrl: true,
-                club: { select: { id: true, name: true, city: true, logoUrl: true } },
+                club: {
+                  select: { id: true, name: true, city: true, logoUrl: true },
+                },
               },
             },
           },
@@ -427,7 +491,7 @@ export async function tournamentAdjacentRoutes(
   // Заявки
   app.get<{ Params: { id: string } }>(
     "/applications/:id",
-    coachOrAdmin,
+    authenticated,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return getApplication(request.user!.sub, request.params.id);
     },
@@ -450,7 +514,7 @@ export async function tournamentAdjacentRoutes(
 
   app.delete<{ Params: { id: string; entryId: string } }>(
     "/applications/:id/entries/:entryId",
-    coachOrAdmin,
+    authenticated,
     async (
       request: FastifyRequest<{ Params: { id: string; entryId: string } }>,
       reply,
@@ -466,7 +530,7 @@ export async function tournamentAdjacentRoutes(
 
   app.post<{ Params: { id: string } }>(
     "/applications/:id/submit",
-    coachOrAdmin,
+    authenticated,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return submit(request.user!.sub, request.params.id);
     },
@@ -474,7 +538,7 @@ export async function tournamentAdjacentRoutes(
 
   app.post<{ Params: { id: string } }>(
     "/applications/:id/payment/kaspi",
-    coachOrAdmin,
+    authenticated,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return initiateKaspiPayment(request.user!.sub, request.params.id);
     },
@@ -555,7 +619,7 @@ export async function tournamentAdjacentRoutes(
 
   app.post<{ Params: { id: string } }>(
     "/applications/:id/withdraw",
-    coachOrAdmin,
+    authenticated,
     async (request: FastifyRequest<{ Params: { id: string } }>) => {
       return withdraw(request.user!.sub, request.params.id);
     },

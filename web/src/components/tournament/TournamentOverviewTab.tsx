@@ -1,3 +1,4 @@
+import { RegistrationSettings, type RegistrationSettingsValue } from "./RegistrationSettings";
 import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -58,6 +59,12 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
   const { t } = useTranslation();
   const qc = useQueryClient();
 
+  const [registration, setRegistration] = useState<RegistrationSettingsValue>({
+    audience: tourney.audience ?? "CHILD",
+    clubRegistrationEnabled: tourney.clubRegistrationEnabled ?? true,
+    selfRegistrationEnabled: tourney.selfRegistrationEnabled ?? false,
+  });
+
   // Form state
   const [posterUrl, setPosterUrl] = useState(tourney.posterUrl ?? "");
   const [galleryUrls, setGalleryUrls] = useState<string[]>(
@@ -90,6 +97,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
   const saveAll = useMutation({
     mutationFn: () =>
       api.tournaments.update(tourney.id, {
+        ...registration,
         posterUrl: posterUrl || null,
         galleryUrls: galleryUrls.length > 0 ? galleryUrls : null,
         regulationUrl: regulationUrl || null,
@@ -179,6 +187,7 @@ export function TournamentOverviewTab({ tournament: tourney }: { tournament: any
 
   return (
     <Panel title={t("tournament.overview_label")}>
+      <RegistrationSettings value={registration} onChange={setRegistration} />
       {/* Stats strip */}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm mb-6 p-3 rounded-xl bg-card/50 border border-border/40">
         <span className="inline-flex items-center gap-1.5 text-muted-foreground">

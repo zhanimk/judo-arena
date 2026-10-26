@@ -39,9 +39,35 @@ function fisherYatesShuffle<T>(arr: T[], rng: () => number): T[] {
  * @param seed      seed для ГПСЧ (для воспроизводимости — кладём в БД)
  * @returns         массив длины size: slot → athleteId | null (null = BYE)
  */
-export function seedAthletes(athletes: Seedable[], size: number, seed: number): (string | null)[] {
+export function seedAthletes(
+  athletes: Seedable[],
+  size: number,
+  seed: number,
+): (string | null)[] {
+  if (
+    !Number.isInteger(size) ||
+    size < 2 ||
+    size > 128 ||
+    (size & (size - 1)) !== 0
+  )
+    throw new Error("Размер сетки должен быть степенью двойки от 2 до 128");
+  if (
+    new Set(athletes.map((a) => a.id)).size !== athletes.length ||
+    athletes.some((a) => !a.id)
+  )
+    throw new Error("Участники должны быть уникальными");
+  if (size === 2 && athletes.length <= 2) {
+    const result: (string | null)[] = fisherYatesShuffle(
+      athletes,
+      createRng(seed),
+    ).map((a) => a.id);
+    while (result.length < 2) result.push(null);
+    return result;
+  }
   if (athletes.length > size) {
-    throw new Error(`Слишком много участников (${athletes.length}) для сетки размера ${size}`);
+    throw new Error(
+      `Слишком много участников (${athletes.length}) для сетки размера ${size}`,
+    );
   }
 
   const rng = createRng(seed);
@@ -58,7 +84,9 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
   }
 
   // Сортируем клубы по размеру (большие первыми — им сложнее развести)
-  const clubBuckets = Array.from(byClub.entries()).sort((a, b) => b[1].length - a[1].length);
+  const clubBuckets = Array.from(byClub.entries()).sort(
+    (a, b) => b[1].length - a[1].length,
+  );
 
   // Стратегия размещения: чередуем "четверти" сетки.
   // Для size=8 четверти это слоты [0,1] [2,3] [4,5] [6,7]
@@ -66,7 +94,10 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
   // Для size=4: [0,1] [2,3] (две половины, четвертей нет)
   const quartersCount = size <= 4 ? 2 : 4;
   const quarterSize = size / quartersCount;
-  const quarters: ((string | null) | undefined)[][] = Array.from({ length: quartersCount }, () => []);
+  const quarters: ((string | null) | undefined)[][] = Array.from(
+    { length: quartersCount },
+    () => [],
+  );
 
   // Чтобы одноклубники не встречались слишком рано, мы должны распределять их
   // не в соседние четверти (0 и 1 - это одна половина сетки), а в противоположные.
@@ -86,7 +117,10 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
         const q = quarterSequence[idx]!;
         if (quarters[q]!.length >= quarterSize) continue;
         const sameClubCount = quarters[q]!.filter(
-          (x) => x !== null && x !== undefined && athletesOfClub.find((a) => a.id === x),
+          (x) =>
+            x !== null &&
+            x !== undefined &&
+            athletesOfClub.find((a) => a.id === x),
         ).length;
         const score = sameClubCount * 100 + quarters[q]!.length;
         if (score < bestScore) {
@@ -95,7 +129,9 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
         }
       }
       if (bestQ === -1) {
-        throw new Error("Не удалось разместить участника — нет свободных слотов");
+        throw new Error(
+          "Не удалось разместить участника — нет свободных слотов",
+        );
       }
       quarters[bestQ]!.push(athletesOfClub[i]!.id);
     }
@@ -106,24 +142,24 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
   for (const q of quarters) {
     const athletesInQuarter = q!.slice() as (string | null)[];
     const shuffledAthletes = fisherYatesShuffle(athletesInQuarter, rng);
-    
+
     const numMatches = quarterSize / 2;
-    const pairs: ((string | null)[])[] = [];
-    
+    const pairs: (string | null)[][] = [];
+
     let athleteIndex = 0;
     // Сначала в каждый матч (пару) кладем по одному участнику
     for (let i = 0; i < numMatches; i++) {
       const p1 = shuffledAthletes[athleteIndex++] || null;
       pairs.push([p1, null]);
     }
-    
+
     // Оставшихся участников распределяем как вторых соперников
     for (let i = 0; i < pairs.length; i++) {
       if (athleteIndex < shuffledAthletes.length) {
         pairs[i]![1] = shuffledAthletes[athleteIndex++];
       }
     }
-    
+
     // Перемешиваем сами матчи (пары) внутри четверти
     const shuffledPairs = fisherYatesShuffle(pairs, rng);
     for (const pair of shuffledPairs) {
@@ -136,6 +172,10 @@ export function seedAthletes(athletes: Seedable[], size: number, seed: number): 
 
 /** Ближайшая степень двойки ≥ n (минимум 2). */
 export function nextPowerOfTwo(n: number): number {
+  if (!Number.isSafeInteger(n) || n < 0)
+    throw new Error(
+      "Число участников должно быть конечным неотрицательным целым",
+    );
   if (n <= 2) return 2;
   let p = 2;
   while (p < n) p *= 2;

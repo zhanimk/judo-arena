@@ -90,7 +90,11 @@ export async function sendSystemNotification(
       });
       const athleteIds = entries.map((e) => e.athleteId);
       const clubIds = Array.from(
-        new Set(entries.map((e) => e.application.clubId)),
+        new Set(
+          entries
+            .map((e) => e.application.clubId)
+            .filter((id): id is string => id !== null),
+        ),
       );
       const [athletes, coaches] = await Promise.all([
         prisma.user.findMany({

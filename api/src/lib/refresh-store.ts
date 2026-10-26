@@ -19,30 +19,34 @@ function key(userId: string, jti: string): string {
   return `refresh:${userId}:${jti}`;
 }
 
+export class RefreshStoreError extends Error {
+  readonly code = "AUTH_STORE_UNAVAILABLE";
+  readonly httpStatus = 503;
+  constructor() {
+    super("Хранилище сессий недоступно. Повторите позже.");
+  }
+}
+
 export async function storeRefreshToken(
   userId: string,
   jti: string,
 ): Promise<void> {
-  await redis.set(key(userId, jti), "1", "EX", REFRESH_TTL_SEC).catch((err) => {
-    console.error(
-      "[refresh-store] Failed to store refresh token:",
-      err.message,
-    );
-  });
+  try {
+    await redis.set(key(userId, jti), "1", "EX", REFRESH_TTL_SEC);
+  } catch {
+    throw new RefreshStoreError();
+  }
 }
 
-export async function isRefreshTokenValid(
+/** GETDEL makes refresh rotation single-use even across parallel requests. */
+export async function consumeRefreshToken(
   userId: string,
   jti: string,
 ): Promise<boolean> {
   try {
-    const exists = await redis.exists(key(userId, jti));
-    return exists === 1;
-  } catch (err) {
-    const error = err as Error;
-    console.error("[refresh-store] Redis exists check failed:", error.message);
-    // Optimistic fallback: if Redis is down, trust the JWT signature.
-    return true;
+    return (await redis.getdel(key(userId, jti))) === "1";
+  } catch {
+    throw new RefreshStoreError();
   }
 }
 
@@ -50,12 +54,11 @@ export async function revokeRefreshToken(
   userId: string,
   jti: string,
 ): Promise<void> {
-  await redis.del(key(userId, jti)).catch((err) => {
-    console.error(
-      "[refresh-store] Failed to revoke refresh token:",
-      err.message,
-    );
-  });
+  try {
+    await redis.del(key(userId, jti));
+  } catch {
+    throw new RefreshStoreError();
+  }
 }
 
 export async function revokeAllUserTokens(userId: string): Promise<void> {
@@ -78,11 +81,7 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
     if (keys.length > 0) {
       await redis.del(...keys);
     }
-  } catch (err) {
-    const error = err as Error;
-    console.error(
-      "[refresh-store] Failed to revoke all user tokens:",
-      error.message,
-    );
+  } catch {
+    throw new RefreshStoreError();
   }
 }

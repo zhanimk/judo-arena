@@ -39,7 +39,11 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
       if (!request.user) return;
 
       const { applicationId } = initSchema.parse(request.body);
-      const result = await initPayment(applicationId, request.user.email);
+      const result = await initPayment(
+        applicationId,
+        request.user.sub,
+        request.user.email,
+      );
       return reply.send(result);
     },
   );
@@ -62,7 +66,11 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
       await authenticate(request, reply);
       if (!request.user) return;
       const { reference } = confirmSchema.parse(request.body ?? {});
-      const result = await adminConfirmPayment(request.params.appId, request.user.sub, reference);
+      const result = await adminConfirmPayment(
+        request.params.appId,
+        request.user.sub,
+        reference,
+      );
       return reply.send(result);
     },
   );

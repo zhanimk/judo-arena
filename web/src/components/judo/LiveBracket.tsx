@@ -1,3 +1,5 @@
+import { StandingsDecisionPanel } from "./StandingsDecisionPanel";
+import { useAuth } from "@/lib/auth-store";
 /**
  * LiveBracket — Olympic-style сетка с подключением к API + real-time через Socket.IO.
  */
@@ -17,21 +19,23 @@ interface Props {
 export function LiveBracket({ tournamentId, categoryId }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const query = useQuery({
     queryKey: ["bracket", tournamentId, categoryId],
     queryFn: () => api.brackets.getByCategory(tournamentId, categoryId),
   });
 
-  useRealtime(
-    query.data ? [`bracket:${query.data.id}`, `tournament:${tournamentId}`] : [],
-    {
-      "match:scoreUpdate": () => qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
-      "match:finished": () => qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
-      "match:started": () => qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
-      "bracket:update": () => qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
-    },
-  );
+  useRealtime(query.data ? [`bracket:${query.data.id}`, `tournament:${tournamentId}`] : [], {
+    "match:scoreUpdate": () =>
+      qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
+    "match:finished": () =>
+      qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
+    "match:started": () =>
+      qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
+    "bracket:update": () =>
+      qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] }),
+  });
 
   if (query.isLoading) {
     return (
@@ -50,10 +54,35 @@ export function LiveBracket({ tournamentId, categoryId }: Props) {
   }
 
   return (
-    <OlympicBracket
-      matches={(query.data.matches ?? []) as any}
-      size={query.data.size ?? 0}
-      format={query.data.format}
-    />
+    <div className="space-y-4">
+      {(query.data.standings ?? [])
+        .filter((table) => table.needsDecision)
+        .map((table) =>
+          user?.role === "ADMIN" ? (
+            <StandingsDecisionPanel
+              key={`${table.section}:${table.fingerprint}`}
+              bracket={query.data!}
+              table={table}
+              onSaved={() => {
+                qc.invalidateQueries({ queryKey: ["bracket", tournamentId, categoryId] });
+              }}
+            />
+          ) : (
+            <p
+              key={table.section}
+              role="status"
+              className="rounded border border-amber-500/40 p-3 text-sm"
+            >
+              {t("standings_decision.pending")}
+            </p>
+          ),
+        )}
+      <OlympicBracket
+        standings={query.data.standings}
+        matches={(query.data.matches ?? []) as any}
+        size={query.data.size ?? 0}
+        format={query.data.format}
+      />
+    </div>
   );
 }

@@ -58,14 +58,22 @@ export async function getApplicationHistory(
   if (actorRole !== UserRole.ADMIN) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
-      select: { clubId: true },
+      select: { clubId: true, applicantId: true },
     });
     if (!application) return [];
     const actor = await prisma.user.findUnique({
       where: { id: actorUserId },
       select: { clubId: true },
     });
-    if (!actor || actor.clubId !== application.clubId) {
+    if (
+      !actor ||
+      !(
+        application.applicantId === actorUserId ||
+        (application.clubId &&
+          actorRole === UserRole.COACH &&
+          actor.clubId === application.clubId)
+      )
+    ) {
       throw Object.assign(new Error("Доступ запрещён"), {
         httpStatus: 403,
         code: "FORBIDDEN",

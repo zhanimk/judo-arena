@@ -79,7 +79,7 @@ export function ProtectedRoute({
     if (hasClubRequest === null) return;
 
     const profileComplete = isAthleteProfileComplete(user);
-    const onboardingComplete = hasClubRequest && profileComplete;
+    const onboardingComplete = profileComplete;
     const onOnboarding = path === "/athlete/onboarding";
 
     if (!onboardingComplete && !onOnboarding) {

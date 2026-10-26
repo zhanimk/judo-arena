@@ -1,3 +1,4 @@
+import { birthYearBounds } from "../src/services/category-age.js";
 import {
   ApplicationStatus,
   BracketFormat,
@@ -27,33 +28,64 @@ function randomElement<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
-const FIRST_NAMES = ["Alikhan", "Nurbol", "Aigerim", "Zhanar", "Timur", "Ruslan", "Sanjar", "Aruzhan", "Dinara", "Miras"];
-const SURNAMES = ["Sarsenov", "Kairatuly", "Nurlanov", "Bekzatov", "Aliev", "Zhumabekov", "Temirlanov"];
+const FIRST_NAMES = [
+  "Alikhan",
+  "Nurbol",
+  "Aigerim",
+  "Zhanar",
+  "Timur",
+  "Ruslan",
+  "Sanjar",
+  "Aruzhan",
+  "Dinara",
+  "Miras",
+];
+const SURNAMES = [
+  "Sarsenov",
+  "Kairatuly",
+  "Nurlanov",
+  "Bekzatov",
+  "Aliev",
+  "Zhumabekov",
+  "Temirlanov",
+];
 
 async function cleanDemoTournament() {
   const tId = TOURNAMENT_ID;
-  await prisma.matchEvent.deleteMany({ where: { match: { tournamentId: tId } } });
-  await prisma.judgeSession.deleteMany({ where: { match: { tournamentId: tId } } });
+  await prisma.matchEvent.deleteMany({
+    where: { match: { tournamentId: tId } },
+  });
+  await prisma.judgeSession.deleteMany({
+    where: { match: { tournamentId: tId } },
+  });
   await prisma.tatamiSession.deleteMany({ where: { tournamentId: tId } });
   await prisma.ratingEntry.deleteMany({ where: { tournamentId: tId } });
   await prisma.match.deleteMany({ where: { tournamentId: tId } });
   await prisma.bracket.deleteMany({ where: { tournamentId: tId } });
-  await prisma.applicationEntry.deleteMany({ where: { application: { tournamentId: tId } } });
+  await prisma.applicationEntry.deleteMany({
+    where: { application: { tournamentId: tId } },
+  });
   await prisma.application.deleteMany({ where: { tournamentId: tId } });
   await prisma.category.deleteMany({ where: { tournamentId: tId } });
   await prisma.tournament.deleteMany({ where: { id: tId } });
-  
+
   await prisma.user.deleteMany({ where: { email: { contains: "mega" } } });
-  
+
   // Clean old demo tournament too
   const oldTId = "demo-complete-flow-2026";
-  await prisma.matchEvent.deleteMany({ where: { match: { tournamentId: oldTId } } });
-  await prisma.judgeSession.deleteMany({ where: { match: { tournamentId: oldTId } } });
+  await prisma.matchEvent.deleteMany({
+    where: { match: { tournamentId: oldTId } },
+  });
+  await prisma.judgeSession.deleteMany({
+    where: { match: { tournamentId: oldTId } },
+  });
   await prisma.tatamiSession.deleteMany({ where: { tournamentId: oldTId } });
   await prisma.ratingEntry.deleteMany({ where: { tournamentId: oldTId } });
   await prisma.match.deleteMany({ where: { tournamentId: oldTId } });
   await prisma.bracket.deleteMany({ where: { tournamentId: oldTId } });
-  await prisma.applicationEntry.deleteMany({ where: { application: { tournamentId: oldTId } } });
+  await prisma.applicationEntry.deleteMany({
+    where: { application: { tournamentId: oldTId } },
+  });
   await prisma.application.deleteMany({ where: { tournamentId: oldTId } });
   await prisma.category.deleteMany({ where: { tournamentId: oldTId } });
   await prisma.tournament.deleteMany({ where: { id: oldTId } });
@@ -63,7 +95,9 @@ async function main() {
   console.log("Starting STRESS TEST mega seed...");
   await cleanDemoTournament();
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
-  const admin = await prisma.user.findUnique({ where: { email: "admin@judo-arena.kz" } });
+  const admin = await prisma.user.findUnique({
+    where: { email: "admin@judo-arena.kz" },
+  });
 
   console.log("Creating 30 clubs...");
   const clubs = [];
@@ -96,7 +130,7 @@ async function main() {
         createdById: coach.id,
       },
     });
-    
+
     await prisma.user.update({
       where: { id: coach.id },
       data: { clubId: club.id, clubRole: ClubRole.OWNER },
@@ -123,17 +157,83 @@ async function main() {
   });
 
   const CATEGORIES = [
-    { id: "stress-cat-rr-4", name: { ru: "Девочки -52 кг (Круговая 4)" }, g: Gender.FEMALE, format: BracketFormat.ROUND_ROBIN, count: 4 },
-    { id: "stress-cat-se-15", name: { ru: "Юноши -55 кг (SE 15)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 15 },
-    { id: "stress-cat-se-60", name: { ru: "Юноши -60 кг (SE 60)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 60 },
-    { id: "stress-cat-se-120", name: { ru: "Юноши -66 кг (SE 120)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 120 },
-    { id: "stress-cat-se-100-1", name: { ru: "Абсолют Часть 1 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-2", name: { ru: "Абсолют Часть 2 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-3", name: { ru: "Абсолют Часть 3 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-4", name: { ru: "Абсолют Часть 4 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-5", name: { ru: "Абсолют Часть 5 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-6", name: { ru: "Абсолют Часть 6 (SE 100)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 100 },
-    { id: "stress-cat-se-100-7", name: { ru: "Абсолют Часть 7 (SE 101)" }, g: Gender.MALE, format: BracketFormat.SE_IJF, count: 101 },
+    {
+      id: "stress-cat-rr-4",
+      name: { ru: "Девочки -52 кг (Круговая 4)" },
+      g: Gender.FEMALE,
+      format: BracketFormat.ROUND_ROBIN,
+      count: 4,
+    },
+    {
+      id: "stress-cat-se-15",
+      name: { ru: "Юноши -55 кг (SE 15)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 15,
+    },
+    {
+      id: "stress-cat-se-60",
+      name: { ru: "Юноши -60 кг (SE 60)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 60,
+    },
+    {
+      id: "stress-cat-se-120",
+      name: { ru: "Юноши -66 кг (SE 120)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 120,
+    },
+    {
+      id: "stress-cat-se-100-1",
+      name: { ru: "Абсолют Часть 1 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-2",
+      name: { ru: "Абсолют Часть 2 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-3",
+      name: { ru: "Абсолют Часть 3 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-4",
+      name: { ru: "Абсолют Часть 4 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-5",
+      name: { ru: "Абсолют Часть 5 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-6",
+      name: { ru: "Абсолют Часть 6 (SE 100)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 100,
+    },
+    {
+      id: "stress-cat-se-100-7",
+      name: { ru: "Абсолют Часть 7 (SE 101)" },
+      g: Gender.MALE,
+      format: BracketFormat.SE_IJF,
+      count: 101,
+    },
   ];
 
   for (const cat of CATEGORIES) {
@@ -143,8 +243,11 @@ async function main() {
         tournamentId: tournament.id,
         name: cat.name,
         gender: cat.g,
-        ageMin: 10, ageMax: 20,
-        weightMin: 0, weightMax: 100,
+        ageMin: 10,
+        ageMax: 20,
+        ...birthYearBounds({ ageMin: 10, ageMax: 20 }, tournament.startDate),
+        weightMin: 0,
+        weightMax: 100,
         matchDurationSec: 180,
         format: cat.format,
       },
@@ -180,7 +283,7 @@ async function main() {
       const entryPayloads = [];
       for (let j = 0; j < chunk; j++) {
         const id = nanoid();
-        const email = `mega.${cat.id}.${i+j}@stress.judo-arena.kz`;
+        const email = `mega.${cat.id}.${i + j}@stress.judo-arena.kz`;
         const club = randomElement(clubs);
         const age = cat.ageMin ? cat.ageMin + 1 : 20;
         const dob = new Date(new Date().getFullYear() - age, 0, 1);
@@ -193,7 +296,7 @@ async function main() {
           surname: `Стресс ${i + j}`,
           gender: cat.g,
           dateOfBirth: dob,
-          weightKg: cat.weightMax >= 999 ? 120 : (cat.weightMax - 1),
+          weightKg: cat.weightMax >= 999 ? 120 : cat.weightMax - 1,
           clubId: club.id,
           isActive: true,
         });
@@ -202,7 +305,7 @@ async function main() {
           athleteId: id,
           categoryId: cat.id,
           weighInStatus: WeighInStatus.PASSED,
-          actualWeightKg: cat.weightMax >= 999 ? 120 : (cat.weightMax - 1),
+          actualWeightKg: cat.weightMax >= 999 ? 120 : cat.weightMax - 1,
           weighedAt: new Date(),
           weighedById: admin!.id,
         });
@@ -220,7 +323,11 @@ async function main() {
     data: { status: TournamentStatus.IN_PROGRESS },
   });
 
-  for (let tatamiNumber = 1; tatamiNumber <= tournament.tatamiCount; tatamiNumber++) {
+  for (
+    let tatamiNumber = 1;
+    tatamiNumber <= tournament.tatamiCount;
+    tatamiNumber++
+  ) {
     await prisma.tatamiSession.create({
       data: {
         token: `mega-tatami-${tatamiNumber}-${nanoid(8)}`,
@@ -236,13 +343,17 @@ async function main() {
   const counts = await prisma.$transaction([
     prisma.application.count({ where: { tournamentId: tournament.id } }),
     prisma.bracket.count({ where: { tournamentId: tournament.id } }),
-    prisma.match.count({ where: { tournamentId: tournament.id, status: MatchStatus.PENDING } }),
+    prisma.match.count({
+      where: { tournamentId: tournament.id, status: MatchStatus.PENDING },
+    }),
   ]);
 
   console.log("\nMEGA SEED COMPLETE!");
   console.log(`Tournament: ${tournament.id}`);
   console.log(`Matches pending: ${counts[2]}`);
-  console.log(`Tatami distribution: ${JSON.stringify(drawResult.tatami.loads)}`);
+  console.log(
+    `Tatami distribution: ${JSON.stringify(drawResult.tatami.loads)}`,
+  );
 }
 
 main()

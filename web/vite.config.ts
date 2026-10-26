@@ -10,23 +10,26 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { VitePWA } from "vite-plugin-pwa";
 
 const isVercel = process.env.VERCEL === "1";
+const isVps = process.env.DEPLOY_TARGET === "vps";
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 export default defineConfig({
   nitro: isVercel
     ? false
-    : {
-        preset: "cloudflare-module",
-        output: {
-          dir: "dist",
-          serverDir: "dist/server",
-          publicDir: "dist/client",
+    : isVps
+      ? { preset: "node-server" }
+      : {
+          preset: "cloudflare-module",
+          output: {
+            dir: "dist",
+            serverDir: "dist/server",
+            publicDir: "dist/client",
+          },
+          cloudflare: {
+            nodeCompat: true,
+            deployConfig: true,
+          },
         },
-        cloudflare: {
-          nodeCompat: true,
-          deployConfig: true,
-        },
-      },
   tanstackStart: {
     server: { entry: "server" },
   },
@@ -91,6 +94,8 @@ export default defineConfig({
         devOptions: { enabled: false },
         manifest: false, // We have our own public/manifest.webmanifest
         workbox: {
+          globDirectory: isVps ? ".output/public" : "dist/client",
+          swDest: isVps ? ".output/public/sw.js" : "dist/client/sw.js",
           // Cache the app shell and all static assets
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
           // Navigation fallback: serve the SPA shell for unknown routes
@@ -98,16 +103,10 @@ export default defineConfig({
           navigateFallback: null, // SSR app — don't intercept navigations
           // Runtime caching strategies
           runtimeCaching: [
-            // API GET requests: network first, fall back to cache (30s timeout)
+            // Live scores and authenticated responses must never fall back to stale storage.
             {
-              urlPattern: /^https?:\/\/.*\/api\/(matches|tournaments|brackets|ratings)/,
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "api-cache",
-                networkTimeoutSeconds: 5,
-                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 2 }, // 2h
-                cacheableResponse: { statuses: [0, 200] },
-              },
+              urlPattern: /^https?:\/\/.*\/api\//,
+              handler: "NetworkOnly",
             },
             // Static assets: cache first (long-lived)
             {

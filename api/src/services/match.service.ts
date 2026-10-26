@@ -1,3 +1,4 @@
+import { withSerializableMatchTransaction } from "./match-transaction.js";
 /**
  * match.service.ts — barrel re-export + read-only запросы.
  *
@@ -18,7 +19,7 @@
 import { prisma } from "../lib/prisma.js";
 import { MatchStatus } from "@prisma/client";
 import { Prisma, BracketFormat } from "@prisma/client";
-import { MatchError } from "./match-types.js";
+import { MatchError, rethrowMatchWriteConflict } from "./match-types.js";
 import { clearDownstreamRecursive } from "./match-propagation.js";
 
 // ── Re-exports ────────────────────────────────────────────────────────────────
@@ -137,42 +138,54 @@ export async function listMatches(query: {
  * Очищает score, events, winner; если winner propagated — откатываем downstream.
  */
 export async function resetMatch(matchId: string) {
-  const match = await prisma.match.findUnique({
-    where: { id: matchId },
-    include: { bracket: true },
-  });
-  if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
-  if (match.status === MatchStatus.PENDING) {
-    throw new MatchError("ALREADY_PENDING", "Матч уже в ожидании", 409);
-  }
-
-  if (
-    match.status === MatchStatus.COMPLETED &&
-    match.winnerId &&
-    match.bracket.format !== BracketFormat.ROUND_ROBIN
-  ) {
-    const loserId =
-      match.redAthleteId === match.winnerId
-        ? match.blueAthleteId
-        : match.redAthleteId;
-    await clearDownstreamRecursive(match.bracketId, match.winnerId, match.id);
-    if (loserId) {
-      await clearDownstreamRecursive(match.bracketId, loserId, match.id);
+  return withSerializableMatchTransaction(async (tx) => {
+    const match = await tx.match.findUnique({
+      where: { id: matchId },
+      include: { bracket: true, tournament: { select: { status: true } } },
+    });
+    if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
+    if (
+      match.tournament.status === "COMPLETED" ||
+      match.tournament.status === "CANCELLED"
+    ) {
+      throw new MatchError(
+        "TOURNAMENT_FINALIZED",
+        "Турнир завершён или отменён",
+        409,
+      );
     }
-  }
+    if (match.status === MatchStatus.PENDING) {
+      throw new MatchError("ALREADY_PENDING", "Матч уже в ожидании", 409);
+    }
 
-  await prisma.matchEvent.deleteMany({ where: { matchId } });
-  return prisma.match.update({
-    where: { id: matchId },
-    data: {
-      status: MatchStatus.PENDING,
-      winnerId: null,
-      scoreSnapshot: Prisma.JsonNull,
-      startedAt: null,
-      finishedAt: null,
-      isGoldenScore: false,
-      isReplay: true,
-      replayReason: "Матч қайта басталды",
-    },
-  });
+    if (
+      match.status === MatchStatus.COMPLETED &&
+      match.winnerId &&
+      match.bracket.format !== BracketFormat.ROUND_ROBIN
+    ) {
+      await clearDownstreamRecursive(
+        match.bracketId,
+        match.winnerId,
+        match.id,
+        tx,
+      );
+    }
+
+    await tx.matchEvent.deleteMany({ where: { matchId } });
+    return tx.match.update({
+      where: { id: matchId, version: match.version },
+      data: {
+        status: MatchStatus.PENDING,
+        winnerId: null,
+        scoreSnapshot: Prisma.JsonNull,
+        startedAt: null,
+        finishedAt: null,
+        isGoldenScore: false,
+        goldenScoreStartedAt: null,
+        version: { increment: 1 },
+        isReplay: true,
+        replayReason: "Матч қайта басталды",
+      },
+    });
+  }).catch(rethrowMatchWriteConflict);
 }

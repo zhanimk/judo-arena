@@ -199,14 +199,26 @@ function AthleteOnboarding() {
               <StepRow
                 number="3"
                 title={t("coach_onboarding.step_dashboard")}
-                done={hasClubStep && hasProfileStep}
-                disabled={!hasClubStep || !hasProfileStep}
+                done={hasProfileStep}
+                disabled={!hasProfileStep}
                 hint={t("coach_onboarding.step_dashboard_hint")}
               />
             </div>
           </aside>
 
           <section className="space-y-5">
+            <div className="rounded-lg border border-border p-4 text-sm">
+              <p>{t("registration.self_hint")}</p>
+              {hasProfileStep && (
+                <button
+                  type="button"
+                  className="mt-3 text-gold underline"
+                  onClick={() => navigate({ to: "/athlete/tournaments" })}
+                >
+                  {t("registration.self_title")}
+                </button>
+              )}
+            </div>
             <ClubStep
               userClub={user.club}
               activeRequest={activeRequest}
@@ -220,7 +232,7 @@ function AthleteOnboarding() {
             />
 
             <ProfileStep
-              locked={!hasClubStep}
+              locked={false}
               user={user}
               onSaved={async () => {
                 await refreshMe();

@@ -1,3 +1,4 @@
+import { birthYearBounds } from "../src/services/category-age.js";
 /**
  * Demo seed for Judo-Arena.
  *
@@ -490,6 +491,7 @@ async function main() {
         gender: category.gender,
         ageMin: category.ageMin,
         ageMax: category.ageMax,
+        ...birthYearBounds(category, tournament.startDate),
         weightMin: category.weightMin,
         weightMax: category.weightMax,
         matchDurationSec: category.matchDurationSec,

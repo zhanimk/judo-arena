@@ -13,3 +13,5 @@
 .wrangler-logs
 backups
 uploads
+
+**/node_modules.recovery

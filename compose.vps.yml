@@ -1,0 +1,87 @@
+name: judo-arena
+x-api-env: &api-env
+  NODE_ENV: production
+  API_HOST: 0.0.0.0
+  API_PORT: 4000
+  DATABASE_URL: postgresql://judo:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/judo_arena?schema=public
+  REDIS_URL: redis://redis:6379
+  APP_URL: https://${DOMAIN:?Set DOMAIN}
+  CORS_ORIGIN: https://${DOMAIN}
+  TRUST_PROXY: 172.30.80.10
+  UPLOADS_DIR: /app/api/uploads
+services:
+  postgres:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_USER: judo
+      POSTGRES_DB: judo_arena
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U judo -d judo_arena"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --appendonly, "yes"]
+    volumes: [redisdata:/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  migrate:
+    build: {context: ., dockerfile: deploy/Dockerfile, target: api}
+    env_file: ${VPS_ENV_FILE:-.env.vps}
+    environment: *api-env
+    command: ["node", "../node_modules/prisma/build/index.js", "migrate", "deploy"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+  api:
+    build: {context: ., dockerfile: deploy/Dockerfile, target: api}
+    env_file: ${VPS_ENV_FILE:-.env.vps}
+    environment: *api-env
+    volumes: [uploads:/app/api/uploads]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  web:
+    build: {context: ., dockerfile: deploy/Dockerfile, target: web}
+    restart: unless-stopped
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      default:
+        ipv4_address: 172.30.80.10
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_started}
+    restart: unless-stopped
+networks:
+  default:
+    ipam:
+      config: [{subnet: 172.30.80.0/24}]
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  caddydata:
+  caddyconfig:

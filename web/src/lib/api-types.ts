@@ -11,22 +11,12 @@ export type Gender = "MALE" | "FEMALE";
 export type UserRole = "ATHLETE" | "COACH" | "ADMIN" | "JUDGE";
 export type ClubRole = "OWNER" | "COACH";
 export type TournamentStatus =
-  | "DRAFT"
-  | "REGISTRATION_OPEN"
-  | "REGISTRATION_CLOSED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
+  "DRAFT" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type BracketFormat = "SE_IJF" | "ROUND_ROBIN" | "MIXED";
 export type ApplicationStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "WITHDRAWN";
 export type PaymentStatus = "NOT_REQUIRED" | "PENDING" | "PAID" | "FAILED";
 export type WeighInStatus =
-  | "PENDING"
-  | "PASSED"
-  | "FAILED_WEIGHT"
-  | "FAILED_DOCUMENTS"
-  | "ABSENT"
-  | "WITHDRAWN";
+  "PENDING" | "PASSED" | "FAILED_WEIGHT" | "FAILED_DOCUMENTS" | "ABSENT" | "WITHDRAWN";
 export type MatchStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 // ── User / Auth ───────────────────────────────────────────────────────────────
@@ -131,6 +121,8 @@ export interface Category {
   gender: Gender;
   ageMin: number;
   ageMax: number;
+  birthYearMin?: number | null;
+  birthYearMax?: number | null;
   weightMin: number;
   weightMax: number;
   matchDate?: string | null;
@@ -142,6 +134,9 @@ export interface Category {
 }
 
 export interface Tournament {
+  audience?: "CHILD" | "ADULT" | "MIXED";
+  clubRegistrationEnabled?: boolean;
+  selfRegistrationEnabled?: boolean;
   id: string;
   name: LocalizedName;
   description?: LocalizedName;
@@ -195,9 +190,12 @@ export interface ApplicationEntry {
 }
 
 export interface Application {
+  applicantId?: string | null;
+  applicant?: Pick<User, "id" | "name" | "surname"> | null;
+  source?: "CLUB" | "SELF" | "ADMIN";
   id: string;
   tournamentId: string;
-  clubId: string;
+  clubId: string | null;
   status: ApplicationStatus;
   notes?: string | null;
   submittedAt?: string | null;
@@ -288,7 +286,24 @@ export interface Match {
   updatedAt: string;
 }
 
+export interface BracketStandingTable {
+  section: string;
+  complete: boolean;
+  fingerprint: string;
+  needsDecision: boolean;
+  rows: {
+    athleteId: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    place: number;
+    tied?: boolean;
+  }[];
+  decision: { order: string[]; reason: string; decidedAt: string } | null;
+}
+
 export interface Bracket {
+  standings?: BracketStandingTable[];
   id: string;
   tournamentId: string;
   categoryId: string;
@@ -518,6 +533,9 @@ export interface CreateGroupInput {
 export type UpdateGroupInput = Partial<CreateGroupInput>;
 
 export interface CreateTournamentInput {
+  audience?: "CHILD" | "ADULT" | "MIXED";
+  clubRegistrationEnabled?: boolean;
+  selfRegistrationEnabled?: boolean;
   name: LocalizedName;
   description?: LocalizedName | null;
   location: string;
@@ -547,6 +565,8 @@ export interface CreateCategoryInput {
   gender: Gender;
   ageMin: number;
   ageMax: number;
+  birthYearMin?: number;
+  birthYearMax?: number;
   weightMin: number;
   weightMax: number;
   matchDurationSec?: number;

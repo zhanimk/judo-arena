@@ -6,9 +6,9 @@
  *
  * Требования: приложение запущено на BASE_URL (по умолчанию http://localhost:3000).
  * Тестовые аккаунты из seed:
- *   admin@judo-arena.kz   / password123
- *   coach.almaty@judo-arena.kz / password123
- *   rr.01@almaty-demo.demo.judo-arena.kz / password123
+ *   admin@judo-arena.kz   / JudoArenaAdmin2026!
+ *   coach.almaty@judo-arena.kz / JudoArenaAdmin2026!
+ *   rr.01@almaty-demo.demo.judo-arena.kz / JudoArenaAdmin2026!
  */
 
 import { test, expect, type Page } from "@playwright/test";
@@ -17,7 +17,7 @@ const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 const ADMIN_EMAIL = "admin@judo-arena.kz";
 const COACH_EMAIL = "coach.almaty@judo-arena.kz";
 const ATHLETE_EMAIL = "rr.01@almaty-demo.demo.judo-arena.kz";
-const PASSWORD = "password123";
+const PASSWORD = process.env.E2E_PASSWORD ?? "JudoArenaAdmin2026!";
 
 // ============================================================
 // Helpers
@@ -257,8 +257,13 @@ test.describe("Coach dashboard", () => {
     await expect(page.locator("body")).toContainText(/жарыс|турнир/i);
   });
 
-  test("coach applications page loads", async ({ page }) => {
-    await page.goto(`${BASE}/coach/applications`);
+  test("coach applications tab loads", async ({ page }) => {
+    await page.goto(`${BASE}/coach/tournaments`);
+    await page
+      .getByRole("button", {
+        name: /^(өтінімдер|заявки|applications)(\s*\d+)?$/i,
+      })
+      .click();
     await expect(page.locator("body")).toContainText(
       /өтінім|заявка|application/i,
     );

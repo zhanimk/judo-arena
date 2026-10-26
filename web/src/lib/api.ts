@@ -166,9 +166,8 @@ async function request<T = unknown>(path: string, opts: RequestOptions = {}): Pr
     const dedupKey = path;
     const inflight = pendingRequests.get(dedupKey);
     if (inflight) return inflight as Promise<T>;
-    const promise = _doRequest<T>(path, opts);
+    const promise = _doRequest<T>(path, opts).finally(() => pendingRequests.delete(dedupKey));
     pendingRequests.set(dedupKey, promise);
-    promise.finally(() => pendingRequests.delete(dedupKey));
     return promise;
   }
 
@@ -626,6 +625,30 @@ export const api = {
 
   // --- APPLICATIONS ---
   applications: {
+    selfRegister: (tournamentId: string, categoryId: string) =>
+      request<Application>(`/api/tournaments/${tournamentId}/self-application`, {
+        method: "POST",
+        json: { categoryId },
+      }),
+    manualRegister: (
+      tournamentId: string,
+      data: {
+        categoryId: string;
+        athleteId?: string;
+        participant?: {
+          name: string;
+          surname: string;
+          dateOfBirth: string;
+          gender: "MALE" | "FEMALE";
+          weightKg: number;
+          email?: string;
+        };
+      },
+    ) =>
+      request<Application>(`/api/tournaments/${tournamentId}/manual-entry`, {
+        method: "POST",
+        json: data,
+      }),
     myClub: () => request<Application[]>("/api/coach/applications"),
     mineAsAthlete: () => request<ApplicationEntry[]>("/api/athlete/applications"),
     get: (id: string) => request<Application>(`/api/applications/${id}`),
@@ -683,6 +706,14 @@ export const api = {
         method: "POST",
       }),
     get: (id: string) => request<Bracket>(`/api/brackets/${id}`),
+    decideStandings: (
+      id: string,
+      input: { section: string; order: string[]; reason: string; fingerprint: string },
+    ) =>
+      request<{ ok: boolean }>(`/api/brackets/${id}/standings/decision`, {
+        method: "POST",
+        json: input,
+      }),
     delete: (id: string) => request<void>(`/api/brackets/${id}`, { method: "DELETE" }),
   },
 

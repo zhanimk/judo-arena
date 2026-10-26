@@ -12,7 +12,7 @@
 import { readdirSync, statSync } from "fs";
 import { join, extname } from "path";
 
-const DIST = new URL("../web/dist/client/", import.meta.url).pathname;
+const DIST = new URL(process.env.DEPLOY_TARGET === "vps" ? "../web/.output/public/" : "../web/dist/client/", import.meta.url).pathname;
 
 // Per-chunk limits in bytes
 const LIMITS = [

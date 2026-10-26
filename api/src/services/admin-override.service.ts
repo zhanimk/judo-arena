@@ -1,3 +1,4 @@
+import { withSerializableMatchTransaction } from "./match-transaction.js";
 /**
  * Admin Override + Rollback.
  *
@@ -18,23 +19,22 @@
 
 import { prisma } from "../lib/prisma.js";
 import {
-  Prisma,
   MatchStatus,
-  BracketFormat,
   TournamentStatus,
   UserRole,
   type Match,
 } from "@prisma/client";
-import { propagateResult } from "./bracket-engine/single-elimination.js";
-import type { SEMatch } from "./bracket-engine/single-elimination.js";
+import {
+  clearDownstreamRecursive,
+  propagateWinner,
+} from "./match-propagation.js";
+import { rethrowMatchWriteConflict } from "./match-types.js";
 import { logAudit } from "./audit.service.js";
 import {
   emitMatchEvent,
   emitToBracket,
   emitToTournament,
 } from "../sockets/io.js";
-
-type SectionType = SEMatch["bracketSection"];
 
 export class OverrideError extends Error {
   constructor(
@@ -101,56 +101,50 @@ export async function overrideMatchResult(
     );
   }
 
-  // ---- Каскадный rollback ----
-  const rolledBack: Match[] = [];
-  if (oldWinnerId) {
-    await rollbackDownstream(match, oldWinnerId, rolledBack, actorUserId);
-  }
-
-  // ---- Установка нового winner ----
-  const updated = await prisma.match.update({
-    where: { id: matchId },
-    data: {
-      winnerId: newWinnerId,
-      isReplay: true,
-      replayReason: reason,
+  // Rollback and replacement are one transaction; traverse both winner and loser edges.
+  const { updated, rolledBack } = await withSerializableMatchTransaction(
+    async (tx) => {
+      const currentTournament = await tx.tournament.findUnique({
+        where: { id: match.tournamentId },
+        select: { status: true },
+      });
+      if (
+        !currentTournament ||
+        currentTournament.status === "COMPLETED" ||
+        currentTournament.status === "CANCELLED"
+      )
+        throw new OverrideError(
+          "TOURNAMENT_FINALIZED",
+          "Турнир завершён или отменён",
+          409,
+        );
+      const rolledBack = await clearDownstreamRecursive(
+        match.bracketId,
+        oldWinnerId ?? "",
+        match.id,
+        tx,
+      );
+      const updated = await tx.match.update({
+        where: { id: matchId, version: match.version },
+        data: {
+          winnerId: newWinnerId,
+          isReplay: true,
+          replayReason: reason,
+          version: { increment: 1 },
+        },
+      });
+      await propagateWinner(updated, newWinnerId, tx);
+      return { updated, rolledBack };
     },
-  });
-
-  // ---- Propagate нового winner вперёд (атомарно) ----
-  if (
-    match.bracket.format !== BracketFormat.ROUND_ROBIN &&
-    match.bracketSection
-  ) {
-    const loserId =
-      newWinnerId === match.redAthleteId
-        ? match.blueAthleteId
-        : match.redAthleteId;
-    const propagations = propagateResult(
-      match.round,
-      match.position,
-      match.bracketSection as SectionType,
-      newWinnerId,
-      loserId!,
-      match.bracket.size,
-    );
-    await prisma.$transaction(async (tx) => {
-      for (const p of propagations) {
-        const target = await tx.match.findFirst({
-          where: {
-            bracketId: match.bracketId,
-            round: p.round,
-            position: p.position,
-            bracketSection: p.section,
-          },
-        });
-        if (!target) continue;
-        const data: Prisma.MatchUncheckedUpdateInput =
-          p.slot === "red"
-            ? { redAthleteId: p.athleteId }
-            : { blueAthleteId: p.athleteId };
-        await tx.match.update({ where: { id: target.id }, data });
-      }
+  ).catch(rethrowMatchWriteConflict);
+  for (const downstream of rolledBack) {
+    await logAudit({
+      actorUserId,
+      action: "match.rollback",
+      targetEntity: "Match",
+      targetId: downstream.id,
+      after: { status: downstream.status, winnerId: null },
+      metadata: { cascadeFromMatch: matchId },
     });
   }
 
@@ -189,65 +183,4 @@ export async function overrideMatchResult(
   }
 
   return { updated, rolledBack };
-}
-
-/** Рекурсивный откат всех матчей вниз по сетке где играл oldWinner. */
-async function rollbackDownstream(
-  rootMatch: Match & { bracket?: { format: BracketFormat } | null },
-  oldWinnerId: string,
-  collected: Match[],
-  actorUserId: string,
-): Promise<void> {
-  if (rootMatch.bracket?.format === BracketFormat.ROUND_ROBIN) {
-    return; // В Round-Robin нет downstream
-  }
-
-  // Найти все матчи в этой сетке где этот человек играет
-  const downstream = await prisma.match.findMany({
-    where: {
-      bracketId: rootMatch.bracketId,
-      OR: [{ redAthleteId: oldWinnerId }, { blueAthleteId: oldWinnerId }],
-      NOT: { id: rootMatch.id },
-    },
-  });
-
-  for (const d of downstream) {
-    const beforeState = {
-      status: d.status,
-      winnerId: d.winnerId,
-      redAthleteId: d.redAthleteId,
-      blueAthleteId: d.blueAthleteId,
-    };
-
-    // Если завершён — каскадим вниз сначала
-    if (d.status === MatchStatus.COMPLETED && d.winnerId) {
-      await rollbackDownstream(d, d.winnerId, collected, actorUserId);
-    }
-
-    // Очистим слот, сбросим winner и статус
-    const data: Prisma.MatchUncheckedUpdateInput = {
-      winnerId: null,
-      finishedAt: null,
-      scoreSnapshot: Prisma.JsonNull,
-      ...(d.redAthleteId === oldWinnerId && { redAthleteId: null }),
-      ...(d.blueAthleteId === oldWinnerId && { blueAthleteId: null }),
-      ...(d.status !== MatchStatus.PENDING && {
-        status: MatchStatus.PENDING,
-        startedAt: null,
-      }),
-    };
-
-    const updated = await prisma.match.update({ where: { id: d.id }, data });
-    collected.push(updated);
-
-    await logAudit({
-      actorUserId,
-      action: "match.rollback",
-      targetEntity: "Match",
-      targetId: d.id,
-      before: beforeState,
-      after: { status: data.status ?? d.status, winnerId: null },
-      metadata: { cascadeFromMatch: rootMatch.id },
-    });
-  }
 }

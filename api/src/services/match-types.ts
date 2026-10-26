@@ -81,6 +81,7 @@ export const UNDOABLE_TYPES = [
   MatchEventType.SHIDO,
   MatchEventType.HANSOKU_MAKE,
   MatchEventType.GOLDEN_SCORE,
+  MatchEventType.TOKETA,
 ] as const;
 
 // ============================================================
@@ -96,7 +97,9 @@ export function scoreToJson(score: ScoreSnapshot): Prisma.InputJsonValue {
 }
 
 /** BYE-матч: пустой scoreSnapshot для автозавершённых BYE-матчей. */
-export const BYE_SNAPSHOT: Prisma.InputJsonValue = { bye: true } as Prisma.InputJsonValue;
+export const BYE_SNAPSHOT: Prisma.InputJsonValue = {
+  bye: true,
+} as Prisma.InputJsonValue;
 
 export function emptyScore(): ScoreSnapshot {
   return {
@@ -184,4 +187,32 @@ export function osaekomiScore(
   if (durationSec >= OSAEKOMI_WAZAARI_SEC) return { type: "WAZA_ARI" };
   if (allowYuko && durationSec >= OSAEKOMI_YUKO_SEC) return { type: "YUKO" };
   return null;
+}
+
+/** Translate database write conflicts into an actionable API response. */
+export function rethrowMatchWriteConflict(error: unknown): never {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2025" || error.code === "P2034")
+  ) {
+    throw new MatchError(
+      "CONCURRENT_MODIFICATION",
+      "Матч изменён. Обновите данные и повторите действие.",
+      409,
+    );
+  }
+  throw error;
+}
+
+/** First winning hold threshold for this phase and existing technical score. */
+export function osaekomiWinThreshold(
+  score: ScoreSnapshot,
+  side: "RED" | "BLUE",
+  allowYuko: boolean,
+): number {
+  if (score.isGoldenScore)
+    return allowYuko ? OSAEKOMI_YUKO_SEC : OSAEKOMI_WAZAARI_SEC;
+  return score[side === "RED" ? "red" : "blue"].wazaari > 0
+    ? OSAEKOMI_WAZAARI_SEC
+    : OSAEKOMI_IPPON_SEC;
 }

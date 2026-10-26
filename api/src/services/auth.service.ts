@@ -13,7 +13,7 @@ import {
 } from "../lib/jwt.js";
 import {
   storeRefreshToken,
-  isRefreshTokenValid,
+  consumeRefreshToken,
   revokeRefreshToken,
   revokeAllUserTokens,
 } from "../lib/refresh-store.js";
@@ -187,7 +187,7 @@ export async function refresh(refreshToken: string): Promise<TokenPair> {
     throw new AuthError("INVALID_REFRESH", "Невалидный refresh-токен", 401);
   }
 
-  const valid = await isRefreshTokenValid(payload.sub, payload.jti);
+  const valid = await consumeRefreshToken(payload.sub, payload.jti);
   if (!valid) {
     throw new AuthError(
       "REVOKED_REFRESH",
@@ -201,8 +201,7 @@ export async function refresh(refreshToken: string): Promise<TokenPair> {
     throw new AuthError("USER_NOT_FOUND", "Пользователь не найден", 404);
   }
 
-  // Ротация: инвалидируем старый, выдаём новый
-  await revokeRefreshToken(payload.sub, payload.jti);
+  // The old token was consumed atomically above.
   return issueTokens(user);
 }
 

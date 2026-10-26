@@ -1,3 +1,4 @@
+import { rankStandings } from "./standings.js";
 /**
  * Round-Robin (круговая система).
  *
@@ -9,7 +10,7 @@
  *   2) Сумма Ippon-побед
  *   3) Сумма Waza-ari
  *   4) Разница чистых очков (заработанные - полученные)
- *   5) Жребий
+ *   5) Явное решение секретаря; неразрешённые ничьи сохраняют общее место
  */
 
 export interface RRMatch {
@@ -28,6 +29,8 @@ export interface RRMatch {
  */
 export function buildRoundRobin(athleteIds: string[]): RRMatch[] {
   const n = athleteIds.length;
+  if (new Set(athleteIds).size !== n || athleteIds.includes("__BYE__"))
+    throw new Error("Участники должны быть уникальными");
   if (n < 2) throw new Error("Для круговой системы нужно минимум 2 участника");
   if (n > 8) throw new Error("Round-Robin поддерживается для ≤ 8 участников");
 
@@ -72,7 +75,7 @@ export function buildRoundRobin(athleteIds: string[]): RRMatch[] {
 export interface RRMatchResult {
   redAthleteId: string;
   blueAthleteId: string;
-  winnerId: string | null;       // null = ничья (редко в дзюдо, но возможно)
+  winnerId: string | null; // null = ничья (редко в дзюдо, но возможно)
   redScore: { ippon: number; wazaari: number; shido: number; yuko?: number };
   blueScore: { ippon: number; wazaari: number; shido: number; yuko?: number };
 }
@@ -84,13 +87,15 @@ export interface RRStanding {
   draws: number;
   ipponTotal: number;
   wazaariTotal: number;
-  netPoints: number;     // заработанные − полученные
+  netPoints: number; // заработанные − полученные
   place: number;
+  tied?: boolean;
 }
 
 export function computeStandings(
   athleteIds: string[],
   matches: RRMatchResult[],
+  decisionOrder?: string[],
 ): RRStanding[] {
   const stats = new Map<string, RRStanding>();
   for (const id of athleteIds) {
@@ -110,7 +115,15 @@ export function computeStandings(
   for (const m of matches) {
     const red = stats.get(m.redAthleteId);
     const blue = stats.get(m.blueAthleteId);
-    if (!red || !blue) continue;
+    if (
+      !red ||
+      !blue ||
+      red === blue ||
+      (m.winnerId !== null &&
+        m.winnerId !== m.redAthleteId &&
+        m.winnerId !== m.blueAthleteId)
+    )
+      continue;
 
     if (m.winnerId === null) {
       red.draws++;
@@ -134,34 +147,14 @@ export function computeStandings(
     blue.netPoints += score(m.blueScore) - score(m.redScore);
   }
 
-  const list = Array.from(stats.values());
-
-  // Сортируем с учётом тай-брейкеров
-  list.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-
-    // Тай-брейкер 1: личная встреча
-    const direct = matches.find(
-      (m) =>
-        (m.redAthleteId === a.athleteId && m.blueAthleteId === b.athleteId) ||
-        (m.redAthleteId === b.athleteId && m.blueAthleteId === a.athleteId),
-    );
-    if (direct && direct.winnerId) {
-      if (direct.winnerId === a.athleteId) return -1;
-      if (direct.winnerId === b.athleteId) return 1;
-    }
-
-    // Тай-брейкер 2: Ippon
-    if (b.ipponTotal !== a.ipponTotal) return b.ipponTotal - a.ipponTotal;
-    // Тай-брейкер 3: Waza-ari
-    if (b.wazaariTotal !== a.wazaariTotal) return b.wazaariTotal - a.wazaariTotal;
-    // Тай-брейкер 4: разница очков
-    if (b.netPoints !== a.netPoints) return b.netPoints - a.netPoints;
-    // Тай-брейкер 5: жребий — здесь стабильный порядок по id
-    return a.athleteId.localeCompare(b.athleteId);
-  });
-
-  // Назначаем места
-  list.forEach((s, idx) => (s.place = idx + 1));
-  return list;
+  return rankStandings(
+    [...stats.values()],
+    matches,
+    [
+      (row) => row.ipponTotal,
+      (row) => row.wazaariTotal,
+      (row) => row.netPoints,
+    ],
+    decisionOrder,
+  );
 }

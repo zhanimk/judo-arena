@@ -18,8 +18,9 @@ import { useTatamiOfflineQueue } from "@/lib/tatami-offline-queue";
 
 /* ─── Offline hook ─── */
 function useOnlineStatus() {
-  const [online, setOnline] = useState(navigator.onLine);
+  const [online, setOnline] = useState(true);
   useEffect(() => {
+    setOnline(navigator.onLine);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);
@@ -47,11 +48,11 @@ function TatamiJudgePanel() {
   const isOnline = useOnlineStatus();
   const [actionError, setActionError] = useState("");
 
-  // ── Offline queue: сохраняем действия судьи при потере сети ──────────────
+  // Legacy actions need manual reconciliation; new commands require connection.
   const {
     enqueue: enqueueOffline,
     pendingCount: offlinePending,
-    isFlushing: offlineFlushing,
+    clearOfflineQueue,
   } = useTatamiOfflineQueue(token, isOnline, (msg) => setActionError(msg));
 
   useEffect(() => {
@@ -130,13 +131,9 @@ function TatamiJudgePanel() {
 
   const matchId = currentMatch?.id;
   const matchVersion = currentMatch?.version;
-  const onErr = (e: unknown) =>
-    setActionError(e instanceof ApiError ? e.message : t("error.generic"));
+  const onErr = (e: unknown) => setActionError(e instanceof Error ? e.message : t("error.generic"));
 
-  // ── Мутации с offline-поддержкой ─────────────────────────────────────────
-  // Счёт, осаекоми и токета оборачиваются в offline queue — самые критичные.
-  // Управление матчем (start/pause/finish) тоже в очереди.
-  // confirm/cancel/undo — только онлайн (необратимые действия).
+  // A command succeeds only after the server acknowledges it.
   const startMatch = useMutation({
     mutationFn: () => enqueueOffline("start", () => api.matches.start(matchId!, undefined, token)),
     onMutate: () => setActionError(""),
@@ -570,21 +567,13 @@ function TatamiJudgePanel() {
         </div>
       )}
 
-      {/* ══ FLUSH BANNER — отправляем накопленные действия ══ */}
-      {isOnline && offlineFlushing && (
-        <div
-          style={{
-            background: "#f59e0b",
-            color: "#111",
-            textAlign: "center",
-            padding: "5px 16px",
-            fontSize: compact ? 12 : 13,
-            fontWeight: 700,
-            letterSpacing: 1,
-            flexShrink: 0,
-          }}
-        >
-          ⟳ Отправляем {offlinePending} действий после восстановления сети...
+      {offlinePending > 0 && (
+        <div role="alert" className="bg-amber-100 text-amber-950 p-3 text-center text-sm">
+          Старая очередь содержит неподтверждённые действия ({offlinePending}). Сверьте счёт и
+          историю с сервером перед продолжением.
+          <button type="button" className="ml-3 underline font-bold" onClick={clearOfflineQueue}>
+            Счёт сверен — удалить старую очередь
+          </button>
         </div>
       )}
 

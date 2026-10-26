@@ -168,7 +168,8 @@ function AdminApplications() {
               <button
                 onClick={() => {
                   const submittedCount = (appsQuery.data ?? []).filter(
-                    (a: Application) => a.tournamentId === tournamentFilter && a.status === "SUBMITTED",
+                    (a: Application) =>
+                      a.tournamentId === tournamentFilter && a.status === "SUBMITTED",
                   ).length;
                   if (submittedCount === 0) {
                     setError(t("applications.bulk_approve_none"));
@@ -203,7 +204,13 @@ function AdminApplications() {
               <div key={a.id} className="glass rounded-lg p-4">
                 <div className="flex justify-between items-start gap-3 mb-2">
                   <div>
-                    <div className="font-medium">{localizeName(a.club?.name)}</div>
+                    <div className="font-medium">
+                      {a.club
+                        ? localizeName(a.club.name)
+                        : a.applicant
+                          ? `${a.applicant.surname} ${a.applicant.name}`
+                          : t("registration.individual")}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {a.tournamentName} · {a._count?.entries ?? 0}{" "}
                       {t("applications.athletes_count")}
@@ -240,7 +247,15 @@ function AdminApplications() {
                     )}
                     <button
                       onClick={() => {
-                        setModal({ id: a.id, action: "approve", club: localizeName(a.club?.name) });
+                        setModal({
+                          id: a.id,
+                          action: "approve",
+                          club: a.club
+                            ? localizeName(a.club.name)
+                            : a.applicant
+                              ? `${a.applicant.surname} ${a.applicant.name}`
+                              : t("registration.individual"),
+                        });
                         setError("");
                       }}
                       disabled={a.paymentAmountKzt > 0 && a.paymentStatus !== "PAID"}
@@ -250,7 +265,15 @@ function AdminApplications() {
                     </button>
                     <button
                       onClick={() => {
-                        setModal({ id: a.id, action: "reject", club: localizeName(a.club?.name) });
+                        setModal({
+                          id: a.id,
+                          action: "reject",
+                          club: a.club
+                            ? localizeName(a.club.name)
+                            : a.applicant
+                              ? `${a.applicant.surname} ${a.applicant.name}`
+                              : t("registration.individual"),
+                        });
                         setError("");
                       }}
                       className="text-xs px-3 py-1.5 rounded bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25"
@@ -366,7 +389,9 @@ function PaymentBadge({ status, amount }: { status: string; amount: number }) {
   );
 }
 
-function localizeName(n: import("@/lib/api-types").LocalizedName | string | null | undefined): string {
+function localizeName(
+  n: import("@/lib/api-types").LocalizedName | string | null | undefined,
+): string {
   if (!n) return "—";
   if (typeof n === "string") return n;
   return n.kk || n.ru || n.en || "—";

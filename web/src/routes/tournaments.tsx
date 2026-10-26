@@ -2,7 +2,7 @@ import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { LazyImage } from "@/components/ui/avatar-image";
-import heroKazakhstan from "@/assets/hero-kazakhstan-judo.jpg";
+import heroKazakhstan from "@/assets/hero-judo.jpg";
 import teamLineup from "@/assets/team-lineup.jpg";
 import athleteBlue from "@/assets/athlete-blue-2.jpg";
 import athleteWhite from "@/assets/athlete-woman-white.jpg";
@@ -39,12 +39,7 @@ export const Route = createFileRoute("/tournaments")({
 });
 
 type Status =
-  | "DRAFT"
-  | "REGISTRATION_OPEN"
-  | "REGISTRATION_CLOSED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
+  "DRAFT" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 const statusColor = (s: Status) =>
   s === "IN_PROGRESS"

@@ -3,8 +3,7 @@
  *
  * Содержит:
  *   - propagateWinner()          — записывает победителя/проигравшего в следующие матчи
- *   - isDeadPath()               — проверяет является ли поддерево «мёртвым»
- *   - cascadeBye()               — автозавершение BYE при мёртвом пути
+ *   - resolveAutomaticByes()     — автозавершение BYE, включая утешительные и бронзу
  *   - clearDownstreamRecursive() — откат downstream при сбросе матча (используется resetMatch)
  */
 
@@ -12,6 +11,8 @@ import { prisma } from "../lib/prisma.js";
 import { Prisma, BracketFormat, MatchStatus, type Match } from "@prisma/client";
 import { propagateResult } from "./bracket-engine/single-elimination.js";
 import type { SEMatch } from "./bracket-engine/single-elimination.js";
+import { findAutomaticBye } from "./bracket-engine/byes.js";
+import { planDownstreamRollback } from "./bracket-engine/rollback.js";
 import { BYE_SNAPSHOT } from "./match-types.js";
 import { nextQueuePosition } from "./match-tatami.service.js";
 
@@ -24,13 +25,17 @@ type SectionType = SEMatch["bracketSection"];
 export async function propagateWinner(
   match: Match,
   winnerId: string,
+  tx?: Prisma.TransactionClient,
 ): Promise<void> {
+  if (!tx)
+    return prisma.$transaction((client) =>
+      propagateWinner(match, winnerId, client),
+    );
   if (!match.bracketSection) return;
   const loserId =
     match.redAthleteId === winnerId ? match.blueAthleteId : match.redAthleteId;
-  if (!loserId) return;
 
-  const bracket = await prisma.bracket.findUnique({
+  const bracket = await tx.bracket.findUnique({
     where: { id: match.bracketId },
   });
   if (!bracket) return;
@@ -45,7 +50,8 @@ export async function propagateWinner(
   ) {
     const { advanceGroupWinnersIfComplete } =
       await import("./bracket.service.js");
-    await advanceGroupWinnersIfComplete(bracket.id, match.bracketSection);
+    await advanceGroupWinnersIfComplete(bracket.id, match.bracketSection, tx);
+    await resolveAutomaticByes(bracket.id, tx);
     return;
   }
 
@@ -59,7 +65,7 @@ export async function propagateWinner(
       match.position,
       "main" as SectionType,
       winnerId,
-      loserId,
+      loserId ?? "",
       bracket.size,
     ).map((p) => ({
       ...p,
@@ -69,8 +75,9 @@ export async function propagateWinner(
 
     // Атомарно: ищем целевые матчи и обновляем их в одной транзакции.
     // Без транзакции два одновременных победителя могут перезаписать один слот.
-    await prisma.$transaction(async (tx) => {
+    {
       for (const p of playoffPropagations) {
+        if (!p.athleteId) continue;
         const target = await tx.match.findFirst({
           where: {
             bracketId: bracket.id,
@@ -84,9 +91,11 @@ export async function propagateWinner(
           p.slot === "red"
             ? { redAthleteId: p.athleteId }
             : { blueAthleteId: p.athleteId };
+        data.version = { increment: 1 };
         await tx.match.update({ where: { id: target.id }, data });
       }
-    });
+    }
+    await resolveAutomaticByes(bracket.id, tx);
     return;
   }
 
@@ -96,20 +105,15 @@ export async function propagateWinner(
     match.position,
     match.bracketSection as SectionType,
     winnerId,
-    loserId,
+    loserId ?? "",
     bracket.size,
   );
 
   // Атомарно продвигаем победителя по всем слотам SE-сетки.
   // Транзакция предотвращает race condition при параллельных судейских сессиях.
-  const updatedMatches: {
-    match: Awaited<ReturnType<typeof prisma.match.update>>;
-    section: string;
-  }[] = [];
-
-  await prisma.$transaction(async (tx) => {
-    updatedMatches.length = 0;
+  {
     for (const p of propagations) {
+      if (!p.athleteId) continue;
       const target = await tx.match.findFirst({
         where: {
           bracketId: bracket.id,
@@ -131,160 +135,131 @@ export async function propagateWinner(
         data.queuePosition = await nextQueuePosition(
           match.tournamentId,
           match.tatamiNumber,
+          tx,
         );
       }
 
-      const updated = await tx.match.update({ where: { id: target.id }, data });
-      updatedMatches.push({ match: updated, section: p.section });
-    }
-  });
-
-  // Каскадный BYE после транзакции (cascadeBye делает собственные запросы)
-  for (const { match: updated, section } of updatedMatches) {
-    if (section === "main" || section === "final") {
-      await cascadeBye(updated, bracket.size);
+      data.version = { increment: 1 };
+      await tx.match.update({ where: { id: target.id }, data });
     }
   }
+
+  await resolveAutomaticByes(bracket.id, tx);
 }
 
-// ============================================================
-// PRIVATE: вспомогательные функции
-// ============================================================
-
-/**
- * Проверяет является ли поддерево, питающее матч (round, position),
- * «мёртвым путём» — т.е. ни одного спортсмена во всём поддереве нет.
- */
-async function isDeadPath(
+/** Resolve dead winner and loser paths, including repechage and medals. */
+export async function resolveAutomaticByes(
   bracketId: string,
-  round: number,
-  position: number,
-): Promise<boolean> {
-  const spread = Math.pow(2, round - 1);
-  const start = position * spread;
-  const end = start + spread;
-
-  const hasAthletes = await prisma.match.findFirst({
-    where: {
-      bracketId,
-      round: 1,
-      bracketSection: "main",
-      position: { gte: start, lt: end },
-      OR: [{ redAthleteId: { not: null } }, { blueAthleteId: { not: null } }],
-    },
-    select: { id: true },
-  });
-
-  return !hasAthletes;
-}
-
-/**
- * После того как в матч попал один спортсмен — проверяем не является ли
- * второй слот мёртвым путём. Если да — автозавершаем матч как BYE
- * и рекурсивно продвигаем победителя.
- */
-async function cascadeBye(target: Match, bracketSize: number): Promise<void> {
-  if (target.bracketSection !== "main" && target.bracketSection !== "final")
-    return;
-  if (target.round === 1) return; // BYE раунда 1 обрабатываются при генерации
-  if (target.status === MatchStatus.COMPLETED) return;
-
-  const hasRed = Boolean(target.redAthleteId);
-  const hasBlue = Boolean(target.blueAthleteId);
-  if (hasRed === hasBlue) return; // Оба null или оба есть → не BYE
-
-  const nullIsRed = !hasRed;
-  const srcPos = nullIsRed ? target.position * 2 : target.position * 2 + 1;
-  const srcRound = target.round - 1;
-
-  const dead = await isDeadPath(target.bracketId, srcRound, srcPos);
-  if (!dead) return;
-
-  // Мёртвый путь → автозавершаем как BYE
-  const winnerId = (target.redAthleteId ?? target.blueAthleteId)!;
-  await prisma.match.update({
-    where: { id: target.id },
-    data: {
-      status: MatchStatus.COMPLETED,
-      winnerId,
-      finishedAt: new Date(),
-      scoreSnapshot: BYE_SNAPSHOT,
-    },
-  });
-
-  if (target.bracketSection === "final") return;
-
-  // Продвигаем победителя BYE в следующий раунд
-  const totalRounds = Math.log2(bracketSize);
-  const nextRound = target.round + 1;
-  const nextPos = Math.floor(target.position / 2);
-  const nextSection = nextRound === totalRounds ? "final" : "main";
-  const nextSlot: "red" | "blue" = target.position % 2 === 0 ? "red" : "blue";
-
-  const nextMatch = await prisma.match.findFirst({
-    where: {
-      bracketId: target.bracketId,
-      round: nextRound,
-      position: nextPos,
-      bracketSection: nextSection,
-    },
-  });
-  if (!nextMatch) return;
-
-  const data: Prisma.MatchUncheckedUpdateInput =
-    nextSlot === "red"
-      ? { redAthleteId: winnerId }
-      : { blueAthleteId: winnerId };
-
-  const updated = await prisma.match.update({
-    where: { id: nextMatch.id },
-    data,
-  });
-  await cascadeBye(updated, bracketSize); // Рекурсия
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
+  if (!tx)
+    return prisma.$transaction((client) =>
+      resolveAutomaticByes(bracketId, client),
+    );
+  {
+    const bracket = await tx.bracket.findUniqueOrThrow({
+      where: { id: bracketId },
+    });
+    const matches = await tx.match.findMany({ where: { bracketId } });
+    while (true) {
+      const bye = findAutomaticBye(matches, bracket.size, bracket.format);
+      if (!bye) break;
+      const source = matches.find((m) => m.id === bye.id)!;
+      const winnerId = (source.redAthleteId ?? source.blueAthleteId)!;
+      const updated = await tx.match.update({
+        where: {
+          id: source.id,
+          version: source.version,
+          status: MatchStatus.PENDING,
+        },
+        data: {
+          status: MatchStatus.COMPLETED,
+          winnerId,
+          finishedAt: new Date(),
+          scoreSnapshot: BYE_SNAPSHOT,
+          version: { increment: 1 },
+        },
+      });
+      Object.assign(source, updated);
+      const playoff = source.bracketSection === "playoff";
+      for (const edge of propagateResult(
+        source.round,
+        source.position,
+        (playoff ? "main" : source.bracketSection) as SectionType,
+        winnerId,
+        "",
+        bracket.size,
+      )) {
+        if (
+          !edge.athleteId ||
+          (playoff && edge.section !== "main" && edge.section !== "final")
+        )
+          continue;
+        const target = matches.find(
+          (m) =>
+            m.round === edge.round &&
+            m.position === edge.position &&
+            m.bracketSection === (playoff ? "playoff" : edge.section),
+        );
+        if (!target) continue;
+        const result = await tx.match.update({
+          where: { id: target.id, version: target.version },
+          data: {
+            ...(edge.slot === "red"
+              ? { redAthleteId: winnerId }
+              : { blueAthleteId: winnerId }),
+            version: { increment: 1 },
+          },
+        });
+        Object.assign(target, result);
+      }
+    }
+  }
 }
 
 // ============================================================
 // PUBLIC: откат downstream при сбросе матча
 // ============================================================
 
-/**
- * Рекурсивно очищает все downstream-матчи где играл athleteId.
- * Используется в resetMatch() для отката результатов.
- */
+/** Clear only structurally dependent slots; caller can include this in its transaction. */
 export async function clearDownstreamRecursive(
   bracketId: string,
-  athleteId: string,
-  skipMatchId: string,
-): Promise<void> {
-  const downstream = await prisma.match.findMany({
-    where: {
-      bracketId,
-      OR: [{ redAthleteId: athleteId }, { blueAthleteId: athleteId }],
-      NOT: { id: skipMatchId },
-    },
+  _athleteId: string,
+  rootMatchId: string,
+  tx: Prisma.TransactionClient = prisma,
+): Promise<Match[]> {
+  const bracket = await tx.bracket.findUniqueOrThrow({
+    where: { id: bracketId },
   });
-
-  for (const d of downstream) {
-    // Сначала рекурсивно очищаем потомков
-    if (d.status === MatchStatus.COMPLETED && d.winnerId) {
-      await clearDownstreamRecursive(bracketId, d.winnerId, d.id);
-      const dLoserId =
-        d.redAthleteId === d.winnerId ? d.blueAthleteId : d.redAthleteId;
-      if (dLoserId) {
-        await clearDownstreamRecursive(bracketId, dLoserId, d.id);
-      }
-    }
-    // Очищаем матч
-    const data: Prisma.MatchUncheckedUpdateInput = {
-      status: MatchStatus.PENDING,
-      winnerId: null,
-      finishedAt: null,
-      startedAt: null,
-      scoreSnapshot: Prisma.JsonNull,
-      ...(d.redAthleteId === athleteId && { redAthleteId: null }),
-      ...(d.blueAthleteId === athleteId && { blueAthleteId: null }),
-    };
-    await prisma.match.update({ where: { id: d.id }, data });
-    await prisma.matchEvent.deleteMany({ where: { matchId: d.id } });
+  const matches = await tx.match.findMany({ where: { bracketId } });
+  const root = matches.find((m) => m.id === rootMatchId);
+  if (!root) return [];
+  const plan = planDownstreamRollback(
+    matches,
+    root,
+    bracket.size,
+    bracket.format,
+  );
+  const updated: Match[] = [];
+  for (const target of plan) {
+    updated.push(
+      await tx.match.update({
+        where: { id: target.matchId },
+        data: {
+          status: MatchStatus.PENDING,
+          winnerId: null,
+          finishedAt: null,
+          startedAt: null,
+          goldenScoreStartedAt: null,
+          isGoldenScore: false,
+          scoreSnapshot: Prisma.JsonNull,
+          version: { increment: 1 },
+          ...(target.slots.includes("red") && { redAthleteId: null }),
+          ...(target.slots.includes("blue") && { blueAthleteId: null }),
+        },
+      }),
+    );
+    await tx.matchEvent.deleteMany({ where: { matchId: target.matchId } });
   }
+  return updated;
 }

@@ -13,6 +13,7 @@
  *  • Submitted-заявку нельзя редактировать (только отозвать через WITHDRAWN).
  */
 
+import { isAdult } from "./category-age.js";
 import { prisma } from "../lib/prisma.js";
 import {
   Prisma,
@@ -21,8 +22,6 @@ import {
   PaymentStatus,
   TournamentStatus,
   UserRole,
-  type User,
-  type Category,
 } from "@prisma/client";
 import {
   sendEmail,
@@ -31,7 +30,12 @@ import {
 } from "./email.service.js";
 import { logAudit } from "./audit.service.js";
 import { emitToUser } from "../sockets/io.js";
-import { ApplicationError } from "./application-shared.js";
+import {
+  ApplicationError,
+  validateAthleteFitsCategory,
+  assertCanManageApplication,
+  assertRegistrationMethodOpen,
+} from "./application-shared.js";
 
 // ApplicationError — канонический класс в application-shared.ts
 export { ApplicationError } from "./application-shared.js";
@@ -75,6 +79,13 @@ export async function createOrGetDraftApplication(
       409,
     );
   }
+
+  if (!tournament.clubRegistrationEnabled)
+    throw new ApplicationError(
+      "CLUB_REGISTRATION_DISABLED",
+      "Заявки через тренера отключены администратором",
+      409,
+    );
 
   // Если у клуба уже есть заявка — возвращаем её (вместо создания дубля)
   const existing = await prisma.application.findUnique({
@@ -125,7 +136,16 @@ export async function listApplicationsForTournament(
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      club: { select: { id: true, name: true, shortName: true, city: true, logoUrl: true } },
+      applicant: { select: { id: true, name: true, surname: true } },
+      club: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          city: true,
+          logoUrl: true,
+        },
+      },
       entries: {
         select: {
           id: true,
@@ -152,6 +172,8 @@ export async function listApplicationsForTournament(
               gender: true,
               ageMin: true,
               ageMax: true,
+              birthYearMin: true,
+              birthYearMax: true,
               weightMin: true,
               weightMax: true,
               format: true,
@@ -185,7 +207,16 @@ export async function listAllApplicationsAdmin(
       tournament: {
         select: { id: true, name: true, startDate: true, entryFeeKzt: true },
       },
-      club: { select: { id: true, name: true, shortName: true, city: true, logoUrl: true } },
+      applicant: { select: { id: true, name: true, surname: true } },
+      club: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          city: true,
+          logoUrl: true,
+        },
+      },
       _count: { select: { entries: true } },
     },
   });
@@ -199,6 +230,7 @@ export async function getApplication(
     where: { id: applicationId },
     include: {
       club: true,
+      applicant: { select: { id: true, name: true, surname: true } },
       tournament: {
         select: {
           id: true,
@@ -246,7 +278,7 @@ export async function getApplication(
       "Заявка не найдена",
       404,
     );
-  await assertCanViewApplication(actorUserId, app.clubId);
+  await assertCanViewApplication(actorUserId, app.clubId, app.applicantId);
   return app;
 }
 
@@ -307,6 +339,11 @@ export async function listAthleteApplicationEntries(actorUserId: string) {
           id: true,
           status: true,
           notes: true,
+          applicantId: true,
+          source: true,
+          paymentStatus: true,
+          paymentAmountKzt: true,
+          paymentUrl: true,
           reviewerNotes: true,
           submittedAt: true,
           reviewedAt: true,
@@ -364,7 +401,8 @@ export async function addEntry(
   assertApplicationDeadlineOpen(
     app.tournament.applicationDeadline ?? app.tournament.startDate,
   );
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
+  await assertRegistrationMethodOpen(actorUserId, app);
 
   const [athlete, category] = await Promise.all([
     prisma.user.findUnique({ where: { id: athleteId } }),
@@ -374,7 +412,9 @@ export async function addEntry(
   if (!athlete || athlete.role !== UserRole.ATHLETE) {
     throw new ApplicationError("ATHLETE_NOT_FOUND", "Спортсмен не найден", 404);
   }
-  if (athlete.clubId !== app.clubId) {
+  if (
+    app.clubId ? athlete.clubId !== app.clubId : athlete.id !== app.applicantId
+  ) {
     throw new ApplicationError(
       "WRONG_CLUB",
       "Спортсмен не из вашего клуба",
@@ -390,7 +430,7 @@ export async function addEntry(
   }
 
   // Проверка соответствия пол/возраст/вес
-  validateAthleteFitsCategory(athlete, category);
+  await validateAthleteFitsCategory(athlete, category);
 
   // Проверка что спортсмен ещё не в этой категории на этом турнире (ни в этой, ни в чужой заявке)
   const duplicate = await prisma.applicationEntry.findFirst({
@@ -440,7 +480,11 @@ export async function removeEntry(
     throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
 
   const isAthleteSelf =
-    actor.role === UserRole.ATHLETE && entry.athleteId === actorUserId;
+    actor.role === UserRole.ATHLETE &&
+    entry.athleteId === actorUserId &&
+    app.source === "SELF" &&
+    app.applicantId === actorUserId &&
+    isAdult(actor.dateOfBirth);
 
   if (isAthleteSelf) {
     // Спортсмен может убрать только свою запись, пока заявка не одобрена
@@ -459,10 +503,17 @@ export async function removeEntry(
     if (app.status !== ApplicationStatus.DRAFT) {
       throw new ApplicationError("LOCKED", "Изменять можно только DRAFT", 409);
     }
-    await assertCanManageApplication(actorUserId, app.clubId);
+    await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
   }
 
-  await prisma.applicationEntry.delete({ where: { id: entryId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.applicationEntry.delete({ where: { id: entryId } });
+    if (isAthleteSelf)
+      await tx.application.update({
+        where: { id: applicationId },
+        data: { status: "DRAFT", submittedAt: null },
+      });
+  });
 }
 
 // ============================================================
@@ -601,7 +652,8 @@ export async function submit(actorUserId: string, applicationId: string) {
   assertApplicationDeadlineOpen(
     app.tournament.applicationDeadline ?? app.tournament.startDate,
   );
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
+  await assertRegistrationMethodOpen(actorUserId, app);
 
   const paymentAmountKzt =
     Math.max(0, app.tournament.entryFeeKzt) * app._count.entries;
@@ -689,7 +741,8 @@ export async function initiateKaspiPayment(
   assertApplicationDeadlineOpen(
     app.tournament.applicationDeadline ?? app.tournament.startDate,
   );
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
+  await assertRegistrationMethodOpen(actorUserId, app);
 
   const paymentAmountKzt =
     Math.max(0, app.tournament.entryFeeKzt) * app._count.entries;
@@ -1042,7 +1095,7 @@ export async function withdraw(actorUserId: string, applicationId: string) {
       409,
     );
   }
-  await assertCanManageApplication(actorUserId, app.clubId);
+  await assertCanManageApplication(actorUserId, app.clubId, app.applicantId);
   const updated = await prisma.application.update({
     where: { id: applicationId },
     data: { status: ApplicationStatus.WITHDRAWN },
@@ -1060,52 +1113,6 @@ export async function withdraw(actorUserId: string, applicationId: string) {
 // ============================================================
 // УТИЛИТЫ
 // ============================================================
-
-function validateAthleteFitsCategory(athlete: User, category: Category): void {
-  if (athlete.gender !== category.gender) {
-    throw new ApplicationError(
-      "GENDER_MISMATCH",
-      `Категория для ${category.gender}, спортсмен ${athlete.gender}`,
-      409,
-    );
-  }
-
-  if (!athlete.dateOfBirth) {
-    throw new ApplicationError(
-      "MISSING_DOB",
-      "У спортсмена не указана дата рождения — нельзя определить возраст",
-      400,
-    );
-  }
-  const age = Math.floor(
-    (Date.now() - athlete.dateOfBirth.getTime()) / (365.25 * 24 * 3600 * 1000),
-  );
-  if (age < category.ageMin || age > category.ageMax) {
-    throw new ApplicationError(
-      "AGE_MISMATCH",
-      `Спортсмену ${age} лет, категория ${category.ageMin}-${category.ageMax}`,
-      409,
-    );
-  }
-
-  if (athlete.weightKg === null || athlete.weightKg === undefined) {
-    throw new ApplicationError(
-      "MISSING_WEIGHT",
-      "У спортсмена не указан вес",
-      400,
-    );
-  }
-  if (
-    athlete.weightKg <= category.weightMin ||
-    athlete.weightKg > category.weightMax
-  ) {
-    throw new ApplicationError(
-      "WEIGHT_MISMATCH",
-      `Вес ${athlete.weightKg} кг не в диапазоне (${category.weightMin}, ${category.weightMax}]`,
-      409,
-    );
-  }
-}
 
 function buildPaymentReference(applicationId: string): string {
   return `JA-${applicationId.slice(-10).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -1129,36 +1136,18 @@ function buildKaspiPaymentUrl(
   );
 }
 
-async function assertCanManageApplication(
-  actorUserId: string,
-  clubId: string,
-): Promise<void> {
-  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor)
-    throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
-  if (actor.role === UserRole.ADMIN) return;
-  if (
-    actor.role === UserRole.COACH &&
-    actor.clubId === clubId &&
-    actor.clubRole === ClubRole.OWNER
-  )
-    return;
-  throw new ApplicationError(
-    "FORBIDDEN",
-    "Управлять официальной заявкой может только главный тренер клуба или админ",
-    403,
-  );
-}
-
 async function assertCanViewApplication(
   actorUserId: string,
-  clubId: string,
+  clubId: string | null,
+  applicantId?: string | null,
 ): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor)
     throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
   if (actor.role === UserRole.ADMIN) return;
-  if (actor.role === UserRole.COACH && actor.clubId === clubId) return;
+  if (applicantId === actor.id && actor.role === UserRole.ATHLETE) return;
+  if (clubId && actor.role === UserRole.COACH && actor.clubId === clubId)
+    return;
   throw new ApplicationError(
     "FORBIDDEN",
     "Просмотр заявки доступен только тренеру клуба или админу",
@@ -1206,7 +1195,8 @@ const notificationText = {
 async function notifyCoachesOfApplicationReview(
   app: {
     id: string;
-    clubId: string;
+    clubId: string | null;
+    applicantId?: string | null;
     tournamentId: string;
     tournament?: { name: Prisma.JsonValue } | null;
   },
@@ -1214,7 +1204,9 @@ async function notifyCoachesOfApplicationReview(
   reviewerNotes?: string,
 ) {
   const coaches = await prisma.user.findMany({
-    where: { clubId: app.clubId, role: UserRole.COACH, isActive: true },
+    where: app.clubId
+      ? { clubId: app.clubId, role: UserRole.COACH, isActive: true }
+      : { id: app.applicantId ?? "", isActive: true },
     select: { id: true, email: true, preferredLocale: true },
   });
   if (coaches.length === 0) return;
@@ -1266,9 +1258,11 @@ async function notifyCoachesOfApplicationReview(
     : `❌ Өтінімде түзету керек — ${tournamentName}`;
 
   await Promise.all(
-    coaches.map((coach) =>
-      sendEmail({ to: coach.email, subject: emailSubject, html: emailHtml }),
-    ),
+    coaches
+      .filter((coach) => !coach.email.endsWith("@manual.invalid"))
+      .map((coach) =>
+        sendEmail({ to: coach.email, subject: emailSubject, html: emailHtml }),
+      ),
   );
 }
 

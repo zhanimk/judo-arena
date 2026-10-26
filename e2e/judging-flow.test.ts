@@ -26,7 +26,7 @@ const API = process.env.API_URL ?? "http://localhost:4000";
 async function apiLogin(
   request: APIRequestContext,
   email: string,
-  password = "password123",
+  password = process.env.E2E_PASSWORD ?? "JudoArenaAdmin2026!",
 ) {
   const res = await request.post(`${API}/api/auth/login`, {
     data: { email, password },

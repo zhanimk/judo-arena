@@ -15,7 +15,7 @@ import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import type { ServerToClientEvents, ClientToServerEvents } from "@judo-arena/types";
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? "http://localhost:4000";
+const WS_URL = import.meta.env.VITE_WS_URL || undefined;
 
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 

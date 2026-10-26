@@ -174,18 +174,18 @@ describe("changeStatus — valid transitions", () => {
     expect(updated.status).toBe(TournamentStatus.IN_PROGRESS);
   });
 
-  it("IN_PROGRESS → COMPLETED", async () => {
+  it("IN_PROGRESS → COMPLETED requires prepared and completed brackets", async () => {
     const admin = await makeAdmin();
     const t = await makeTournament(admin.id, {
       status: TournamentStatus.IN_PROGRESS,
     });
 
-    const updated = await changeStatus(
-      t.id,
-      TournamentStatus.COMPLETED,
-      admin.id,
-    );
-    expect(updated.status).toBe(TournamentStatus.COMPLETED);
+    await expect(
+      changeStatus(t.id, TournamentStatus.COMPLETED, admin.id),
+    ).rejects.toMatchObject({ code: "NO_BRACKETS" });
+    expect(
+      (await db.tournament.findUniqueOrThrow({ where: { id: t.id } })).status,
+    ).toBe(TournamentStatus.IN_PROGRESS);
   });
 
   it("COMPLETED → no further transitions", async () => {

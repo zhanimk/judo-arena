@@ -1,3 +1,4 @@
+import type { BracketStandingTable } from "@/lib/api-types";
 /**
  * IJF-style tournament bracket visualization.
  *
@@ -50,6 +51,7 @@ interface BracketMatch {
 }
 
 interface Props {
+  standings?: BracketStandingTable[];
   matches: BracketMatch[];
   size: number;
   format: "SE_IJF" | "ROUND_ROBIN" | "MIXED";
@@ -64,7 +66,7 @@ const PAD = 14;
 
 /* ─── Main export ─────────────────────────────────────────────────────────── */
 
-function OlympicBracketInner({ matches, size, format }: Props) {
+function OlympicBracketInner({ matches, size, format, standings }: Props) {
   const { t } = useTranslation();
   if (matches.length === 0) {
     return (
@@ -72,8 +74,11 @@ function OlympicBracketInner({ matches, size, format }: Props) {
     );
   }
 
-  if (format === "ROUND_ROBIN") return <RoundRobinView matches={matches} />;
-  if (format === "MIXED") return <MixedView matches={matches} size={size} />;
+  if (format === "ROUND_ROBIN")
+    return (
+      <RoundRobinView matches={matches} table={standings?.find((s) => s.section === "main")} />
+    );
+  if (format === "MIXED") return <MixedView matches={matches} size={size} standings={standings} />;
 
   const totalRounds = Math.round(Math.log2(Math.max(size, 2)));
   const quartersRound = totalRounds - 2; // round where Pool Final (QF) is played
@@ -1064,7 +1069,15 @@ function athleteFlag(athlete: BracketAthlete): string {
 
 /* ─── MIXED view: Group stage tabs + Playoff SE ──────────────────────────── */
 
-function MixedView({ matches, size }: { matches: BracketMatch[]; size: number }) {
+function MixedView({
+  matches,
+  size,
+  standings,
+}: {
+  matches: BracketMatch[];
+  size: number;
+  standings?: BracketStandingTable[];
+}) {
   const { t } = useTranslation();
   // Separate group matches from playoff matches
   const groupSections = Array.from(
@@ -1111,6 +1124,7 @@ function MixedView({ matches, size }: { matches: BracketMatch[]; size: number })
         <MixedGroupTab
           matches={matches.filter((m) => m.bracketSection === activeTab)}
           groupLabel={activeTab.replace("group_", "")}
+          table={standings?.find((s) => s.section === activeTab)}
         />
       )}
 
@@ -1130,7 +1144,15 @@ function MixedView({ matches, size }: { matches: BracketMatch[]; size: number })
   );
 }
 
-function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; groupLabel: string }) {
+function MixedGroupTab({
+  matches,
+  groupLabel,
+  table,
+}: {
+  matches: BracketMatch[];
+  groupLabel: string;
+  table?: BracketStandingTable;
+}) {
   const { t } = useTranslation();
   // Collect unique athletes in this group
   const athleteMap = new Map<string, BracketAthlete>();
@@ -1159,8 +1181,13 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
   }
 
   const standings = Array.from(standingsMap.entries())
-    .map(([id, s]) => ({ id, athlete: athleteMap.get(id)!, ...s }))
-    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    .map(([id, s]) => ({
+      id,
+      athlete: athleteMap.get(id)!,
+      ...s,
+      ...table?.rows.find((row) => row.athleteId === id),
+    }))
+    .sort((a, b) => (a.place ?? 999) - (b.place ?? 999) || a.id.localeCompare(b.id));
 
   const completedCount = matches.filter((m) => m.status === "COMPLETED").length;
   const totalCount = matches.length;
@@ -1201,14 +1228,15 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
             {standings.map((s, idx) => (
               <tr
                 key={s.id}
-                className={`border-b border-border last:border-0 ${idx < 2 ? "bg-green-500/5" : ""}`}
+                className={`border-b border-border last:border-0 ${table?.complete && s.place && s.place <= 2 && !s.tied ? "bg-green-500/5" : ""}`}
               >
                 <td className="px-4 py-2 text-muted-foreground">
-                  {idx < 2 ? <span className="text-green-500 font-bold">{idx + 1}</span> : idx + 1}
+                  {s.place ?? "—"}
+                  {s.tied ? " =" : ""}
                 </td>
                 <td className="px-4 py-2 font-medium">
                   {s.athlete ? `${s.athlete.name} ${s.athlete.surname}` : "—"}
-                  {idx < 2 && (
+                  {table?.complete && s.place && s.place <= 2 && !s.tied && (
                     <span className="ml-2 text-xs text-green-500 font-normal">
                       {t("bracket.advances_to_playoff")}
                     </span>
@@ -1238,7 +1266,13 @@ function MixedGroupTab({ matches, groupLabel }: { matches: BracketMatch[]; group
 
 /* ─── Round Robin view ───────────────────────────────────────────────────── */
 
-function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
+function RoundRobinView({
+  matches,
+  table,
+}: {
+  matches: BracketMatch[];
+  table?: BracketStandingTable;
+}) {
   const { t } = useTranslation();
 
   // 1. Собрать всех атлетов
@@ -1260,19 +1294,29 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
     const b = statsMap.get(m.blueAthleteId || "");
 
     if (m.winnerId === m.redAthleteId && r && b) {
-      r.wins++; r.played++;
-      b.losses++; b.played++;
+      r.wins++;
+      r.played++;
+      b.losses++;
+      b.played++;
     } else if (m.winnerId === m.blueAthleteId && r && b) {
-      b.wins++; b.played++;
-      r.losses++; r.played++;
+      b.wins++;
+      b.played++;
+      r.losses++;
+      r.played++;
     } else if (!m.winnerId && r && b) {
-      r.played++; b.played++;
+      r.played++;
+      b.played++;
     }
   }
 
   const standings = Array.from(statsMap.entries())
-    .map(([id, s]) => ({ id, athlete: athleteMap.get(id)!, ...s }))
-    .sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    .map(([id, s]) => ({
+      id,
+      athlete: athleteMap.get(id)!,
+      ...s,
+      ...table?.rows.find((row) => row.athleteId === id),
+    }))
+    .sort((a, b) => (a.place ?? 999) - (b.place ?? 999) || a.id.localeCompare(b.id));
 
   // 3. Группировка матчей по турам
   const byRound = new Map<number, BracketMatch[]>();
@@ -1296,36 +1340,58 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
                 <th className="px-4 py-3 text-left w-10">#</th>
                 <th className="px-4 py-3 text-left min-w-[180px]">{t("tournament.athletes")}</th>
                 {standings.map((s, i) => (
-                  <th key={`col-${s.id}`} className="px-3 py-3 text-center border-l border-border/40 min-w-[40px]">
+                  <th
+                    key={`col-${s.id}`}
+                    className="px-3 py-3 text-center border-l border-border/40 min-w-[40px]"
+                  >
                     {i + 1}
                   </th>
                 ))}
-                <th className="px-3 py-3 text-center border-l border-border bg-background/40 w-12" title={t("bracket.standing_wins")}>W</th>
-                <th className="px-3 py-3 text-center bg-background/40 w-12" title={t("bracket.standing_losses")}>L</th>
+                <th
+                  className="px-3 py-3 text-center border-l border-border bg-background/40 w-12"
+                  title={t("bracket.standing_wins")}
+                >
+                  W
+                </th>
+                <th
+                  className="px-3 py-3 text-center bg-background/40 w-12"
+                  title={t("bracket.standing_losses")}
+                >
+                  L
+                </th>
               </tr>
             </thead>
             <tbody>
               {standings.map((row, i) => (
-                <tr key={`row-${row.id}`} className="border-b border-border/50 last:border-0 hover:bg-muted/10 transition-colors">
-                  <td className="px-4 py-3 font-medium text-muted-foreground">{i + 1}</td>
+                <tr
+                  key={`row-${row.id}`}
+                  className="border-b border-border/50 last:border-0 hover:bg-muted/10 transition-colors"
+                >
+                  <td className="px-4 py-3 font-medium text-muted-foreground">
+                    {row.place ?? "—"}
+                    {row.tied ? " =" : ""}
+                  </td>
                   <td className="px-4 py-3 font-medium whitespace-nowrap">
                     {row.athlete.name} {row.athlete.surname}
                   </td>
                   {standings.map((col, j) => {
                     if (i === j) {
                       return (
-                        <td key={`cell-${row.id}-${col.id}`} className="px-3 py-3 text-center border-l border-border/40 bg-muted/20 text-muted-foreground/30 font-bold select-none">
+                        <td
+                          key={`cell-${row.id}-${col.id}`}
+                          className="px-3 py-3 text-center border-l border-border/40 bg-muted/20 text-muted-foreground/30 font-bold select-none"
+                        >
                           <span className="block h-px w-full bg-border/40 rotate-45 transform origin-center scale-150"></span>
                         </td>
                       );
                     }
-                    
+
                     const m = matches.find(
                       (match) =>
                         (match.redAthleteId === row.id && match.blueAthleteId === col.id) ||
-                        (match.redAthleteId === col.id && match.blueAthleteId === row.id)
+                        (match.redAthleteId === col.id && match.blueAthleteId === row.id),
                     );
-                    
+
                     let content = <span className="text-muted-foreground/30">—</span>;
                     if (m) {
                       if (m.status === "COMPLETED") {
@@ -1337,14 +1403,17 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
                           content = <span className="text-muted-foreground">½</span>;
                         }
                       } else if (m.status === "IN_PROGRESS") {
-                         content = <span className="text-gold animate-pulse text-xs">...</span>;
+                        content = <span className="text-gold animate-pulse text-xs">...</span>;
                       } else {
-                         content = <span className="text-gold/40 text-[10px]">vs</span>;
+                        content = <span className="text-gold/40 text-[10px]">vs</span>;
                       }
                     }
 
                     return (
-                      <td key={`cell-${row.id}-${col.id}`} className="px-3 py-3 text-center border-l border-border/40 bg-background/30 font-display text-base">
+                      <td
+                        key={`cell-${row.id}-${col.id}`}
+                        className="px-3 py-3 text-center border-l border-border/40 bg-background/30 font-display text-base"
+                      >
                         {content}
                       </td>
                     );
@@ -1370,7 +1439,9 @@ function RoundRobinView({ matches }: { matches: BracketMatch[] }) {
         <div className="space-y-6">
           {rounds.map(([round, ms]) => (
             <div key={round}>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-3 opacity-80">{round}-тур</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-gold mb-3 opacity-80">
+                {round}-тур
+              </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {ms
                   .sort((a, b) => a.position - b.position)

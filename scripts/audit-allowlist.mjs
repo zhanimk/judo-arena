@@ -16,14 +16,10 @@ if (minimumRank === undefined) {
   process.exit(2);
 }
 
-// Temporary allowlist for upstream advisories that currently have no
-// non-breaking fix in Socket.IO/Cloudflare packages.
-const allowedAdvisories = new Set([
-  "https://github.com/advisories/GHSA-96hv-2xvq-fx4p", // ws < 8.21.0
-  "https://github.com/advisories/GHSA-gv7w-rqvm-qjhr", // esbuild < 0.28.1
-]);
+// Patched releases exist. Do not silently waive production advisories.
+const allowedAdvisories = new Set();
 
-const result = spawnSync("npm", ["audit", "--omit=dev", "--json"], {
+const result = spawnSync("npm", ["audit", "--json"], {
   cwd: process.cwd(),
   encoding: "utf8",
   shell: false,

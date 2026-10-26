@@ -17,9 +17,9 @@
     "dev:web": "npm run dev -w web",
     "dev:api": "npm run dev -w api",
     "build": "npm run build -w web && npm run build -w api",
-    "db:up": "docker-compose up -d",
-    "db:down": "docker-compose down",
-    "db:reset": "docker-compose down -v && docker-compose up -d",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
     "db:migrate": "npm run prisma:migrate -w api",
     "db:studio": "npm run prisma:studio -w api",
     "db:seed": "npm run prisma:seed -w api",
@@ -33,10 +33,16 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "check:bundle": "node scripts/check-bundle-size.mjs",
-    "verify:local": "npm run lint -w @judo-arena/api -- --max-warnings 0 && npm run lint -w tanstack_start_ts && npm run test -w @judo-arena/api && npm run build -w @judo-arena/api && npm run build -w tanstack_start_ts && npm run check:bundle",
+    "verify:local": "npm run lint -w @judo-arena/api -- --max-warnings 0 && npm run lint -w tanstack_start_ts && npm run test -w @judo-arena/api && npm run build -w @judo-arena/api && npm run build -w tanstack_start_ts && npm run typecheck:web && npm run check:bundle",
     "gen:openapi": "node scripts/generate-openapi.mjs",
     "postinstall": "npm run prisma:generate -w api",
-    "prepare": "husky"
+    "prepare": "husky",
+    "typecheck:web": "tsc --noEmit -p web/tsconfig.json",
+    "build:vps": "DEPLOY_TARGET=vps VITE_API_URL= VITE_WS_URL= npm run build",
+    "vps:up": "docker compose --env-file .env.vps -f compose.vps.yml up -d --build",
+    "vps:logs": "docker compose --env-file .env.vps -f compose.vps.yml logs -f --tail=100",
+    "test:engine": "npm run test:engine -w api",
+    "test:engine:db": "node scripts/test-engine-db.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
@@ -66,18 +72,23 @@
       "ws": "8.21.0"
     },
     "esbuild": "0.28.1",
-    "js-yaml": "4.2.0",
+    "js-yaml": "4.3.2",
     "miniflare": {
       "ws": "8.21.0"
     },
-    "shell-quote": "1.8.4",
+    "shell-quote": "1.11.0",
     "socket.io-adapter": {
       "ws": "8.21.0"
     },
     "wrangler": {
       "esbuild": "0.28.1"
     },
-    "ws": "8.21.0"
+    "ws": "8.21.0",
+    "@fastify/static": "^10.1.6",
+    "sharp": "^0.35.5",
+    "nodemailer": "^10.0.6",
+    "compression": "^1.8.2",
+    "undici": "7.30.1"
   },
   "lint-staged": {
     "api/src/**/*.ts": [

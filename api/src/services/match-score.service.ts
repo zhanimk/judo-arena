@@ -1,3 +1,4 @@
+import { assertTournamentAcceptsResults } from "./match-transaction.js";
 /**
  * match-score.service.ts — судейские действия (очки, osaekomi).
  *
@@ -20,6 +21,7 @@ import {
   normalizeScore,
   markPendingResult,
   osaekomiScore,
+  osaekomiWinThreshold,
   scoreToJson,
 } from "./match-types.js";
 import {
@@ -66,7 +68,6 @@ export async function addScoreEvent(
     );
   }
   const sideKey = side === "RED" ? "red" : "blue";
-  const opponentKey = sideKey === "red" ? "blue" : "red";
 
   // ── Применяем очко ────────────────────────────────────────
   switch (type) {
@@ -90,11 +91,11 @@ export async function addScoreEvent(
       }
       break;
     case "YUKO":
-      // IJF 2017+: Yuko упразднён. Начислять можно только если категория разрешает.
+      // Yuko is enabled by the tournament category rules.
       if (!match.bracket.category.allowYuko) {
         throw new MatchError(
           "YUKO_NOT_ALLOWED",
-          "Оценка Юко не разрешена в этой категории (IJF 2017+)",
+          "Оценка Юко не разрешена в этой категории",
           400,
         );
       }
@@ -105,10 +106,6 @@ export async function addScoreEvent(
       if (score[sideKey].shido >= 3) {
         // 3 штрафа → хансоку-маке (дисквалификация) — в любой фазе матча
         score[sideKey].hansoku = true;
-      } else if (score.isGoldenScore) {
-        // IJF правило: в Golden Score ЛЮБОЕ шидо означает немедленную победу соперника.
-        // Независимо от счёта: первый получивший штраф в GS проигрывает.
-        score[opponentKey].ippon = 1; // технически засчитываем как победный балл сопернику
       }
       break;
     case "HANSOKU_MAKE":
@@ -153,14 +150,16 @@ export async function addScoreEvent(
   const matchSide: MatchSide = side === "RED" ? MatchSide.RED : MatchSide.BLUE;
 
   const { event, updated } = await prisma.$transaction(async (tx) => {
+    await assertTournamentAcceptsResults(tx, match.tournamentId);
     const updateResult = await tx.match.updateMany({
       where: {
         id: matchId,
-        ...(expectedVersion !== undefined && { version: expectedVersion }),
+        version: expectedVersion ?? match.version,
+        status: MatchStatus.IN_PROGRESS,
       },
       data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
-    if (expectedVersion !== undefined && updateResult.count === 0) {
+    if (updateResult.count === 0) {
       throw new MatchError(
         "CONCURRENT_MODIFICATION",
         "Матч изменён другим судьёй. Обновите страницу.",
@@ -195,7 +194,12 @@ export async function startOsaekomi(
   judgeSessionId?: string,
   expectedVersion?: number,
 ) {
-  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: {
+      bracket: { include: { category: { select: { allowYuko: true } } } },
+    },
+  });
   if (!match) throw new MatchError("MATCH_NOT_FOUND", "Матч не найден", 404);
   if (match.status !== MatchStatus.IN_PROGRESS) {
     throw new MatchError("NOT_RUNNING", "Матч не запущен", 409);
@@ -218,14 +222,16 @@ export async function startOsaekomi(
   const matchSide = side === "RED" ? MatchSide.RED : MatchSide.BLUE;
 
   const { updated, event } = await prisma.$transaction(async (tx) => {
+    await assertTournamentAcceptsResults(tx, match.tournamentId);
     const updateResult = await tx.match.updateMany({
       where: {
         id: matchId,
-        ...(expectedVersion !== undefined && { version: expectedVersion }),
+        version: expectedVersion ?? match.version,
+        status: MatchStatus.IN_PROGRESS,
       },
       data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
-    if (expectedVersion !== undefined && updateResult.count === 0) {
+    if (updateResult.count === 0) {
       throw new MatchError(
         "CONCURRENT_MODIFICATION",
         "Матч изменён другим судьёй. Обновите страницу.",
@@ -248,7 +254,11 @@ export async function startOsaekomi(
   });
 
   // Серверный таймер: авто-завершит osaekomi через 20с если судья не нажал TOKETA
-  scheduleOsaekomiTimer(matchId, osaekomiStartedAt);
+  scheduleOsaekomiTimer(
+    matchId,
+    osaekomiStartedAt,
+    osaekomiWinThreshold(score, side, match.bracket.category.allowYuko),
+  );
 
   return { match: updated, event };
 }
@@ -296,7 +306,6 @@ export async function endOsaekomi(
   let winnerId: string | null = null;
 
   score.osaekomi = null;
-  cancelOsaekomiTimer(matchId);
 
   if (scored) {
     const sideKey = side === "RED" ? "red" : "blue";
@@ -341,14 +350,16 @@ export async function endOsaekomi(
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    await assertTournamentAcceptsResults(tx, match.tournamentId);
     const updateResult = await tx.match.updateMany({
       where: {
         id: matchId,
-        ...(expectedVersion !== undefined && { version: expectedVersion }),
+        version: expectedVersion ?? match.version,
+        status: MatchStatus.IN_PROGRESS,
       },
       data: { scoreSnapshot: scoreToJson(score), version: { increment: 1 } },
     });
-    if (expectedVersion !== undefined && updateResult.count === 0) {
+    if (updateResult.count === 0) {
       throw new MatchError(
         "CONCURRENT_MODIFICATION",
         "Матч изменён другим судьёй. Обновите страницу.",
@@ -368,6 +379,7 @@ export async function endOsaekomi(
     return tx.match.findUniqueOrThrow({ where: { id: matchId } });
   });
 
+  cancelOsaekomiTimer(matchId);
   return {
     match: updated,
     durationSec,

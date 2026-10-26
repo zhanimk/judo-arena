@@ -1,3 +1,4 @@
+import { ManualEntryForm } from "./ManualEntryForm";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, AlertTriangle, ArrowRightLeft, CreditCard, Trash2 } from "lucide-react";
@@ -58,7 +59,13 @@ function ApplicationReviewDetail({
     <div>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="font-display text-lg font-semibold">{localizeName(app.club?.name)}</div>
+          <div className="font-display text-lg font-semibold">
+            {app.club
+              ? localizeName(app.club.name)
+              : app.applicant
+                ? `${app.applicant.surname} ${app.applicant.name}`
+                : t("registration.individual")}
+          </div>
           <div className="text-xs text-muted-foreground">
             {app.entries?.length ?? 0} {t("common.athletes").toLowerCase()} · {categoryCount}{" "}
             {t("tournament.categories").toLowerCase()} ·{" "}
@@ -380,6 +387,7 @@ export function TournamentApplicationsTab({ tournamentId }: { tournamentId: stri
 
   return (
     <Panel title={t("applications.panel_title")}>
+      <ManualEntryForm tournamentId={tournamentId} categories={categoriesQuery.data ?? []} />
       {error && (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -431,7 +439,13 @@ export function TournamentApplicationsTab({ tournamentId }: { tournamentId: stri
                   >
                     <div className="flex items-center justify-between gap-3">
                       <button onClick={() => setSelectedId(a.id)} className="min-w-0 text-left">
-                        <div className="truncate font-medium">{localizeName(a.club?.name)}</div>
+                        <div className="truncate font-medium">
+                          {a.club
+                            ? localizeName(a.club.name)
+                            : a.applicant
+                              ? `${a.applicant.surname} ${a.applicant.name}`
+                              : t("registration.individual")}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {entriesCount} {t("tournament.athletes").toLowerCase()} ·{" "}
                           {a.club?.city ?? "—"}

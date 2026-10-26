@@ -11,6 +11,7 @@
  */
 
 import type { FastifyInstance } from "fastify";
+import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { Sentry } from "./sentry.js";
 
@@ -71,6 +72,16 @@ export function attachErrorHandler(app: FastifyInstance): void {
       return reply
         .code(429)
         .send({ error: "RATE_LIMIT", message: "Превышен лимит запросов" });
+    }
+
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      ["P2002", "P2034"].includes(err.code)
+    ) {
+      return reply.code(409).send({
+        error: "CONFLICT",
+        message: "Запись уже существует или была изменена. Обновите страницу",
+      });
     }
 
     // Unexpected errors

@@ -43,7 +43,6 @@ import { uploadRoutes } from "./routes/upload.routes.js";
 import { paymentRoutes } from "./routes/payment.routes.js";
 import { attachSocketIO } from "./sockets/io.js";
 import { restoreActiveTimers } from "./services/osaekomi-timer.service.js";
-import { restoreGoldenScoreTimers } from "./services/golden-score-timer.service.js";
 import { verifySmtpConnection } from "./services/email.service.js";
 import {
   runBackupSafe,
@@ -64,9 +63,13 @@ async function buildServer() {
     // Attach unique request ID to every log line
     genReqId: () => randomUUID(),
     bodyLimit: 1024 * 1024, // 1 MB JSON limit; multipart has its own limit
-    // Trust X-Forwarded-For from Cloudflare (1) + Render (1) = 2 hops
-    // Without this, req.ip returns internal proxy IP — breaks rate limiting & audit logs
-    trustProxy: env.NODE_ENV === "production" ? 2 : false,
+    // Trust forwarded headers only from configured reverse-proxy IPs/CIDRs.
+    trustProxy:
+      env.NODE_ENV === "production" && env.TRUST_PROXY
+        ? env.TRUST_PROXY.split(",")
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : false,
     logger: {
       level: env.NODE_ENV === "production" ? "info" : "debug",
       transport:
@@ -512,11 +515,6 @@ async function buildServer() {
   // Восстановить серверные osaekomi-таймеры после рестарта
   restoreActiveTimers().catch((err) =>
     app.log.error(err, "Failed to restore osaekomi timers"),
-  );
-
-  // Восстановить golden score таймеры после рестарта
-  restoreGoldenScoreTimers().catch((err) =>
-    app.log.error(err, "Failed to restore golden score timers"),
   );
 
   // Проверить SMTP доступность (не блокирует старт)

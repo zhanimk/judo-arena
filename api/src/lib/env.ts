@@ -30,6 +30,8 @@ const schema = z.object({
   API_HOST: z.string().default("0.0.0.0"),
 
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  // Trusted reverse-proxy IPs/CIDRs; empty means no proxy trust.
+  TRUST_PROXY: z.string().default(""),
 
   // Email — либо Resend API (рекомендуется для prod), либо SMTP (Mailpit в dev)
   RESEND_API_KEY: z.string().optional(), // если задан — использует Resend API

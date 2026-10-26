@@ -38,6 +38,7 @@ vi.mock("../../src/lib/prisma.js", () => ({
     bracket: {
       findUnique: vi.fn(),
     },
+    tournament: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -71,6 +72,7 @@ import {
 function makePendingMatch(overrides: Record<string, any> = {}) {
   return {
     id: "match-1",
+    version: 0,
     tournamentId: "t-1",
     bracketId: "b-1",
     bracketSection: null, // null → propagateWinner returns early (no DB needed)
@@ -151,6 +153,9 @@ function makeUpdatedMatch(extra: Record<string, any> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+    status: "IN_PROGRESS",
+  } as any);
 
   // $transaction: just execute all ops in parallel (array-form only used here)
   vi.mocked(prisma.$transaction).mockImplementation(async (ops: any) => {
@@ -999,15 +1004,18 @@ describe("Optimistic locking — CONCURRENT_MODIFICATION", () => {
     });
   });
 
-  it("addScoreEvent without expectedVersion → never throws CONCURRENT_MODIFICATION", async () => {
+  it("addScoreEvent without expectedVersion still rejects a concurrent write", async () => {
     vi.mocked(prisma.match.findUnique).mockResolvedValue(
       makeRunningMatch() as any,
     );
     vi.mocked(prisma.match.updateMany).mockResolvedValue({ count: 0 } as any);
 
-    // No expectedVersion passed — count=0 is silently ignored
-    const result = await addScoreEvent("match-1", "IPPON", "RED", "judge-1");
-    expect(result.autoFinished).toBe(true);
+    await expect(
+      addScoreEvent("match-1", "IPPON", "RED", "judge-1"),
+    ).rejects.toMatchObject({
+      code: "CONCURRENT_MODIFICATION",
+      httpStatus: 409,
+    });
   });
 
   it("finishMatchManually with stale version → throws CONCURRENT_MODIFICATION", async () => {
@@ -1090,47 +1098,54 @@ describe("Full match flow: HAJIME → IPPON → SOREMADE", () => {
     expect(confirmed.winnerId).toBe("red-id");
   });
 
-  it("IJF rule: SHIDO in Golden Score → opponent wins immediately (не ждём 3 штрафа)", async () => {
-    // Матч в Golden Score, у RED 0 штрафов — первое же SHIDO для RED → BLUE выигрывает
-    const gsMatch = makeRunningMatch({
-      isGoldenScore: true,
-      // scoreSnapshot.isGoldenScore тоже должен быть true — именно его читает normalizeScore()
-      scoreSnapshot: {
-        red: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
-        blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+  it.each([0, 1, 2])(
+    "Golden Score: SHIDO after %i penalties only wins on the third",
+    async (priorShido) => {
+      // The first and second shido do not decide Golden Score.
+      const gsMatch = makeRunningMatch({
         isGoldenScore: true,
-        osaekomi: null,
-        clock: {
-          running: true,
-          elapsedSec: 240,
-          runningStartedAt: new Date().toISOString(),
+        // scoreSnapshot.isGoldenScore тоже должен быть true — именно его читает normalizeScore()
+        scoreSnapshot: {
+          red: {
+            ippon: 0,
+            wazaari: 0,
+            yuko: 0,
+            shido: priorShido,
+            hansoku: false,
+          },
+          blue: { ippon: 0, wazaari: 0, yuko: 0, shido: 0, hansoku: false },
+          isGoldenScore: true,
+          osaekomi: null,
+          clock: {
+            running: true,
+            elapsedSec: 240,
+            runningStartedAt: new Date().toISOString(),
+          },
+          pendingResult: null,
         },
-        pendingResult: null,
-      },
-    });
-    vi.mocked(prisma.match.findUnique).mockResolvedValue(gsMatch as any);
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
-      fn({
-        match: {
-          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          findUniqueOrThrow: vi
-            .fn()
-            .mockResolvedValue(
+      });
+      vi.mocked(prisma.match.findUnique).mockResolvedValue(gsMatch as any);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) =>
+        fn({
+          tournament: prisma.tournament,
+          match: {
+            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+            findUniqueOrThrow: vi.fn().mockResolvedValue(
               makeUpdatedMatch({
                 status: "IN_PROGRESS",
                 isGoldenScore: true,
               }) as any,
             ),
-        },
-        matchEvent: { create: vi.fn().mockResolvedValue({ id: "ev-gs" }) },
-      } as any),
-    );
+          },
+          matchEvent: { create: vi.fn().mockResolvedValue({ id: "ev-gs" }) },
+        } as any),
+      );
 
-    const result = await addScoreEvent("match-1", "SHIDO", "RED");
-    // SHIDO дан RED → BLUE должен победить немедленно
-    expect(result.autoFinished).toBe(true);
-    expect(result.winnerId).toBe("blue-id");
-  });
+      const result = await addScoreEvent("match-1", "SHIDO", "RED");
+      expect(result.autoFinished).toBe(priorShido === 2);
+      expect(result.winnerId).toBe(priorShido === 2 ? "blue-id" : null);
+    },
+  );
 
   it("IJF rule: YUKO недопустимо когда allowYuko=false", async () => {
     const strictMatch = makeRunningMatch({

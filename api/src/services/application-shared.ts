@@ -4,8 +4,15 @@
  * and application-payment.service.ts to avoid circular dependencies.
  */
 
+import { fitsBirthYears, birthYearBounds, isAdult } from "./category-age.js";
 import { prisma } from "../lib/prisma.js";
-import { ClubRole, UserRole, type User, type Category, Prisma } from "@prisma/client";
+import {
+  ClubRole,
+  UserRole,
+  type User,
+  type Category,
+  Prisma,
+} from "@prisma/client";
 
 export class ApplicationError extends Error {
   constructor(
@@ -18,7 +25,10 @@ export class ApplicationError extends Error {
   }
 }
 
-export function validateAthleteFitsCategory(athlete: User, category: Category): void {
+export async function validateAthleteFitsCategory(
+  athlete: User,
+  category: Category,
+): Promise<void> {
   if (athlete.gender !== category.gender) {
     throw new ApplicationError(
       "GENDER_MISMATCH",
@@ -34,13 +44,17 @@ export function validateAthleteFitsCategory(athlete: User, category: Category): 
       400,
     );
   }
-  const age = Math.floor(
-    (Date.now() - athlete.dateOfBirth.getTime()) / (365.25 * 24 * 3600 * 1000),
-  );
-  if (age < category.ageMin || age > category.ageMax) {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: category.tournamentId },
+    select: { startDate: true },
+  });
+  if (!tournament)
+    throw new ApplicationError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+  if (!fitsBirthYears(athlete.dateOfBirth, category, tournament.startDate)) {
+    const bounds = birthYearBounds(category, tournament.startDate);
     throw new ApplicationError(
       "AGE_MISMATCH",
-      `Спортсмену ${age} лет, категория ${category.ageMin}-${category.ageMax}`,
+      `Допустимые годы рождения: ${bounds.birthYearMin}–${bounds.birthYearMax}`,
       409,
     );
   }
@@ -66,13 +80,21 @@ export function validateAthleteFitsCategory(athlete: User, category: Category): 
 
 export async function assertCanManageApplication(
   actorUserId: string,
-  clubId: string,
+  clubId: string | null,
+  applicantId?: string | null,
 ): Promise<void> {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
   if (!actor)
     throw new ApplicationError("USER_NOT_FOUND", "Пользователь не найден", 404);
   if (actor.role === UserRole.ADMIN) return;
   if (
+    actor.role === UserRole.ATHLETE &&
+    applicantId === actor.id &&
+    isAdult(actor.dateOfBirth)
+  )
+    return;
+  if (
+    clubId &&
     actor.role === UserRole.COACH &&
     actor.clubId === clubId &&
     actor.clubRole === ClubRole.OWNER
@@ -95,12 +117,53 @@ export function assertApplicationDeadlineOpen(deadline: Date): void {
   }
 }
 
-export function localizeName(value: Prisma.JsonValue | null | undefined): string {
+export function localizeName(
+  value: Prisma.JsonValue | null | undefined,
+): string {
   if (!value) return "";
   if (typeof value === "string") return value;
   if (typeof value === "object" && !Array.isArray(value) && value !== null) {
     const obj = value as Record<string, Prisma.JsonValue>;
-    return (obj["kk"] as string) || (obj["ru"] as string) || (obj["en"] as string) || "";
+    return (
+      (obj["kk"] as string) ||
+      (obj["ru"] as string) ||
+      (obj["en"] as string) ||
+      ""
+    );
   }
   return "";
+}
+
+/** Recheck administrator settings when an existing draft is changed or submitted. */
+export async function assertRegistrationMethodOpen(
+  actorId: string,
+  app: { tournamentId: string; clubId: string | null; source: string },
+): Promise<void> {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { role: true },
+  });
+  if (actor?.role === "ADMIN") return;
+  const t = await prisma.tournament.findUnique({
+    where: { id: app.tournamentId },
+  });
+  if (!t || t.status !== "REGISTRATION_OPEN")
+    throw new ApplicationError(
+      "REGISTRATION_CLOSED",
+      "Регистрация закрыта",
+      409,
+    );
+  if (
+    app.clubId
+      ? !t.clubRegistrationEnabled
+      : app.source !== "SELF" ||
+        !t.selfRegistrationEnabled ||
+        t.audience === "CHILD"
+  ) {
+    throw new ApplicationError(
+      "REGISTRATION_METHOD_DISABLED",
+      "Этот способ подачи отключён администратором",
+      409,
+    );
+  }
 }

@@ -882,8 +882,7 @@ function ApplicationHistory({ applicationId }: { applicationId: string }) {
             };
             const Icon = meta.icon;
             const notes = (log.after as Record<string, unknown>)?.reviewerNotes as
-              | string
-              | undefined;
+              string | undefined;
             const actor = log.actor;
             return (
               <li key={log.id} className="ml-5">
@@ -986,10 +985,8 @@ function fitsCategory(athlete: User | null | undefined, category: Category): boo
   if (athlete.gender !== category.gender) return false;
   if (!athlete.weightKg) return false;
   if (!athlete.dateOfBirth) return false;
-  const age = getAge(athlete.dateOfBirth);
   return (
-    age >= category.ageMin &&
-    age <= category.ageMax &&
+    fitsBirthYear(athlete.dateOfBirth, category) &&
     athlete.weightKg > category.weightMin &&
     athlete.weightKg <= category.weightMax
   );
@@ -1010,8 +1007,8 @@ function athleteEligibilityIssues(
   if (sameGender.length === 0) return [t("applications.no_gender_category")];
 
   const age = getAge(athlete.dateOfBirth!);
-  const ageMatches = sameGender.filter(
-    (category: Category) => age >= category.ageMin && age <= category.ageMax,
+  const ageMatches = sameGender.filter((category: Category) =>
+    fitsBirthYear(athlete.dateOfBirth!, category),
   );
   if (ageMatches.length === 0) return [t("applications.age_mismatch", { age })];
 
@@ -1067,4 +1064,14 @@ function localizeName(n: import("@/lib/api-types").LocalizedName): string {
 
 function formatKzt(value: number): string {
   return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
+}
+
+function fitsBirthYear(dob: string, category: Category): boolean {
+  const year = new Date(dob).getUTCFullYear();
+  // Legacy categories without persisted bounds remain selectable; the API validates them.
+  return (
+    Number.isFinite(year) &&
+    (category.birthYearMin == null || year >= category.birthYearMin) &&
+    (category.birthYearMax == null || year <= category.birthYearMax)
+  );
 }

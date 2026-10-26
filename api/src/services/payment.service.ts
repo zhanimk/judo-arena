@@ -13,6 +13,7 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../lib/env.js";
 import { PaymentStatus } from "@prisma/client";
+import { assertCanManageApplication } from "./application-shared.js";
 
 export class PaymentError extends Error {
   constructor(
@@ -30,7 +31,7 @@ export class PaymentError extends Error {
 interface FreedomPayInitRequest {
   merchant_id: string;
   order_id: string;
-  amount: number;       // сумма в тиын (KZT × 100)
+  amount: number; // сумма в тиын (KZT × 100)
   currency: "KZT";
   description: string;
   success_url: string;
@@ -59,7 +60,10 @@ interface FreedomPayWebhookPayload {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function buildSign(params: Record<string, string | number>, secret: string): string {
+function buildSign(
+  params: Record<string, string | number>,
+  secret: string,
+): string {
   const sorted = Object.keys(params)
     .sort()
     .filter((k) => k !== "sign")
@@ -70,13 +74,18 @@ function buildSign(params: Record<string, string | number>, secret: string): str
 
 // ── Init payment ───────────────────────────────────────────────────────────
 
-export async function initPayment(applicationId: string, userEmail?: string) {
+export async function initPayment(
+  applicationId: string,
+  actorId: string,
+  userEmail?: string,
+) {
   const app = await prisma.application.findUnique({
     where: { id: applicationId },
     include: { tournament: { select: { name: true, entryFeeKzt: true } } },
   });
 
   if (!app) throw new PaymentError("NOT_FOUND", "Application not found", 404);
+  await assertCanManageApplication(actorId, app.clubId, app.applicantId);
   if (app.paymentStatus === PaymentStatus.PAID) {
     throw new PaymentError("ALREADY_PAID", "Заявка уже оплачена");
   }
@@ -91,6 +100,9 @@ export async function initPayment(applicationId: string, userEmail?: string) {
 
   // Если FreedomPay не сконфигурирован — возвращаем mock URL для разработки
   if (!env.FREEDOMPAY_MERCHANT_ID || !env.FREEDOMPAY_SECRET_KEY) {
+    if (env.NODE_ENV === "production") {
+      throw new PaymentError("NOT_CONFIGURED", "FreedomPay не настроен", 503);
+    }
     const mockUrl = `${env.APP_URL}/api/payments/mock-success?orderId=${applicationId}`;
     await prisma.application.update({
       where: { id: applicationId },
@@ -102,7 +114,11 @@ export async function initPayment(applicationId: string, userEmail?: string) {
         paymentAmountKzt: amountKzt,
       },
     });
-    return { paymentUrl: mockUrl, paymentId: `mock-${applicationId.slice(-8)}`, isMock: true };
+    return {
+      paymentUrl: mockUrl,
+      paymentId: `mock-${applicationId.slice(-8)}`,
+      isMock: true,
+    };
   }
 
   const orderId = applicationId;
@@ -138,12 +154,20 @@ export async function initPayment(applicationId: string, userEmail?: string) {
   });
 
   if (!resp.ok) {
-    throw new PaymentError("GATEWAY_ERROR", `FreedomPay вернул ${resp.status}`, 502);
+    throw new PaymentError(
+      "GATEWAY_ERROR",
+      `FreedomPay вернул ${resp.status}`,
+      502,
+    );
   }
 
   const data = (await resp.json()) as FreedomPayInitResponse;
   if (data.status !== "success" || !data.payment_url) {
-    throw new PaymentError("GATEWAY_DECLINED", data.error ?? "Шлюз отклонил платёж", 502);
+    throw new PaymentError(
+      "GATEWAY_DECLINED",
+      data.error ?? "Шлюз отклонил платёж",
+      502,
+    );
   }
 
   await prisma.application.update({
@@ -157,24 +181,35 @@ export async function initPayment(applicationId: string, userEmail?: string) {
     },
   });
 
-  return { paymentUrl: data.payment_url, paymentId: data.payment_id, isMock: false };
+  return {
+    paymentUrl: data.payment_url,
+    paymentId: data.payment_id,
+    isMock: false,
+  };
 }
 
 // ── Webhook (HMAC-SHA256 верификация) ─────────────────────────────────────
 
-export async function handleWebhook(payload: FreedomPayWebhookPayload): Promise<{ ok: boolean }> {
+export async function handleWebhook(
+  payload: FreedomPayWebhookPayload,
+): Promise<{ ok: boolean }> {
   if (!env.FREEDOMPAY_SECRET_KEY) {
     throw new PaymentError("NOT_CONFIGURED", "FreedomPay не настроен", 503);
   }
 
   const { sign, ...rest } = payload;
-  const expected = buildSign(rest as unknown as Record<string, string | number>, env.FREEDOMPAY_SECRET_KEY);
+  const expected = buildSign(
+    rest as unknown as Record<string, string | number>,
+    env.FREEDOMPAY_SECRET_KEY,
+  );
   if (sign !== expected) {
     throw new PaymentError("INVALID_SIGN", "Неверная подпись webhook", 400);
   }
 
   const applicationId = payload.order_id;
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
   if (!app) return { ok: true }; // idempotent — неизвестный orderId игнорируем
 
   // Идемпотентность: если уже PAID — просто подтверждаем без повторного обновления
@@ -182,7 +217,11 @@ export async function handleWebhook(payload: FreedomPayWebhookPayload): Promise<
 
   // Проверка суммы: webhook должен подтверждать ту же сумму что была инициирована
   const expectedAmount = (app.paymentAmountKzt ?? 0) * 100;
-  if (payload.status === "PAID" && expectedAmount > 0 && payload.amount !== expectedAmount) {
+  if (
+    payload.status === "PAID" &&
+    expectedAmount > 0 &&
+    payload.amount !== expectedAmount
+  ) {
     throw new PaymentError(
       "AMOUNT_MISMATCH",
       `Сумма в webhook (${payload.amount}) не совпадает с ожидаемой (${expectedAmount})`,
@@ -223,7 +262,9 @@ export async function adminConfirmPayment(
   actorId: string,
   reference?: string,
 ) {
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+  });
   if (!app) throw new PaymentError("NOT_FOUND", "Заявка не найдена", 404);
   if (app.paymentStatus === PaymentStatus.PAID) {
     throw new PaymentError("ALREADY_PAID", "Уже помечено как оплачено");
@@ -234,7 +275,8 @@ export async function adminConfirmPayment(
     data: {
       paymentStatus: PaymentStatus.PAID,
       paymentProvider: app.paymentProvider ?? "MANUAL",
-      paymentReference: reference ?? app.paymentReference ?? `manual-${actorId.slice(-6)}`,
+      paymentReference:
+        reference ?? app.paymentReference ?? `manual-${actorId.slice(-6)}`,
       paidAt: new Date(),
     },
   });

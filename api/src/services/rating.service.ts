@@ -23,7 +23,6 @@ import {
   TournamentStatus,
   UserRole,
 } from "@prisma/client";
-import { normalizeScore } from "./match-types.js";
 
 /** Минимальный набор полей матча, нужных для подсчёта мест. */
 interface RatedMatch {
@@ -35,8 +34,8 @@ interface RatedMatch {
   round: number;
   position: number;
 }
-import { computeStandings } from "./bracket-engine/round-robin.js";
-import { logAudit } from "./audit.service.js";
+import { sectionStandings, bracketStandings } from "./bracket-standings.js";
+import { withSerializableMatchTransaction } from "./match-transaction.js";
 
 export class RatingError extends Error {
   constructor(
@@ -68,8 +67,10 @@ const DEFAULT_POINTS: RatingPoints = {
   participation: 0,
 };
 
-async function getRatingPoints(): Promise<RatingPoints> {
-  const cfg = await prisma.systemConfig.findUnique({
+async function getRatingPoints(
+  tx: Prisma.TransactionClient = prisma,
+): Promise<RatingPoints> {
+  const cfg = await tx.systemConfig.findUnique({
     where: { key: "ratingPoints" },
   });
   if (!cfg) return DEFAULT_POINTS;
@@ -94,166 +95,219 @@ export async function finalizeTournament(
   actorUserId: string,
   tournamentId: string,
 ) {
-  const actor = await prisma.user.findUnique({ where: { id: actorUserId } });
-  if (!actor || actor.role !== UserRole.ADMIN) {
-    throw new RatingError(
-      "FORBIDDEN",
-      "Только админ может финализировать турнир",
-      403,
-    );
-  }
-
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-  });
-  if (!tournament)
-    throw new RatingError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
-  if (tournament.status === TournamentStatus.COMPLETED) {
-    throw new RatingError("ALREADY_COMPLETED", "Турнир уже завершён", 409);
-  }
-
-  const points = await getRatingPoints();
-  const allBrackets = await prisma.bracket.findMany({
-    where: { tournamentId },
-    include: { matches: true, category: true },
-  });
-  if (allBrackets.length === 0) {
-    throw new RatingError(
-      "NO_BRACKETS",
-      "Сначала подготовьте сетки турнира",
-      409,
-    );
-  }
-
-  const unfinishedPlayableMatches = await prisma.match.count({
-    where: {
-      tournamentId,
-      redAthleteId: { not: null },
-      blueAthleteId: { not: null },
-      status: { not: MatchStatus.COMPLETED },
-    },
-  });
-  if (unfinishedPlayableMatches > 0) {
-    throw new RatingError(
-      "MATCHES_NOT_COMPLETED",
-      `Нельзя финализировать турнир: осталось ${unfinishedPlayableMatches} незавершённых матчей`,
-      409,
-    );
-  }
-
-  // Собираем все записи вне транзакции — чистая вычислительная логика
-  const createdEntries: {
-    athleteId: string;
-    categoryId: string;
-    place: number;
-    points: number;
-  }[] = [];
-
-  for (const bracket of allBrackets) {
-    if (bracket.format === BracketFormat.ROUND_ROBIN) {
-      const matches = bracket.matches.filter(
-        (m) => m.status === MatchStatus.COMPLETED,
+  return withSerializableMatchTransaction(async (tx) => {
+    const actor = await tx.user.findUnique({ where: { id: actorUserId } });
+    if (!actor || actor.role !== UserRole.ADMIN) {
+      throw new RatingError(
+        "FORBIDDEN",
+        "Только админ может финализировать турнир",
+        403,
       );
-      const athleteIds = Array.from(
-        new Set(
-          matches.flatMap(
-            (m) =>
-              [m.redAthleteId, m.blueAthleteId].filter(Boolean) as string[],
+    }
+
+    const tournament = await tx.tournament.findUnique({
+      where: { id: tournamentId },
+    });
+    if (!tournament)
+      throw new RatingError("TOURNAMENT_NOT_FOUND", "Турнир не найден", 404);
+    if (tournament.status === TournamentStatus.COMPLETED) {
+      throw new RatingError("ALREADY_COMPLETED", "Турнир уже завершён", 409);
+    }
+
+    if (tournament.status !== TournamentStatus.IN_PROGRESS)
+      throw new RatingError(
+        "INVALID_STATUS",
+        "Завершить можно только идущий турнир",
+        409,
+      );
+
+    const points = await getRatingPoints(tx);
+    const allBrackets = await tx.bracket.findMany({
+      where: { tournamentId },
+      include: { matches: true, category: true },
+    });
+    if (allBrackets.length === 0) {
+      throw new RatingError(
+        "NO_BRACKETS",
+        "Сначала подготовьте сетки турнира",
+        409,
+      );
+    }
+
+    const admittedCategories = await tx.applicationEntry.groupBy({
+      by: ["categoryId"],
+      where: {
+        application: { tournamentId, status: "APPROVED" },
+        weighInStatus: "PASSED",
+      },
+      _count: { _all: true },
+    });
+    if (
+      admittedCategories.some(
+        (row) =>
+          row._count._all >= 2 &&
+          !allBrackets.some((bracket) => bracket.categoryId === row.categoryId),
+      )
+    )
+      throw new RatingError(
+        "MISSING_BRACKET",
+        "У допущенной категории не подготовлена сетка",
+        409,
+      );
+
+    const unfinishedPlayableMatches = await tx.match.count({
+      where: {
+        tournamentId,
+        redAthleteId: { not: null },
+        blueAthleteId: { not: null },
+        status: { not: MatchStatus.COMPLETED },
+      },
+    });
+    if (unfinishedPlayableMatches > 0) {
+      throw new RatingError(
+        "MATCHES_NOT_COMPLETED",
+        `Нельзя финализировать турнир: осталось ${unfinishedPlayableMatches} незавершённых матчей`,
+        409,
+      );
+    }
+
+    // Snapshot validation, ranking and persistence share one Serializable transaction.
+    const createdEntries: {
+      athleteId: string;
+      categoryId: string;
+      place: number;
+      points: number;
+    }[] = [];
+
+    for (const bracket of allBrackets) {
+      const tables = bracketStandings(bracket);
+      if (tables.some((table) => !table.complete))
+        throw new RatingError(
+          "MATCHES_NOT_COMPLETED",
+          "Групповой этап не завершён",
+          409,
+        );
+      if (
+        tables.some((table) =>
+          table.rows.some(
+            (row) =>
+              row.tied && (bracket.format === "ROUND_ROBIN" || row.place <= 2),
           ),
-        ),
-      );
-      const standings = computeStandings(
-        athleteIds,
-        matches.map((m) => ({
-          redAthleteId: m.redAthleteId!,
-          blueAthleteId: m.blueAthleteId!,
-          winnerId: m.winnerId,
-          redScore: normalizeScore(m.scoreSnapshot).red ?? {
-            ippon: 0,
-            wazaari: 0,
-            shido: 0,
-          },
-          blueScore: normalizeScore(m.scoreSnapshot).blue ?? {
-            ippon: 0,
-            wazaari: 0,
-            shido: 0,
-          },
-        })),
-      );
-      for (const s of standings) {
-        createdEntries.push({
-          athleteId: s.athleteId,
-          categoryId: bracket.categoryId,
-          place: s.place,
-          points: pointsForPlace(points, s.place),
-        });
+        )
+      )
+        throw new RatingError(
+          "STANDINGS_UNRESOLVED",
+          "Утвердите неразрешённые ничьи в таблице группы",
+          409,
+        );
+      if (
+        bracket.matches.some(
+          (m) =>
+            m.winnerId &&
+            m.winnerId !== m.redAthleteId &&
+            m.winnerId !== m.blueAthleteId,
+        )
+      )
+        throw new RatingError(
+          "INVALID_RESULT",
+          "В сетке найден победитель, не участвующий в матче",
+          409,
+        );
+      if (bracket.format !== BracketFormat.ROUND_ROBIN) {
+        const final = bracket.matches.find(
+          (m) =>
+            m.round === Math.log2(bracket.size) &&
+            m.bracketSection ===
+              (bracket.format === "MIXED" ? "playoff" : "final"),
+        );
+        if (!final || final.status !== "COMPLETED" || !final.winnerId)
+          throw new RatingError(
+            "MATCHES_NOT_COMPLETED",
+            "Финал сетки не завершён",
+            409,
+          );
+        if (
+          bracket.matches.some(
+            (m) => m.redAthleteId && m.blueAthleteId && !m.winnerId,
+          )
+        )
+          throw new RatingError(
+            "INVALID_RESULT",
+            "В завершённом матче нет победителя",
+            409,
+          );
       }
-    } else if (bracket.format === BracketFormat.MIXED) {
-      const places = computePlacesFromMixedMatches(bracket.matches);
-      for (const [athleteId, place] of Object.entries(places)) {
-        createdEntries.push({
-          athleteId,
-          categoryId: bracket.categoryId,
-          place,
-          points: pointsForPlace(points, place),
-        });
-      }
-    } else {
-      const places = computePlacesFromSEMatches(bracket.matches);
-      for (const [athleteId, place] of Object.entries(places)) {
-        createdEntries.push({
-          athleteId,
-          categoryId: bracket.categoryId,
-          place,
-          points: pointsForPlace(points, place),
-        });
+      if (bracket.format === BracketFormat.ROUND_ROBIN) {
+        const standings = sectionStandings(
+          bracket.metadata,
+          "main",
+          bracket.matches,
+        ).rows;
+        for (const s of standings) {
+          createdEntries.push({
+            athleteId: s.athleteId,
+            categoryId: bracket.categoryId,
+            place: s.place,
+            points: pointsForPlace(points, s.place),
+          });
+        }
+      } else if (bracket.format === BracketFormat.MIXED) {
+        const places = computePlacesFromMixedMatches(bracket.matches);
+        for (const [athleteId, place] of Object.entries(places)) {
+          createdEntries.push({
+            athleteId,
+            categoryId: bracket.categoryId,
+            place,
+            points: pointsForPlace(points, place),
+          });
+        }
+      } else {
+        const places = computePlacesFromSEMatches(bracket.matches);
+        for (const [athleteId, place] of Object.entries(places)) {
+          createdEntries.push({
+            athleteId,
+            categoryId: bracket.categoryId,
+            place,
+            points: pointsForPlace(points, place),
+          });
+        }
       }
     }
-  }
 
-  // Атомарно записываем все места и переводим турнир в COMPLETED
-  const updated = await prisma.$transaction(
-    async (tx) => {
-      for (const entry of createdEntries) {
-        await tx.ratingEntry.upsert({
-          where: {
-            athleteId_tournamentId_categoryId: {
-              athleteId: entry.athleteId,
-              tournamentId,
-              categoryId: entry.categoryId,
-            },
-          },
-          update: { place: entry.place, points: entry.points },
-          create: {
+    // Атомарно записываем все места и переводим турнир в COMPLETED
+    for (const entry of createdEntries) {
+      await tx.ratingEntry.upsert({
+        where: {
+          athleteId_tournamentId_categoryId: {
             athleteId: entry.athleteId,
             tournamentId,
             categoryId: entry.categoryId,
-            place: entry.place,
-            points: entry.points,
           },
-        });
-      }
-      return tx.tournament.update({
-        where: { id: tournamentId },
-        data: { status: TournamentStatus.COMPLETED },
+        },
+        update: { place: entry.place, points: entry.points },
+        create: { ...entry, tournamentId },
       });
-    },
-    { timeout: 30_000 },
-  );
+    }
+    const updated = await tx.tournament.update({
+      where: { id: tournamentId },
+      data: { status: TournamentStatus.COMPLETED },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorUserId,
+        action: "tournament.finalize",
+        targetEntity: "Tournament",
+        targetId: tournamentId,
+        after: { status: "COMPLETED", entriesCreated: createdEntries.length },
+      },
+    });
 
-  await logAudit({
-    actorUserId,
-    action: "tournament.finalize",
-    targetEntity: "Tournament",
-    targetId: tournamentId,
-    after: { status: "COMPLETED", entriesCreated: createdEntries.length },
+    return {
+      tournament: updated,
+      entriesCount: createdEntries.length,
+      entries: createdEntries,
+    };
   });
-
-  return {
-    tournament: updated,
-    entriesCount: createdEntries.length,
-    entries: createdEntries,
-  };
 }
 
 /**

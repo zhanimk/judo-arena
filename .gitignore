@@ -35,6 +35,7 @@ lerna-debug.log*
 
 # OS
 .DS_Store
+Icon?
 Thumbs.db
 
 # Тесты
@@ -66,3 +67,7 @@ postgres-data/
 redis-data/
 .vercel
 api/openapi.json
+
+# Сохранённые повреждённые зависимости
+node_modules.recovery/
+.env.vps

@@ -13,7 +13,7 @@
 #   ./start.sh --seed   применить seed после миграций
 # ============================================================
 
-set -e
+set -euo pipefail
 
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; B='\033[1;34m'; N='\033[0m'
 print() { printf "${B}▶ %s${N}\n" "$1"; }
@@ -40,47 +40,52 @@ done
 # ============================================================
 print "Проверки окружения"
 
-if ! command -v docker >/dev/null 2>&1; then
-  fail "Docker не установлен. Скачай Docker Desktop."
-fi
-if ! docker ps >/dev/null 2>&1; then
-  fail "Docker daemon не запущен. Открой Docker Desktop и подожди пока кит станет статичным."
-fi
-ok "Docker готов"
-
 if ! command -v node >/dev/null 2>&1; then
-  fail "Node.js не установлен. Скачай с https://nodejs.org"
+  fail "Node.js не установлен. Установи Node 22 согласно .nvmrc."
+fi
+if [ "$(node -p 'process.versions.node.split(".")[0]')" != "22" ]; then
+  fail "Нужен Node.js 22 (см. .nvmrc). Выполни nvm use перед запуском."
 fi
 ok "Node.js $(node -v)"
 
-# ============================================================
-# 1. Docker контейнеры
-# ============================================================
-print "Запуск Docker контейнеров (Postgres + Redis + Mailpit)"
-docker compose up -d
-sleep 2
-ok "Контейнеры подняты"
-
-# ============================================================
-# 2. Установка зависимостей если их нет
-# ============================================================
-if [ ! -d "api/node_modules" ]; then
-  print "Установка зависимостей backend (1-2 мин)"
-  (cd api && npm install)
+if [ ! -f .env ]; then
+  fail "Нет .env. Скопируй .env.example в .env и заполни настройки."
 fi
-ok "Backend deps OK"
-
-if [ ! -d "web/node_modules" ]; then
-  print "Установка зависимостей frontend (2-3 мин)"
-  (cd web && npm install)
+if ! command -v docker >/dev/null 2>&1; then
+  fail "Docker не установлен. Установи Docker Desktop."
 fi
-ok "Frontend deps OK"
+if ! docker info >/dev/null 2>&1; then
+  fail "Docker daemon не запущен. Открой Docker Desktop и дождись запуска."
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  fail "Нужен Docker Compose v2 (docker compose)."
+fi
+ok "Docker готов"
+
+# Установка выполняется из корня workspace строго по lock-файлу.
+# Проверяем модули, а не наличие папок: прерванная установка оставляет папки.
+if ! node --input-type=module -e '
+  await import("concurrently");
+  await import("tsx");
+  await import("vite");
+  await import("@prisma/client");
+  await import("vitest/node");
+' >/dev/null 2>&1; then
+  print "Установка зависимостей workspace"
+  npm ci
+fi
+ok "Зависимости готовы"
+
+print "Запуск PostgreSQL, Redis и Mailpit"
+docker compose up -d --wait --wait-timeout 90 postgres redis mailpit
+ok "Контейнеры готовы"
 
 # ============================================================
 # 3. Prisma migrate + optional seed
 # ============================================================
 print "Синхронизируем локальную БД Prisma"
-(cd api && npx prisma db push --skip-generate)
+npm run prisma:generate -w api
+npm run prisma:migrate:deploy -w api
 
 if [ "$RUN_SEED" = true ]; then
   print "Засеваем тестовые данные"
@@ -99,15 +104,7 @@ echo -e "${Y}    Логи бэка и фронта пойдут вперемеш
 echo -e "${Y}    Открой в браузере адрес который покажет фронт (обычно http://localhost:8080 или 5173)${N}"
 echo ""
 
-# Trap чтобы при Ctrl+C убить оба процесса
-trap "echo ''; echo '🛑 Остановка...'; kill 0; exit" SIGINT SIGTERM
-
-# Запускаем оба процесса в фоне и ждём
-(cd api && npm run dev) &
-API_PID=$!
-
-(cd web && npm run dev) &
-WEB_PID=$!
-
-# Ждём пока любой из них упадёт
-wait
+# concurrently завершает оба дерева процессов при падении сервера или Ctrl+C.
+exec ./node_modules/.bin/concurrently --kill-others --success all \
+  -n api,web -c green,blue \
+  "npm run dev -w api" "npm run dev -w web"

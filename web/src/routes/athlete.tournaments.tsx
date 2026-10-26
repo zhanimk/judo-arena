@@ -1,3 +1,7 @@
+import {
+  SelfRegistrationForm,
+  SelfApplicationActions,
+} from "@/components/tournament/SelfRegistrationForm";
 import { RouteErrorUI } from "@/components/ui/ErrorBoundary";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -103,7 +107,7 @@ function AthleteTournaments() {
               <Building2 className="h-8 w-8 mb-3 text-muted-foreground/30" />
               <div className="font-medium text-foreground mb-1">{t("athlete.no_club")}</div>
               <div className="text-sm text-muted-foreground max-w-xs mx-auto mb-5">
-                Клубқа қосылу үшін өтінім жіберіңіз немесе бапкердің сізді қосуын күтіңіз.
+                {t("registration.self_hint")}
               </div>
               <Link
                 to="/athlete/profile"
@@ -138,6 +142,7 @@ function AthleteTournaments() {
         </Panel>
       </div>
 
+      <SelfRegistrationForm tournaments={tournamentsQuery.data?.items ?? []} />
       <Panel title={t("tournaments_page.all_tournaments")}>
         {tournamentsQuery.isLoading ? (
           <LoadingState />
@@ -153,10 +158,8 @@ function AthleteTournaments() {
               const primaryEntry = myEntries[0];
               const app = primaryEntry?.application;
               return (
-                <Link
+                <div
                   key={tournament.id}
-                  to="/tournaments/$id"
-                  params={{ id: tournament.id }}
                   className={`glass rounded-xl p-5 hover:border-gold/40 transition-all hover:-translate-y-1 border ${myEntries.length ? "border-gold/40" : "border-border/60"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -189,24 +192,25 @@ function AthleteTournaments() {
                         {myEntries.map((entry: ApplicationEntry) => (
                           <div key={entry.id} className="flex items-center justify-between gap-2">
                             <span className="truncate">{categoryTitle(entry.category, t)}</span>
-                            {(app?.status === "DRAFT" || app?.status === "SUBMITTED") && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  if (confirm(t("athlete.confirm_remove_entry"))) {
-                                    removeEntryMut.mutate({
-                                      applicationId: app.id,
-                                      entryId: entry.id,
-                                    });
-                                  }
-                                }}
-                                disabled={removeEntryMut.isPending}
-                                className="shrink-0 rounded p-0.5 text-current/60 hover:text-destructive disabled:opacity-40"
-                                title={t("athlete.remove_entry")}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            )}
+                            {app?.source === "SELF" &&
+                              (app?.status === "DRAFT" || app?.status === "SUBMITTED") && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    if (confirm(t("athlete.confirm_remove_entry"))) {
+                                      removeEntryMut.mutate({
+                                        applicationId: app.id,
+                                        entryId: entry.id,
+                                      });
+                                    }
+                                  }}
+                                  disabled={removeEntryMut.isPending}
+                                  className="shrink-0 rounded p-0.5 text-current/60 hover:text-destructive disabled:opacity-40"
+                                  title={t("athlete.remove_entry")}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
                           </div>
                         ))}
                       </div>
@@ -217,6 +221,7 @@ function AthleteTournaments() {
                       )}
                     </div>
                   )}
+                  {app && <SelfApplicationActions application={app} />}
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3.5 w-3.5 text-gold/70" />
@@ -243,10 +248,14 @@ function AthleteTournaments() {
                       {tournament.tatamiCount ?? 1} {t("common.tatami")}
                     </div>
                   </div>
-                  <div className="mt-4 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-center text-xs text-gold">
+                  <Link
+                    to="/tournaments/$id"
+                    params={{ id: tournament.id }}
+                    className="mt-4 block rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-center text-xs text-gold"
+                  >
                     {t("home.open_full")}
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               );
             })}
           </div>

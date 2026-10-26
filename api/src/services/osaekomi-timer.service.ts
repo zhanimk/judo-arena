@@ -12,7 +12,7 @@
 import { prisma } from "../lib/prisma.js";
 import { MatchStatus } from "@prisma/client";
 import { emitMatchEvent } from "../sockets/io.js";
-import { normalizeScore } from "./match-types.js";
+import { normalizeScore, osaekomiWinThreshold } from "./match-types.js";
 
 const IPPON_SEC = 20;
 
@@ -23,15 +23,19 @@ const activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
  * Запланировать авто-окончание osaekomi через (IPPON_SEC - already_elapsed) секунд.
  * @param startedAt  ISO-строка момента начала удержания (из scoreSnapshot)
  */
-export function scheduleOsaekomiTimer(matchId: string, startedAt: string): void {
+export function scheduleOsaekomiTimer(
+  matchId: string,
+  startedAt: string,
+  thresholdSec = IPPON_SEC,
+): void {
   cancelOsaekomiTimer(matchId); // Сбросить предыдущий если был
 
   const elapsed = (Date.now() - new Date(startedAt).getTime()) / 1000;
-  const remaining = Math.max(0, IPPON_SEC - elapsed);
+  const remaining = Math.max(0, thresholdSec - elapsed);
 
   const handle = setTimeout(async () => {
     activeTimers.delete(matchId);
-    await triggerAutoEndOsaekomi(matchId);
+    await triggerAutoEndOsaekomi(matchId, startedAt);
   }, remaining * 1000);
 
   activeTimers.set(matchId, handle);
@@ -50,39 +54,70 @@ export function cancelOsaekomiTimer(matchId: string): void {
 export async function restoreActiveTimers(): Promise<void> {
   const matches = await prisma.match.findMany({
     where: { status: MatchStatus.IN_PROGRESS },
-    select: { id: true, scoreSnapshot: true },
+    select: {
+      id: true,
+      scoreSnapshot: true,
+      bracket: { select: { category: { select: { allowYuko: true } } } },
+    },
   });
 
   let restored = 0;
   for (const m of matches) {
     const snap = normalizeScore(m.scoreSnapshot);
     if (snap.osaekomi?.startedAt) {
-      scheduleOsaekomiTimer(m.id, snap.osaekomi.startedAt);
+      scheduleOsaekomiTimer(
+        m.id,
+        snap.osaekomi.startedAt,
+        osaekomiWinThreshold(
+          snap,
+          snap.osaekomi.side,
+          m.bracket.category.allowYuko,
+        ),
+      );
       restored++;
     }
   }
 
   if (restored > 0) {
-    process.stdout.write(`[osaekomi-timer] Restored ${restored} active timer(s) after restart\n`);
+    process.stdout.write(
+      `[osaekomi-timer] Restored ${restored} active timer(s) after restart\n`,
+    );
   }
 }
 
 // ---- внутренний триггер авто-окончания ----
 
-async function triggerAutoEndOsaekomi(matchId: string): Promise<void> {
+async function triggerAutoEndOsaekomi(
+  matchId: string,
+  startedAt: string,
+): Promise<void> {
   try {
     // Lazy import to avoid circular dependency (match.service imports this module)
     const { endOsaekomi } = await import("./match.service.js");
 
-    const result = await endOsaekomi(matchId, "TIME_LIMIT");
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    if (
+      !match ||
+      normalizeScore(match.scoreSnapshot).osaekomi?.startedAt !== startedAt
+    )
+      return;
+    const result = await endOsaekomi(
+      matchId,
+      "TIME_LIMIT",
+      undefined,
+      match.version,
+    );
 
     // Emit real-time update
     try {
-      
       emitMatchEvent(
         result.match,
         result.autoFinished ? "match:finished" : "match:scoreUpdate",
-        { matchId, scoredType: result.scoredType, autoFinished: result.autoFinished },
+        {
+          matchId,
+          scoredType: result.scoredType,
+          autoFinished: result.autoFinished,
+        },
       );
     } catch {
       // IO may not be ready — non-critical
@@ -90,6 +125,8 @@ async function triggerAutoEndOsaekomi(matchId: string): Promise<void> {
   } catch (err: unknown) {
     // Match may have already ended or be in a bad state — safe to ignore
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`[osaekomi-timer] Auto-end failed for match ${matchId}: ${message}\n`);
+    process.stderr.write(
+      `[osaekomi-timer] Auto-end failed for match ${matchId}: ${message}\n`,
+    );
   }
 }

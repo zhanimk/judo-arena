@@ -3,7 +3,7 @@
 const API_URL = process.env.API_URL ?? "http://localhost:4000";
 const WEB_URL = process.env.WEB_URL ?? "http://localhost:5173";
 const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? "admin@judo-arena.kz";
-const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? "password123";
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? "JudoArenaAdmin2026!";
 
 const checks = [];
 

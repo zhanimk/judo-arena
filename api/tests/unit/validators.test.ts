@@ -247,7 +247,7 @@ describe("createCategoriesBulkSchema", () => {
         weightMin: index === 0 ? 0 : weights[index - 1],
         weightMax,
         matchDurationSec: 180,
-        goldenScoreSec: 90,
+        goldenScoreSec: 0,
         format: "SE_IJF",
       })),
     );
